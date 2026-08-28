@@ -101,6 +101,37 @@ docker compose up -d
 
 如果默认的OpenAI接口调用方式与您的API不同，可自定义生图/视频脚本调用。
 
+## ComfyUI 渠道
+
+除了 OpenAI 兼容接口与 Gemini，画布还支持把本地 ComfyUI 实例作为第三种渠道接入，让 ModelPicker 里直接出现 `ComfyUI T2I / ComfyUI I2I 1ref / ComfyUI I2I 3ref` 等模型，按 OpenAI 生图一样使用。
+
+### 快速开始（3 步）
+
+1. 部署 [comfy-api-proxy](https://github.com/basketikun/comfy-api-proxy)（默认监听 `http://127.0.0.1:8189`），并确保本机 ComfyUI（`http://127.0.0.1:8188`）能联通。
+2. 进入画布右上角「配置」新建一个 channel，`API 格式` 选 `ComfyUI`，填写 `Proxy URL`（如 `http://10.7.8.12:8189`）与 `Proxy Token` 两个必填字段。
+3. 在该 channel 下编辑某个默认模型，点「上传 workflow JSON」绑定一份 ComfyUI 工作流文件，回到画布选择对应模型、输入 prompt 即可生成。
+
+> 详细流程、调试技巧与未来扩展见 [`docs/comfyui-channel.md`](docs/comfyui-channel.md)。
+
+### 与 OpenAI / Gemini 的区别
+
+| 维度 | OpenAI / Gemini | ComfyUI |
+| --- | --- | --- |
+| 协议 | HTTP REST / SSE 流式 | 异步任务：提交 → 轮询 → 下载 |
+| 返回时机 | 流式或一次性返回 | 后端完成后再统一返回 |
+| UI 状态 | 流式预览 | LOADING（不显示中间帧） |
+| 超时 | 一般 < 1 分钟 | **10 分钟**（仅 UI 提示，不调 cancel） |
+| 取消 | 直接 abort | abort 时调用 `/api/v2/jobs/{id}/cancel` |
+
+简而言之：ComfyUI 是「提交一份 workflow JSON + 异步等结果」，不是「一段 prompt + 流式增量返回」。现有 OpenAI / Gemini 流程完全不受影响。
+
+### 限制
+
+- 一期仅支持 **image** 能力；video / text / audio 的 ComfyUI 模型属于未来扩展。
+- 每个 `ChannelModel` **一对一绑定一份 workflow JSON**，没有仓库、没有版本管理。
+- 仅对接本地 `comfy-api-proxy`，**不支持 ComfyUI Cloud**（`cloud.comfy.org`），后者需另写 adapter。
+- Workflow JSON 内嵌于 AiConfig，会进 localStorage 并随 `exportAppConfig` 一同导出；单份一般 100–500 KB，3 份合计约 1.5 MB 仍在 5 MB localStorage 限额内。
+
 ## 效果展示
 
 <table width="100%">

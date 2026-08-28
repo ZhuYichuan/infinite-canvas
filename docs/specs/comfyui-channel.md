@@ -240,21 +240,20 @@ OpenAI / Gemini 流程 0 影响。
 
 ### 5. i18n
 
-`web/src/i18n/locales/{zh,en}.ts` 加 key：
+`web/src/i18n/locales/{zh,en}.ts` 加 key。实际实现路径以代码为准（key 列表按 T04/T05/T06/T18 顺序补齐）：
 
 ```
-config.channels.comfyuiProxyUrl
-config.channels.comfyuiProxyToken
-config.models.comfyuiT2I
-config.models.comfyuiI2I1ref
-config.models.comfyuiI2I3ref
+config.channelEditor.comfyuiProxyUrl / comfyuiProxyToken / comfyuiProxyUrlRequired / comfyuiProxyTokenRequired
 comfyui.uploadWorkflow
 comfyui.clearWorkflow
 comfyui.noWorkflowAttached
+comfyui.workflowParseFailed
 comfyui.timeout
 comfyui.cancelled
 comfyui.failed
 ```
+
+> 原 spec 写过的 `config.models.comfyuiT2I` / `comfyuiI2I1ref` / `comfyuiI2I3ref` 三个模型名 key 不采纳：默认模型名是纯数据（如 `"ComfyUI T2I"`），不做 i18n。
 
 ### 6. 默认 imageModel
 
