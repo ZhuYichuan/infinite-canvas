@@ -18,4 +18,6 @@ cat "${DEMO_DIR}/i2i_ref3_api.json" \
       --refs "$REF1,REF2,REF3" \
       --width "$WIDTH" \
       --height "$HEIGHT" \
-      --output "${SCRIPT_DIR}/../out"
+      --output "${SCRIPT_DIR}/../out" \
+      ${COMFYUI_PROXY_URL:+--base-url "$COMFYUI_PROXY_URL"} \
+      "$@"
