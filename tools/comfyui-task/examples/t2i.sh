@@ -7,7 +7,7 @@ WIDTH="${2:-1024}"
 HEIGHT="${3:-1024}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEMO_DIR="${SCRIPT_DIR}/../../comfyui_api_demo"
+DEMO_DIR="${SCRIPT_DIR}/../../../comfyui_api_demo"
 
 cat "${DEMO_DIR}/t2i_api.json" \
   | bun run "${SCRIPT_DIR}/../bin/comfyui-task" run \
