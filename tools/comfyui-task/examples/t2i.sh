@@ -5,6 +5,7 @@ set -euo pipefail
 PROMPT="${1:-a cat sitting on a windowsill}"
 WIDTH="${2:-1024}"
 HEIGHT="${3:-1024}"
+shift 3
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_DIR="${SCRIPT_DIR}/../../../comfyui_api_demo"
