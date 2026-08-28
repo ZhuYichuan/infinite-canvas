@@ -486,6 +486,8 @@ export default {
             baseUrl: "API endpoint",
             comfyuiProxyUrl: "ComfyUI proxy URL",
             comfyuiProxyToken: "ComfyUI proxy token",
+            comfyuiProxyUrlError: "Enter the ComfyUI proxy URL (must start with http:// or https://)",
+            comfyuiProxyTokenError: "Enter the ComfyUI proxy token",
             models: "Provider models",
             modelDescription: "{{count}} selected; assign a capability to each model and optionally customize its request script.",
             selectModels: "Select models",

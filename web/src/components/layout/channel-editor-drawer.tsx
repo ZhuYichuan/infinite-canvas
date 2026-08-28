@@ -10,10 +10,12 @@ import { ModelSelectModal } from "./model-select-modal";
 type ScriptTarget = { name: string; capability: ModelCapability; value: string };
 
 export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: boolean; channel: ModelChannel | null; onSave: (channel: ModelChannel) => void; onClose: () => void }) {
+    type ProxyFieldErrors = { url?: string; token?: string };
     const { t } = useTranslation();
     const [draft, setDraft] = useState<ModelChannel | null>(channel);
     const [selectOpen, setSelectOpen] = useState(false);
     const [scriptTarget, setScriptTarget] = useState<ScriptTarget | null>(null);
+    const [proxyErrors, setProxyErrors] = useState<ProxyFieldErrors>({});
     const apiFormatOptions: Array<{ label: string; value: ApiCallFormat }> = [
         { label: "OpenAI", value: "openai" },
         { label: "Gemini", value: "gemini" },
@@ -22,7 +24,10 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const capabilityOptions: Array<{ label: string; value: ModelCapability }> = ["image", "video", "text", "audio"].map((value) => ({ label: t(`config.channelEditor.capabilities.${value}`), value: value as ModelCapability }));
 
     useEffect(() => {
-        if (open && channel) setDraft(channel);
+        if (open && channel) {
+            setDraft(channel);
+            setProxyErrors({});
+        }
     }, [open, channel]);
 
     if (!draft) return null;
@@ -47,6 +52,15 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const removeModel = (name: string) => setModels(draft.models.filter((model) => model.name !== name));
 
     const save = () => {
+        // A ComfyUI channel talks to the proxy, not an OpenAI-compatible endpoint: both proxy fields are required.
+        const errors: ProxyFieldErrors = {};
+        if (draft.apiFormat === "comfyui") {
+            const proxyUrl = (draft.comfyuiProxyUrl || "").trim();
+            if (!/^https?:\/\/.+/.test(proxyUrl)) errors.url = t("config.channelEditor.comfyuiProxyUrlError");
+            if (!(draft.comfyuiProxyToken || "").trim()) errors.token = t("config.channelEditor.comfyuiProxyTokenError");
+        }
+        setProxyErrors(errors);
+        if (Object.keys(errors).length) return;
         onSave({ ...draft, name: draft.name.trim() || t("config.channels.unnamed"), models: normalizeChannelModels(draft.models) });
         onClose();
     };
@@ -88,11 +102,28 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                     <>
                         <label className="block md:col-span-2">
                             <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.comfyuiProxyUrl")}</span>
-                            <Input value={draft.comfyuiProxyUrl || ""} onChange={(event) => patch({ comfyuiProxyUrl: event.target.value })} placeholder="http://127.0.0.1:8189" />
+                            <Input
+                                value={draft.comfyuiProxyUrl || ""}
+                                status={proxyErrors.url ? "error" : undefined}
+                                onChange={(event) => {
+                                    patch({ comfyuiProxyUrl: event.target.value });
+                                    if (proxyErrors.url) setProxyErrors((current) => ({ ...current, url: undefined }));
+                                }}
+                                placeholder="http://127.0.0.1:8189"
+                            />
+                            {proxyErrors.url ? <div className="mt-1 text-xs text-red-500">{proxyErrors.url}</div> : null}
                         </label>
                         <label className="block md:col-span-2">
                             <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.comfyuiProxyToken")}</span>
-                            <Input.Password value={draft.comfyuiProxyToken || ""} onChange={(event) => patch({ comfyuiProxyToken: event.target.value })} />
+                            <Input.Password
+                                value={draft.comfyuiProxyToken || ""}
+                                status={proxyErrors.token ? "error" : undefined}
+                                onChange={(event) => {
+                                    patch({ comfyuiProxyToken: event.target.value });
+                                    if (proxyErrors.token) setProxyErrors((current) => ({ ...current, token: undefined }));
+                                }}
+                            />
+                            {proxyErrors.token ? <div className="mt-1 text-xs text-red-500">{proxyErrors.token}</div> : null}
                         </label>
                     </>
                 )}
