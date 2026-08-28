@@ -33,9 +33,9 @@ program
     .option("--prompt <text>", "Prompt text")
     .option("--width <n>", "Image width", parseInt)
     .option("--height <n>", "Image height", parseInt)
-    .option("--ref <input>", "Reference (path, http(s) URL, or data: URL); repeat for multiple", (v, prev: string[]) => {
-        prev.push(v);
-        return prev;
+    .option("--refs <input>", "Reference (path, http(s) URL, or data: URL); repeat for multiple. Comma-separated also OK.", (v, prev: string[]) => {
+        const parts = String(v).split(",").map((s) => s.trim()).filter(Boolean);
+        return [...prev, ...parts];
     }, [] as string[])
     .option("--output-cap <image|video>", "Override detected output capability")
     .option("--output <dir>", "Where to write downloaded outputs", "./out")

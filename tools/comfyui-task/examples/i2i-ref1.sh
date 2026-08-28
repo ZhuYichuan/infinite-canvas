@@ -13,7 +13,7 @@ DEMO_DIR="${SCRIPT_DIR}/../../../comfyui_api_demo"
 cat "${DEMO_DIR}/i2i_ref1_api.json" \
   | bun run "${SCRIPT_DIR}/../bin/comfyui-task" run \
       --prompt "$PROMPT" \
-      --ref "$REF_IMAGE" \
+      --refs "$REF_IMAGE" \
       --width "$WIDTH" \
       --height "$HEIGHT" \
       --output "${SCRIPT_DIR}/../out"
