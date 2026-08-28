@@ -8,6 +8,7 @@ REF2="${3:?usage: i2i-ref3.sh <prompt> <ref1> <ref2> <ref3>}"
 REF3="${4:?usage: i2i-ref3.sh <prompt> <ref1> <ref2> <ref3>}"
 WIDTH="${5:-1024}"
 HEIGHT="${6:-1024}"
+shift 6
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_DIR="${SCRIPT_DIR}/../../../comfyui_api_demo"

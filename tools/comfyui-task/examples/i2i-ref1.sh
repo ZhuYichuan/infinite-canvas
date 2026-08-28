@@ -6,6 +6,7 @@ PROMPT="${1:-convert to watercolor style}"
 REF_IMAGE="${2:?usage: i2i-ref1.sh <prompt> <ref-image-path>}"
 WIDTH="${3:-1024}"
 HEIGHT="${4:-1024}"
+shift 4
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_DIR="${SCRIPT_DIR}/../../../comfyui_api_demo"
