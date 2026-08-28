@@ -193,9 +193,16 @@ export function resolveModelScript(config: AiConfig, value: string) {
     return findChannelModel(config, value)?.model.script?.trim() || "";
 }
 
-function isAiConfigReady(config: AiConfig, model: string) {
-    const channel = resolveModelChannel(config, model);
-    return Boolean(model.trim() && channel.baseUrl.trim() && channel.apiKey.trim());
+export function isAiConfigReady(config: AiConfig, model: string) {
+    if (!model.trim()) return false;
+    return config.channels.some((channel) => isChannelReady(channel));
+}
+
+export function isChannelReady(channel: ModelChannel) {
+    if (channel.apiFormat === "comfyui") {
+        return Boolean((channel.comfyuiProxyUrl || "").trim() && (channel.comfyuiProxyToken || "").trim());
+    }
+    return Boolean(channel.baseUrl.trim() && channel.apiKey.trim() && channel.models.length);
 }
 
 export const useConfigStore = create<ConfigStore>()(

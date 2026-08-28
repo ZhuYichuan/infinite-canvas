@@ -585,6 +585,9 @@ export default {
         clearWorkflow: "Clear",
         noWorkflowAttached: "No workflow attached",
         workflowParseFailed: "Failed to parse workflow JSON",
+        timeout: "ComfyUI generation timed out",
+        cancelled: "ComfyUI generation cancelled",
+        failed: "ComfyUI generation failed",
     },
     agent: {
         status: { failed: "Connection failed", connected: "Connected", connecting: "Connecting", disconnected: "Disconnected" },

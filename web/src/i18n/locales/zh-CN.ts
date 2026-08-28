@@ -585,6 +585,9 @@ export default {
         clearWorkflow: "清空",
         noWorkflowAttached: "尚未绑定 workflow",
         workflowParseFailed: "workflow JSON 解析失败",
+        timeout: "ComfyUI 生成超时",
+        cancelled: "ComfyUI 生成已取消",
+        failed: "ComfyUI 生成失败",
     },
     agent: {
         status: { failed: "连接失败", connected: "已连接", connecting: "连接中", disconnected: "未连接" },
