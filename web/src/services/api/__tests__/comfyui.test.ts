@@ -1,14 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { applyBindings, ComfyuiApiError, parseSize, resolveReferenceImage, submitJob, uploadAsset } from "@/services/api/comfyui";
+import { applyBindings, cancelJob, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, parseSize, pollJob, requestComfyuiImage, resolveReferenceImage, submitJob, uploadAsset } from "@/services/api/comfyui";
 import type { ComfyuiWorkflowJson } from "@/services/api/comfyui";
 import { getImageBlob } from "@/services/image-storage";
+import { defaultConfig, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 
 vi.mock("@/services/image-storage", () => ({
     getImageBlob: vi.fn(),
 }));
 
 const mockedGetImageBlob = vi.mocked(getImageBlob);
+
+// The generation log store the service writes to (same localforage structure as image-storage).
+const { comfyuiLogStore } = vi.hoisted(() => ({
+    comfyuiLogStore: {
+        setItem: vi.fn(async (_key: string, _value: unknown) => undefined),
+    },
+}));
+
+vi.mock("localforage", () => ({
+    default: {
+        createInstance: () => comfyuiLogStore,
+    },
+}));
 
 describe("parseSize", () => {
     it("parses pixel sizes", () => {
@@ -280,5 +294,428 @@ describe("submitJob", () => {
         fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "job_abc" }) });
         await expect(submitJob({ "1": {} }, " http://10.7.8.12:8189 ")).resolves.toBe("job_abc");
         expect(fetchMock.mock.calls[0][0]).toBe("http://10.7.8.12:8189/api/v2/jobs");
+    });
+});
+
+describe("pollJob", () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    it("polls immediately, waits 2s between rounds, and resolves with the image asset ids when the job completes", async () => {
+        vi.useFakeTimers();
+        fetchMock
+            .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ status: "in_progress" }) })
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                json: async () => ({ status: "completed", outputs: [{ image: [{ asset_id: "asset_1" }, { asset_id: "asset_2" }] }, { image: [] }] }),
+            });
+        const result = pollJob("job_1", "http://10.7.8.12:8189", "tok");
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+        expect(url).toBe("http://10.7.8.12:8189/api/v2/jobs/job_1");
+        expect(init.headers.Authorization).toBe("Bearer tok");
+        await vi.advanceTimersByTimeAsync(2000);
+        await expect(result).resolves.toEqual(["asset_1", "asset_2"]);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("throws ComfyuiJobError when the job status is failed or cancelled", async () => {
+        fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ status: "failed" }) });
+        const failed: unknown = await pollJob("job_1", "http://10.7.8.12:8189").catch((reason) => reason);
+        expect(failed).toBeInstanceOf(ComfyuiJobError);
+        expect(failed).toMatchObject({ name: "ComfyuiJobError", status: "failed" });
+        fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ status: "cancelled" }) });
+        const cancelled: unknown = await pollJob("job_1", "http://10.7.8.12:8189").catch((reason) => reason);
+        expect(cancelled).toBeInstanceOf(ComfyuiJobError);
+        expect(cancelled).toMatchObject({ status: "cancelled" });
+    });
+
+    it("keeps polling every 2 seconds until the job completes", async () => {
+        vi.useFakeTimers();
+        let polls = 0;
+        fetchMock.mockImplementation(async () => {
+            polls += 1;
+            return { ok: true, status: 200, json: async () => (polls < 3 ? { status: "in_progress" } : { status: "completed", outputs: [] }) };
+        });
+        const result = pollJob("job_1", "http://10.7.8.12:8189");
+        await vi.advanceTimersByTimeAsync(4000);
+        await expect(result).resolves.toEqual([]);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it("resolves undefined without throwing when the signal is aborted", async () => {
+        vi.useFakeTimers();
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ status: "in_progress" }) });
+        const controller = new AbortController();
+        const result = pollJob("job_1", "http://10.7.8.12:8189", "tok", controller.signal);
+        controller.abort();
+        await vi.advanceTimersByTimeAsync(2000);
+        await expect(result).resolves.toBeUndefined();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws ComfyuiApiError with the status on a non-2xx poll response", async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 502, json: async () => ({}) });
+        const error: unknown = await pollJob("job_1", "http://10.7.8.12:8189").catch((reason) => reason);
+        expect(error).toBeInstanceOf(ComfyuiApiError);
+        expect(error).toMatchObject({ name: "ComfyuiApiError", status: 502 });
+    });
+});
+
+describe("downloadAsset", () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("downloads the asset content and converts the blob to a data url", async () => {
+        const png = new Blob(["fake-png"], { type: "image/png" });
+        fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => png });
+        const result = await downloadAsset("asset_1", "http://10.7.8.12:8189/", "tok");
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+        expect(url).toBe("http://10.7.8.12:8189/api/v2/assets/asset_1/content");
+        expect(init.headers.Authorization).toBe("Bearer tok");
+        expect(result.blob).toBe(png);
+        expect(result.dataUrl).toBe("data:image/png;base64,ZmFrZS1wbmc=");
+    });
+
+    it("throws ComfyuiApiError with the status when the asset content is unavailable", async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 404, blob: async () => new Blob() });
+        const error: unknown = await downloadAsset("asset_404", "http://10.7.8.12:8189").catch((reason) => reason);
+        expect(error).toBeInstanceOf(ComfyuiApiError);
+        expect(error).toMatchObject({ status: 404 });
+    });
+
+    it("throws ComfyuiApiError when the downloaded asset is empty", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob() });
+        await expect(downloadAsset("asset_empty", "http://10.7.8.12:8189")).rejects.toThrow(ComfyuiApiError);
+    });
+});
+
+describe("cancelJob", () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("posts to the job cancel endpoint with the bearer token", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+        await expect(cancelJob("job_1", "http://10.7.8.12:8189", "tok")).resolves.toBeUndefined();
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+        expect(url).toBe("http://10.7.8.12:8189/api/v2/jobs/job_1/cancel");
+        expect(init.method).toBe("POST");
+        expect(init.headers.Authorization).toBe("Bearer tok");
+    });
+
+    it("resolves without throwing when the cancel response is not ok", async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+        await expect(cancelJob("job_1", "http://10.7.8.12:8189")).resolves.toBeUndefined();
+    });
+
+    it("resolves without throwing when the cancel request never reaches the proxy", async () => {
+        fetchMock.mockRejectedValue(new TypeError("network down"));
+        await expect(cancelJob("job_1", "http://10.7.8.12:8189")).resolves.toBeUndefined();
+    });
+});
+
+const FULL_FLOW_WORKFLOW: ComfyuiWorkflowJson = {
+    "1": { inputs: { text: "" }, class_type: "CLIPTextEncode", _meta: { title: "prompt" } },
+    "2": { inputs: { value: 512 }, class_type: "PrimitiveInt", _meta: { title: "width" } },
+    "3": { inputs: { value: 512 }, class_type: "PrimitiveInt", _meta: { title: "height" } },
+};
+
+function buildComfyuiConfig(options?: { withWorkflow?: boolean; workflow?: ComfyuiWorkflowJson }): AiConfig {
+    const channel: ModelChannel = {
+        id: "comfy",
+        name: "ComfyUI channel",
+        baseUrl: "",
+        apiKey: "",
+        apiFormat: "comfyui",
+        models: [
+            {
+                name: "ComfyUI T2I",
+                capability: "image",
+                comfyuiWorkflow: options?.withWorkflow === false ? undefined : { name: "t2i", json: options?.workflow ?? FULL_FLOW_WORKFLOW, createdAt: 0 },
+            },
+        ],
+        comfyuiProxyUrl: "http://10.7.8.12:8189",
+        comfyuiProxyToken: "tok",
+    };
+    return { ...defaultConfig, channels: [channel], model: "comfy::ComfyUI T2I", imageModel: "comfy::ComfyUI T2I", models: ["comfy::ComfyUI T2I"] };
+}
+
+function proxyFlowWith(jobStatus: string, extra?: Record<string, unknown>) {
+    const png = new Blob(["fake-png"], { type: "image/png" });
+    return (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method || "GET";
+        if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
+        if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: jobStatus, ...(jobStatus === "completed" ? { outputs: [{ image: [{ asset_id: "asset_1" }] }] } : {}), ...extra }) };
+        if (method === "GET" && url.endsWith("/api/v2/assets/asset_1/content")) return { ok: true, status: 200, blob: async () => png };
+        return { ok: false, status: 500, json: async () => ({}) };
+    };
+}
+
+describe("requestComfyuiImage", () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+        comfyuiLogStore.setItem.mockReset();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    it("cancels the job on the proxy and throws ComfyuiAbortedError when the signal aborts after submit", async () => {
+        vi.useFakeTimers();
+        fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input);
+            const method = init?.method || "GET";
+            if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
+            if (method === "POST" && url.endsWith("/api/v2/jobs/job_1/cancel")) return { ok: true, status: 200, json: async () => ({}) };
+            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "in_progress" }) };
+            return { ok: false, status: 500, json: async () => ({}) };
+        });
+        const controller = new AbortController();
+        const onProgress = vi.fn();
+        let resolveSubmitted: () => void = () => undefined;
+        const submitted = new Promise<void>((resolve) => {
+            resolveSubmitted = resolve;
+        });
+        const result = requestComfyuiImage({
+            config: buildComfyuiConfig(),
+            model: "comfy::ComfyUI T2I",
+            prompt: "一只猫",
+            signal: controller.signal,
+            onProgress: (status, detail) => {
+                onProgress(status, detail);
+                if (status === "submitted") resolveSubmitted();
+            },
+        });
+        // Attach the rejection handler before the abort so the rejection is never unhandled.
+        const settled = result.catch((reason: unknown) => reason);
+        await submitted;
+        controller.abort();
+        await vi.advanceTimersByTimeAsync(2000);
+        await expect(settled).resolves.toBeInstanceOf(ComfyuiAbortedError);
+        expect(onProgress).toHaveBeenCalledWith("submitted", { jobId: "job_1" });
+        const cancelCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/v2/jobs/job_1/cancel"));
+        expect(cancelCall).toBeDefined();
+        expect((cancelCall?.[1] as RequestInit).method).toBe("POST");
+    });
+
+    it("throws ComfyuiTimeoutError after the 10 minute deadline without calling the cancel endpoint", async () => {
+        vi.useFakeTimers();
+        fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input);
+            const method = init?.method || "GET";
+            if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
+            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "in_progress" }) };
+            return { ok: false, status: 500, json: async () => ({}) };
+        });
+        let resolveSubmitted: () => void = () => undefined;
+        const submitted = new Promise<void>((resolve) => {
+            resolveSubmitted = resolve;
+        });
+        const result = requestComfyuiImage({
+            config: buildComfyuiConfig(),
+            model: "comfy::ComfyUI T2I",
+            prompt: "一只猫",
+            onProgress: (status) => {
+                if (status === "submitted") resolveSubmitted();
+            },
+        });
+        // Attach the rejection handler before the clock advances so the rejection is never unhandled.
+        const settled = result.catch((reason: unknown) => reason);
+        await submitted;
+        await vi.advanceTimersByTimeAsync(600_000);
+        await expect(settled).resolves.toBeInstanceOf(ComfyuiTimeoutError);
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/cancel"))).toBe(false);
+    });
+
+    it("reports the timeout window in the ComfyuiTimeoutError message", async () => {
+        vi.useFakeTimers();
+        fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input);
+            const method = init?.method || "GET";
+            if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
+            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "in_progress" }) };
+            return { ok: false, status: 500, json: async () => ({}) };
+        });
+        let resolveSubmitted: () => void = () => undefined;
+        const submitted = new Promise<void>((resolve) => {
+            resolveSubmitted = resolve;
+        });
+        const result = requestComfyuiImage({
+            config: buildComfyuiConfig(),
+            model: "comfy::ComfyUI T2I",
+            prompt: "一只猫",
+            onProgress: (status) => {
+                if (status === "submitted") resolveSubmitted();
+            },
+        });
+        // Attach the rejection handler before the clock advances so the rejection is never unhandled.
+        const settled = result.catch((reason: unknown) => reason);
+        await submitted;
+        await vi.advanceTimersByTimeAsync(600_000);
+        const error: unknown = await settled;
+        expect(error).toBeInstanceOf(ComfyuiTimeoutError);
+        expect(error).toMatchObject({ name: "ComfyuiTimeoutError", timeoutMs: 600_000 });
+        expect((error as Error).message).toMatch(/600s|600秒/);
+    });
+
+    it("completes the request without ever calling the cancel endpoint", async () => {
+        fetchMock.mockImplementation(proxyFlowWith("completed"));
+        const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫", size: "1024x768" });
+        await expect(result).resolves.toMatchObject({
+            jobId: "job_1",
+            items: [{ id: expect.any(String), dataUrl: "data:image/png;base64,ZmFrZS1wbmc=" }],
+        });
+        expect(fetchMock.mock.calls.every(([url]) => !String(url).includes("/cancel"))).toBe(true);
+    });
+
+    it("does not call the cancel endpoint when a never-aborted signal is provided", async () => {
+        fetchMock.mockImplementation(proxyFlowWith("completed"));
+        const controller = new AbortController();
+        const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫", signal: controller.signal });
+        await expect(result).resolves.toMatchObject({ jobId: "job_1" });
+        expect(fetchMock.mock.calls.every(([url]) => !String(url).includes("/cancel"))).toBe(true);
+    });
+
+    it("calls the cancel endpoint exactly once across repeated abort() invocations", async () => {
+        vi.useFakeTimers();
+        fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input);
+            const method = init?.method || "GET";
+            if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
+            if (method === "POST" && url.endsWith("/api/v2/jobs/job_1/cancel")) return { ok: true, status: 200, json: async () => ({}) };
+            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "in_progress" }) };
+            return { ok: false, status: 500, json: async () => ({}) };
+        });
+        const controller = new AbortController();
+        const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫", signal: controller.signal });
+        const settled = result.catch((reason: unknown) => reason);
+        await vi.advanceTimersByTimeAsync(2000);
+        controller.abort();
+        controller.abort();
+        await vi.advanceTimersByTimeAsync(2000);
+        await expect(settled).resolves.toBeInstanceOf(ComfyuiAbortedError);
+        const cancelCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v2/jobs/job_1/cancel"));
+        expect(cancelCalls).toHaveLength(1);
+    });
+
+    it("throws ComfyuiAbortedError immediately when the signal is already aborted before submit", async () => {
+        fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input);
+            const method = init?.method || "GET";
+            if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
+            if (method === "POST" && url.endsWith("/api/v2/jobs/job_1/cancel")) return { ok: true, status: 200, json: async () => ({}) };
+            return { ok: false, status: 500, json: async () => ({}) };
+        });
+        const controller = new AbortController();
+        controller.abort();
+        const settled = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫", signal: controller.signal });
+        await expect(settled).rejects.toBeInstanceOf(ComfyuiAbortedError);
+        const cancelCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes("/cancel"));
+        expect(cancelCalls).toHaveLength(1);
+    });
+
+    it("writes a success log entry with the job id and duration", async () => {
+        fetchMock.mockImplementation(proxyFlowWith("completed"));
+        const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫" });
+        await expect(result).resolves.toMatchObject({ jobId: "job_1" });
+        expect(comfyuiLogStore.setItem).toHaveBeenCalledTimes(1);
+        const [key, record] = comfyuiLogStore.setItem.mock.calls[0] as [string, Record<string, unknown>];
+        expect(key).toBe(String(record.id));
+        expect(record).toMatchObject({ status: "success", provider: "comfyui", model: "ComfyUI T2I", prompt: "一只猫", jobId: "job_1", successCount: 1 });
+        expect(typeof record.durationMs).toBe("number");
+    });
+
+    it("writes a failed log entry with the error message when the job fails", async () => {
+        fetchMock.mockImplementation(proxyFlowWith("failed"));
+        const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫" });
+        await expect(result).rejects.toBeInstanceOf(ComfyuiJobError);
+        expect(comfyuiLogStore.setItem).toHaveBeenCalledTimes(1);
+        const [key, record] = comfyuiLogStore.setItem.mock.calls[0] as [string, Record<string, unknown>];
+        expect(key).toBe(String(record.id));
+        expect(record).toMatchObject({ status: "failed", provider: "comfyui", model: "ComfyUI T2I", prompt: "一只猫", jobId: "job_1" });
+        expect(String(record.errorMessage)).toContain("ComfyUI job failed");
+    });
+
+    it("throws ComfyuiNoWorkflowError and logs a failed entry without a job id when the model has no workflow", async () => {
+        const result = requestComfyuiImage({ config: buildComfyuiConfig({ withWorkflow: false }), model: "comfy::ComfyUI T2I", prompt: "一只猫" });
+        await expect(result).rejects.toBeInstanceOf(ComfyuiNoWorkflowError);
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(comfyuiLogStore.setItem).toHaveBeenCalledTimes(1);
+        const [, record] = comfyuiLogStore.setItem.mock.calls[0] as [string, Record<string, unknown>];
+        expect(record).toMatchObject({ status: "failed", jobId: "" });
+        expect(String(record.errorMessage)).toContain("workflow");
+    });
+
+    it("submits the workflow with the prompt and pixel size bound into the nodes", async () => {
+        fetchMock.mockImplementation(proxyFlowWith("completed"));
+        const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫", size: "1024x768" });
+        await expect(result).resolves.toMatchObject({ jobId: "job_1" });
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe("http://10.7.8.12:8189/api/v2/jobs");
+        const body = JSON.parse(String(init.body)) as { prompt: Record<string, { inputs: Record<string, unknown> }> };
+        expect(body.prompt["1"].inputs.text).toBe("一只猫");
+        expect(body.prompt["2"].inputs.value).toBe(1024);
+        expect(body.prompt["3"].inputs.value).toBe(768);
+    });
+
+    it("uploads each reference image and binds the asset ids into the ref nodes", async () => {
+        const uploadedAssetIds = ["asset_a", "asset_b"];
+        const png = new Blob(["fake-png"], { type: "image/png" });
+        fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input);
+            const method = init?.method || "GET";
+            if (url.startsWith("data:")) return { ok: true, status: 200, blob: async () => png };
+            if (method === "POST" && url.endsWith("/api/v2/assets")) return { ok: true, status: 200, json: async () => ({ id: uploadedAssetIds.shift() }) };
+            if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
+            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "completed", outputs: [] }) };
+            return { ok: false, status: 500, json: async () => ({}) };
+        });
+        const config = buildComfyuiConfig({
+            workflow: {
+                "1": { inputs: { text: "" }, class_type: "CLIPTextEncode", _meta: { title: "prompt" } },
+                "4": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
+                "5": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_02" } },
+            },
+        });
+        const result = requestComfyuiImage({ config, model: "comfy::ComfyUI T2I", prompt: "一只猫", images: ["data:image/png;base64,ZmFrZS1wbmc", "data:image/png;base64,ZmFrZS1wbmc"] });
+        await expect(result).resolves.toMatchObject({ jobId: "job_1" });
+        const assetCalls = fetchMock.mock.calls.filter(([url, init]) => String(url).endsWith("/api/v2/assets") && init?.method === "POST");
+        expect(assetCalls).toHaveLength(2);
+        const submitCall = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith("/api/v2/jobs") && init?.method === "POST") as [string, RequestInit];
+        const body = JSON.parse(String(submitCall[1].body)) as { prompt: Record<string, { inputs: Record<string, unknown> }> };
+        expect(body.prompt["4"].inputs.image).toBe("asset_a");
+        expect(body.prompt["5"].inputs.image).toBe("asset_b");
     });
 });
