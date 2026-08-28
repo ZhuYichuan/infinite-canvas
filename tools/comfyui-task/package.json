@@ -1,0 +1,24 @@
+{
+    "name": "comfyui-task",
+    "version": "0.1.0",
+    "description": "Local ComfyUI workflow runner — reads _meta.title-bound workflows from stdin, submits via comfy-api-proxy, downloads outputs.",
+    "type": "module",
+    "main": "./src/index.ts",
+    "bin": {
+        "comfyui-task": "./bin/comfyui-task"
+    },
+    "scripts": {
+        "start": "bun run ./bin/comfyui-task",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "commander": "^12.1.0"
+    },
+    "devDependencies": {
+        "@types/bun": "^1.1.0",
+        "typescript": "^5.6.0"
+    },
+    "engines": {
+        "bun": ">=1.0.0"
+    }
+}

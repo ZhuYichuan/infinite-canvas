@@ -14,9 +14,10 @@
         "jsx": "react-jsx",
         "incremental": true,
         "paths": {
-            "@/*": ["./src/*"]
+            "@/*": ["./src/*"],
+            "@comfyui-task/*": ["../tools/comfyui-task/src/*"]
         }
     },
-    "include": ["vite.config.ts", "src/**/*.ts", "src/**/*.tsx"],
+    "include": ["vite.config.ts", "src/**/*.ts", "src/**/*.tsx", "../tools/comfyui-task/src/**/*.ts", "../tools/comfyui-task/src/types/*.d.ts"],
     "exclude": ["node_modules"]
 }

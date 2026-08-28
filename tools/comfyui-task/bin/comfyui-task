@@ -1,0 +1,93 @@
+#!/usr/bin/env bun
+// comfyui-task CLI entry. Reads workflow from stdin (wrapper or bare), runs it via
+// the library, writes outputs to --output dir. No build step; Bun runs TS directly.
+
+import { Command } from "commander";
+import { parseStdin, parseDuration, runWorkflow, type ReferenceInput } from "../src/index.ts";
+
+const program = new Command();
+
+program
+    .name("comfyui-task")
+    .description("Submit a ComfyUI workflow (read from stdin) to a local comfy-api-proxy and download outputs.")
+    .version("0.1.0");
+
+interface RunFlags {
+    baseUrl: string;
+    token?: string;
+    prompt?: string;
+    width?: number;
+    height?: number;
+    refs: string[];
+    outputCap?: string;
+    outputDir: string;
+    timeout?: string;
+    stdinPath?: string;
+}
+
+program
+    .command("run")
+    .description("Run a workflow from stdin. Example: cat workflow.json | comfyui-task run --prompt 'a cat' --width 1024 --height 1024")
+    .option("--base-url <url>", "Proxy base URL", "http://127.0.0.1:8189")
+    .option("--token <jwt>", "Bearer token (or set COMFY_PROXY_TOKEN env)")
+    .option("--prompt <text>", "Prompt text")
+    .option("--width <n>", "Image width", parseInt)
+    .option("--height <n>", "Image height", parseInt)
+    .option("--ref <input>", "Reference (path, http(s) URL, or data: URL); repeat for multiple", (v, prev: string[]) => {
+        prev.push(v);
+        return prev;
+    }, [] as string[])
+    .option("--output-cap <image|video>", "Override detected output capability")
+    .option("--output <dir>", "Where to write downloaded outputs", "./out")
+    .option("--timeout <duration>", "Override timeout (e.g. 30m, 6h)")
+    .option("--stdin <file>", "Read workflow from this file instead of stdin")
+    .action(async (opts: RunFlags) => {
+        try {
+            await run(opts);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✘ ${message}`);
+            process.exit(1);
+        }
+    });
+
+async function run(opts: RunFlags): Promise<void> {
+    const raw = opts.stdinPath ? await Bun.file(opts.stdinPath).text() : await Bun.stdin.text();
+    const parsed = parseStdin(raw);
+    const workflow = parsed.workflow;
+
+    const refImages: ReferenceInput[] = opts.refs.map((value) => classifyReference(value));
+
+    const startedAt = Date.now();
+    const result = await runWorkflow(workflow, {
+        baseUrl: opts.baseUrl,
+        token: opts.token,
+        prompt: opts.prompt ?? "",
+        width: opts.width,
+        height: opts.height,
+        refImages: refImages.length > 0 ? refImages : undefined,
+        outputCap: opts.outputCap as "image" | "video" | undefined ?? parsed.outputCap,
+        timeoutMs: opts.timeout ? parseDuration(opts.timeout) : undefined,
+        onProgress: (status, detail) => {
+            const tail = detail ? " " + JSON.stringify(detail) : "";
+            process.stderr.write(`• ${status}${tail}\n`);
+        },
+    });
+
+    for (const out of result.outputs) {
+        const target = `${opts.outputDir.replace(/\/$/, "")}/${out.name}`;
+        await Bun.write(target, out.bytes);
+        console.error(`✓ ${target} (${out.content_type}, ${out.bytes.size} bytes)`);
+    }
+
+    const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+    console.error(`Done in ${elapsed}s — job ${result.jobId}, ${result.outputs.length} output(s).`);
+}
+
+function classifyReference(value: string): ReferenceInput {
+    if (value.startsWith("data:")) return { kind: "data", value };
+    if (value.startsWith("http://") || value.startsWith("https://")) return { kind: "url", value };
+    return { kind: "path", value };
+}
+
+await program.parseAsync(process.argv);
