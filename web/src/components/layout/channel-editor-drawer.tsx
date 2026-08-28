@@ -3,7 +3,7 @@ import { ListPlus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, type ApiCallFormat, type ChannelModel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { COMFYUI_DEFAULT_MODELS, defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, type ApiCallFormat, type ChannelModel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 import { ModelScriptEditor } from "./model-script-editor";
 import { ModelSelectModal } from "./model-select-modal";
 
@@ -17,6 +17,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const apiFormatOptions: Array<{ label: string; value: ApiCallFormat }> = [
         { label: "OpenAI", value: "openai" },
         { label: "Gemini", value: "gemini" },
+        { label: "ComfyUI", value: "comfyui" },
     ];
     const capabilityOptions: Array<{ label: string; value: ModelCapability }> = ["image", "video", "text", "audio"].map((value) => ({ label: t(`config.channelEditor.capabilities.${value}`), value: value as ModelCapability }));
 
@@ -31,7 +32,9 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
 
     const changeApiFormat = (apiFormat: ApiCallFormat) => {
         const baseUrl = !draft.baseUrl.trim() || draft.baseUrl.trim() === defaultBaseUrlForApiFormat(draft.apiFormat) ? defaultBaseUrlForApiFormat(apiFormat) : draft.baseUrl;
-        patch({ apiFormat, baseUrl });
+        // Switching to ComfyUI pre-provisions the default workflow models when the channel has none yet.
+        const models = apiFormat === "comfyui" && draft.models.length === 0 ? COMFYUI_DEFAULT_MODELS.map((model) => ({ ...model })) : draft.models;
+        patch({ apiFormat, baseUrl, models });
     };
 
     const applySelection = (names: string[]) => {
@@ -81,6 +84,18 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                     <span className="mb-1 block text-sm font-medium">API Key</span>
                     <Input.Password value={draft.apiKey} onChange={(event) => patch({ apiKey: event.target.value })} placeholder="sk-..." />
                 </label>
+                {draft.apiFormat === "comfyui" && (
+                    <>
+                        <label className="block md:col-span-2">
+                            <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.comfyuiProxyUrl")}</span>
+                            <Input value={draft.comfyuiProxyUrl || ""} onChange={(event) => patch({ comfyuiProxyUrl: event.target.value })} placeholder="http://127.0.0.1:8189" />
+                        </label>
+                        <label className="block md:col-span-2">
+                            <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.comfyuiProxyToken")}</span>
+                            <Input.Password value={draft.comfyuiProxyToken || ""} onChange={(event) => patch({ comfyuiProxyToken: event.target.value })} />
+                        </label>
+                    </>
+                )}
             </div>
 
             <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-2">

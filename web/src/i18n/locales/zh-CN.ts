@@ -484,6 +484,8 @@ export default {
             name: "渠道名称",
             protocol: "协议",
             baseUrl: "接口地址",
+            comfyuiProxyUrl: "ComfyUI 代理地址",
+            comfyuiProxyToken: "ComfyUI 代理 Token",
             models: "渠道模型",
             modelDescription: "已选 {{count}} 个；为每个模型指定能力并可自定义调用脚本。",
             selectModels: "选择模型",
