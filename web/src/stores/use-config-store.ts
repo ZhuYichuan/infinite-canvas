@@ -5,14 +5,21 @@ import { nanoid } from "nanoid";
 
 import i18n from "@/i18n";
 
-export type ApiCallFormat = "openai" | "gemini";
+export type ApiCallFormat = "openai" | "gemini" | "comfyui";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
+
+export type ComfyuiWorkflow = {
+    name: string;
+    json: Record<string, unknown>;
+    createdAt: number;
+};
 
 export type ChannelModel = {
     name: string;
     capability: ModelCapability;
     script?: string;
+    comfyuiWorkflow?: ComfyuiWorkflow;
 };
 
 export type ModelChannel = {
@@ -22,6 +29,8 @@ export type ModelChannel = {
     apiKey: string;
     apiFormat: ApiCallFormat;
     models: ChannelModel[];
+    comfyuiProxyUrl?: string;
+    comfyuiProxyToken?: string;
 };
 
 export type AiConfig = {
@@ -272,14 +281,15 @@ export function normalizeChannelModels(models: Array<string | ChannelModel> | un
         seen.add(name);
         const capability = typeof item === "string" ? guessCapability(name) : item.capability || guessCapability(name);
         const script = typeof item === "string" ? undefined : item.script?.trim() || undefined;
-        result.push({ name, capability, script });
+        const comfyuiWorkflow = typeof item === "string" ? undefined : item.comfyuiWorkflow;
+        result.push({ name, capability, script, comfyuiWorkflow });
     }
     return result;
 }
 
 export function createModelChannel(channel?: Partial<ModelChannel>): ModelChannel {
     const apiFormat = normalizeApiFormat(channel?.apiFormat);
-    return {
+    const result: ModelChannel = {
         id: channel?.id?.trim() || nanoid(),
         name: channel?.name?.trim() || i18n.t("config.channels.newName"),
         baseUrl: channel?.baseUrl?.trim() || defaultBaseUrlForApiFormat(apiFormat),
@@ -287,6 +297,9 @@ export function createModelChannel(channel?: Partial<ModelChannel>): ModelChanne
         apiFormat,
         models: normalizeChannelModels(channel?.models),
     };
+    if (channel?.comfyuiProxyUrl !== undefined) result.comfyuiProxyUrl = channel.comfyuiProxyUrl;
+    if (channel?.comfyuiProxyToken !== undefined) result.comfyuiProxyToken = channel.comfyuiProxyToken;
+    return result;
 }
 
 export function encodeChannelModel(channelId: string, model: string) {
