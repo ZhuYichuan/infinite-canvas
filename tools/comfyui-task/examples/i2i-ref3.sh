@@ -20,5 +20,4 @@ cat "${DEMO_DIR}/i2i_ref3_api.json" \
       --ref "$REF3" \
       --width "$WIDTH" \
       --height "$HEIGHT" \
-      --output "${SCRIPT_DIR}/../out" \
-      "$@"
+      --output "${SCRIPT_DIR}/../out"
