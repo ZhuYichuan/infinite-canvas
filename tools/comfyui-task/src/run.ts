@@ -12,7 +12,7 @@ const DEFAULT_BASE_URL = "http://127.0.0.1:8189";
 
 /** Main entry: submit workflow, wait for completion, download outputs. */
 export async function runWorkflow(input: Workflow, options: RunOptions): Promise<RunResult> {
-    const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+    const baseUrl = options.baseUrl ?? process.env.COMFYUI_PROXY_URL ?? DEFAULT_BASE_URL;
     const token = options.token ?? process.env.COMFY_PROXY_TOKEN;
     const cap = options.outputCap ?? "image";
     const refCount = options.refImages?.length ?? 0;

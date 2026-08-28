@@ -28,7 +28,7 @@ interface RunFlags {
 program
     .command("run")
     .description("Run a workflow from stdin. Example: cat workflow.json | comfyui-task run --prompt 'a cat' --width 1024 --height 1024")
-    .option("--base-url <url>", "Proxy base URL", "http://127.0.0.1:8189")
+    .option("--base-url <url>", "Proxy base URL (or COMFYUI_PROXY_URL env)", process.env.COMFYUI_PROXY_URL ?? "http://127.0.0.1:8189")
     .option("--token <jwt>", "Bearer token (or set COMFY_PROXY_TOKEN env)")
     .option("--prompt <text>", "Prompt text")
     .option("--width <n>", "Image width", parseInt)
