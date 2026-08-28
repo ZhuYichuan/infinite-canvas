@@ -13,7 +13,7 @@ import { exportAppConfig, importAppConfig } from "@/services/config-file";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
-import { createModelChannel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { createModelChannel, encodeChannelModel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 
 type ModelGroup = {
     capability: ModelCapability;
@@ -91,11 +91,11 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
         }
     };
 
-    const updateChannels = (channels: ModelChannel[]) => saveConfig(withChannels(config, channels));
+    const updateChannels = (channels: ModelChannel[], changed?: ModelChannel) => saveConfig(withChannels(config, channels, changed));
 
     const addChannel = () => {
         const channel = createModelChannel({ name: t("config.channels.numberedName", { count: config.channels.length + 1 }) });
-        updateChannels([...config.channels, channel]);
+        updateChannels([...config.channels, channel], channel);
         setEditingChannelId(channel.id);
     };
 
@@ -108,7 +108,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     };
 
     const saveChannel = (channel: ModelChannel) => {
-        updateChannels(config.channels.map((item) => (item.id === channel.id ? channel : item)));
+        updateChannels(config.channels.map((item) => (item.id === channel.id ? channel : item)), channel);
     };
 
     const testWebdav = async () => {
@@ -356,7 +356,7 @@ export function AppConfigModal() {
     );
 }
 
-function withChannels(config: AiConfig, channels: ModelChannel[]): AiConfig {
+function withChannels(config: AiConfig, channels: ModelChannel[], changed?: ModelChannel): AiConfig {
     const next: AiConfig = {
         ...config,
         channels,
@@ -365,9 +365,15 @@ function withChannels(config: AiConfig, channels: ModelChannel[]): AiConfig {
         apiKey: channels[0]?.apiKey || config.apiKey,
         apiFormat: channels[0]?.apiFormat || config.apiFormat,
     };
+    let imageModel = pickDefaultModel(next, "image", config.imageModel);
+    // A freshly added/edited ComfyUI channel becomes the default image model when none is set yet.
+    if (!config.imageModel && changed?.apiFormat === "comfyui") {
+        const preferred = changed.models.find((model) => model.capability === "image");
+        if (preferred) imageModel = encodeChannelModel(changed.id, preferred.name);
+    }
     return {
         ...next,
-        imageModel: pickDefaultModel(next, "image", config.imageModel),
+        imageModel,
         videoModel: pickDefaultModel(next, "video", config.videoModel),
         textModel: pickDefaultModel(next, "text", config.textModel),
         audioModel: pickDefaultModel(next, "audio", config.audioModel),
@@ -386,6 +392,7 @@ function normalizeImageCount(value: string) {
 
 function apiFormatLabel(apiFormat: ApiCallFormat) {
     if (apiFormat === "gemini") return "Gemini";
+    if (apiFormat === "comfyui") return "ComfyUI";
     return "OpenAI";
 }
 

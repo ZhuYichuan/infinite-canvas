@@ -287,15 +287,24 @@ export function normalizeChannelModels(models: Array<string | ChannelModel> | un
     return result;
 }
 
-export function createModelChannel(channel?: Partial<ModelChannel>): ModelChannel {
+/** Models pre-provisioned when a ComfyUI channel is created without explicit models. */
+export const COMFYUI_DEFAULT_MODELS: ChannelModel[] = [
+    { name: "ComfyUI T2I", capability: "image" },
+    { name: "ComfyUI I2I 1ref", capability: "image" },
+    { name: "ComfyUI I2I 3ref", capability: "image" },
+];
+
+export function createModelChannel(channel?: Partial<ModelChannel>, options?: { preprovisionComfyuiModels?: boolean }): ModelChannel {
     const apiFormat = normalizeApiFormat(channel?.apiFormat);
+    const models = normalizeChannelModels(channel?.models);
     const result: ModelChannel = {
         id: channel?.id?.trim() || nanoid(),
         name: channel?.name?.trim() || i18n.t("config.channels.newName"),
         baseUrl: channel?.baseUrl?.trim() || defaultBaseUrlForApiFormat(apiFormat),
         apiKey: channel?.apiKey || "",
         apiFormat,
-        models: normalizeChannelModels(channel?.models),
+        // A persisted empty model list is the user's intent (they cleared it), so the load path disables pre-provisioning.
+        models: models.length ? models : apiFormat === "comfyui" && options?.preprovisionComfyuiModels !== false ? [...COMFYUI_DEFAULT_MODELS] : [],
     };
     if (channel?.comfyuiProxyUrl !== undefined) result.comfyuiProxyUrl = channel.comfyuiProxyUrl;
     if (channel?.comfyuiProxyToken !== undefined) result.comfyuiProxyToken = channel.comfyuiProxyToken;
@@ -364,12 +373,15 @@ export function resolveModelRequestConfig(config: AiConfig, value: string) {
 function normalizeChannels(config: AiConfig) {
     const persistedChannels = Array.isArray(config.channels) ? config.channels : [];
     const channels = persistedChannels.map((channel, index) =>
-        createModelChannel({
-            ...channel,
-            id: channel.id || (index === 0 ? "default" : `channel-${index + 1}`),
-            name: channel.name || (index === 0 ? i18n.t("config.channels.defaultName") : i18n.t("config.channels.indexedName", { index: index + 1 })),
-            models: normalizeChannelModels(channel.models),
-        }),
+        createModelChannel(
+            {
+                ...channel,
+                id: channel.id || (index === 0 ? "default" : `channel-${index + 1}`),
+                name: channel.name || (index === 0 ? i18n.t("config.channels.defaultName") : i18n.t("config.channels.indexedName", { index: index + 1 })),
+                models: normalizeChannelModels(channel.models),
+            },
+            { preprovisionComfyuiModels: false },
+        ),
     );
     if (!channels.length) {
         channels.push(
@@ -391,8 +403,8 @@ export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
     return OPENAI_BASE_URL;
 }
 
-function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {
-    return apiFormat === "gemini" ? apiFormat : "openai";
+export function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {
+    return apiFormat === "gemini" ? "gemini" : apiFormat === "comfyui" ? "comfyui" : "openai";
 }
 
 function uniqueModelOptions(models: string[]) {
