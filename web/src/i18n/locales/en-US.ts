@@ -493,6 +493,8 @@ export default {
             selectModels: "Select models",
             scriptReady: "Script set",
             script: "Request script",
+            workflow: "Workflow",
+            workflowReady: "Workflow set",
             empty: "Select models to fetch or manually add models.",
             capabilities: {
                 image: "Image",
@@ -577,6 +579,12 @@ export default {
         },
         protocols: {
         },
+    },
+    comfyui: {
+        uploadWorkflow: "Upload workflow JSON",
+        clearWorkflow: "Clear",
+        noWorkflowAttached: "No workflow attached",
+        workflowParseFailed: "Failed to parse workflow JSON",
     },
     agent: {
         status: { failed: "Connection failed", connected: "Connected", connecting: "Connecting", disconnected: "Disconnected" },

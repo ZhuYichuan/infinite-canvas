@@ -493,6 +493,8 @@ export default {
             selectModels: "选择模型",
             scriptReady: "脚本已设",
             script: "调用脚本",
+            workflow: "工作流",
+            workflowReady: "工作流已设",
             empty: "点击「选择模型」拉取或手动增加模型。",
             capabilities: {
                 image: "生图",
@@ -577,6 +579,12 @@ export default {
         },
         protocols: {
         },
+    },
+    comfyui: {
+        uploadWorkflow: "上传 workflow JSON",
+        clearWorkflow: "清空",
+        noWorkflowAttached: "尚未绑定 workflow",
+        workflowParseFailed: "workflow JSON 解析失败",
     },
     agent: {
         status: { failed: "连接失败", connected: "已连接", connecting: "连接中", disconnected: "未连接" },

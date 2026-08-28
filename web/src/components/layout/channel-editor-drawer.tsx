@@ -1,9 +1,10 @@
-import { Button, Drawer, Input, Segmented, Select, Space } from "antd";
+import { Button, Drawer, Input, Modal, Segmented, Select, Space } from "antd";
 import { ListPlus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { COMFYUI_DEFAULT_MODELS, defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, type ApiCallFormat, type ChannelModel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { COMFYUI_DEFAULT_MODELS, defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, type ApiCallFormat, type ChannelModel, type ComfyuiWorkflow, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { ComfyuiWorkflowEditor } from "./comfyui-workflow-editor";
 import { ModelScriptEditor } from "./model-script-editor";
 import { ModelSelectModal } from "./model-select-modal";
 
@@ -15,6 +16,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const [draft, setDraft] = useState<ModelChannel | null>(channel);
     const [selectOpen, setSelectOpen] = useState(false);
     const [scriptTarget, setScriptTarget] = useState<ScriptTarget | null>(null);
+    const [workflowTarget, setWorkflowTarget] = useState<{ name: string } | null>(null);
     const [proxyErrors, setProxyErrors] = useState<ProxyFieldErrors>({});
     const apiFormatOptions: Array<{ label: string; value: ApiCallFormat }> = [
         { label: "OpenAI", value: "openai" },
@@ -27,6 +29,9 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         if (open && channel) {
             setDraft(channel);
             setProxyErrors({});
+            // The drawer body stays mounted (destroyOnClose off), so stale modal targets would resurface on reopen.
+            setScriptTarget(null);
+            setWorkflowTarget(null);
         }
     }, [open, channel]);
 
@@ -49,6 +54,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
 
     const setCapability = (name: string, capability: ModelCapability) => setModels(draft.models.map((model) => (model.name === name ? { ...model, capability } : model)));
     const setScript = (name: string, script: string) => setModels(draft.models.map((model) => (model.name === name ? { ...model, script: script || undefined } : model)));
+    const setComfyuiWorkflow = (name: string, workflow: ComfyuiWorkflow | undefined) => setModels(draft.models.map((model) => (model.name === name ? { ...model, comfyuiWorkflow: workflow } : model)));
     const removeModel = (name: string) => setModels(draft.models.filter((model) => model.name !== name));
 
     const save = () => {
@@ -151,6 +157,11 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                                 <Button size="small" type={model.script ? "primary" : "default"} ghost={Boolean(model.script)} onClick={() => setScriptTarget({ name: model.name, capability: model.capability, value: model.script || "" })}>
                                     {t(model.script ? "config.channelEditor.scriptReady" : "config.channelEditor.script")}
                                 </Button>
+                                {draft.apiFormat === "comfyui" && (
+                                    <Button size="small" type={model.comfyuiWorkflow ? "primary" : "default"} ghost={Boolean(model.comfyuiWorkflow)} onClick={() => setWorkflowTarget({ name: model.name })}>
+                                        {t(model.comfyuiWorkflow ? "config.channelEditor.workflowReady" : "config.channelEditor.workflow")}
+                                    </Button>
+                                )}
                                 <Button size="small" danger type="text" icon={<Trash2 className="size-3.5" />} onClick={() => removeModel(model.name)} />
                             </div>
                         </div>
@@ -170,6 +181,21 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                 onSave={(script) => scriptTarget && setScript(scriptTarget.name, script)}
                 onClose={() => setScriptTarget(null)}
             />
+
+            <Modal
+                open={Boolean(workflowTarget)}
+                title={workflowTarget ? `${t("config.channelEditor.workflow")} · ${workflowTarget.name}` : ""}
+                width={560}
+                centered
+                onCancel={() => setWorkflowTarget(null)}
+                footer={
+                    <Button onClick={() => setWorkflowTarget(null)}>{t("common.done")}</Button>
+                }
+            >
+                {workflowTarget ? (
+                    <ComfyuiWorkflowEditor value={draft.models.find((model) => model.name === workflowTarget.name)?.comfyuiWorkflow} onChange={(workflow) => setComfyuiWorkflow(workflowTarget.name, workflow)} />
+                ) : null}
+            </Modal>
         </Drawer>
     );
 }
