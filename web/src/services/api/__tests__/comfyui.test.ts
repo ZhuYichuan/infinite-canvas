@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { applyBindings, ComfyuiApiError, parseSize, resolveReferenceImage, uploadAsset } from "@/services/api/comfyui";
+import { applyBindings, ComfyuiApiError, parseSize, resolveReferenceImage, submitJob, uploadAsset } from "@/services/api/comfyui";
 import type { ComfyuiWorkflowJson } from "@/services/api/comfyui";
 import { getImageBlob } from "@/services/image-storage";
 
@@ -228,5 +228,57 @@ describe("uploadAsset", () => {
         );
         expect(error).toBeInstanceOf(ComfyuiApiError);
         expect(error).toMatchObject({ name: "ComfyuiApiError", status: 401 });
+    });
+});
+
+describe("submitJob", () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("posts the bound workflow as { prompt } and returns the job id", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "job_abc" }) });
+        const workflow: ComfyuiWorkflowJson = {
+            "1": { inputs: { value: "一只猫" }, class_type: "PrimitiveStringMultiline", _meta: { title: "prompt" } },
+        };
+        await expect(submitJob(workflow, "http://10.7.8.12:8189", "tok")).resolves.toBe("job_abc");
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+        expect(url).toBe("http://10.7.8.12:8189/api/v2/jobs");
+        expect(init.method).toBe("POST");
+        expect(JSON.parse(String(init.body))).toEqual({ prompt: workflow });
+        expect(init.headers["Content-Type"]).toBe("application/json");
+        expect(init.headers.Authorization).toBe("Bearer tok");
+    });
+
+    it("throws ComfyuiApiError with the status on a 500 response", async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+        const error: unknown = await submitJob({ "1": {} }, "http://10.7.8.12:8189").then(
+            () => {
+                throw new Error("submitJob should have rejected");
+            },
+            (reason) => reason,
+        );
+        expect(error).toBeInstanceOf(ComfyuiApiError);
+        expect(error).toMatchObject({ status: 500 });
+        const init = fetchMock.mock.calls[0][1] as { headers: Record<string, string> };
+        expect(init.headers.Authorization).toBeUndefined();
+    });
+
+    it("throws ComfyuiApiError when the response has no job id", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+        await expect(submitJob({ "1": {} }, "http://10.7.8.12:8189")).rejects.toThrow(ComfyuiApiError);
+    });
+
+    it("trims whitespace from the base URL", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "job_abc" }) });
+        await expect(submitJob({ "1": {} }, " http://10.7.8.12:8189 ")).resolves.toBe("job_abc");
+        expect(fetchMock.mock.calls[0][0]).toBe("http://10.7.8.12:8189/api/v2/jobs");
     });
 });

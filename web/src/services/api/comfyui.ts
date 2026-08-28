@@ -182,9 +182,23 @@ export async function uploadAsset(blob: Blob, baseUrl: string, token?: string): 
     form.append("image", blob);
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
-    const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/api/v2/assets`, { method: "POST", headers, body: form });
+    const response = await fetch(`${baseUrl.trim().replace(/\/+$/, "")}/api/v2/assets`, { method: "POST", headers, body: form });
     if (!response.ok) throw new ComfyuiApiError(`Failed to upload asset: ${response.status}`, response.status);
     const data = (await response.json()) as { id?: unknown };
     if (typeof data?.id !== "string") throw new ComfyuiApiError("Asset upload response is missing an id");
+    return data.id;
+}
+
+/**
+ * Submit a bound workflow to the proxy's job queue; returns the new job id.
+ * The proxy expects the workflow object under the "prompt" field.
+ */
+export async function submitJob(workflow: ComfyuiWorkflowJson, baseUrl: string, token?: string): Promise<string> {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(`${baseUrl.trim().replace(/\/+$/, "")}/api/v2/jobs`, { method: "POST", headers, body: JSON.stringify({ prompt: workflow }) });
+    if (!response.ok) throw new ComfyuiApiError(`Failed to submit job: ${response.status}`, response.status);
+    const data = (await response.json()) as { id?: unknown };
+    if (typeof data?.id !== "string") throw new ComfyuiApiError("Job submit response is missing an id");
     return data.id;
 }
