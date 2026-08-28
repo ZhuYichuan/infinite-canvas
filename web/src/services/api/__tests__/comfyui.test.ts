@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseSize, resolveReferenceImage } from "@/services/api/comfyui";
+import { applyBindings, ComfyuiApiError, parseSize, resolveReferenceImage, uploadAsset } from "@/services/api/comfyui";
+import type { ComfyuiWorkflowJson } from "@/services/api/comfyui";
 import { getImageBlob } from "@/services/image-storage";
 
 vi.mock("@/services/image-storage", () => ({
@@ -100,5 +101,132 @@ describe("resolveReferenceImage", () => {
 
     it("throws on empty input", async () => {
         await expect(resolveReferenceImage("  ")).rejects.toThrow("Empty reference image");
+    });
+});
+
+type TestWorkflowNode = {
+    inputs: Record<string, unknown>;
+    class_type: string;
+    _meta: { title: string };
+};
+
+describe("applyBindings", () => {
+    it("binds prompt into the node and does not mutate the original workflow", () => {
+        const workflow: ComfyuiWorkflowJson = {
+            "1": { inputs: { value: "" }, class_type: "PrimitiveStringMultiline", _meta: { title: "prompt" } },
+        };
+        const bound = applyBindings(workflow, { prompt: "一只猫" });
+        expect((bound["1"] as TestWorkflowNode).inputs.value).toBe("一只猫");
+        expect((workflow["1"] as TestWorkflowNode).inputs.value).toBe("");
+    });
+
+    it("binds width and height into PrimitiveInt nodes", () => {
+        const workflow: ComfyuiWorkflowJson = {
+            "1": { inputs: { value: 512 }, class_type: "PrimitiveInt", _meta: { title: "width" } },
+            "2": { inputs: { value: 512 }, class_type: "PrimitiveInt", _meta: { title: "height" } },
+        };
+        const bound = applyBindings(workflow, { width: 1024, height: 1366 });
+        expect((bound["1"] as TestWorkflowNode).inputs.value).toBe(1024);
+        expect((bound["2"] as TestWorkflowNode).inputs.value).toBe(1366);
+    });
+
+    it("binds reference image asset ids into LoadImage nodes by index", () => {
+        const workflow: ComfyuiWorkflowJson = {
+            "1": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
+            "2": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_02" } },
+        };
+        const bound = applyBindings(workflow, { refImageAssetIds: ["asset_a", "asset_b"] });
+        expect((bound["1"] as TestWorkflowNode).inputs.image).toBe("asset_a");
+        expect((bound["2"] as TestWorkflowNode).inputs.image).toBe("asset_b");
+    });
+
+    it("leaves a reference image node untouched when the asset list is shorter", () => {
+        const workflow: ComfyuiWorkflowJson = {
+            "1": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
+            "2": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_02" } },
+        };
+        const bound = applyBindings(workflow, { refImageAssetIds: ["asset_a"] });
+        expect((bound["1"] as TestWorkflowNode).inputs.image).toBe("asset_a");
+        expect((bound["2"] as TestWorkflowNode).inputs.image).toBe("");
+    });
+
+    it("skips missing titles without throwing and returns a deep copy", () => {
+        const workflow: ComfyuiWorkflowJson = {};
+        const params = { prompt: "一只猫", width: 1024, height: 1366, refImageAssetIds: ["asset_a"] };
+        const bound = applyBindings(workflow, params);
+        expect(bound).not.toBe(workflow);
+        expect(bound).toEqual(workflow);
+
+        const other: ComfyuiWorkflowJson = {
+            "1": { inputs: { text: "old" }, class_type: "CLIPTextEncode", _meta: { title: "SomeOther" } },
+        };
+        const boundOther = applyBindings(other, params);
+        expect(boundOther).not.toBe(other);
+        expect(boundOther["1"]).toEqual(other["1"]);
+    });
+
+    it("skips a prompt node with an unrecognized class_type", () => {
+        const workflow: ComfyuiWorkflowJson = {
+            "1": { inputs: { text: "old" }, class_type: "UnknownClass", _meta: { title: "prompt" } },
+        };
+        const bound = applyBindings(workflow, { prompt: "新提示" });
+        expect(bound["1"]).toEqual(workflow["1"]);
+        expect(bound["1"]).not.toBe(workflow["1"]);
+    });
+});
+
+describe("uploadAsset", () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("posts the blob as multipart form data and returns the asset id", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "asset_123" }) });
+        const blob = new Blob(["fake-png"], { type: "image/png" });
+        await expect(uploadAsset(blob, "http://10.7.8.12:8189", "tok")).resolves.toBe("asset_123");
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+        expect(url).toBe("http://10.7.8.12:8189/api/v2/assets");
+        expect(init.method).toBe("POST");
+        expect(init.body).toBeInstanceOf(FormData);
+        // happy-dom wraps appended Blobs in a File, so compare by type/size instead of identity.
+        const image = (init.body as FormData).get("image");
+        expect(image).toBeInstanceOf(Blob);
+        expect((image as Blob).type).toBe(blob.type);
+        expect((image as Blob).size).toBe(blob.size);
+        expect(init.headers.Authorization).toBe("Bearer tok");
+    });
+
+    it("omits the Authorization header without a token and strips a trailing slash from the base URL", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "asset_456" }) });
+        const blob = new Blob(["fake-png"], { type: "image/png" });
+        await expect(uploadAsset(blob, "http://10.7.8.12:8189/")).resolves.toBe("asset_456");
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+        expect(url).toBe("http://10.7.8.12:8189/api/v2/assets");
+        expect(init.headers.Authorization).toBeUndefined();
+    });
+
+    it("throws ComfyuiApiError when the response has no asset id", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+        await expect(uploadAsset(new Blob(), "http://10.7.8.12:8189")).rejects.toThrow(ComfyuiApiError);
+    });
+
+    it("throws ComfyuiApiError with the status on a 401 response", async () => {
+        fetchMock.mockResolvedValue({ ok: false, status: 401, json: async () => ({}) });
+        const error: unknown = await uploadAsset(new Blob(), "http://10.7.8.12:8189").then(
+            () => {
+                throw new Error("uploadAsset should have rejected");
+            },
+            (reason) => reason,
+        );
+        expect(error).toBeInstanceOf(ComfyuiApiError);
+        expect(error).toMatchObject({ name: "ComfyuiApiError", status: 401 });
     });
 });

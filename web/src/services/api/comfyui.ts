@@ -102,3 +102,89 @@ function blobToDataUrl(blob: Blob): Promise<string> {
         reader.readAsDataURL(blob);
     });
 }
+
+export type ComfyuiWorkflowJson = Record<string, unknown>;
+
+export type ComfyuiBindings = {
+    prompt?: string;
+    width?: number;
+    height?: number;
+    refImageAssetIds?: string[];
+};
+
+/**
+ * _meta.title → class_type → input slot. Image-phase subset of the
+ * TITLE_TO_INPUT_SLOT in tools/comfyui-task/src/binding.ts; the reserved
+ * ref_video/ref_audio titles are not needed for image generation yet.
+ */
+const BINDING_TITLE_TO_INPUT_SLOT: Record<string, Record<string, string>> = {
+    prompt: { CLIPTextEncode: "text", PrimitiveStringMultiline: "value", PrimitiveString: "value", TextEncodeBooguEdit: "prompt", TextEncodeQwenImageEditPlus: "prompt" },
+    width: { PrimitiveInt: "value", PrimitiveFloat: "value" },
+    height: { PrimitiveInt: "value", PrimitiveFloat: "value" },
+    ref_image: { LoadImage: "image", LoadImageMask: "image" },
+};
+
+const REF_IMAGE_TITLE_PATTERN = /^ref_image_(0[1-9])$/;
+
+/**
+ * Deep-copy a workflow and write generation params into the nodes marked by
+ * _meta.title ("prompt", "width", "height", "ref_image_01..09"). Nodes with a
+ * known title but an unrecognized class_type are skipped, and missing titles
+ * are skipped too. The original workflow object is never mutated.
+ */
+export function applyBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiBindings): ComfyuiWorkflowJson {
+    const cloned = structuredClone(workflow);
+    for (const node of Object.values(cloned)) {
+        if (typeof node !== "object" || node === null) continue;
+        const record = node as { class_type?: string; inputs?: Record<string, unknown>; _meta?: { title?: unknown } };
+        const title = record._meta?.title;
+        if (typeof title !== "string" || !record.class_type || !record.inputs) continue;
+        let slot: string | undefined;
+        let value: unknown;
+        if (title === "prompt" && params.prompt !== undefined) {
+            slot = BINDING_TITLE_TO_INPUT_SLOT.prompt[record.class_type];
+            value = params.prompt;
+        } else if (title === "width" && params.width !== undefined) {
+            slot = BINDING_TITLE_TO_INPUT_SLOT.width[record.class_type];
+            value = params.width;
+        } else if (title === "height" && params.height !== undefined) {
+            slot = BINDING_TITLE_TO_INPUT_SLOT.height[record.class_type];
+            value = params.height;
+        } else if (REF_IMAGE_TITLE_PATTERN.test(title)) {
+            const match = REF_IMAGE_TITLE_PATTERN.exec(title)!;
+            const assetId = params.refImageAssetIds?.[Number(match[1]) - 1];
+            if (assetId !== undefined) {
+                slot = BINDING_TITLE_TO_INPUT_SLOT.ref_image[record.class_type];
+                value = assetId;
+            }
+        }
+        if (slot) record.inputs[slot] = value;
+    }
+    return cloned;
+}
+
+export class ComfyuiApiError extends Error {
+    readonly status?: number;
+
+    constructor(message: string, status?: number) {
+        super(message);
+        this.name = "ComfyuiApiError";
+        this.status = status;
+    }
+}
+
+/**
+ * Upload a reference image to the proxy's asset store; returns the new asset id.
+ * The proxy expects a multipart/form-data body with the file in the "image" field.
+ */
+export async function uploadAsset(blob: Blob, baseUrl: string, token?: string): Promise<string> {
+    const form = new FormData();
+    form.append("image", blob);
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/api/v2/assets`, { method: "POST", headers, body: form });
+    if (!response.ok) throw new ComfyuiApiError(`Failed to upload asset: ${response.status}`, response.status);
+    const data = (await response.json()) as { id?: unknown };
+    if (typeof data?.id !== "string") throw new ComfyuiApiError("Asset upload response is missing an id");
+    return data.id;
+}
