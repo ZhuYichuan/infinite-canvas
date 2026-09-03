@@ -105,7 +105,6 @@ docker compose up -d
 
 | | 联系方式 |
 | --- | --- |
-| 原作者 | 邮箱：1844025705@qq.com · QQ：1844025705 |
 | 本分支维护者 | 邮箱：916446339@qq.com · 电话：18656460515 · 抖音：<img src="assets/douyin-qrcode.png" width="110" alt="抖音二维码"> |
 
 ## 开源协议
