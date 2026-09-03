@@ -5,132 +5,80 @@
 <h1 align="center">无限画布 (infinite-canvas)</h1>
 
 <p align="center">
-  <a href="https://linux.do/"><img src="https://img.shields.io/badge/Linux.do-Community-2b6de8?style=flat-square" alt="Linux.do"></a>
-  <a href="https://render.com/deploy?repo=https://github.com/basketikun/infinite-canvas"><img src="https://img.shields.io/badge/Render-Deploy-46e3b7?style=flat-square&logo=render&logoColor=111111" alt="Deploy to Render"></a>
-  <a href="https://github.com/basketikun/infinite-canvas"><img src="https://img.shields.io/github/stars/basketikun/infinite-canvas?style=flat-square&logo=github" alt="GitHub stars"></a>
-  <a href="https://github.com/basketikun/infinite-canvas/tags"><img src="https://img.shields.io/github/v/tag/basketikun/infinite-canvas?style=flat-square&label=version" alt="Version"></a>
+  <a href="https://github.com/ZhuYichuan/infinite-canvas"><img src="https://img.shields.io/github/stars/ZhuYichuan/infinite-canvas?style=flat-square&logo=github" alt="GitHub stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f97316?style=flat-square" alt="License"></a>
   <a href="https://vite.dev/"><img src="https://img.shields.io/badge/Vite-7-646cff?style=flat-square&logo=vite&logoColor=white" alt="Vite"></a>
   <a href="https://reactrouter.com/"><img src="https://img.shields.io/badge/React_Router-7-ca4245?style=flat-square&logo=reactrouter&logoColor=white" alt="React Router"></a>
+  <a href="https://comfyui.com/"><img src="https://img.shields.io/badge/ComfyUI-本地直连-8188?style=flat-square" alt="ComfyUI"></a>
 </p>
 
 <p align="center">
-<a href="https://trendshift.io/repositories/50077?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-50077" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/50077" alt="basketikun%2Finfinite-canvas | Trendshift" width="250" height="55"/></a>
+  <a href="docs/content/docs/overview/features.zh-CN.mdx">功能介绍</a> · <a href="docs/content/docs/overview/quick-start.zh-CN.mdx">快速开始</a> · <a href="docs/COMFYUI_WORKFLOW_GUIDE.md">ComfyUI 工作流配置指南</a> · <a href="docs/comfyui-channel.md">ComfyUI 渠道说明</a> · <a href="docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx">工作流标准规范</a> · <a href="docs/content/docs/progress/todo.mdx">待办事项</a>
 </p>
 
-<p align="center">
-  <a href="docs/content/docs/overview/quick-start.mdx">快速开始</a> · <a href="docs/content/docs/overview/features.mdx">功能介绍</a> · <a href="docs/content/docs/overview/render.mdx">Render 部署</a> · <a href="docs/content/docs/overview/docker.mdx">Docker 部署</a> · <a href="docs/content/docs/canvas/canvas-node-manual.mdx">画布节点操作手册</a> · <a href="docs/content/docs/canvas/canvas-shortcuts.mdx">画布快捷键</a> · <a href="SECURITY.md">漏洞提交</a> · <a href="docs/content/docs/progress/todo.mdx">待办事项</a> · <a href="canvas-agent/README.md">本地 Canvas Agent</a> · <a href="plugins/infinite-canvas">Codex app 插件</a>
-</p>
+## 关于本项目
 
-无限画布是一款面向图片创作的开源工作台。它把画布编排、AI 图片生成、参考图编辑、对话助手、提示词库和素材沉淀放在同一个界面里，适合用来探索视觉方案并连续迭代图片结果。
+本项目基于原项目 [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas) fork 而来，在此向原作者 [basketikun](https://github.com/basketikun) 致以诚挚的感谢！
+
+本项目是一个专注于 **ComfyUI** 的分支版本，与原项目的主要区别：
+
+- **仅支持 ComfyUI**：生成渠道已全面收敛为本地自建 ComfyUI（默认 `http://127.0.0.1:8188`），浏览器前端直连 ComfyUI 官方 REST / WebSocket 端点，已移除 OpenAI、Gemini 等外部商用大模型 API 及早期 `comfy-api-proxy` 中间代理。
+- **工作流驱动 UI**：画布节点的参数控件完全由绑定的 ComfyUI 工作流槽位（`_meta.title`）动态决定，未标记的槽位不在 UI 上显示。
+- **内置开箱即用工作流**：内置文生图、图生图、局部重绘、文本/反推、全能参考视频、首尾帧视频等常用工作流，也可随时上传自定义工作流。
+
+无限画布是一款面向 AI 创作的开源可视化工作台：画布编排、AI 生图 / 视频生成、参考图编辑、Agent 智能助手、提示词库与素材管理都集中在同一个界面里，适合连续探索与迭代视觉方案。
 
 > [!CAUTION]
-> 项目目前处于开发阶段，不保证历史数据兼容。各种本地存储格式都可能直接调整，欢迎关注后续更新。
->
-> 如果你需要稳定维护自己的分支，建议自行 fork 后独立开发。二次开发与 PR 请保留原作者信息和前端页面标识。
-
-## 赞助商
-
-<table>
-  <tr>
-    <td width="190" align="center">
-      <a href="https://www.atlascloud.ai/zh?utm_source=github&utm_medium=link&utm_campaign=infinite-canvas" target="_blank" rel="noopener noreferrer"><img src="assets/atlascloud.svg" width="163" alt="Atlas Cloud"></a>
-    </td>
-    <td>
-      <a href="https://www.atlascloud.ai/zh?utm_source=github&utm_medium=link&utm_campaign=infinite-canvas" target="_blank" rel="noopener noreferrer">Atlas Cloud</a> is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities. Check out <a href="https://www.atlascloud.ai/console/coding-plan" target="_blank" rel="noopener noreferrer">Atlas Cloud's new coding plan promotion</a> for more budget-friendly API access.
-    </td>
-  </tr>
-  <tr>
-    <td width="190" align="center">
-      <a href="https://metaso.cn/minimax-h3/?s=inf" target="_blank" rel="noopener noreferrer"><img src="assets/metaso.jpg" width="163" alt="秘塔科技"></a>
-    </td>
-    <td>
-      <strong>MiniMax H3 视频生成 API｜秘塔科技</strong> 秘塔科技提供高性价比的 MiniMax H3 视频生成服务：<strong>768P 仅 0.09 元/秒，2K 仅 0.15 元/秒</strong>。支持原生 2K、音画同步，API 兼容 <strong>OpenAI 协议</strong>，同时支持 <strong>ComfyUI</strong>，无需自行部署 GPU。 🎁 通过 <a href="https://metaso.cn/minimax-h3/?s=inf" target="_blank" rel="noopener noreferrer">无限画布专属链接注册</a>，即可领取赠送额度及专属优惠。
-    </td>
-  </tr>
-  <tr>
-    <td width="190" align="center">
-      <a href="https://www.infistar.cc/register?aff=4X3V9NA9&ref_source=link" target="_blank" rel="noopener noreferrer"><img src="assets/infistar.png" width="163" alt="Infistar.ai 无限星河"></a>
-    </td>
-    <td>
-      <strong>无限画布 × Infistar.ai 无限星河｜内置原生画布 · 全能多模态 API</strong> 💡 原生集成，即点即用： Infistar.ai 已原生上架无限画布！同时提供低至官方 1 折的稳定 API 中转服务，模型倍率与调用明细全程透明。 🎨 多模态生图/生视频： 完美适配 Seedance、FLUX、Midjourney、Sora、Runway、Luma、可灵（Kling）等顶级图片与视频大模型。 🧠 全系语言模型： 覆盖 OpenAI、Claude、Gemini、Grok、DeepSeek、Qwen、GLM 等国内外主流模型，兼容 OpenAI 标准接口。 ⚡ 动态调度： 多路供应保障高可用，拒绝断连。 🎁 专属福利： 通过 <a href="https://infistar.ai/register?aff=4X3V9NA9&ref_source=link" target="_blank" rel="noopener noreferrer">专属链接</a> 注册，立享赠送额度/专属折扣/首充权益！
-    </td>
-  </tr>
-</table>
+> 项目处于开发阶段，不保证本地存储的历史数据兼容；项目尚未上线，存储格式可能直接调整。需要稳定分支请自行 fork 后独立开发。
 
 ## 核心功能
 
 - 无限画布：多画布项目、节点拖拽缩放、连线、小地图、撤销重做、导入导出。
-- AI 创作：浏览器前台直连你配置的 OpenAI 兼容接口，支持文生图、图生图、参考图编辑、文本问答、音频和视频生成。
-- 画布助手：围绕选中节点和上游节点对话、生图，并把结果插回画布。
-- 本地 Agent：通过本机 Canvas Agent 连接 Codex / Claude Code，让 Agent 通过 MCP 操作当前画布；
-- Codex App 插件：提供 Codex app 插件，安装后会自动注册 MCP 并尝试拉起本地 Agent。
-- 插件系统：支持通过 URL 动态安装 / 启用 / 更新 / 卸载远程节点插件，并提供 TypeScript SDK 自行开发画布节点插件。
-- 自定义接口调用：可自定义生图 / 视频接口的调用方式，灵活适配各类中转站与自建服务。
+- ComfyUI 生成：文生图（T2I）、图生图（I2I）、局部重绘、全能参考视频、首尾帧视频等，能力由工作流槽位决定。
+- 画布助手：围绕选中节点与上游节点对话、生成，并把结果插回画布。
+- 本地 Agent：通过本机 Canvas Agent 连接 Codex / Claude Code，让 Agent 通过 MCP 操作当前画布；提供 Codex App 插件。
+- 插件系统：支持通过 URL 动态安装 / 启用 / 更新 / 卸载远程节点插件，并提供 TypeScript SDK 开发画布节点插件。
 - 提示词库：浏览器前端直连多个 GitHub 开源项目，并缓存到 IndexedDB。
+- 纯前端架构：画布、素材、生成记录与 ComfyUI 凭据（如 Proxy Token）均保存在浏览器本地，无服务端依赖。
 
-完整功能说明见 [功能介绍](docs/content/docs/overview/features.mdx)。
-
-如果你在为担心没有合适的生图API来发愁，可以查看该免费生图项目：[chatgpt2api](https://github.com/basketikun/chatgpt2api)
+完整功能说明见 [功能介绍](docs/content/docs/overview/features.zh-CN.mdx)。
 
 ## 快速开始
 
-AI API Key、Base URL、画布、素材和生成记录默认保存在浏览器本地。
+### 前置条件
+
+- 本机（或局域网）已运行 ComfyUI，默认地址 `http://127.0.0.1:8188`。
+- 浏览器能访问该地址（CORS / 网络策略需放通，详见渠道文档）。
 
 ### 本地开发
 
 ```bash
-git clone git@github.com:basketikun/infinite-canvas.git
-cd infinite-canvas
-cd web
+git clone git@github.com:ZhuYichuan/infinite-canvas.git
+cd infinite-canvas/web
 bun install
 bun run dev
 ```
 
+启动后访问 `http://localhost:3000`。
+
 ### Docker 运行
 
 ```bash
-git clone git@github.com:basketikun/infinite-canvas.git
+git clone git@github.com:ZhuYichuan/infinite-canvas.git
 cd infinite-canvas
 docker compose up -d
 ```
 
-运行后默认端口3000，可访问 `http://localhost:3000`。
+运行后默认端口 3000，可访问 `http://localhost:3000`。
 
-首次打开后进入右上角配置，填入自己的 OpenAI 兼容 `Base URL` 和 `API Key`。
+## ComfyUI 配置
 
-如果默认的OpenAI接口调用方式与您的API不同，可自定义生图/视频脚本调用。
+首次打开后进入右上角「配置」，新建一个 `API 格式` 为 **ComfyUI** 的渠道，填写 ComfyUI 地址（默认 `http://127.0.0.1:8188`）与凭据，即可在画布中使用内置工作流；也可以上传自定义工作流。
 
-## ComfyUI 渠道
-
-除了 OpenAI 兼容接口与 Gemini，画布还支持把本地 ComfyUI 实例作为第三种渠道接入，让 ModelPicker 里直接出现 `ComfyUI T2I / ComfyUI I2I 1ref / ComfyUI I2I 3ref` 等模型，按 OpenAI 生图一样使用。
-
-### 快速开始（3 步）
-
-1. 部署 [comfy-api-proxy](https://github.com/basketikun/comfy-api-proxy)（默认监听 `http://127.0.0.1:8189`），并确保本机 ComfyUI（`http://127.0.0.1:8188`）能联通。
-2. 进入画布右上角「配置」新建一个 channel，`API 格式` 选 `ComfyUI`，填写 `Proxy URL`（如 `http://10.7.8.12:8189`）与 `Proxy Token` 两个必填字段。
-3. 在该 channel 下编辑某个默认模型，点「上传 workflow JSON」绑定一份 ComfyUI 工作流文件，回到画布选择对应模型、输入 prompt 即可生成。
-
-> 详细流程、调试技巧与未来扩展见 [`docs/comfyui-channel.md`](docs/comfyui-channel.md)。
-
-### 与 OpenAI / Gemini 的区别
-
-| 维度 | OpenAI / Gemini | ComfyUI |
-| --- | --- | --- |
-| 协议 | HTTP REST / SSE 流式 | 异步任务：提交 → 轮询 → 下载 |
-| 返回时机 | 流式或一次性返回 | 后端完成后再统一返回 |
-| UI 状态 | 流式预览 | LOADING（不显示中间帧） |
-| 超时 | 一般 < 1 分钟 | **10 分钟**（仅 UI 提示，不调 cancel） |
-| 取消 | 直接 abort | abort 时调用 `/api/v2/jobs/{id}/cancel` |
-
-简而言之：ComfyUI 是「提交一份 workflow JSON + 异步等结果」，不是「一段 prompt + 流式增量返回」。现有 OpenAI / Gemini 流程完全不受影响。
-
-### 限制
-
-- 一期仅支持 **image** 能力；video / text / audio 的 ComfyUI 模型属于未来扩展。
-- 每个 `ChannelModel` **一对一绑定一份 workflow JSON**，没有仓库、没有版本管理。
-- 仅对接本地 `comfy-api-proxy`，**不支持 ComfyUI Cloud**（`cloud.comfy.org`），后者需另写 adapter。
-- Workflow JSON 内嵌于 AiConfig，会进 localStorage 并随 `exportAppConfig` 一同导出；单份一般 100–500 KB，3 份合计约 1.5 MB 仍在 5 MB localStorage 限额内。
+- [ComfyUI 工作流配置指南（用户上传工作流必读）](docs/COMFYUI_WORKFLOW_GUIDE.md)：槽位词汇表、`_meta.title` 标注约定、上传与排错。
+- [ComfyUI 渠道说明](docs/comfyui-channel.md)：架构、协议、限制与调试技巧。
+- [工作流标准规范（开发向）](docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx)：能力矩阵、槽位契约、输入探测规则。
+- [多模态参考视频规格](docs/content/docs/development/multimodal-video-workflow-spec.zh-CN.mdx)：全能参考视频（MiniMax H3）尺寸锁死与资源连线规则（最多 9 图 + 3 视频 + 3 音频）。
 
 ## 效果展示
 
@@ -155,32 +103,11 @@ docker compose up -d
 
 ## 联系方式
 
-项目定制二次开发需求 / 生图 API 需求可联系。
-
-邮箱：1844025705@qq.com · QQ：1844025705
-
-## 赞助支持
-
-本项目长期开放广告赞助合作，欢迎品牌 / 产品投放，你的支持是持续更新的动力！
-
-有广告赞助意向请通过上方联系方式沟通。
-
-## 社区支持
-
-学 AI，上 L 站：[LinuxDO](https://linux.do/)
-
-点击链接加入群聊【AI开源交流】：https://qm.qq.com/q/DFnKzZ807u
+| | 联系方式 |
+| --- | --- |
+| 原作者 | 邮箱：1844025705@qq.com · QQ：1844025705 |
+| 本分支维护者 | 邮箱：916446339@qq.com · 电话：18656460515 · 抖音：<img src="assets/douyin-qrcode.png" width="110" alt="抖音二维码"> |
 
 ## 开源协议
 
-本项目使用 [MIT License](LICENSE)。任何人都可以免费使用、复制、修改、分发、再授权和商业使用本项目，也可以用于闭源产品。
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=basketikun%2Finfinite-canvas&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=basketikun/infinite-canvas&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=basketikun/infinite-canvas&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=basketikun/infinite-canvas&type=date&legend=top-left" />
- </picture>
-</a>
+本项目使用 [MIT License](LICENSE)，感谢原作者的开源贡献；二次开发与 PR 请保留原作者信息和前端页面标识。
