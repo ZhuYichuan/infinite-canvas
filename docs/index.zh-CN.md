@@ -10,12 +10,16 @@
 
 ## 操作手册
 
+- [ComfyUI 工作流配置指南 (中英文)](COMFYUI_WORKFLOW_GUIDE.md)
 - [画布节点操作手册](/zh-CN/docs/canvas/canvas-node-manual)
 - [画布快捷键](/zh-CN/docs/canvas/canvas-shortcuts)
 
 ## 开发与数据
 
 - [本地开发](/zh-CN/docs/development/local-development)
+- [画布节点系统架构](/zh-CN/docs/development/canvas-node-system)
+- [ComfyUI 工作流标准](/zh-CN/docs/development/comfyui-workflow-standard)
+- [全能参考视频生成需求规格](/zh-CN/docs/development/multimodal-video-workflow-spec)
 - [画布数据结构](/zh-CN/docs/development/canvas-data-structure)
 
 ## 商务合作
@@ -37,7 +41,7 @@
 ## 说明
 
 - 当前画布项目和“我的素材”主要保存在浏览器本地，跨设备可自行配置 WebDAV 同步。
-- AI API Key 保存在浏览器本地，并由前端直接请求 OpenAI 兼容接口。
+- 本项目仅支持本地自建 ComfyUI，认证凭据（如 Proxy Token）保存在浏览器本地。
 
 ## 原理说明
 

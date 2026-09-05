@@ -35,6 +35,7 @@ export type CanvasNodeImage = {
     naturalHeight: number;
     bytes: number;
     mimeType: string;
+    seed?: number;
 };
 
 export type CanvasNodeText = {
@@ -48,6 +49,9 @@ export type CanvasNodeMetadata = {
     content?: string;
     composerContent?: string;
     prompt?: string;
+    effectivePrompt?: string;
+    jobId?: string;
+    isTimeout?: boolean;
     status?: CanvasNodeStatus;
     errorDetails?: string;
     fontSize?: number;
@@ -57,12 +61,14 @@ export type CanvasNodeMetadata = {
     reasoningEffort?: "auto" | "low" | "medium" | "high" | "xhigh";
     size?: string;
     quality?: string;
+    seed?: number;
     background?: string;
     count?: number;
     textCount?: number;
     texts?: CanvasNodeText[];
     primaryTextId?: string;
     seconds?: string;
+    videoMode?: string;
     vquality?: string;
     generateAudio?: string;
     watermark?: string;

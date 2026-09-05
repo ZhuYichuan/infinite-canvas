@@ -27,7 +27,7 @@ Requires Bun ≥ 1.0. The web app does not need this; it imports the library sou
 ## CLI
 
 ```bash
-cat ../../comfyui_api_demo/t2i_api.json \
+cat ../../comfyui_api/comfyuiT2iWorkflow_api.json \
   | bun run bin/comfyui-task run \
       --prompt "a cat on a windowsill" \
       --width 1024 --height 1024 \

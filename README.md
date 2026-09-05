@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/content/docs/overview/features.zh-CN.mdx">功能介绍</a> · <a href="docs/content/docs/overview/quick-start.zh-CN.mdx">快速开始</a> · <a href="docs/COMFYUI_WORKFLOW_GUIDE.md">ComfyUI 工作流配置指南</a> · <a href="docs/comfyui-channel.md">ComfyUI 渠道说明</a> · <a href="docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx">工作流标准规范</a> · <a href="docs/content/docs/progress/todo.mdx">待办事项</a>
+  <a href="docs/content/docs/overview/features.zh-CN.mdx">功能介绍</a> · <a href="docs/content/docs/overview/quick-start.zh-CN.mdx">快速开始</a> · <a href="docs/DEPLOY.md">部署与发布</a> · <a href="docs/COMFYUI_WORKFLOW_GUIDE.md">ComfyUI 工作流配置指南</a> · <a href="docs/comfyui-channel.md">ComfyUI 渠道说明</a> · <a href="docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx">工作流标准规范</a> · <a href="docs/content/docs/progress/todo.mdx">待办事项</a>
 </p>
 
 ## 关于本项目

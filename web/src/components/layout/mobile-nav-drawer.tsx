@@ -1,4 +1,5 @@
 import { Drawer } from "antd";
+import { BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -35,6 +36,15 @@ export function MobileNavDrawer({ open, activeToolSlug, onClose }: MobileNavDraw
                         </Link>
                     );
                 })}
+                <div className="my-2 border-t border-stone-200 dark:border-stone-800" />
+                <Link
+                    to="/guide"
+                    onClick={onClose}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base text-stone-600 transition hover:bg-stone-100 hover:text-stone-950 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+                >
+                    <BookOpen className="size-5" />
+                    <span>{t("topNav.guide")}</span>
+                </Link>
             </div>
         </Drawer>
     );

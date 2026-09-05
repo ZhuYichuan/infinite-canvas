@@ -15,7 +15,7 @@
 | dev server | `cd web && bun run dev`，浏览器打开输出的地址 |
 | comfy-api-proxy | 本机运行，默认端口 8189。下文统一写 `http://10.7.8.12:8189`，**请替换为你本机实际地址** |
 | ComfyUI 后端 | 8188 已启动，且 workflow 里用到的模型/节点全部就绪 |
-| workflow 文件 | `comfyui_api_demo/i2i_ref1_api.json`、`comfyui_api_demo/i2i_ref3_api.json` |
+| workflow 文件 | `comfyui_api/i2i_ref1_api.json`、`comfyui_api/i2i_ref3_api.json` |
 | 浏览器 | DevTools 打开，切到 Network 面板过滤 `api/v2` |
 
 > **先读这条**：`i2i_ref1_api.json` 里**没有 `_meta.title === "prompt"` 的节点**（只有 `ref_image_01` / `width` / `height`），
@@ -33,7 +33,7 @@
    - 若新建：`API 格式` 选 `ComfyUI`，填 `Proxy URL` = `http://10.7.8.12:8189`、`Proxy Token`。两者缺一保存按钮禁用。
 2. 保存后确认 channel 下自动出现 3 个 model：`ComfyUI T2I` / `ComfyUI I2I 1ref` / `ComfyUI I2I 3ref`。
 3. 编辑 `ComfyUI I2I 1ref` model，找到 workflow 编辑区（Script 编辑器旁）。
-4. 点「上传 workflow JSON」，选 `comfyui_api_demo/i2i_ref1_api.json`。
+4. 点「上传 workflow JSON」，选 `comfyui_api/i2i_ref1_api.json`。
 5. **验证**：编辑区左侧显示 `i2i_ref1_api.json · 2.0KB`（文件名 + 压缩后 JSON 体积），且「清空」按钮出现。
 6. 保存 channel，刷新页面后重新打开该 model，workflow 仍在（已持久化到 localStorage）。
 
@@ -69,7 +69,7 @@ pass / fail：______
 
 ### B1. 上传 i2i_ref3 workflow
 
-同 A1，但编辑 `ComfyUI I2I 3ref` model，上传 `comfyui_api_demo/i2i_ref3_api.json`，
+同 A1，但编辑 `ComfyUI I2I 3ref` model，上传 `comfyui_api/i2i_ref3_api.json`，
 验证显示 `i2i_ref3_api.json · 4.3KB`。
 
 pass / fail：______

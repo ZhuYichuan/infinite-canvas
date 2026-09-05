@@ -57,10 +57,35 @@
 - 图片节点尺寸逻辑要尊重原始比例，除非功能明确要求自由变形。
 - 批量生成、多图展示、助手面板等画布交互要尽量简洁，不要占用过多画布空间。
 
+## 画布节点系统架构
+
+- 画布节点系统完整架构、数据模型、连接流图与扩展开发指南参见：`docs/content/docs/development/canvas-node-system.zh-CN.mdx`。
+- 修改、扩展或调试画布节点（图片、文本、视频、音频、配置、组节点及插件节点）时，优先参考该文档中的数据结构契约、连接调度规则与 7 步扩展清单。
+- 节点业务数据与生成参数严格保存在 `metadata` 扁平对象中，保持纯数据与渲染视图彻底分离。
+- 组节点（Group）为虚拟容器，其自身不存子节点数组，子节点通过 `metadata.groupId` 反向关联；组节点向外连线时通过 `expandGroupResourceNodes` 动态解包为批量资源包。
+- 节点高频拖拽/连线/视口变动在 `project.tsx` 本地 React State + Ref 内部运行以保障 60fps，不要在拖拽过程中直接高频触发 Zustand 全量 store 更新。
+- 对接自建 ComfyUI 时的工作流标准、槽位词汇表（prompt, seed, width, height, ref_image_01..09, ref_mask 等）、`_meta.title` 标注约定与解析契约参见：`docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx`。
+- 用户向 ComfyUI 工作流配置指南与 `_meta.title` 标注范例参见：`docs/COMFYUI_WORKFLOW_GUIDE.md`。
+- 原生 ComfyUI 8188 直连接口契约与调试踩坑经验参见：`comfyui_api_doc/experience.md`。
+
+## ComfyUI 与工作流规范
+
+- 本项目生成渠道全面收敛为仅支持本地自建 ComfyUI 原生 API（默认端口 8188，早期 `comfy-api-proxy` 代理已彻底废弃移除），前端浏览器直连 ComfyUI 官方 REST/WebSocket 端点，彻底移除了 OpenAI、Gemini 等外部商用大模型 API；禁止再引入或保留外部闭源模型调用逻辑或中间代理层分支。
+- 严格遵循 `docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx` 定义的 6 大能力矩阵、槽位词汇表（`prompt`, `seed`, `width`, `height`, `duration`, `ref_image_01..09`, `first_frame`, `last_frame`, `ref_mask` 等）、`_meta.title` 标注约定与输入候选名探测规则。
+- 节点解析 ComfyUI 输入槽位时，不得使用硬编码的 `class_type` 白名单，必须通过目标输入的候选名称列表（如 `prompt` 找 `value`/`text`/`prompt`）动态探测匹配。
+- 工作流驱动 UI 原则：画布节点参数不得使用固定的通用大模型表单；UI 必须由工作流实际解析出的槽位动态自适应渲染（“未标记 = 不可用、UI 不显示”），未标记的尺寸、时长或参考槽位严禁展示在节点上。
+- 预设工具化原则：ComfyUI 工作流逐步向“专用预设卡片/独立工具节点”演进，复杂底层参数（采样器、步数、模型）在后台锁死，节点卡片仅暴露工作流真正需要的入参端口，实现一处配置好、全局直接拖拽使用。
+- 严格校验与防呆（Fail-loud）：工作流上传或执行时，若缺少保留槽位、存在重复标题或输入不兼容，必须即时显式报错并指导修正，严禁静默丢弃参考资源或静默失败。
+- 全能参考视频生成（MiniMax H3）需求规格、尺寸硬件锁死与多模态 FIFO 路由参见：`docs/content/docs/development/multimodal-video-workflow-spec.zh-CN.mdx`。
+- 多模态参考资源连线支持最多 9 图 + 3 视频 + 3 音频；未连满的插槽及其级联桥接节点（如 `GetVideoComponents`）必须在提交前自动抹除；连线超出上限时必须 Fail-loud 报错拦截。
+- 视频生成尺寸严禁开放手动数字输入，必须严格收敛为 16:9 与 9:16 对称对调，且锁定在 0.2M~0.98M 的 9 档硬件对齐预设中，上限严格锁死在 0.98 MP。
+
 ## 文档规范
 
 - README 保持简洁，只放项目介绍、核心功能、快速开始和文档入口。
 - `docs/index.md` 放给 AI 使用的文档索引，不要再放到 `docs/content/docs/` 内容目录里。
+- 用户向 ComfyUI 工作流配置指南参见：`docs/COMFYUI_WORKFLOW_GUIDE.md`。
+- 原生 ComfyUI 直连与调试实战记录参见：`comfyui_api_doc/experience.md`。
 - 详细功能介绍写到 `docs/content/docs/overview/features.mdx`。
 - 后续待办写到 `docs/content/docs/progress/todo.mdx`。
 - 已实现但还需要用户测试确认的事项写到 `docs/content/docs/progress/pending-test.mdx`。
@@ -90,7 +115,7 @@
 ## 项目注意事项
 
 - 当前画布项目和“我的素材”主要保存在浏览器本地，不要在文档中误写成已支持云同步。
-- 当前 AI API Key 存在浏览器本地，并由前端直接请求 OpenAI 兼容接口；涉及安全说明时要写清楚。
+- 本项目仅支持本地 ComfyUI，认证凭据（如 Proxy Token）保存在浏览器本地；文档和代码中不得再出现已支持外部公网 AI 接口或云端商用模型的说明。
 - Docker 静态资源路径目前仍是待办项，文档中不要过度承诺生产部署已经完全验证。
 - Agent 对话消息必须同时按 `threadId`、`turnId` 和 `itemId` 归属；实时事件只用于补充未物化的 turn，历史快照成为权威后不得重复合并同一条消息。
 - Agent 通信协议版本与消息存储版本必须独立管理；消息存储格式升级时必须先备份再迁移，遇到未知版本、损坏清单或冲突备份时拒绝覆盖原文件，不得按记录数量或文件大小静默裁剪历史元数据。

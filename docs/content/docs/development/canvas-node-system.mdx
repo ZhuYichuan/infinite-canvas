@@ -1,0 +1,54 @@
+---
+title: Canvas Node System Architecture
+description: Comprehensive overview of canvas node architecture, data models, connection flow, generation pipelines, and extension guide
+---
+
+# Canvas Node System Architecture
+
+This document provides an in-depth explanation of the infinite canvas node system, including core design principles, underlying data models, inter-node connections and data flow, runtime state management, Agent operations, and development guidelines for extending nodes.
+
+---
+
+## 1. Core Architecture & Design Principles
+
+1. **Strict Separation of Data and Rendering**: Each node is represented as a plain object (`CanvasNodeData`), with all business state and generation parameters encapsulated in a flat `metadata` object. The rendering layer (`CanvasNode`) serves purely as a controlled view.
+2. **Dual-layer Node Registration**: The 6 built-in nodes are registered with static specs and hardcoded renderers, while plugin nodes are dynamically registered via `CanvasNodeDefinition` without polluting core paths.
+3. **Payload-less Connections**: Connections (`CanvasConnection`) maintain only directional topological relationships (`fromNodeId -> toNodeId`). Actual resources are extracted dynamically at generation runtime via node `resource()` helpers and resource resolvers.
+4. **Virtual Container Architecture**: Group nodes do not store child node arrays directly. Children reference the group via `metadata.groupId`. Dynamic geometric bounds and group resource extraction resolve containment and children resources on demand.
+5. **High-performance State Tiering**: High-frequency 60fps operations (dragging, zooming, connecting) are handled via local React State and Refs in `project.tsx`, while persistent storage debounces updates to Zustand and localforage (IndexedDB) at 400ms intervals.
+
+---
+
+## 2. Data Model
+
+Source: [`web/src/types/canvas.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/types/canvas.ts)
+
+### 2.1 Generic Node Structure (`CanvasNodeData`)
+
+```ts
+export type CanvasNodeData = {
+    id: string;                    // Format: `${type}-${Date.now()}-${random5}`
+    type: CanvasNodeTypeId;         // Built-in CanvasNodeType or plugin identifier "<pluginId>:<name>"
+    title: string;                 // Node title (double-click to edit)
+    position: { x: number; y: number }; // World coordinate of top-left corner
+    width: number;                 // Width in world coordinates
+    height: number;                // Height in world coordinates
+    metadata?: CanvasNodeMetadata; // Flat container for business data and generation parameters
+};
+```
+
+### 2.2 Node Type Enumeration (`CanvasNodeType`)
+
+* `Image ("image")`: Display, text-to-image, image-to-image, mask inpainting, and image toolchain.
+* `Text ("text")`: Text editor, prompt authoring, AI polishing/expansion, reading.
+* `Config ("config")`: Pipeline orchestration hub, multimodal mode switching, input summaries, parameter persistence.
+* `Video ("video")`: Media player, text-to-video, image-to-video.
+* `Audio ("audio")`: Text-to-speech (TTS), audio player.
+* `Group ("group")`: Virtual spatial container, batch grouping, bundle resource connections.
+
+---
+
+## 3. Reference Documentation
+
+For detailed Chinese documentation, please refer to:
+* [画布节点系统架构与设计 (简体中文)](/docs/development/canvas-node-system.zh-CN)

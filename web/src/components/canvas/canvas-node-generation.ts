@@ -45,20 +45,54 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
     }
 
     const resourceInputs = flattenGenerationInputs(inputs);
-    const upstreamText = resourceInputs
-        .map((input) => input.text)
-        .filter(Boolean)
-        .join("\n\n");
     const referenceImages = resourceInputs.map((input) => input.image).filter((image): image is ReferenceImage => Boolean(image));
     const referenceVideos = resourceInputs.map((input) => input.video).filter((video): video is ReferenceVideo => Boolean(video));
     const referenceAudios = resourceInputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
 
+    let cleanPrompt = prompt.trim();
+    const textResources = resourceInputs.filter((input) => input.type === "text" && Boolean(input.text));
+    const unconsumedTexts: string[] = [];
+
+    textResources.forEach((textRes, index) => {
+        const textContent = (textRes.text || "").trim();
+        if (!textContent) return;
+
+        const defaultLabel = generationLabel("text", index);
+        const labelsToMatch = [`@[node:${textRes.nodeId}]`, defaultLabel];
+        if (textRes.title && textRes.title.trim()) {
+            labelsToMatch.push(textRes.title.trim());
+        }
+
+        let matched = false;
+        for (const label of labelsToMatch) {
+            if (cleanPrompt === label) {
+                cleanPrompt = textContent;
+                matched = true;
+                break;
+            } else if (cleanPrompt.includes(label)) {
+                cleanPrompt = cleanPrompt.replaceAll(label, textContent);
+                matched = true;
+            }
+        }
+
+        if (!matched) {
+            unconsumedTexts.push(textContent);
+        }
+    });
+
+    let resolvedPrompt = cleanPrompt;
+    if (!resolvedPrompt) {
+        resolvedPrompt = unconsumedTexts.join("\n\n");
+    } else if (unconsumedTexts.length > 0 && !unconsumedTexts.some((txt) => resolvedPrompt.includes(txt))) {
+        resolvedPrompt = `${resolvedPrompt}\n\n${unconsumedTexts.join("\n\n")}`;
+    }
+
     return {
-        prompt: upstreamText ? `${prompt}\n\n${upstreamText}` : prompt,
+        prompt: resolvedPrompt.trim(),
         referenceImages,
         referenceVideos,
         referenceAudios,
-        textCount: resourceInputs.filter((input) => input.type === "text").length,
+        textCount: textResources.length,
         imageCount: referenceImages.length,
         videoCount: referenceVideos.length,
         audioCount: referenceAudios.length,
@@ -69,7 +103,6 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
     const inputByNodeId = new Map(inputs.map((input) => [input.nodeId, input]));
     const selectedInputs: NodeGenerationResourceInput[] = [];
     const labelByNodeId = new Map<string, string>();
-    const textBlocks: string[] = [];
     const counts = { image: 0, video: 0, audio: 0, text: 0 };
     let hasToken = false;
     let lastIndex = 0;
@@ -82,29 +115,31 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
         const input = inputByNodeId.get(match[1]);
         if (input) {
             const labels = flattenGenerationInputs([input]).map((resource) => {
+                if (resource.type === "text") {
+                    counts.text++;
+                    return (resource.text || "").trim();
+                }
                 let label = labelByNodeId.get(resource.nodeId);
                 if (!label) {
                     label = generationLabel(resource.type, counts[resource.type]++);
                     labelByNodeId.set(resource.nodeId, label);
-                    if (resource.type === "text") textBlocks.push(`【${label}】\n${resource.text || ""}`);
-                    else selectedInputs.push(resource);
+                    selectedInputs.push(resource);
                 }
-                return resource.type === "text" ? `【${label}】` : label;
+                return label;
             });
-            nextPrompt += labels.join("、");
+            nextPrompt += labels.filter(Boolean).join("、");
         }
         lastIndex = match.index + match[0].length;
     }
 
     nextPrompt += prompt.slice(lastIndex);
-    if (textBlocks.length) nextPrompt = `${nextPrompt.trim()}\n\n${textBlocks.join("\n\n")}`;
     const referenceImages = selectedInputs.map((input) => input.image).filter((image): image is ReferenceImage => Boolean(image));
     const referenceVideos = selectedInputs.map((input) => input.video).filter((video): video is ReferenceVideo => Boolean(video));
     const referenceAudios = selectedInputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
 
     if (!hasToken) {
         return {
-            prompt,
+            prompt: prompt.trim(),
             referenceImages: [],
             referenceVideos: [],
             referenceAudios: [],
@@ -116,7 +151,7 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
     }
 
     return {
-        prompt: nextPrompt,
+        prompt: nextPrompt.trim(),
         referenceImages,
         referenceVideos,
         referenceAudios,

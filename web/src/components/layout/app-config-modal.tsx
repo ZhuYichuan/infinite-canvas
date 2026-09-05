@@ -6,14 +6,23 @@ import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
 import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
+import { ComfyuiWorkflowEditor } from "@/components/layout/comfyui-workflow-editor";
 import { ConfigPromptSources } from "@/components/layout/config-prompt-sources";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
 import type { AppLocale } from "@/i18n";
 import { exportAppConfig, importAppConfig } from "@/services/config-file";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
+import {
+    DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
+    DEFAULT_COMFYUI_I2I_WORKFLOW,
+    DEFAULT_COMFYUI_INPAINT_WORKFLOW,
+    DEFAULT_COMFYUI_T2I_WORKFLOW,
+    DEFAULT_COMFYUI_TEXT_WORKFLOW,
+    DEFAULT_COMFYUI_VIDEO_WORKFLOW,
+} from "@/services/api/comfyui-default-workflows";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
-import { createModelChannel, encodeChannelModel, isChannelReady, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { createModelChannel, encodeChannelModel, isChannelReady, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ComfyuiWorkflow, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 
 type ModelGroup = {
     capability: ModelCapability;
@@ -58,6 +67,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     const [webdavDomainProgress, setWebdavDomainProgress] = useState(createWebdavDomainProgress);
     const config = useConfigStore((state) => state.config);
     const webdav = useConfigStore((state) => state.webdav);
+    const setConfig = useConfigStore((state) => state.setConfig);
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const updateWebdavConfig = useConfigStore((state) => state.updateWebdavConfig);
     const shouldPromptContinue = useConfigStore((state) => state.shouldPromptContinue);
@@ -69,7 +79,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     useEffect(() => setActiveTab(initialTab), [initialTab]);
 
     const saveConfig = (nextConfig: AiConfig) => {
-        (Object.keys(nextConfig) as Array<keyof AiConfig>).forEach((key) => updateConfig(key, nextConfig[key]));
+        setConfig(nextConfig);
     };
 
     const finishConfig = () => {
@@ -190,23 +200,202 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                         {t("config.channels.add")}
                                     </Button>
                                 </div>
-                                <div className="space-y-2">
-                                    {config.channels.map((channel) => (
-                                        <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-4 py-3 dark:border-stone-800">
-                                            <div className="min-w-0">
-                                                <div className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</div>
-                                                <div className="mt-1 truncate text-xs text-stone-500">
-                                                    {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {channel.baseUrl || t("config.channels.missingUrl")}
+                                <div className="space-y-3">
+                                    {config.channels.map((channel) => {
+                                        const isComfyui = channel.apiFormat === "comfyui";
+                                        const t2iModel = channel.models.find((m) => m.name === "ComfyUI T2I") || channel.models[0];
+                                        const t2iWorkflow = channel.comfyuiT2iWorkflow || t2iModel?.comfyuiWorkflow;
+                                        const i2iModel = channel.models.find((m) => m.name === "ComfyUI I2I" || m.name.toLowerCase().includes("i2i") || m.name.includes("图生图"));
+                                        const i2iWorkflow = channel.comfyuiI2iWorkflow || i2iModel?.comfyuiWorkflow;
+                                        const inpaintModel = channel.models.find((m) => m.name === "ComfyUI Inpaint" || m.name.toLowerCase().includes("inpaint") || m.name.includes("局部编辑"));
+                                        const inpaintWorkflow = channel.comfyuiInpaintWorkflow || inpaintModel?.comfyuiWorkflow;
+                                        const textModel = channel.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text");
+                                        const textWorkflow = channel.comfyuiTextWorkflow || textModel?.comfyuiWorkflow;
+                                        const videoModel = channel.models.find((m) => m.name === "ComfyUI Video");
+                                        const videoWorkflow = channel.comfyuiVideoWorkflow || videoModel?.comfyuiWorkflow;
+                                        const frameVideoModel = channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
+                                        const frameVideoWorkflow = channel.comfyuiFrameVideoWorkflow || frameVideoModel?.comfyuiWorkflow;
+
+                                        const handleT2iWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
+                                            const targetName = t2iModel?.name || "ComfyUI T2I";
+                                            const nextChannel: ModelChannel = {
+                                                ...channel,
+                                                comfyuiT2iWorkflow: workflow,
+                                                models: channel.models.some((m) => m.name === targetName)
+                                                    ? channel.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
+                                                    : [...channel.models, { name: targetName, capability: "image", comfyuiWorkflow: workflow }],
+                                            };
+                                            saveChannel(nextChannel);
+                                        };
+
+                                        const handleI2iWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
+                                            const targetName = i2iModel?.name || "ComfyUI I2I";
+                                            const nextChannel: ModelChannel = {
+                                                ...channel,
+                                                comfyuiI2iWorkflow: workflow,
+                                                models: channel.models.some((m) => m.name === targetName)
+                                                    ? channel.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
+                                                    : [...channel.models, { name: targetName, capability: "image", comfyuiWorkflow: workflow }],
+                                            };
+                                            saveChannel(nextChannel);
+                                        };
+
+                                        const handleInpaintWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
+                                            const nextChannel: ModelChannel = {
+                                                ...channel,
+                                                comfyuiInpaintWorkflow: workflow,
+                                                models: channel.models.map((m) =>
+                                                    m.name === "ComfyUI Inpaint" || m.name.toLowerCase().includes("inpaint") || m.name.includes("局部编辑")
+                                                        ? { ...m, comfyuiWorkflow: workflow }
+                                                        : m,
+                                                ),
+                                            };
+                                            saveChannel(nextChannel);
+                                        };
+
+                                        const handleTextWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
+                                            const nextChannel: ModelChannel = {
+                                                ...channel,
+                                                comfyuiTextWorkflow: workflow,
+                                                models: channel.models.map((m) =>
+                                                    m.name === "ComfyUI LLM" || m.capability === "text"
+                                                        ? { ...m, comfyuiWorkflow: workflow }
+                                                        : m,
+                                                ),
+                                            };
+                                            saveChannel(nextChannel);
+                                        };
+
+                                        const handleVideoWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
+                                            const nextChannel: ModelChannel = {
+                                                ...channel,
+                                                comfyuiVideoWorkflow: workflow,
+                                                models: channel.models.map((m) =>
+                                                    m.name === "ComfyUI Video" ? { ...m, comfyuiWorkflow: workflow } : m,
+                                                ),
+                                            };
+                                            saveChannel(nextChannel);
+                                        };
+
+                                        const handleFrameVideoWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
+                                            const targetName = frameVideoModel?.name || "ComfyUI Frame Video";
+                                            const nextChannel: ModelChannel = {
+                                                ...channel,
+                                                comfyuiFrameVideoWorkflow: workflow,
+                                                models: channel.models.some((m) => m.name === targetName)
+                                                    ? channel.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
+                                                    : [...channel.models, { name: targetName, capability: "video", comfyuiWorkflow: workflow }],
+                                            };
+                                            saveChannel(nextChannel);
+                                        };
+
+                                        return (
+                                            <div key={channel.id} className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <div className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</div>
+                                                        <div className="mt-1 truncate text-xs text-stone-500">
+                                                             {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {isComfyui ? channel.comfyuiProxyUrl || "http://127.0.0.1:8188" : channel.baseUrl || t("config.channels.missingUrl")}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex shrink-0 gap-2">
+                                                        <Button size="small" icon={<Pencil className="size-3.5" />} onClick={() => setEditingChannelId(channel.id)}>
+                                                            {t("common.edit")}
+                                                        </Button>
+                                                        <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={() => deleteChannel(channel.id)} />
+                                                    </div>
                                                 </div>
+
+                                                {isComfyui && (
+                                                    <div className="mt-3.5 space-y-3 border-t border-stone-100 pt-3 dark:border-stone-800/80">
+                                                        <div>
+                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.t2iWorkflowTitle")}</span>
+                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.t2iWorkflowDesc")}</span>
+                                                            </div>
+                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                <ComfyuiWorkflowEditor
+                                                                    value={t2iWorkflow}
+                                                                    defaultWorkflow={DEFAULT_COMFYUI_T2I_WORKFLOW}
+                                                                    onChange={handleT2iWorkflowChange}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.i2iWorkflowTitle")}</span>
+                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.i2iWorkflowDesc")}</span>
+                                                            </div>
+                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                <ComfyuiWorkflowEditor
+                                                                    value={i2iWorkflow}
+                                                                    defaultWorkflow={DEFAULT_COMFYUI_I2I_WORKFLOW}
+                                                                    onChange={handleI2iWorkflowChange}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.inpaintWorkflowTitle")}</span>
+                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.inpaintWorkflowDesc")}</span>
+                                                            </div>
+                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                <ComfyuiWorkflowEditor
+                                                                    value={inpaintWorkflow}
+                                                                    defaultWorkflow={DEFAULT_COMFYUI_INPAINT_WORKFLOW}
+                                                                    onChange={handleInpaintWorkflowChange}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.textWorkflowTitle")}</span>
+                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.textWorkflowDesc")}</span>
+                                                            </div>
+                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                <ComfyuiWorkflowEditor
+                                                                    value={textWorkflow}
+                                                                    defaultWorkflow={DEFAULT_COMFYUI_TEXT_WORKFLOW}
+                                                                    onChange={handleTextWorkflowChange}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.videoWorkflowTitle")}</span>
+                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.videoWorkflowDesc")}</span>
+                                                            </div>
+                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                <ComfyuiWorkflowEditor
+                                                                    value={videoWorkflow}
+                                                                    defaultWorkflow={DEFAULT_COMFYUI_VIDEO_WORKFLOW}
+                                                                    onChange={handleVideoWorkflowChange}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.frameVideoWorkflowTitle")}</span>
+                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.frameVideoWorkflowDesc")}</span>
+                                                            </div>
+                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                <ComfyuiWorkflowEditor
+                                                                    value={frameVideoWorkflow}
+                                                                    defaultWorkflow={DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW}
+                                                                    onChange={handleFrameVideoWorkflowChange}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="flex shrink-0 gap-2">
-                                                <Button size="small" icon={<Pencil className="size-3.5" />} onClick={() => setEditingChannelId(channel.id)}>
-                                                    {t("common.edit")}
-                                                </Button>
-                                                <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={() => deleteChannel(channel.id)} />
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         ),
@@ -390,10 +579,8 @@ function normalizeImageCount(value: string) {
     return String(Math.max(1, Math.min(15, Math.floor(Math.abs(Number(value)) || 3))));
 }
 
-function apiFormatLabel(apiFormat: ApiCallFormat) {
-    if (apiFormat === "gemini") return "Gemini";
-    if (apiFormat === "comfyui") return "ComfyUI";
-    return "OpenAI";
+function apiFormatLabel(_apiFormat: ApiCallFormat) {
+    return "ComfyUI";
 }
 
 function formatWebdavTime(value: string, locale: AppLocale) {

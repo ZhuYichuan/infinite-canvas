@@ -4,12 +4,11 @@
 import { findNodes, checkRequired, applyBindings, parseStdin } from "../src/index.ts";
 import { readFileSync } from "node:fs";
 
-const DEMO_DIR = "../../comfyui_api_demo";
+const DEMO_DIR = "../../comfyui_api";
 
 const tests: Array<{ file: string; needs: { prompt: boolean; width: boolean; height: boolean; refImages: number } }> = [
-    { file: "t2i_api.json",     needs: { prompt: true, width: true, height: true, refImages: 0 } },
-    { file: "i2i_ref1_api.json", needs: { prompt: true, width: true, height: true, refImages: 1 } },
-    { file: "i2i_ref3_api.json", needs: { prompt: true, width: true, height: true, refImages: 3 } },
+    { file: "comfyuiT2iWorkflow_api.json", needs: { prompt: true, width: true, height: true, refImages: 0 } },
+    { file: "comfyuiI2iWorkflow_api.json", needs: { prompt: true, width: true, height: true, refImages: 2 } },
 ];
 
 let pass = 0;

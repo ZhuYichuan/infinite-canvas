@@ -1,0 +1,57 @@
+---
+title: Multimodal Video Workflow Spec
+description: Requirements specification for multimodal reference video generation via ComfyUI MiniMax H3
+---
+
+# Multimodal Video Workflow Specification (Spec)
+
+## 1. Background & Objectives
+
+### 1.1 Context
+The infinite-canvas project exclusively supports self-hosted ComfyUI instances. As modern generative video models advance into long-context multimodal references, models like **MiniMax H3** support high-fidelity references spanning up to 9 images, 3 videos, and 3 audios.
+
+### 1.2 Core Pain Points
+1. **Hardware & Architecture Grid Locks**: The underlying diffusion architecture (patch division, VAE, spatial attention) strictly requires dimensions aligned to multiples of 32, with hard VRAM ceilings. Free-form dimensions trigger tensor mismatch crashes or distortion.
+2. **High Slot Complexity**: Exposing 9 images, 3 videos, and 3 audios requires turning complex workflows into discrete, pre-configured tool cards.
+3. **Variable Reference Counts & Dirty Data Pollution**: When a user connects fewer assets (e.g. 1 image or 0 images for pure text-to-video), unassigned slots holding default test filenames trigger `FileNotFoundError` or pollute the output.
+
+### 1.3 Goals
+* **Hardware-Locked Dimensions**: Replace free-form inputs with symmetric 16:9 / 9:16 aspect switching across 9 discrete tiers (max 0.98 MP).
+* **Multimodal Connection**: Connect image, video, and audio canvas nodes, automatically routed in FIFO connection order.
+* **Dynamic Cascade Pruning**: Unassigned slots and intermediate bridge nodes are completely stripped from the JSON payload with input references deleted.
+* **Fail-Loud Validation**: Immediate, explicit errors when user inputs exceed slot capacity.
+
+---
+
+## 2. UI & Interaction Specification
+
+### 2.1 Fixed Aspect Ratios & 9 Locked Dimension Presets
+
+| Tier (Megapixels) | Landscape 16:9 (`width x height`) | Portrait 9:16 (`width x height`) | Multiple of 32 | Description |
+| :---: | :---: | :---: | :---: | :---: |
+| **0.2 MP** | `608 x 352` | `352 x 608` | 19 x 11 | Ultra-fast low-VRAM preview |
+| **0.3 MP** | `736 x 416` | `416 x 736` | 23 x 13 | Low-VRAM tier |
+| **0.4 MP** | `864 x 480` | `480 x 864` | 27 x 15 | Standard definition |
+| **0.5 MP** | `960 x 544` | `544 x 960` | 30 x 17 | **Default Recommended Tier** |
+| **0.6 MP** | `1056 x 608` | `608 x 1056` | 33 x 19 | Medium-high quality |
+| **0.7 MP** | `1152 x 640` | `640 x 1152` | 36 x 20 | High quality |
+| **0.8 MP** | `1216 x 672` | `672 x 1216` | 38 x 21 | Ultra HD |
+| **0.9 MP** | `1280 x 736` | `736 x 1280` | 40 x 23 | Sub-1K HD |
+| **0.98 MP** | `1344 x 768` | `768 x 1344` | 42 x 24 | **System Maximum Ceiling** |
+
+---
+
+## 3. Slot Routing & Validation Contract
+
+* **Reserved Slots**: `prompt`, `seed`, `width`, `height`, `duration`, `ref_image_01..09`, `ref_video_01..03`, `ref_audio_01..03`.
+* **Routing Order**: FIFO according to connection creation order on canvas.
+* **Fail-Loud Limits**: Throws error if images > 9, videos > 3, or audios > 3.
+
+---
+
+## 4. Dynamic Cascade Pruning Specification
+
+1. **Unassigned Node Deletion**: Any slot with `idx >= assignedCount` is deleted from the cloned workflow.
+2. **Intermediate Node Cascading**: Bridge nodes whose inputs are deleted (e.g. `GetVideoComponents`) are also removed.
+3. **Reference Cleaning**: downstream input references in Node 19 pointing to deleted nodes are deleted.
+4. **Zero-reference Execution**: Pure text-to-video cleanly drops all 15 reference nodes.

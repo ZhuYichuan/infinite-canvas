@@ -1,37 +1,49 @@
-import { Button, Drawer, Input, Modal, Segmented, Select, Space } from "antd";
-import { ListPlus, Trash2 } from "lucide-react";
+import { App, Button, Drawer, Input, Space } from "antd";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ShieldAlert } from "lucide-react";
 
-import { COMFYUI_DEFAULT_MODELS, defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, type ApiCallFormat, type ChannelModel, type ComfyuiWorkflow, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { checkComfyuiConnection, isMixedContentHttp, notifyMixedContentBlocked } from "@/services/api/comfyui";
+import { normalizeChannelModels, type ChannelModel, type ComfyuiWorkflow, type ModelChannel } from "@/stores/use-config-store";
+import {
+    DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
+    DEFAULT_COMFYUI_I2I_WORKFLOW,
+    DEFAULT_COMFYUI_INPAINT_WORKFLOW,
+    DEFAULT_COMFYUI_T2I_WORKFLOW,
+    DEFAULT_COMFYUI_TEXT_WORKFLOW,
+    DEFAULT_COMFYUI_VIDEO_WORKFLOW,
+} from "@/services/api/comfyui-default-workflows";
 import { ComfyuiWorkflowEditor } from "./comfyui-workflow-editor";
-import { ModelScriptEditor } from "./model-script-editor";
-import { ModelSelectModal } from "./model-select-modal";
-
-type ScriptTarget = { name: string; capability: ModelCapability; value: string };
 
 export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: boolean; channel: ModelChannel | null; onSave: (channel: ModelChannel) => void; onClose: () => void }) {
     type ProxyFieldErrors = { url?: string; token?: string };
     const { t } = useTranslation();
     const [draft, setDraft] = useState<ModelChannel | null>(channel);
-    const [selectOpen, setSelectOpen] = useState(false);
-    const [scriptTarget, setScriptTarget] = useState<ScriptTarget | null>(null);
-    const [workflowTarget, setWorkflowTarget] = useState<{ name: string } | null>(null);
     const [proxyErrors, setProxyErrors] = useState<ProxyFieldErrors>({});
-    const apiFormatOptions: Array<{ label: string; value: ApiCallFormat }> = [
-        { label: "OpenAI", value: "openai" },
-        { label: "Gemini", value: "gemini" },
-        { label: "ComfyUI", value: "comfyui" },
-    ];
-    const capabilityOptions: Array<{ label: string; value: ModelCapability }> = ["image", "video", "text", "audio"].map((value) => ({ label: t(`config.channelEditor.capabilities.${value}`), value: value as ModelCapability }));
+    const [testingConnection, setTestingConnection] = useState(false);
+    const { message } = App.useApp();
+
+    const handleTestConnection = async () => {
+        const url = (draft?.comfyuiProxyUrl || "").trim() || "http://127.0.0.1:8188";
+        setTestingConnection(true);
+        try {
+            const res = await checkComfyuiConnection(url, draft?.comfyuiProxyToken);
+            if (res.ok) {
+                message.success("ComfyUI 服务连接成功！");
+            } else if (res.error === "MIXED_CONTENT") {
+                // Guideline modal is automatically displayed via event
+            } else {
+                message.error(`连接失败: ${res.error || "无法访问服务，请检查服务是否已启动"}`);
+            }
+        } finally {
+            setTestingConnection(false);
+        }
+    };
 
     useEffect(() => {
         if (open && channel) {
             setDraft(channel);
             setProxyErrors({});
-            // The drawer body stays mounted (destroyOnClose off), so stale modal targets would resurface on reopen.
-            setScriptTarget(null);
-            setWorkflowTarget(null);
         }
     }, [open, channel]);
 
@@ -40,31 +52,72 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const patch = (value: Partial<ModelChannel>) => setDraft((current) => (current ? { ...current, ...value } : current));
     const setModels = (models: ChannelModel[]) => patch({ models });
 
-    const changeApiFormat = (apiFormat: ApiCallFormat) => {
-        const baseUrl = !draft.baseUrl.trim() || draft.baseUrl.trim() === defaultBaseUrlForApiFormat(draft.apiFormat) ? defaultBaseUrlForApiFormat(apiFormat) : draft.baseUrl;
-        // Switching to ComfyUI pre-provisions the default workflow models when the channel has none yet.
-        const models = apiFormat === "comfyui" && draft.models.length === 0 ? COMFYUI_DEFAULT_MODELS.map((model) => ({ ...model })) : draft.models;
-        patch({ apiFormat, baseUrl, models });
+    const setComfyuiInpaintWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
+        setDraft((current) => {
+            if (!current) return current;
+            const models = current.models.map((m) =>
+                m.name === "ComfyUI Inpaint" || m.name.toLowerCase().includes("inpaint") || m.name.includes("局部编辑")
+                    ? { ...m, comfyuiWorkflow: workflow }
+                    : m,
+            );
+            return { ...current, comfyuiInpaintWorkflow: workflow, models };
+        });
     };
-
-    const applySelection = (names: string[]) => {
-        const map = new Map(draft.models.map((model) => [model.name, model]));
-        setModels(names.map((name) => map.get(name) || { name, capability: guessCapability(name) }));
+    const setComfyuiTextWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
+        setDraft((current) => {
+            if (!current) return current;
+            const models = current.models.map((m) =>
+                m.name === "ComfyUI LLM" || m.capability === "text"
+                    ? { ...m, comfyuiWorkflow: workflow }
+                    : m,
+            );
+            return { ...current, comfyuiTextWorkflow: workflow, models };
+        });
     };
-
-    const setCapability = (name: string, capability: ModelCapability) => setModels(draft.models.map((model) => (model.name === name ? { ...model, capability } : model)));
-    const setScript = (name: string, script: string) => setModels(draft.models.map((model) => (model.name === name ? { ...model, script: script || undefined } : model)));
-    const setComfyuiWorkflow = (name: string, workflow: ComfyuiWorkflow | undefined) => setModels(draft.models.map((model) => (model.name === name ? { ...model, comfyuiWorkflow: workflow } : model)));
-    const removeModel = (name: string) => setModels(draft.models.filter((model) => model.name !== name));
+    const setComfyuiVideoWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
+        setDraft((current) => {
+            if (!current) return current;
+            const models = current.models.map((m) =>
+                m.name === "ComfyUI Video" ? { ...m, comfyuiWorkflow: workflow } : m,
+            );
+            return { ...current, comfyuiVideoWorkflow: workflow, models };
+        });
+    };
+    const setComfyuiFrameVideoWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
+        setDraft((current) => {
+            if (!current) return current;
+            const targetName = current.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"))?.name || "ComfyUI Frame Video";
+            const models = current.models.some((m) => m.name === targetName)
+                ? current.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
+                : [...current.models, { name: targetName, capability: "video" as const, comfyuiWorkflow: workflow }];
+            return { ...current, comfyuiFrameVideoWorkflow: workflow, models };
+        });
+    };
+    const setComfyuiI2iWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
+        setDraft((current) => {
+            if (!current) return current;
+            const targetName = current.models.find((m) => m.name === "ComfyUI I2I")?.name || "ComfyUI I2I";
+            const models = current.models.some((m) => m.name === targetName)
+                ? current.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
+                : [...current.models, { name: targetName, capability: "image" as const, comfyuiWorkflow: workflow }];
+            return { ...current, comfyuiI2iWorkflow: workflow, models };
+        });
+    };
+    const setComfyuiT2iWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
+        setDraft((current) => {
+            if (!current) return current;
+            const targetName = current.models.find((m) => m.name === "ComfyUI T2I")?.name || current.models[0]?.name || "ComfyUI T2I";
+            const models = current.models.some((m) => m.name === targetName)
+                ? current.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
+                : [...current.models, { name: targetName, capability: "image" as const, comfyuiWorkflow: workflow }];
+            return { ...current, comfyuiT2iWorkflow: workflow, models };
+        });
+    };
 
     const save = () => {
-        // A ComfyUI channel talks to the proxy, not an OpenAI-compatible endpoint: both proxy fields are required.
         const errors: ProxyFieldErrors = {};
-        if (draft.apiFormat === "comfyui") {
-            const proxyUrl = (draft.comfyuiProxyUrl || "").trim();
-            if (!/^https?:\/\/.+/.test(proxyUrl)) errors.url = t("config.channelEditor.comfyuiProxyUrlError");
-            if (!(draft.comfyuiProxyToken || "").trim()) errors.token = t("config.channelEditor.comfyuiProxyTokenError");
-        }
+        const proxyUrl = (draft.comfyuiProxyUrl || "").trim();
+        if (!/^https?:\/\/.+/.test(proxyUrl)) errors.url = t("config.channelEditor.comfyuiProxyUrlError");
         setProxyErrors(errors);
         if (Object.keys(errors).length) return;
         onSave({ ...draft, name: draft.name.trim() || t("config.channels.unnamed"), models: normalizeChannelModels(draft.models) });
@@ -94,108 +147,151 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                 </label>
                 <label className="block">
                     <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.protocol")}</span>
-                    <Select className="w-full" value={draft.apiFormat} options={apiFormatOptions} onChange={changeApiFormat} />
+                    <Input value="ComfyUI" disabled />
                 </label>
-                <label className="block md:col-span-2">
-                    <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.baseUrl")}</span>
-                    <Input value={draft.baseUrl} onChange={(event) => patch({ baseUrl: event.target.value })} placeholder="https://api.example.com" />
-                </label>
-                <label className="block md:col-span-2">
-                    <span className="mb-1 block text-sm font-medium">API Key</span>
-                    <Input.Password value={draft.apiKey} onChange={(event) => patch({ apiKey: event.target.value })} placeholder="sk-..." />
-                </label>
-                {draft.apiFormat === "comfyui" && (
-                    <>
-                        <label className="block md:col-span-2">
-                            <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.comfyuiProxyUrl")}</span>
-                            <Input
-                                value={draft.comfyuiProxyUrl || ""}
-                                status={proxyErrors.url ? "error" : undefined}
-                                onChange={(event) => {
-                                    patch({ comfyuiProxyUrl: event.target.value });
-                                    if (proxyErrors.url) setProxyErrors((current) => ({ ...current, url: undefined }));
-                                }}
-                                placeholder="http://127.0.0.1:8189"
-                            />
-                            {proxyErrors.url ? <div className="mt-1 text-xs text-red-500">{proxyErrors.url}</div> : null}
-                        </label>
-                        <label className="block md:col-span-2">
-                            <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.comfyuiProxyToken")}</span>
-                            <Input.Password
-                                value={draft.comfyuiProxyToken || ""}
-                                status={proxyErrors.token ? "error" : undefined}
-                                onChange={(event) => {
-                                    patch({ comfyuiProxyToken: event.target.value });
-                                    if (proxyErrors.token) setProxyErrors((current) => ({ ...current, token: undefined }));
-                                }}
-                            />
-                            {proxyErrors.token ? <div className="mt-1 text-xs text-red-500">{proxyErrors.token}</div> : null}
-                        </label>
-                    </>
-                )}
-            </div>
-
-            <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                    <div className="text-sm font-semibold">{t("config.channelEditor.models")}</div>
-                    <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.modelDescription", { count: draft.models.length })}</div>
-                </div>
-                <Button type="primary" icon={<ListPlus className="size-4" />} onClick={() => setSelectOpen(true)}>
-                    {t("config.channelEditor.selectModels")}
-                </Button>
-            </div>
-
-            <div className="space-y-2 rounded-lg border border-stone-200 p-2 dark:border-stone-800">
-                {draft.models.length ? (
-                    draft.models.map((model) => (
-                        <div key={model.name} className="flex flex-wrap items-center gap-3 rounded-md px-2 py-1.5 hover:bg-stone-50 dark:hover:bg-stone-900/40">
-                            <span className="min-w-0 flex-1 truncate text-sm" title={model.name}>
-                                {model.name}
-                            </span>
-                            <div className="flex shrink-0 items-center gap-2">
-                                <Segmented size="small" value={model.capability} options={capabilityOptions} onChange={(value) => setCapability(model.name, value as ModelCapability)} />
-                                <Button size="small" type={model.script ? "primary" : "default"} ghost={Boolean(model.script)} onClick={() => setScriptTarget({ name: model.name, capability: model.capability, value: model.script || "" })}>
-                                    {t(model.script ? "config.channelEditor.scriptReady" : "config.channelEditor.script")}
-                                </Button>
-                                {draft.apiFormat === "comfyui" && (
-                                    <Button size="small" type={model.comfyuiWorkflow ? "primary" : "default"} ghost={Boolean(model.comfyuiWorkflow)} onClick={() => setWorkflowTarget({ name: model.name })}>
-                                        {t(model.comfyuiWorkflow ? "config.channelEditor.workflowReady" : "config.channelEditor.workflow")}
-                                    </Button>
-                                )}
-                                <Button size="small" danger type="text" icon={<Trash2 className="size-3.5" />} onClick={() => removeModel(model.name)} />
+                <div className="block md:col-span-2">
+                    <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.comfyuiProxyUrl")}</span>
+                    <Space.Compact style={{ width: "100%" }}>
+                        <Input
+                            value={draft.comfyuiProxyUrl || ""}
+                            status={proxyErrors.url ? "error" : undefined}
+                            onChange={(event) => {
+                                patch({ comfyuiProxyUrl: event.target.value });
+                                if (proxyErrors.url) setProxyErrors((current) => ({ ...current, url: undefined }));
+                            }}
+                            placeholder="http://127.0.0.1:8188"
+                        />
+                        <Button loading={testingConnection} onClick={handleTestConnection}>
+                            测试连接
+                        </Button>
+                    </Space.Compact>
+                    {proxyErrors.url ? <div className="mt-1 text-xs text-red-500">{proxyErrors.url}</div> : null}
+                    {isMixedContentHttp(draft.comfyuiProxyUrl || "http://127.0.0.1:8188") && (
+                        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50/90 p-2.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                            <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-1 font-medium">
+                                    <ShieldAlert className="size-3.5 shrink-0 text-amber-500" />
+                                    HTTPS 访问本地 HTTP 提示
+                                </span>
+                                <button
+                                    type="button"
+                                    className="cursor-pointer font-normal text-blue-600 hover:underline dark:text-blue-400"
+                                    onClick={() => notifyMixedContentBlocked(draft.comfyuiProxyUrl || "http://127.0.0.1:8188")}
+                                >
+                                    查看放行指引
+                                </button>
                             </div>
+                            <p className="mt-1 text-[11px] leading-relaxed text-stone-600 dark:text-stone-300">
+                                当前站点运行在 HTTPS 下，直连本地 HTTP 会被浏览器安全拦截。请在地址栏左侧点击<strong>「锁头」图标</strong> -&gt; 将<strong>「不安全内容」</strong>设为<strong>「允许」</strong>并刷新；本地 ComfyUI 需携带 <code>--enable-cors-header "*"</code> 启动。
+                            </p>
                         </div>
-                    ))
-                ) : (
-                    <div className="px-2 py-8 text-center text-sm text-stone-500">{t("config.channelEditor.empty")}</div>
-                )}
+                    )}
+                </div>
+                <label className="block md:col-span-2">
+                    <span className="mb-1 block text-sm font-medium">{t("config.channelEditor.comfyuiProxyToken")}</span>
+                    <Input.Password
+                        value={draft.comfyuiProxyToken || ""}
+                        status={proxyErrors.token ? "error" : undefined}
+                        onChange={(event) => {
+                            patch({ comfyuiProxyToken: event.target.value });
+                            if (proxyErrors.token) setProxyErrors((current) => ({ ...current, token: undefined }));
+                        }}
+                        placeholder={t("config.channelEditor.comfyuiProxyTokenPlaceholder")}
+                    />
+                    {proxyErrors.token ? <div className="mt-1 text-xs text-red-500">{proxyErrors.token}</div> : null}
+                </label>
             </div>
 
-            <ModelSelectModal open={selectOpen} channel={draft} selectedNames={draft.models.map((model) => model.name)} onConfirm={applySelection} onClose={() => setSelectOpen(false)} />
+            {draft.apiFormat === "comfyui" && (
+                <>
+                    <div className="mt-5 space-y-2">
+                        <div>
+                            <div className="text-sm font-semibold">{t("config.channelEditor.t2iWorkflowTitle")}</div>
+                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.t2iWorkflowDesc")}</div>
+                        </div>
+                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                            <ComfyuiWorkflowEditor
+                                value={draft.comfyuiT2iWorkflow || draft.models.find((m) => m.name === "ComfyUI T2I")?.comfyuiWorkflow || draft.models[0]?.comfyuiWorkflow}
+                                defaultWorkflow={DEFAULT_COMFYUI_T2I_WORKFLOW}
+                                onChange={setComfyuiT2iWorkflow}
+                            />
+                        </div>
+                    </div>
 
-            <ModelScriptEditor
-                open={Boolean(scriptTarget)}
-                capability={scriptTarget?.capability || "text"}
-                modelName={scriptTarget?.name || ""}
-                value={scriptTarget?.value || ""}
-                onSave={(script) => scriptTarget && setScript(scriptTarget.name, script)}
-                onClose={() => setScriptTarget(null)}
-            />
+                    <div className="mt-5 space-y-2">
+                        <div>
+                            <div className="text-sm font-semibold">{t("config.channelEditor.i2iWorkflowTitle")}</div>
+                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.i2iWorkflowDesc")}</div>
+                        </div>
+                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                            <ComfyuiWorkflowEditor
+                                value={draft.comfyuiI2iWorkflow || draft.models.find((m) => m.name === "ComfyUI I2I")?.comfyuiWorkflow}
+                                defaultWorkflow={DEFAULT_COMFYUI_I2I_WORKFLOW}
+                                onChange={setComfyuiI2iWorkflow}
+                            />
+                        </div>
+                    </div>
 
-            <Modal
-                open={Boolean(workflowTarget)}
-                title={workflowTarget ? `${t("config.channelEditor.workflow")} · ${workflowTarget.name}` : ""}
-                width={560}
-                centered
-                onCancel={() => setWorkflowTarget(null)}
-                footer={
-                    <Button onClick={() => setWorkflowTarget(null)}>{t("common.done")}</Button>
-                }
-            >
-                {workflowTarget ? (
-                    <ComfyuiWorkflowEditor value={draft.models.find((model) => model.name === workflowTarget.name)?.comfyuiWorkflow} onChange={(workflow) => setComfyuiWorkflow(workflowTarget.name, workflow)} />
-                ) : null}
-            </Modal>
+                    <div className="mt-5 space-y-2">
+                        <div>
+                            <div className="text-sm font-semibold">{t("config.channelEditor.inpaintWorkflowTitle")}</div>
+                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.inpaintWorkflowDesc")}</div>
+                        </div>
+                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                            <ComfyuiWorkflowEditor
+                                value={draft.comfyuiInpaintWorkflow || draft.models.find((m) => m.name === "ComfyUI Inpaint")?.comfyuiWorkflow}
+                                defaultWorkflow={DEFAULT_COMFYUI_INPAINT_WORKFLOW}
+                                onChange={setComfyuiInpaintWorkflow}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-5 space-y-2">
+                        <div>
+                            <div className="text-sm font-semibold">{t("config.channelEditor.textWorkflowTitle")}</div>
+                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.textWorkflowDesc")}</div>
+                        </div>
+                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                            <ComfyuiWorkflowEditor
+                                value={draft.comfyuiTextWorkflow || draft.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text")?.comfyuiWorkflow}
+                                defaultWorkflow={DEFAULT_COMFYUI_TEXT_WORKFLOW}
+                                onChange={setComfyuiTextWorkflow}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-5 space-y-2">
+                        <div>
+                            <div className="text-sm font-semibold">{t("config.channelEditor.videoWorkflowTitle")}</div>
+                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.videoWorkflowDesc")}</div>
+                        </div>
+                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                            <ComfyuiWorkflowEditor
+                                value={draft.comfyuiVideoWorkflow || draft.models.find((m) => m.name === "ComfyUI Video")?.comfyuiWorkflow}
+                                defaultWorkflow={DEFAULT_COMFYUI_VIDEO_WORKFLOW}
+                                onChange={setComfyuiVideoWorkflow}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-5 space-y-2">
+                        <div>
+                            <div className="text-sm font-semibold">{t("config.channelEditor.frameVideoWorkflowTitle")}</div>
+                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.frameVideoWorkflowDesc")}</div>
+                        </div>
+                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                            <ComfyuiWorkflowEditor
+                                value={
+                                    draft.comfyuiFrameVideoWorkflow ||
+                                    draft.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"))?.comfyuiWorkflow
+                                }
+                                defaultWorkflow={DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW}
+                                onChange={setComfyuiFrameVideoWorkflow}
+                            />
+                        </div>
+                    </div>
+                </>
+            )}
         </Drawer>
     );
 }

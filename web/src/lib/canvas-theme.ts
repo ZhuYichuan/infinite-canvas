@@ -3,6 +3,7 @@ export type CanvasBackgroundMode = "dots" | "lines" | "blank";
 
 export const canvasThemes = {
     light: {
+        mode: "light" as const,
         canvas: {
             background: "#f4f2ed",
             dot: "rgba(68,64,60,.28)",
@@ -31,6 +32,7 @@ export const canvasThemes = {
         },
     },
     dark: {
+        mode: "dark" as const,
         canvas: {
             background: "#181715",
             dot: "rgba(245,245,244,.24)",

@@ -1,0 +1,47 @@
+---
+title: ComfyUI Workflow Standard
+description: Slot vocabulary, annotation conventions, parsing rules, transport contracts, and runtime data flow
+---
+
+# ComfyUI Workflow Standard
+
+This document defines the workflow annotation standard and runtime data flow when integrating self-hosted or local ComfyUI instances into Infinite Canvas.
+
+## Capability Matrix
+
+| Capability | Input Slots | Output |
+|---|---|---|
+| Text to Image (T2I) | `prompt`, `width`, `height`, `seed` | image |
+| Image to Image (Reference) | `ref_image_01`~`03`, `prompt`, `width`, `height`, `seed` | image |
+| Inpainting / AI Edit | `ref_image_01`, `ref_mask`, `prompt`, `seed` | image |
+| First/Last Frame Video | `first_frame`, `last_frame`, `prompt`, `width`, `height`, `duration`, `seed` | video |
+| All-round Reference Video | `ref_image_01`~`09`, `ref_audio_01`~`03`, `ref_video_01`~`03`, `prompt`, `width`, `height`, `duration`, `seed` | video |
+| Text Generation (LLM) | `ref_image_01`, `prompt`, `seed` | text |
+
+Capabilities are automatically inferred by slot combinations without redundant explicit declarations (e.g., presence of `ref_mask` implies inpainting; `first_frame` + `last_frame` implies frame-interpolation video).
+
+## Slot Vocabulary
+
+Reserved slot names (all lowercase + underscore):
+
+| Slot | Value Type | Semantics | Source |
+|---|---|---|---|
+| `prompt` | string | Generation instruction (node prompt + upstream Text node contents) | Caller / Upstream |
+| `seed` | int ≥ 0 | Random seed. `0` or omitted = random. Written back to node metadata | System random |
+| `width` | int > 0 | Output width in pixels | User choice / Preset |
+| `height` | int > 0 | Output height in pixels | User choice / Preset |
+| `duration` | int > 0 | Video duration in seconds | User choice |
+| `ref_image_NN` | string (filename/asset) | N-th reference image (NN = 01..09) | Upstream Image nodes |
+| `ref_video_NN` | string (filename/asset) | N-th reference video (NN = 01..03) | Upstream Video nodes |
+| `ref_audio_NN` | string (filename/asset) | N-th reference audio (NN = 01..03) | Upstream Audio nodes |
+| `first_frame` | string (filename/asset) | Video starting frame | Upstream Image node |
+| `last_frame` | string (filename/asset) | Video ending frame | Upstream Image node |
+| `ref_image_01` (edit) | string (filename/asset) | Base image to edit | Self node content |
+| `ref_mask` | string (filename/asset) | Inpaint mask (white = inpaint area) | Self mask editor |
+
+**Unmarked = Parameter unavailable.** Workflows only expose marked slots, and the canvas UI dynamically renders controls accordingly.
+
+## Reference Documentation
+
+For the full specification and design decisions, please refer to:
+* [ComfyUI 工作流标准 (简体中文)](/docs/development/comfyui-workflow-standard.zh-CN)

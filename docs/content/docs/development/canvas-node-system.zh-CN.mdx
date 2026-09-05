@@ -1,0 +1,240 @@
+---
+title: 画布节点系统架构与设计
+description: 画布核心节点系统架构总览、数据模型、连接数据流、生成调度机制与扩展指南
+---
+
+# 画布节点系统架构与设计
+
+本文档深入阐述 Infinite Canvas 画布节点系统的核心设计理念、底层数据模型、节点间连接与数据流、运行时状态管理、Agent 指令集以及新增节点的开发规范。
+
+---
+
+## 1. 核心架构与设计原则
+
+画布节点系统遵循以下五项核心设计原则：
+
+1. **数据与渲染彻底分离**：每个节点的数据表现为纯对象（`CanvasNodeData`），所有业务状态与生成参数统一收拢在扁平对象 `metadata` 中；渲染层（`CanvasNode`）仅作为受控视图。
+2. **双层节点注册机制**：内置 6 种基础节点通过静态规格与代码内置渲染器实现；扩展节点支持通过插件化 `CanvasNodeDefinition` 动态注册，不侵入内置代码主流程。
+3. **连接无载荷（Payload-less Connection）**：连线（`CanvasConnection`）仅维护有向拓扑关系（`fromNodeId -> toNodeId`）；实际流动的数据由上游节点的资源函数（`resource()`）与数据提取器在生成运行时动态解析。
+4. **虚拟容器机制**：组节点（`Group`）本身不存储子节点数组，子节点通过 `metadata.groupId` 反向索引；布局与连线时通过几何函数与组资源函数动态计算展开。
+5. **高性能状态与渲染分层**：画布拖拽、缩放、连线等 60fps 高频操作在主画布页面内通过本地 React State + Ref 高性能响应；状态沉淀与持久化通过 Zustand + localforage 进行防抖异步落盘。
+
+---
+
+## 2. 数据模型 (Data Model)
+
+源码位置：[`web/src/types/canvas.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/types/canvas.ts)
+
+### 2.1 节点通用结构 (`CanvasNodeData`)
+
+```ts
+export type CanvasNodeData = {
+    id: string;                    // 唯一标识，内置生成规则：`${type}-${Date.now()}-${random5}`
+    type: CanvasNodeTypeId;         // 内置类型 CanvasNodeType 或插件类型 "<pluginId>:<name>"
+    title: string;                 // 节点标题，双击顶部标签可就地重命名
+    position: { x: number; y: number }; // 节点左上角在画布世界坐标系中的坐标
+    width: number;                 // 节点在画布世界坐标系下的宽度
+    height: number;                // 节点在画布世界坐标系下的高度
+    metadata?: CanvasNodeMetadata; // 节点所有业务状态、媒体数据与生成参数的扁平容器
+};
+```
+
+### 2.2 节点类型枚举 (`CanvasNodeType`)
+
+* `Image ("image")`：图像展示、文生图、以图生图、蒙版重绘与图像工具链。
+* `Text ("text")`：文本编辑、Prompt 撰写、AI 润色扩写、长文阅读。
+* `Config ("config")`：调度中枢、多模态模式切换、输入资源摘要、参数持久化。
+* `Video ("video")`：视频媒体播放、文生视频、图生视频。
+* `Audio ("audio")`：语音合成 (TTS)、音频媒体播放。
+* `Group ("group")`：虚拟容器框、批量归组、超级资源包连线。
+
+### 2.3 `CanvasNodeMetadata` 字段映射与取用子集
+
+所有节点共用扁平的 `CanvasNodeMetadata` 结构，各节点类型根据职责取用对应字段：
+
+| 节点类型 | 核心存储与媒体字段 | AI 生成与模型参数 | 交互与多产物字段 |
+| :--- | :--- | :--- | :--- |
+| **Image** | `content` (URL/dataUrl), `storageKey`, `naturalWidth`, `naturalHeight`, `bytes`, `mimeType` | `prompt`, `effectivePrompt`, `model`, `generationType` ("generation"\|"edit"), `size`, `quality`, `background`, `references[]`, `seed` | `freeResize` (是否解锁等比约束自由拉伸), `images[]` (批量候选图), `primaryImageId`, `status`, `errorDetails` |
+| **Text** | `content` (文本内容) | `prompt` (原始指令), `model`, `reasoningEffort` (思考深度), `textCount` (批量文本数) | `fontSize` (字号), `texts[]` (批量候选文本), `primaryTextId`, `status`, `errorDetails` |
+| **Video** | `content` (视频 URL), `storageKey`, `naturalWidth`, `naturalHeight`, `durationMs`, `bytes`, `mimeType` | `prompt`, `effectivePrompt`, `model`, `size`, `seconds`, `vquality`, `generateAudio`, `watermark`, `references[]` | `status`, `errorDetails` |
+| **Audio** | `content` (音频 URL), `storageKey`, `durationMs`, `bytes`, `mimeType` | `prompt`, `effectivePrompt`, `model`, `audioVoice`, `audioFormat`, `audioSpeed`, `audioInstructions` | `status`, `errorDetails` |
+| **Config** | 不存储独立媒体，`content` 为初始空值 | `composerContent` (高级编排提示词), `generationMode` ("image"\|"text"\|"video"\|"audio")，持久化各模态的全套模型与生成参数 | `status`, `errorDetails` |
+| **Group** | 不存储媒体内容，自身仅维护基本尺寸与标题 | 无直接生成参数 | 子节点通过自身的 `metadata.groupId` 关联父 Group；Group 节点显示 `groupChildCount` |
+
+---
+
+## 3. 节点生命周期与注册系统
+
+源码位置：[`web/src/constant/canvas.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/constant/canvas.ts)、[`web/src/lib/canvas/node-registry.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/lib/canvas/node-registry.ts)、[`web/src/lib/canvas/canvas-node-factory.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/lib/canvas/canvas-node-factory.ts)
+
+### 3.1 规格与定义
+
+系统采用双层规格管理：
+1. **静态基础规格 (`NODE_SPECS` / `NODE_DEFAULT_SIZE`)**：定义 6 种内置节点的默认尺寸、初始标题与初始 `metadata`。
+2. **注册表定义 (`CanvasNodeDefinition`)**：
+   * `builtin-nodes.tsx` 在应用启动时调用 `registerBuiltinNodes()` 注册内置节点的扩展定义。
+   * 插件调用 `registerNodeDefinitions(defs, pluginId)` 注册自定义节点。
+   * 注册项包含：图标、小地图颜色 (`minimapColor`)、输出资源转换器 (`resource(node)`)、四角缩放是否锁定比例 (`keepAspectRatio`)、是否屏蔽输出端口 (`hasSourceHandle`) 等。
+
+### 3.2 节点创建 (`createCanvasNode`)
+
+所有节点的创建必须经过唯一的工厂入口 `createCanvasNode(type, position, metadata?)`：
+* 根据 `type` 调用 `getNodeSpec(type)` 提取默认宽高和元数据。
+* 自动计算中心定位：入参 `position` 为鼠标落点中心，工厂将其自动转换为左上角世界坐标 `x = pos.x - width / 2, y = pos.y - height / 2`。
+* 针对图片/视频/音频上传场景，分别封装了 `imageMetadata(image)`、`videoMetadata(file)`、`audioMetadata(file)` 确保元数据完整。
+
+---
+
+## 4. 连接拓扑与资源引用数据流
+
+源码位置：[`web/src/lib/canvas/canvas-resource-references.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/lib/canvas/canvas-resource-references.ts)、[`web/src/lib/canvas/canvas-node-geometry.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/lib/canvas/canvas-node-geometry.ts)
+
+### 4.1 连接结构 (`CanvasConnection`)
+
+```ts
+export type CanvasConnection = {
+    id: string;
+    fromNodeId: string; // 输出端节点 ID（通常位于上游节点的右侧 Source Handle）
+    toNodeId: string;   // 输入端节点 ID（通常位于下游节点的左侧 Target Handle）
+};
+```
+
+连接规范化函数 `normalizeConnection` 保证：
+* 无论用户从左端拉到右端，还是从右端拉到左端，统一规范为 `fromNodeId: 上游, toNodeId: 下游`。
+* 组节点不可作为连接的目标接收端 (`second.type === CanvasNodeType.Group` 被拦截)。
+* 涉及 Config 节点的连接，一律规范化为 `toNodeId: configNode.id`。
+
+### 4.2 配置节点 (Config Node) 的特殊中枢机制
+
+Config 节点在连接与数据流中具有独特的双重角色：
+1. **输入端汇聚**：Config 节点在视觉上**仅有左侧 Target Handle，没有右侧 Source Handle**。文本、图片、组节点连入 Config 节点作为生成上下文。
+2. **调度生成并自动连出**：当用户在 Config 节点上点击“生成”时，系统调用模型并自动在右侧派生新节点，**代码会自动创建一条从 Config 到新节点的连接 (`from: Config, to: GeneratedNode`)**。
+3. **同伴资源共享总线 (Hub)**：若普通节点也连向了 Config 节点，`getConnectedConfigInputNodes` 会将接入该 Config 节点的所有同伴资源合并供给当前节点。
+
+### 4.3 组节点 (Group Node) 的“超级资源包”机制
+
+组节点是无限画布处理复杂多模态输入的一大创新：
+* 组节点右侧具有 Source Handle，允许作为一个独立实体向外拉出连线。
+* 当组节点连入下游节点（如 Config 节点或图片节点）时，`expandGroupResourceNodes` 会**递归提取组内归属的所有有效子节点**（包含的图片、文本、音视频）。
+* 下游节点无需繁琐地单拉十几条连线，只需连接一个“素材组”，即可将组内资产整体注入生成上下文。
+
+### 4.4 提示词注入与 `@` 提及协议
+
+生成提示词中支持使用类似 `@[node:nodeId]` 的标记语法：
+* 在生图/生视频前，`buildNodeGenerationContext` 会解析提示词中的 `@` 标记，将对应的上游图片提取为 `referenceImages`、上游视频提取为 `referenceVideos`。
+* 未在文本中显式通过 `@` 提及但有连线接入的文本节点，会自动按顺序追加或智能拼接为组合提示词。
+
+---
+
+## 5. 渲染与交互架构
+
+源码位置：[`web/src/components/canvas/canvas-node.tsx`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/components/canvas/canvas-node.tsx)
+
+### 5.1 节点层级与结构
+
+* **最外层容器**：绝对定位 (`translate3d`)，应用平移与尺寸。
+  * 层级控制：Group 节点置于底层 (`z-[5]`)；普通节点默认 `z-10`；选中节点置于顶层 (`z-50`)。
+* **标题组件**：悬浮或选中时显示，双击可直接就地编辑重命名。
+* **内容渲染器分发 (`nodeContentRenderers`)**：
+  * 内置节点按 `TextContent`、`ImageNodeContent`、`VideoNodeContent`、`AudioNodeContent`、`GroupNodeContent` 分发。
+  * 插件节点优先通过 `definition.Content` 渲染；未安装对应插件时降级展示 `MissingPluginContent` 占位符。
+* **缩放手柄 (`ResizeHandle`)**：四角拖拽。图片节点默认受原始物理比例约束，开启 `freeResize` 或文本节点时支持自由长宽拉伸。
+
+### 5.2 批处理卡片堆叠与展开 (Batch System)
+
+当生成数量（`count` / `textCount`）大于 1 时，Image 与 Text 节点自动进入批处理状态：
+* **折叠态**：采用 `BatchFrame` 以 3D 错位层叠样式展示前 3 张卡片阴影，右上角常驻批数量徽标。
+* **展开态**：点击徽标平铺展开为网格矩阵（支持最多 4 列自动换行）。
+* **卡片级独立操作**：支持单独设为主推选（Primary）、单独复制为新画布节点、单独下载、单独重试失败项以及单独删除。
+
+### 5.3 悬浮工具栏 (Hover Toolbar)
+
+每个节点上方在悬浮/选中时弹出微型工具栏，内置丰富的业务快捷动作：
+* **通用工具**：查看元数据信息（Info，支持 JSON 视图）、删除节点、存入“我的素材”。
+* **图片专属工具**：复制 Prompt、AI 反推 Prompt、本地替换图片、锁定/自由拉伸切换、全屏大图预览。
+* **专业图像编辑弹窗**：
+  * **局部重绘 (`CanvasNodeMaskEditDialog`)**：支持自由画笔大小涂抹蒙版与负向擦除。
+  * **自由裁剪 (`CanvasNodeCropDialog`)**：支持自由矩形与预设比例裁剪。
+  * **宫格切图 (`CanvasNodeSplitDialog`)**：支持多行多列网格分割并自动拆分成新卡片。
+  * **超清放大 (`CanvasNodeUpscaleDialog`)**：提供 1K/2K/4K 分辨率算法超分。
+  * **机位微调 (`CanvasNodeAngleDialog`)**：提供 3D 空间水平偏角、俯仰角与镜头焦段微调。
+* **文字专属工具**：字号放大 (`+`)/缩小 (`-`)、一键生图。
+
+---
+
+## 6. 状态管理与性能分层设计
+
+源码位置：[`web/src/stores/canvas/use-canvas-store.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/stores/canvas/use-canvas-store.ts)、[`web/src/pages/canvas/project.tsx`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/pages/canvas/project.tsx)
+
+为了确保无限画布在拥有数百个复杂媒体节点时依旧保持流畅的 60fps 交互，系统采用了明确的性能分层：
+
+```mermaid
+graph TD
+    subgraph 高频交互层 (React Component State)
+        UI[画布拖拽 / 视口缩放 / 连线交互] --> LocalState[project.tsx 本地 State + Ref]
+        LocalState --> CanvasNode[CanvasNode 受控受领 Props 回调]
+    end
+
+    subgraph 全局解耦层 (Zustand Stores)
+        ThemeStore[useThemeStore 主题] -.-> CanvasNode
+        ConfigStore[useConfigStore 模型全局配置] -.-> CanvasNode
+    end
+
+    subgraph 持久化落盘层 (Storage Engine)
+        LocalState -->|防抖 400ms 同步| CanvasStore[useCanvasStore]
+        CanvasStore -->|JSON 序列化| LocalForage[(IndexedDB: app_state)]
+        MediaBlob[真实图片/视频文件] -->|Blob 独立存储| MediaStorage[(IndexedDB: image_files / media_files)]
+    end
+```
+
+* **高频层**：视口平移缩放、节点移动、尺寸调整完全通过 `project.tsx` 的本地 React State 和实时 Ref 处理，绝不在拖拽过程中直接高频触发 Zustand 全量 store 更新。
+* **持久化层**：通过 `useCanvasStore.getState().updateProject(id, patch)` 执行不可变替换，并在持久化适配器中使用 400ms 的 debounce 定时器合并写回 IndexedDB。
+* **大文件隔离**：画布 JSON 仅保存资源的元信息与 `storageKey`，真正的大体积 Blob 数据由单独的 localForage 实例独立存取，防止主 JSON 膨胀导致序列化卡顿。
+
+---
+
+## 7. Agent 指令集与纯函数变换 (Agent Ops)
+
+源码位置：[`web/src/lib/canvas/canvas-agent-ops.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/lib/canvas/canvas-agent-ops.ts)、[`web/src/pages/canvas/hooks/use-agent-bridge.ts`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/pages/canvas/hooks/use-agent-bridge.ts)
+
+AI 助手与外部插件通过统一的指令集操作画布：
+
+### 7.1 纯数据操作指令 (Pure Transforms)
+
+纯函数 `applyCanvasAgentOps(snapshot, ops)` 负责以下无副作用的同步状态变换，支持精准 Undo/Redo 快照记录：
+* `add_node`：新增节点。
+* `update_node`：更新节点基础属性或 metadata。
+* `delete_node`：删除节点，并自动级联清理孤立的关联连线。
+* `delete_connections`：按 ID 删除连线或清空连线。
+* `connect_nodes`：在两节点间建立合法连线。
+* `set_viewport`：调整视口中心与缩放级别。
+* `select_nodes`：变更当前选中的节点列表。
+
+### 7.2 异步网络副作用隔离 (`run_generation`)
+
+* `applyCanvasAgentOps` 内部显式过滤掉了 `run_generation` 操作，保证纯函数的确定性。
+* 包含 `run_generation` 的复合指令在进入 `useAgentBridge` 时，由 Bridge 拦截并在微任务（`queueMicrotask`）中异步派发给主画布的生成管线 `handleGenerateNode`，从而实现界面数据变换与异步网络请求的完全解耦。
+
+---
+
+## 8. 新增节点开发指南 (Developer Guide)
+
+### 8.1 新增内置节点类型（7 步完整清单）
+
+如果您需要在核心工程中新增内置节点类型，需严格遵循以下 7 步：
+
+1. **类型枚举扩展**：在 `web/src/types/canvas.ts` 中的 `CanvasNodeType` 枚举追加新类型值。
+2. **默认尺寸与元数据规格**：在 `web/src/constant/canvas.ts` 的 `NODE_DEFAULT_SIZE` 和 `NODE_SPECS` 中补充默认宽高、标题及初始 `metadata`。
+3. **注册内置定义**：在 `web/src/components/canvas/nodes/builtin-nodes.tsx` 的 `BUILTIN_DEFINITIONS` 中声明图标、`minimapColor`、`keepAspectRatio` 以及资源导出函数 `builtinResource()`。
+4. **视图渲染器分发**：在 `web/src/components/canvas/canvas-node.tsx` 的 `nodeContentRenderers` 映射表中挂载对应的渲染组件。
+5. **国际化文案支持**：在 `web/src/i18n/locales/zh-CN.ts` 与 `en-US.ts` 中的 `canvas.nodeTypes.<type>` 补充中英文显示名称。
+6. **资源与引用解析适配**：在 `web/src/lib/canvas/canvas-resource-references.ts` 的 `resourceKind()` 与 `resourceText()` 中补充解析逻辑，否则下游节点无法识别该节点作为上游 `@` 提及与生成参考输入。
+7. **左侧大纲面板与过滤适配**：在 `web/src/components/canvas/canvas-side-panel.tsx` 的 `NODE_FILTER_VALUES` 和图标映射中补齐新类型，确保图层树能够正常显示和筛选。
+
+### 8.2 新增插件节点类型 (Plugin Nodes)
+
+第三方或独立扩展节点通过插件机制接入：
+* 导出 `CanvasPlugin` 对象，在 `nodes: CanvasNodeDefinition[]` 中声明定义。
+* 节点类型遵循 `<pluginId>:<name>` 命名规范。
+* 提供自定义的 `Content` 组件，通过 `ctx: CanvasNodeContext` 访问画布能力（读写节点元数据、发射事件、调用 AI 生成能力、执行 Agent Ops）。
+* 通过 `definition.resource` 声明作为输入源时暴露的媒体形式，无缝融入无限画布的工作流生态。

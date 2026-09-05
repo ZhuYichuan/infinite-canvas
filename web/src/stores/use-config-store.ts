@@ -3,6 +3,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
+import {
+    DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
+    DEFAULT_COMFYUI_I2I_WORKFLOW,
+    DEFAULT_COMFYUI_INPAINT_WORKFLOW,
+    DEFAULT_COMFYUI_T2I_WORKFLOW,
+    DEFAULT_COMFYUI_TEXT_WORKFLOW,
+    DEFAULT_COMFYUI_VIDEO_WORKFLOW,
+} from "@/services/api/comfyui-default-workflows";
 import i18n from "@/i18n";
 
 export type ApiCallFormat = "openai" | "gemini" | "comfyui";
@@ -31,6 +39,12 @@ export type ModelChannel = {
     models: ChannelModel[];
     comfyuiProxyUrl?: string;
     comfyuiProxyToken?: string;
+    comfyuiT2iWorkflow?: ComfyuiWorkflow;
+    comfyuiI2iWorkflow?: ComfyuiWorkflow;
+    comfyuiInpaintWorkflow?: ComfyuiWorkflow;
+    comfyuiTextWorkflow?: ComfyuiWorkflow;
+    comfyuiVideoWorkflow?: ComfyuiWorkflow;
+    comfyuiFrameVideoWorkflow?: ComfyuiWorkflow;
 };
 
 export type AiConfig = {
@@ -49,6 +63,7 @@ export type AiConfig = {
     audioSpeed: string;
     audioInstructions: string;
     videoSeconds: string;
+    videoMode: string;
     vquality: string;
     videoGenerateAudio: string;
     videoWatermark: string;
@@ -73,45 +88,61 @@ export type ConfigTabKey = "channels" | "preferences" | "prompt-sources" | "webd
 
 export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
-const OPENAI_BASE_URL = "https://api.openai.com";
-const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
-    baseUrl: OPENAI_BASE_URL,
+    baseUrl: "",
     apiKey: "",
-    apiFormat: "openai",
+    apiFormat: "comfyui",
     channels: [
         {
             id: "default",
-            name: i18n.t("config.channels.defaultName"),
-            baseUrl: OPENAI_BASE_URL,
+            name: "ComfyUI",
+            baseUrl: "",
             apiKey: "",
-            apiFormat: "openai",
+            apiFormat: "comfyui",
+            comfyuiProxyUrl: "http://127.0.0.1:8188",
+            comfyuiProxyToken: "",
+            comfyuiT2iWorkflow: DEFAULT_COMFYUI_T2I_WORKFLOW,
+            comfyuiI2iWorkflow: DEFAULT_COMFYUI_I2I_WORKFLOW,
+            comfyuiInpaintWorkflow: DEFAULT_COMFYUI_INPAINT_WORKFLOW,
+            comfyuiTextWorkflow: DEFAULT_COMFYUI_TEXT_WORKFLOW,
+            comfyuiVideoWorkflow: DEFAULT_COMFYUI_VIDEO_WORKFLOW,
+            comfyuiFrameVideoWorkflow: DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
             models: [
-                { name: "gpt-image-2", capability: "image" },
-                { name: "grok-imagine-video", capability: "video" },
-                { name: "gpt-5.5", capability: "text" },
-                { name: "gpt-4o-mini-tts", capability: "audio" },
+                { name: "ComfyUI T2I", capability: "image", comfyuiWorkflow: DEFAULT_COMFYUI_T2I_WORKFLOW },
+                { name: "ComfyUI I2I", capability: "image", comfyuiWorkflow: DEFAULT_COMFYUI_I2I_WORKFLOW },
+                { name: "ComfyUI Inpaint", capability: "image", comfyuiWorkflow: DEFAULT_COMFYUI_INPAINT_WORKFLOW },
+                { name: "ComfyUI LLM", capability: "text", comfyuiWorkflow: DEFAULT_COMFYUI_TEXT_WORKFLOW },
+                { name: "ComfyUI Video", capability: "video", comfyuiWorkflow: DEFAULT_COMFYUI_VIDEO_WORKFLOW },
+                { name: "ComfyUI Frame Video", capability: "video", comfyuiWorkflow: DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW },
             ],
         },
     ],
-    model: "default::gpt-image-2",
-    imageModel: "default::gpt-image-2",
-    videoModel: "default::grok-imagine-video",
-    textModel: "default::gpt-5.5",
-    audioModel: "default::gpt-4o-mini-tts",
+    model: "default::ComfyUI T2I",
+    imageModel: "default::ComfyUI T2I",
+    videoModel: "default::ComfyUI Video",
+    textModel: "default::ComfyUI LLM",
+    audioModel: "",
     audioVoice: "alloy",
     audioFormat: "mp3",
     audioSpeed: "1",
     audioInstructions: "",
     videoSeconds: "6",
+    videoMode: "omni",
     vquality: "720",
     videoGenerateAudio: "true",
     videoWatermark: "false",
     systemPrompt: "",
     reasoningEffort: "auto",
-    models: ["default::gpt-image-2", "default::grok-imagine-video", "default::gpt-5.5", "default::gpt-4o-mini-tts"],
+    models: [
+        "default::ComfyUI T2I",
+        "default::ComfyUI I2I",
+        "default::ComfyUI Inpaint",
+        "default::ComfyUI LLM",
+        "default::ComfyUI Video",
+        "default::ComfyUI Frame Video",
+    ],
     quality: "auto",
     size: "1:1",
     background: "",
@@ -133,6 +164,7 @@ type ConfigStore = {
     isConfigOpen: boolean;
     configTab: ConfigTabKey;
     shouldPromptContinue: boolean;
+    setConfig: (config: AiConfig) => void;
     updateConfig: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
     updateWebdavConfig: <K extends keyof WebdavSyncConfig>(key: K, value: WebdavSyncConfig[K]) => void;
     isAiConfigReady: (config: AiConfig, model: string) => boolean;
@@ -147,7 +179,7 @@ export function boolConfig(value: string, fallback: boolean) {
     return value ? value === "true" : fallback;
 }
 const AUDIO_KEYWORDS = ["audio", "tts", "speech", "voice", "music", "sound"];
-const IMAGE_KEYWORDS = ["seedream", "gpt-image", "image", "dall-e", "dalle", "imagen", "flux", "sdxl", "stable-diffusion", "midjourney"];
+const IMAGE_KEYWORDS = ["seedream", "gpt-image", "image", "dall-e", "dalle", "imagen", "flux", "sdxl", "stable-diffusion", "midjourney", "t2i", "i2i", "inpaint", "txt2img", "img2img"];
 
 /** Best-effort default capability for a freshly fetched model name; user can override in the channel editor. */
 export function guessCapability(name: string): ModelCapability {
@@ -199,10 +231,7 @@ export function isAiConfigReady(config: AiConfig, model: string) {
 }
 
 export function isChannelReady(channel: ModelChannel) {
-    if (channel.apiFormat === "comfyui") {
-        return Boolean((channel.comfyuiProxyUrl || "").trim() && (channel.comfyuiProxyToken || "").trim());
-    }
-    return Boolean(channel.baseUrl.trim() && channel.apiKey.trim() && channel.models.length);
+    return Boolean((channel.comfyuiProxyUrl || "").trim());
 }
 
 export const useConfigStore = create<ConfigStore>()(
@@ -213,6 +242,7 @@ export const useConfigStore = create<ConfigStore>()(
             isConfigOpen: false,
             configTab: "channels",
             shouldPromptContinue: false,
+            setConfig: (config) => set({ config }),
             updateConfig: (key, value) =>
                 set((state) => ({
                     config: {
@@ -234,6 +264,16 @@ export const useConfigStore = create<ConfigStore>()(
         }),
         {
             name: CONFIG_STORE_KEY,
+            version: 1,
+            migrate: (persistedState: any, version: number) => {
+                if (version < 1) {
+                    return {
+                        ...persistedState,
+                        config: defaultConfig,
+                    };
+                }
+                return persistedState;
+            },
             partialize: (state) => ({ config: state.config, webdav: state.webdav }),
             merge: (persisted, current) => {
                 const persistedState = (persisted || {}) as Partial<ConfigStore>;
@@ -243,6 +283,18 @@ export const useConfigStore = create<ConfigStore>()(
                 if (!Array.isArray(persistedConfig.channels)) config.channels = [];
                 const channels = normalizeChannels(config);
                 const models = modelOptionsFromChannels(channels);
+                const resolveOption = (value: string | undefined, fallback: string, capability: ModelCapability) => {
+                    const normalized = normalizeModelOptionValue(value, channels);
+                    if (normalized && modelMatchesCapability({ ...config, channels }, normalized, capability)) {
+                        return normalized;
+                    }
+                    const fallbackNormalized = normalizeModelOptionValue(fallback, channels);
+                    if (fallbackNormalized && modelMatchesCapability({ ...config, channels }, fallbackNormalized, capability)) {
+                        return fallbackNormalized;
+                    }
+                    const firstMatch = channels.flatMap((c) => c.models.filter((m) => m.capability === capability).map((m) => encodeChannelModel(c.id, m.name)))[0];
+                    return firstMatch || "";
+                };
                 return {
                     ...current,
                     webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
@@ -252,9 +304,9 @@ export const useConfigStore = create<ConfigStore>()(
                         apiFormat: normalizeApiFormat(config.apiFormat),
                         channels,
                         models,
-                        imageModel: normalizeModelOptionValue(config.imageModel || config.model, channels),
-                        videoModel: normalizeModelOptionValue(config.videoModel, channels),
-                        textModel: normalizeModelOptionValue(config.textModel || config.model, channels),
+                        imageModel: resolveOption(config.imageModel || config.model, defaultConfig.imageModel, "image"),
+                        videoModel: resolveOption(config.videoModel, defaultConfig.videoModel, "video"),
+                        textModel: resolveOption(config.textModel || config.model, defaultConfig.textModel, "text"),
                         audioModel: normalizeModelOptionValue(config.audioModel || defaultConfig.audioModel, channels),
                         audioVoice: config.audioVoice || defaultConfig.audioVoice,
                         audioFormat: config.audioFormat || defaultConfig.audioFormat,
@@ -262,6 +314,7 @@ export const useConfigStore = create<ConfigStore>()(
                         audioInstructions: config.audioInstructions || "",
                         reasoningEffort: config.reasoningEffort || "auto",
                         videoSeconds: config.videoSeconds || "6",
+                        videoMode: config.videoMode || "omni",
                         vquality: config.vquality || "720",
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
@@ -296,25 +349,32 @@ export function normalizeChannelModels(models: Array<string | ChannelModel> | un
 
 /** Models pre-provisioned when a ComfyUI channel is created without explicit models. */
 export const COMFYUI_DEFAULT_MODELS: ChannelModel[] = [
-    { name: "ComfyUI T2I", capability: "image" },
-    { name: "ComfyUI I2I 1ref", capability: "image" },
-    { name: "ComfyUI I2I 3ref", capability: "image" },
+    { name: "ComfyUI T2I", capability: "image", comfyuiWorkflow: DEFAULT_COMFYUI_T2I_WORKFLOW },
+    { name: "ComfyUI I2I", capability: "image", comfyuiWorkflow: DEFAULT_COMFYUI_I2I_WORKFLOW },
+    { name: "ComfyUI Inpaint", capability: "image", comfyuiWorkflow: DEFAULT_COMFYUI_INPAINT_WORKFLOW },
+    { name: "ComfyUI LLM", capability: "text", comfyuiWorkflow: DEFAULT_COMFYUI_TEXT_WORKFLOW },
+    { name: "ComfyUI Video", capability: "video", comfyuiWorkflow: DEFAULT_COMFYUI_VIDEO_WORKFLOW },
+    { name: "ComfyUI Frame Video", capability: "video", comfyuiWorkflow: DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW },
 ];
 
 export function createModelChannel(channel?: Partial<ModelChannel>, options?: { preprovisionComfyuiModels?: boolean }): ModelChannel {
-    const apiFormat = normalizeApiFormat(channel?.apiFormat);
     const models = normalizeChannelModels(channel?.models);
     const result: ModelChannel = {
         id: channel?.id?.trim() || nanoid(),
-        name: channel?.name?.trim() || i18n.t("config.channels.newName"),
-        baseUrl: channel?.baseUrl?.trim() || defaultBaseUrlForApiFormat(apiFormat),
-        apiKey: channel?.apiKey || "",
-        apiFormat,
-        // A persisted empty model list is the user's intent (they cleared it), so the load path disables pre-provisioning.
-        models: models.length ? models : apiFormat === "comfyui" && options?.preprovisionComfyuiModels !== false ? [...COMFYUI_DEFAULT_MODELS] : [],
+        name: channel?.name?.trim() || "ComfyUI",
+        baseUrl: "",
+        apiKey: "",
+        apiFormat: "comfyui",
+        models: models.length ? models : options?.preprovisionComfyuiModels !== false ? [...COMFYUI_DEFAULT_MODELS] : [],
+        comfyuiProxyUrl: channel?.comfyuiProxyUrl !== undefined ? channel.comfyuiProxyUrl : "http://127.0.0.1:8188",
+        comfyuiProxyToken: channel?.comfyuiProxyToken !== undefined ? channel.comfyuiProxyToken : "",
+        comfyuiT2iWorkflow: channel?.comfyuiT2iWorkflow ?? DEFAULT_COMFYUI_T2I_WORKFLOW,
+        comfyuiI2iWorkflow: channel?.comfyuiI2iWorkflow ?? DEFAULT_COMFYUI_I2I_WORKFLOW,
+        comfyuiInpaintWorkflow: channel?.comfyuiInpaintWorkflow ?? DEFAULT_COMFYUI_INPAINT_WORKFLOW,
+        comfyuiTextWorkflow: channel?.comfyuiTextWorkflow ?? DEFAULT_COMFYUI_TEXT_WORKFLOW,
+        comfyuiVideoWorkflow: channel?.comfyuiVideoWorkflow ?? DEFAULT_COMFYUI_VIDEO_WORKFLOW,
+        comfyuiFrameVideoWorkflow: channel?.comfyuiFrameVideoWorkflow ?? DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
     };
-    if (channel?.comfyuiProxyUrl !== undefined) result.comfyuiProxyUrl = channel.comfyuiProxyUrl;
-    if (channel?.comfyuiProxyToken !== undefined) result.comfyuiProxyToken = channel.comfyuiProxyToken;
     return result;
 }
 
@@ -363,7 +423,7 @@ export function resolveModelChannel(config: AiConfig, value: string) {
     const decoded = decodeChannelModel(value);
     const model = decoded?.model || value;
     const matched = decoded ? config.channels.find((channel) => channel.id === decoded.channelId) : config.channels.find((channel) => channel.models.some((item) => item.name === model));
-    return matched || config.channels[0] || createModelChannel({ id: "default", name: i18n.t("config.channels.defaultName"), baseUrl: config.baseUrl, apiKey: config.apiKey, apiFormat: config.apiFormat, models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
+    return matched || config.channels[0] || createModelChannel({ id: "default", name: "ComfyUI", apiFormat: "comfyui", models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
 }
 
 export function resolveModelRequestConfig(config: AiConfig, value: string) {
@@ -384,34 +444,24 @@ function normalizeChannels(config: AiConfig) {
             {
                 ...channel,
                 id: channel.id || (index === 0 ? "default" : `channel-${index + 1}`),
-                name: channel.name || (index === 0 ? i18n.t("config.channels.defaultName") : i18n.t("config.channels.indexedName", { index: index + 1 })),
+                name: channel.name || (index === 0 ? "ComfyUI" : i18n.t("config.channels.indexedName", { index: index + 1 })),
                 models: normalizeChannelModels(channel.models),
             },
             { preprovisionComfyuiModels: false },
         ),
     );
     if (!channels.length) {
-        channels.push(
-            createModelChannel({
-                id: "default",
-                name: i18n.t("config.channels.defaultName"),
-                baseUrl: config.baseUrl || defaultConfig.baseUrl,
-                apiKey: config.apiKey || "",
-                apiFormat: config.apiFormat || defaultConfig.apiFormat,
-                models: normalizeChannelModels([config.model, config.imageModel, config.videoModel, config.textModel, config.audioModel].map(modelOptionName)),
-            }),
-        );
+        channels.push(createModelChannel());
     }
     return channels;
 }
 
-export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
-    if (apiFormat === "gemini") return GEMINI_BASE_URL;
-    return OPENAI_BASE_URL;
+export function defaultBaseUrlForApiFormat(_apiFormat?: ApiCallFormat) {
+    return "";
 }
 
-export function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {
-    return apiFormat === "gemini" ? "gemini" : apiFormat === "comfyui" ? "comfyui" : "openai";
+export function normalizeApiFormat(_apiFormat?: unknown): ApiCallFormat {
+    return "comfyui";
 }
 
 function uniqueModelOptions(models: string[]) {

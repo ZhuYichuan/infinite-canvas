@@ -22,6 +22,12 @@ export const TITLE_TO_INPUT_SLOT: Record<string, Record<string, string>> = {
         PrimitiveInt: "value",
         PrimitiveFloat: "value",
     },
+    seed: {
+        KSampler: "seed",
+        KSamplerAdvanced: "noise_seed",
+        PrimitiveInt: "value",
+        PrimitiveFloat: "value",
+    },
     ref_image: {
         LoadImage: "image",
         LoadImageMask: "image",

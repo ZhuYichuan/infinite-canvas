@@ -99,9 +99,29 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
             </div>
 
             <div className="mb-2 grid min-w-0 cursor-default grid-cols-[minmax(0,1fr)_148px] items-center gap-2" onMouseDown={(event) => event.stopPropagation()}>
-                <ModelPicker className="canvas-compact-control h-10" config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability={mode} onMissingConfig={() => openConfigDialog(true)} fullWidth />
+                <ModelPicker
+                    className="canvas-compact-control h-10"
+                    config={config}
+                    value={config.model}
+                    onChange={(model) => {
+                        const isFrame = model.toLowerCase().includes("frame") || model.includes("首尾帧");
+                        const isOmni = model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
+                        onConfigChange(node.id, {
+                            model,
+                            ...(isFrame ? { videoMode: "frame" } : isOmni ? { videoMode: "omni" } : {}),
+                        });
+                    }}
+                    capability={mode}
+                    onMissingConfig={() => openConfigDialog(true)}
+                    fullWidth
+                />
                 {mode === "video" ? (
-                    <CanvasVideoSettingsPopover config={config} placement="topRight" buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))} />
+                    <CanvasVideoSettingsPopover
+                        config={config}
+                        placement="topRight"
+                        buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2"
+                        onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, globalConfig))}
+                    />
                 ) : mode === "image" ? (
                     <CanvasImageSettingsPopover config={config} placement="topRight" autoAdjustOverflow={false} buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })} />
                 ) : mode === "audio" ? (
@@ -148,9 +168,16 @@ function InputChip({ label, value, style }: { label: string; value: string; styl
 }
 
 function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: CanvasGenerationMode): AiConfig {
+    const rawModel = node.metadata?.model;
+    const model = resolveModelForCapability(globalConfig, rawModel, mode);
+    const isFrame = model.toLowerCase().includes("frame") || model.includes("首尾帧");
+    const isOmni = model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
+    const videoMode = node.metadata?.videoMode || (isFrame ? "frame" : isOmni ? "omni" : globalConfig.videoMode || defaultConfig.videoMode || "omni");
+
     return {
         ...globalConfig,
-        model: resolveModelForCapability(globalConfig, node.metadata?.model, mode),
+        model,
+        videoMode,
         reasoningEffort: node.metadata?.reasoningEffort || globalConfig.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
         size: node.metadata?.size || globalConfig.size || defaultConfig.size,
@@ -167,10 +194,24 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     };
 }
 
-function videoConfigPatch(key: keyof AiConfig, value: string) {
+function videoConfigPatch(key: keyof AiConfig, value: string, globalConfig?: AiConfig) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
+    if (key === "videoMode") {
+        const patch: Record<string, unknown> = { videoMode: value };
+        if (globalConfig) {
+            const channel = globalConfig.channels[0];
+            if (value === "frame") {
+                const frameModel = channel?.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
+                if (frameModel) patch.model = `${channel?.id || "default"}::${frameModel.name}`;
+            } else if (value === "omni") {
+                const omniModel = channel?.models.find((m) => m.name === "ComfyUI Video");
+                if (omniModel) patch.model = `${channel?.id || "default"}::${omniModel.name}`;
+            }
+        }
+        return patch;
+    }
     return { [key]: value };
 }
 

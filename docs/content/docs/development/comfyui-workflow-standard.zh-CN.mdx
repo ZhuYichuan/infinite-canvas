@@ -1,0 +1,223 @@
+---
+title: ComfyUI 工作流标准
+description: 槽位词汇表、标注约定、解析规则、传输契约与数据流
+---
+
+# ComfyUI 工作流标准
+
+本文档定义本项目接入自建 ComfyUI 时的工作流标注标准和运行时数据流。
+
+## 能力矩阵
+
+| 能力 | 输入槽位 | 输出 |
+|------|----------|------|
+| 文生图 | `prompt`, `width`, `height`, `seed` | image |
+| 参考图生图 | `ref_image_01`~`03`, `prompt`, `width`, `height`, `seed` | image |
+| AI 修图 | `ref_image_01`, `ref_mask`, `prompt`, `seed` | image |
+| 首尾帧 | `first_frame`, `last_frame`, `prompt`, `width`, `height`, `duration`, `seed` | video |
+| 全能参考视频 | `ref_image_01`~`09`, `ref_audio_01`~`03`, `ref_video_01`~`03`, `prompt`, `width`, `height`, `duration`, `seed` | video |
+| 文本生成 | `ref_image_01`, `prompt`, `seed` | text |
+
+能力由标记组合自动推导，不单独声明。例如：存在 `ref_mask` → 修图；存在 `first_frame` + `last_frame` → 首尾帧。
+
+## 槽位词汇表
+
+保留槽位名（全部小写 + 下划线）：
+
+| 槽位 | 值类型 | 语义 | 值来源 |
+|------|--------|------|--------|
+| `prompt` | string | 生成指令。实际值 = 节点自身 prompt + 上游 Text 节点内容（`\n\n` 拼接） | 调用方 |
+| `seed` | int ≥ 0 | 随机种子。`0` 或省略 = 随机。生成后写回节点 metadata | 调用方（随机） |
+| `width` | int > 0 | 输出宽度（像素）。缺省 = 跟随源图 / 工作流默认 | 调用方（用户选择） |
+| `height` | int > 0 | 输出高度（像素）。缺省 = 跟随源图 / 工作流默认 | 调用方（用户选择） |
+| `duration` | int > 0 | 视频时长（秒）。实际值由档案约束的离散集合中选取 | 调用方（用户选择） |
+| `ref_image_NN` | string (filename) | 第 N 张参考图。NN = 01..09，编号有意义（顺序 = 优先级） | 上游 Image 节点指派 |
+| `ref_video_NN` | string (filename) | 第 N 段参考视频。NN = 01..03 | 上游 Video 节点指派 |
+| `ref_audio_NN` | string (filename) | 第 N 段参考音频。NN = 01..03 | 上游 Audio 节点指派 |
+| `first_frame` | string (filename) | 首帧图 | 上游 Image 节点指派 |
+| `last_frame` | string (filename) | 尾帧图 | 上游 Image 节点指派 |
+| `ref_image_01` (修图) | string (filename) | 源图（被修图的节点自身内容） | 节点自身 |
+| `ref_mask` | string (filename) | 重绘遮罩。白色区域 = 重绘区域。像素尺寸须与源图一致 | 节点 mask 编辑 |
+
+**未标记 = 该能力参数不可用。** 工作流只启用子集槽位，UI 按实际标记渲染。
+
+## 标注约定
+
+工作流使用 ComfyUI **API 格式**（`File → Export Workflow (API)`）。标准槽位通过在节点的 `_meta.title` 中写入保留槽位名来声明：
+
+```json
+{
+  "298": {
+    "inputs": { "value": "黑色的小药丸" },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": { "title": "prompt" }
+  },
+  "301": {
+    "inputs": { "value": 4747 },
+    "class_type": "PrimitiveInt",
+    "_meta": { "title": "seed" }
+  },
+  "289": {
+    "inputs": { "image": "1786351271407.png" },
+    "class_type": "LoadImage",
+    "_meta": { "title": "ref_image_01" }
+  },
+  "299": {
+    "inputs": { "image": "1111.png" },
+    "class_type": "LoadImage",
+    "_meta": { "title": "ref_mask" }
+  },
+  "295": {
+    "inputs": { "filename_prefix": "ComfyUI", "images": ["288", 0] },
+    "class_type": "SaveImage",
+    "_meta": { "title": "output_image" }
+  }
+}
+```
+
+### 标注规则
+
+- 槽位名大小写敏感，去首尾空格后精确匹配保留词汇表。
+- 每个槽位最多标记一个节点。重复标题 → 校验失败。
+- 非保留标题（如中文"加载CLIP"、"K采样器"）一律忽略。
+- 标记节点可以是**任何类**（Primitive、LoadImage、KSampler 等），不限定 class_type。
+- 输出标记：`output_image` / `output_video` / `output_text`，必须标在**保存/输出节点**（SaveImage、VHS_VideoCombine、SaveText 等）上，不可标在预览节点。
+- 一张工作流有且仅有一个 `output_*` 标记。
+
+## 解析规则
+
+填充器将槽位值写入标记节点的 `inputs`。匹配目标输入的规则：
+
+| 槽位 | 匹配目标输入 |
+|------|-------------|
+| `prompt` | STRING/COMBO 类型输入，候选名：`value`, `text`, `prompt` |
+| `seed` | INT 类型输入，候选名：`value`, `seed` |
+| `width` | INT 类型输入，名必须为 `width` |
+| `height` | INT 类型输入，名必须为 `height` |
+| `duration` | INT 类型输入，候选名：`frames`, `duration`, `video_length`, `value` |
+| `ref_image_NN` / `first_frame` / `last_frame` / `ref_mask` | IMAGE 类型输入（LoadImage 的 `image`），或按类名匹配的 filename 字符串输入 |
+| `ref_video_NN` | 候选名：`video`, `file`, `path`, `value`（VHS_LoadVideo 等） |
+| `ref_audio_NN` | 候选名：`audio`, `file`, `path`, `value`（LoadAudio 等） |
+
+匹配逻辑：
+1. 取标记节点的所有 `inputs` key（排除连接引用 `[nodeId, index]`，只取标量/widget 输入）。
+2. 按候选名列表逐一查找，找到即匹配。
+3. 若多个候选名都命中 → 校验失败（歧义）。
+4. 若无一命中 → 校验失败（无兼容输入）。
+
+## 传输契约
+
+系统可支持本地原生 ComfyUI API 或 `comfy-api-proxy` 中转两种传输形态：
+
+### 形态一：自建本地 ComfyUI 原生 API
+
+| 操作 | 端点 | 说明 |
+|------|------|------|
+| 上传参考文件 | `POST /upload/image` (multipart, `overwrite=true`) | 返回 `{ name, subfolder }`，`name` 填入 LoadImage 的 `image` 输入 |
+| 提交工作流 | `POST /prompt` | body: `{ "prompt": <填好的 workflow JSON> }` → 返回 `{ prompt_id }` |
+| 轮询状态 | `GET /history/{prompt_id}` | 完成时 `outputs` 含结果文件名；`status.status_message` 含错误信息 |
+| 获取结果文件 | `GET /view?filename=&subfolder=&type=output` | 直接返回 blob |
+| 取消 | `POST /queue` | body: `{ "delete": [promptId] }` |
+| 进度（v1.5） | `WS /ws` | 消息类型：`progress`, `executed`, `execution_success`, `execution_error` |
+
+### 形态二：comfy-api-proxy 代理模式
+
+| 端点 | 方法 | 用途 |
+|------|------|------|
+| `/api/v2/assets` | `POST` | 上传参考图资产，返回 `asset_id` |
+| `/api/v2/jobs` | `POST` | 提交包含资产绑定的 workflow JSON，返回 `job_id` |
+| `/api/v2/jobs/{job_id}` | `GET` | 轮询 job 状态（`queued` / `running` / `succeeded` / `failed`） |
+| `/api/v2/jobs/{job_id}/cancel` | `POST` | 主动取消执行 |
+| `/api/v2/assets/{asset_id}/content` | `GET` | 下载产出成果物 |
+
+### 错误映射
+
+| ComfyUI 错误 | 节点 errorDetails 展示 |
+|---|---|
+| 缺模型文件（ModelNotFoundError） | "缺少模型: {filename}，请确认已下载到 models/ 目录" |
+| 执行异常（通用） | ComfyUI 返回的 error message 原文 |
+| 网络/超时 | "ComfyUI 连接超时" |
+
+## 数据流（7 步）
+
+```
+① 收集上游资源（buildNodeGenerationContext，复用现有）
+② 槽位指派（metadata.slotAssignments → 解析为 {slot: value}）
+③ 上传参考文件到 ComfyUI（缓存：storageKey → filename 或 asset_id）
+④ 填充工作流 JSON（深拷贝模板 + 写入槽位值 + 动态抹除未传参考节点及输入连线 + 校验）
+⑤ 提交 /prompt 或 /jobs → 任务 ID → 轮询状态
+⑥ 取结果（/view 或 /assets/content → blob）
+⑦ 落本地存储（uploadImage/uploadMediaFile → storageKey → 写回节点 metadata）
+```
+
+### 动态参考节点修剪原则
+
+当工作流定义了多个参考输入槽位（如 `ref_image_01..09`、`ref_video_01..03`），但用户实际只连接/上传了部分资源或未传参考资源时：
+- 填充器必须**自动将未指派资产的参考节点从工作流 JSON 中彻底抹除（`delete`）**；
+- 必须**自动清理下游主生成节点中指向这些被删节点的输入连线**；
+- 严禁将包含旧测试文件名或空引用的悬挂参考节点提交给 ComfyUI，确保纯文生视频与任意数量参考图皆能稳定执行。
+
+### 批量
+
+`count = N` → 提交 N 次（每次独立 seed），结果依次写入节点 `images[]` / `texts[]`。一次提交 = 一个结果单元。
+
+### seed 语义
+
+- 默认随机（每次生成前 `Math.floor(Math.random() * 2**32)`）。
+- 用户可手动指定固定 seed。
+- 生成完成后实际使用的 seed 写回 `node.metadata.seed`。
+- 同 seed + 同输入 → ComfyUI 返回缓存（`execution_cached`），秒出。
+
+## 校验规则（提交前本地执行，fail-loud）
+
+| 检查项 | 失败行为 |
+|--------|----------|
+| 至少一个保留槽位标记 | 报错："该工作流未标注标准槽位" |
+| 必填槽位存在（按能力） | 报错："缺少 {slot}" |
+| 槽位不重复 | 报错："槽位 {slot} 标记了多个节点" |
+| 标记节点有兼容输入 | 报错："节点 {id} 无 {slot} 兼容输入" |
+| 输出标记存在且唯一 | 报错："缺少 output_{kind} 标记" |
+| 必填参数值非空（prompt 等） | 报错："prompt 不能为空"（修图能力下 prompt 可为空 = 擦除） |
+| 数值在约束范围内 | 报错（如 width > 4096） |
+
+## 与现有架构的关系
+
+| 现有模块 | 变更 |
+|----------|------|
+| 节点图模型 / 注册表 / Group | 不动 |
+| `NodeGenerationContext` 收集层 | 不动 |
+| 本地存储（localforage + storageKey） | 不动 |
+| 批量 UI（images[]/texts[]） | 不动 |
+| 状态/重试（loading/error/retry） | 不动 |
+| mask 编辑弹窗 | 不动（产物作为 ref_mask 上传） |
+| `services/api/` | 保持 ComfyUI 适配与代理请求扩展 |
+| `ChannelModel` | 扩展：`workflow` (API JSON), `workflowId` (可选) |
+| 渠道编辑器 | 支持 ComfyUI 配置；模型条目 = 工作流档案 |
+| 参数面板 UI | 数据驱动：按解析出的槽位动态渲染控件 |
+| `project.tsx` 生成调用点 | 统一调用 ComfyUI 生成分发通道 |
+
+## 设计决策记录
+
+| 决策 | 选择 | 理由 |
+|------|------|------|
+| 槽位标记方式 | `_meta.title` = 保留槽位名 | 单一信息源，UI 可见可编辑，导出即得 |
+| 标注节点类 | 不限（Primitive / LoadImage / 任意） | 适配社区常见"参数外提"写法 |
+| 能力声明 | 不声明，由标记组合推导 | 减少冗余，避免不一致 |
+| 上限归属 | 档案 constraints（不写死代码） | 不同模型/工作流上限不同 |
+| 未标记槽位 | = 不可用，UI 不显示 | 灵活适配不同工作流 |
+| 批量 | 调用方 N 次提交 | 规则简单，UI 复用现有 |
+| 进度 | v1 轮询；v1.5 加 WS | 先跑通再加体验 |
+| SDK | 不用官方 SDK，手写薄客户端 | 纯浏览器、双场景（本地/Cloud）、代码量少 |
+| 未知模型 | 不截断，全量传入 | 宁可 API 报错（信息完整）也不静默丢 |
+| 修图 prompt | 可为空（= 擦除） | 符合 ComfyUI inpaint 惯例 |
+
+## 部署前置
+
+自建 ComfyUI 需预装对应模型文件。档案可附"模型依赖清单"（纯文档字段，不参与执行）。执行失败时 UI 透传 ComfyUI 原始错误（通常含缺少的 filename）。
+
+## 待确认
+
+- [ ] `ref_video` / `ref_audio` 上传端点在目标 ComfyUI 版本是否可用
+- [ ] 文本生成（LLM 节点）的 output 取法：outputs 字段 vs SaveText 文件
+- [ ] duration 槽位的候选输入名需按实际视频工作流校准
+- [ ] 渠道编辑器 UI 中工作流 JSON 的粘贴/导入交互

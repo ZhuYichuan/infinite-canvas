@@ -4,6 +4,9 @@
   "defaultOpen": true,
   "pages": [
     "local-development",
+    "canvas-node-system",
+    "comfyui-workflow-standard",
+    "multimodal-video-workflow-spec",
     "canvas-data-structure",
     "local-codex-canvas"
   ]

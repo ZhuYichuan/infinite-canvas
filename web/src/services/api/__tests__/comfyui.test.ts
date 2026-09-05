@@ -1,15 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { applyBindings, cancelJob, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, parseSize, pollJob, requestComfyuiImage, resolveReferenceImage, submitJob, uploadAsset } from "@/services/api/comfyui";
+import i18n from "@/i18n";
+import { applyBindings, cancelJob, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollJob, requestComfyuiImage, submitJob } from "@/services/api/comfyui";
 import type { ComfyuiWorkflowJson } from "@/services/api/comfyui";
-import { getImageBlob } from "@/services/image-storage";
 import { defaultConfig, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
-
-vi.mock("@/services/image-storage", () => ({
-    getImageBlob: vi.fn(),
-}));
-
-const mockedGetImageBlob = vi.mocked(getImageBlob);
 
 // The generation log store the service writes to (same localforage structure as image-storage).
 const { comfyuiLogStore } = vi.hoisted(() => ({
@@ -67,57 +61,6 @@ describe("parseSize", () => {
     });
 });
 
-describe("resolveReferenceImage", () => {
-    beforeEach(() => {
-        mockedGetImageBlob.mockReset();
-        vi.unstubAllGlobals();
-    });
-
-    it("reads a stored image by storage key", async () => {
-        const blob = new Blob(["fake-png"], { type: "image/png" });
-        mockedGetImageBlob.mockResolvedValue(blob);
-        const reference = await resolveReferenceImage("image:abc123");
-        expect(mockedGetImageBlob).toHaveBeenCalledWith("image:abc123");
-        expect(reference.blob).toBe(blob);
-        expect(reference.dataUrl).toBe("data:image/png;base64,ZmFrZS1wbmc=");
-    });
-
-    it("throws when the stored image is missing", async () => {
-        mockedGetImageBlob.mockResolvedValue(null);
-        await expect(resolveReferenceImage("image:missing")).rejects.toThrow("not found");
-    });
-
-    it("resolves a data URL without re-encoding", async () => {
-        const png = new Blob(["fake-png"], { type: "image/png" });
-        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, blob: async () => png, status: 200 }));
-        const reference = await resolveReferenceImage("data:image/png;base64,ZmFsa2UtcG5n");
-        expect(reference.blob).toBe(png);
-        expect(reference.dataUrl).toBe("data:image/png;base64,ZmFsa2UtcG5n");
-    });
-
-    it("fetches a remote URL and encodes the blob", async () => {
-        const png = new Blob(["fake-png"], { type: "image/png" });
-        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, blob: async () => png, status: 200 }));
-        const reference = await resolveReferenceImage("http://10.7.8.12:8189/output/x.png");
-        expect(reference.blob).toBe(png);
-        expect(reference.dataUrl).toBe("data:image/png;base64,ZmFrZS1wbmc=");
-    });
-
-    it("throws on a failed fetch", async () => {
-        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, blob: async () => new Blob() }));
-        await expect(resolveReferenceImage("http://10.7.8.12:8189/output/x.png")).rejects.toThrow("Failed to load reference image: 500");
-    });
-
-    it("throws on an empty blob", async () => {
-        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob() }));
-        await expect(resolveReferenceImage("http://10.7.8.12:8189/output/x.png")).rejects.toThrow("Reference image is empty");
-    });
-
-    it("throws on empty input", async () => {
-        await expect(resolveReferenceImage("  ")).rejects.toThrow("Empty reference image");
-    });
-});
-
 type TestWorkflowNode = {
     inputs: Record<string, unknown>;
     class_type: string;
@@ -144,29 +87,39 @@ describe("applyBindings", () => {
         expect((bound["2"] as TestWorkflowNode).inputs.value).toBe(1366);
     });
 
-    it("binds reference image asset ids into LoadImage nodes by index", () => {
+    it("binds seed into KSampler, KSamplerAdvanced, and PrimitiveInt nodes", () => {
         const workflow: ComfyuiWorkflowJson = {
-            "1": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
-            "2": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_02" } },
+            "1": { inputs: { seed: 0 }, class_type: "KSampler", _meta: { title: "seed" } },
+            "2": { inputs: { noise_seed: 0 }, class_type: "KSamplerAdvanced", _meta: { title: "seed" } },
+            "3": { inputs: { value: 0 }, class_type: "PrimitiveInt", _meta: { title: "seed" } },
         };
-        const bound = applyBindings(workflow, { refImageAssetIds: ["asset_a", "asset_b"] });
-        expect((bound["1"] as TestWorkflowNode).inputs.image).toBe("asset_a");
-        expect((bound["2"] as TestWorkflowNode).inputs.image).toBe("asset_b");
+        const bound = applyBindings(workflow, { seed: 123456789 });
+        expect((bound["1"] as TestWorkflowNode).inputs.seed).toBe(123456789);
+        expect((bound["2"] as TestWorkflowNode).inputs.noise_seed).toBe(123456789);
+        expect((bound["3"] as TestWorkflowNode).inputs.value).toBe(123456789);
     });
 
-    it("leaves a reference image node untouched when the asset list is shorter", () => {
+    it("falls back to input property when class_type is unknown but title is seed", () => {
         const workflow: ComfyuiWorkflowJson = {
-            "1": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
-            "2": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_02" } },
+            "1": { inputs: { seed: 0 }, class_type: "CustomSampler", _meta: { title: "seed" } },
+            "2": { inputs: { noise_seed: 0 }, class_type: "CustomNoise", _meta: { title: "seed" } },
         };
-        const bound = applyBindings(workflow, { refImageAssetIds: ["asset_a"] });
-        expect((bound["1"] as TestWorkflowNode).inputs.image).toBe("asset_a");
-        expect((bound["2"] as TestWorkflowNode).inputs.image).toBe("");
+        const bound = applyBindings(workflow, { seed: 987654321 });
+        expect((bound["1"] as TestWorkflowNode).inputs.seed).toBe(987654321);
+        expect((bound["2"] as TestWorkflowNode).inputs.noise_seed).toBe(987654321);
+    });
+
+    it("falls back to KSampler numeric seed when no node is titled seed", () => {
+        const workflow: ComfyuiWorkflowJson = {
+            "57:3": { inputs: { seed: 989346441631141 }, class_type: "KSampler", _meta: { title: "K采样器" } },
+        };
+        const bound = applyBindings(workflow, { seed: 42 });
+        expect((bound["57:3"] as TestWorkflowNode).inputs.seed).toBe(42);
     });
 
     it("skips missing titles without throwing and returns a deep copy", () => {
         const workflow: ComfyuiWorkflowJson = {};
-        const params = { prompt: "一只猫", width: 1024, height: 1366, refImageAssetIds: ["asset_a"] };
+        const params = { prompt: "一只猫", width: 1024, height: 1366, seed: 12345 };
         const bound = applyBindings(workflow, params);
         expect(bound).not.toBe(workflow);
         expect(bound).toEqual(workflow);
@@ -179,6 +132,43 @@ describe("applyBindings", () => {
         expect(boundOther["1"]).toEqual(other["1"]);
     });
 
+    it("binds multiple reference images to ref_image_01 and ref_image_02", () => {
+        const workflow: ComfyuiWorkflowJson = {
+            "1": { inputs: { image: "old1.png" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
+            "2": { inputs: { image: "old2.png" }, class_type: "LoadImage", _meta: { title: "ref_image_02" } },
+        };
+        const bound = applyBindings(workflow, { refImages: ["asset_1", "asset_2"] });
+        expect((bound["1"] as TestWorkflowNode).inputs.image).toBe("asset_1");
+        expect((bound["2"] as TestWorkflowNode).inputs.image).toBe("asset_2");
+    });
+
+    it("dynamically prunes unassigned ref_image_02 and bridges ReferenceLatent conditioning", () => {
+        const workflow: ComfyuiWorkflowJson = {
+            "42": { inputs: { image: "img1.png" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
+            "46": { inputs: { image: "img2.png" }, class_type: "LoadImage", _meta: { title: "ref_image_02" } },
+            "62:26": { inputs: { text: "prompt" }, class_type: "FluxGuidance", _meta: { title: "guidance" } },
+            "62:44": { inputs: { image: ["42", 0] }, class_type: "VAEEncode", _meta: { title: "encode1" } },
+            "62:43": { inputs: { conditioning: ["62:26", 0], latent: ["62:44", 0] }, class_type: "ReferenceLatent", _meta: { title: "ref_latent_1" } },
+            "62:40": { inputs: { image: ["46", 0] }, class_type: "VAEEncode", _meta: { title: "encode2" } },
+            "62:39": { inputs: { conditioning: ["62:43", 0], latent: ["62:40", 0] }, class_type: "ReferenceLatent", _meta: { title: "ref_latent_2" } },
+            "62:22": { inputs: { conditioning: ["62:39", 0] }, class_type: "BasicGuider", _meta: { title: "guider" } },
+        };
+
+        const bound = applyBindings(workflow, { refImages: ["asset_1"] });
+        // ref_image_01 should remain and be bound
+        expect(bound["42"]).toBeDefined();
+        expect((bound["42"] as TestWorkflowNode).inputs.image).toBe("asset_1");
+        expect(bound["62:43"]).toBeDefined();
+
+        // ref_image_02 branch should be pruned
+        expect(bound["46"]).toBeUndefined();
+        expect(bound["62:40"]).toBeUndefined();
+        expect(bound["62:39"]).toBeUndefined();
+
+        // BasicGuider should be re-routed directly to ref_latent_1 (62:43)
+        expect((bound["62:22"] as TestWorkflowNode).inputs.conditioning).toEqual(["62:43", 0]);
+    });
+
     it("skips a prompt node with an unrecognized class_type", () => {
         const workflow: ComfyuiWorkflowJson = {
             "1": { inputs: { text: "old" }, class_type: "UnknownClass", _meta: { title: "prompt" } },
@@ -189,59 +179,14 @@ describe("applyBindings", () => {
     });
 });
 
-describe("uploadAsset", () => {
-    let fetchMock: ReturnType<typeof vi.fn>;
-
-    beforeEach(() => {
-        fetchMock = vi.fn();
-        vi.stubGlobal("fetch", fetchMock);
-    });
-
-    afterEach(() => {
-        vi.unstubAllGlobals();
-    });
-
-    it("posts the blob as multipart form data and returns the asset id", async () => {
-        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "asset_123" }) });
-        const blob = new Blob(["fake-png"], { type: "image/png" });
-        await expect(uploadAsset(blob, "http://10.7.8.12:8189", "tok")).resolves.toBe("asset_123");
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
-        expect(url).toBe("http://10.7.8.12:8189/api/v2/assets");
-        expect(init.method).toBe("POST");
-        expect(init.body).toBeInstanceOf(FormData);
-        // happy-dom wraps appended Blobs in a File, so compare by type/size instead of identity.
-        const image = (init.body as FormData).get("image");
-        expect(image).toBeInstanceOf(Blob);
-        expect((image as Blob).type).toBe(blob.type);
-        expect((image as Blob).size).toBe(blob.size);
-        expect(init.headers.Authorization).toBe("Bearer tok");
-    });
-
-    it("omits the Authorization header without a token and strips a trailing slash from the base URL", async () => {
-        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "asset_456" }) });
-        const blob = new Blob(["fake-png"], { type: "image/png" });
-        await expect(uploadAsset(blob, "http://10.7.8.12:8189/")).resolves.toBe("asset_456");
-        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
-        expect(url).toBe("http://10.7.8.12:8189/api/v2/assets");
-        expect(init.headers.Authorization).toBeUndefined();
-    });
-
-    it("throws ComfyuiApiError when the response has no asset id", async () => {
-        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
-        await expect(uploadAsset(new Blob(), "http://10.7.8.12:8189")).rejects.toThrow(ComfyuiApiError);
-    });
-
-    it("throws ComfyuiApiError with the status on a 401 response", async () => {
-        fetchMock.mockResolvedValue({ ok: false, status: 401, json: async () => ({}) });
-        const error: unknown = await uploadAsset(new Blob(), "http://10.7.8.12:8189").then(
-            () => {
-                throw new Error("uploadAsset should have rejected");
-            },
-            (reason) => reason,
-        );
-        expect(error).toBeInstanceOf(ComfyuiApiError);
-        expect(error).toMatchObject({ name: "ComfyuiApiError", status: 401 });
+describe("generateRandomSeed", () => {
+    it("generates a safe non-negative integer", () => {
+        for (let i = 0; i < 10; i++) {
+            const seed = generateRandomSeed();
+            expect(seed).toBeGreaterThanOrEqual(0);
+            expect(seed).toBeLessThan(1_000_000_000_000_000);
+            expect(Number.isInteger(seed)).toBe(true);
+        }
     });
 });
 
@@ -257,23 +202,25 @@ describe("submitJob", () => {
         vi.unstubAllGlobals();
     });
 
-    it("posts the bound workflow as { prompt } and returns the job id", async () => {
-        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "job_abc" }) });
+    it("posts the bound workflow as { prompt, client_id } to /prompt and returns the prompt_id", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ prompt_id: "job_abc" }) });
         const workflow: ComfyuiWorkflowJson = {
             "1": { inputs: { value: "一只猫" }, class_type: "PrimitiveStringMultiline", _meta: { title: "prompt" } },
         };
-        await expect(submitJob(workflow, "http://10.7.8.12:8189", "tok")).resolves.toBe("job_abc");
+        await expect(submitJob(workflow, "http://10.7.8.12:8188", "tok")).resolves.toBe("job_abc");
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
-        expect(url).toBe("http://10.7.8.12:8189/api/v2/jobs");
+        expect(url).toBe("http://10.7.8.12:8188/prompt");
         expect(init.method).toBe("POST");
-        expect(JSON.parse(String(init.body))).toEqual({ prompt: workflow });
+        const parsed = JSON.parse(String(init.body));
+        expect(parsed.prompt).toEqual(workflow);
+        expect(parsed.client_id).toBeDefined();
         expect(init.headers["Content-Type"]).toBe("application/json");
         expect(init.headers.Authorization).toBe("Bearer tok");
     });
 
     it("throws ComfyuiApiError with the status on a 500 response", async () => {
         fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
-        const error: unknown = await submitJob({ "1": {} }, "http://10.7.8.12:8189").then(
+        const error: unknown = await submitJob({ "1": {} }, "http://10.7.8.12:8188").then(
             () => {
                 throw new Error("submitJob should have rejected");
             },
@@ -287,13 +234,13 @@ describe("submitJob", () => {
 
     it("throws ComfyuiApiError when the response has no job id", async () => {
         fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
-        await expect(submitJob({ "1": {} }, "http://10.7.8.12:8189")).rejects.toThrow(ComfyuiApiError);
+        await expect(submitJob({ "1": {} }, "http://10.7.8.12:8188")).rejects.toThrow(ComfyuiApiError);
     });
 
     it("trims whitespace from the base URL", async () => {
-        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: "job_abc" }) });
-        await expect(submitJob({ "1": {} }, " http://10.7.8.12:8189 ")).resolves.toBe("job_abc");
-        expect(fetchMock.mock.calls[0][0]).toBe("http://10.7.8.12:8189/api/v2/jobs");
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ prompt_id: "job_abc" }) });
+        await expect(submitJob({ "1": {} }, " http://10.7.8.12:8188 ")).resolves.toBe("job_abc");
+        expect(fetchMock.mock.calls[0][0]).toBe("http://10.7.8.12:8188/prompt");
     });
 });
 
@@ -313,31 +260,39 @@ describe("pollJob", () => {
     it("polls immediately, waits 2s between rounds, and resolves with the image asset ids when the job completes", async () => {
         vi.useFakeTimers();
         fetchMock
-            .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ status: "in_progress" }) })
+            .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) })
             .mockResolvedValueOnce({
                 ok: true,
                 status: 200,
-                json: async () => ({ status: "completed", outputs: [{ image: [{ asset_id: "asset_1" }, { asset_id: "asset_2" }] }, { image: [] }] }),
+                json: async () => ({
+                    job_1: {
+                        status: { status_str: "success", completed: true },
+                        outputs: {
+                            "9": { images: [{ filename: "asset_1.png", type: "output" }, { filename: "asset_2.png", type: "output" }] },
+                        },
+                    },
+                }),
             });
-        const result = pollJob("job_1", "http://10.7.8.12:8189", "tok");
+        const result = pollJob("job_1", "http://10.7.8.12:8188", "tok");
         expect(fetchMock).toHaveBeenCalledTimes(1);
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
-        expect(url).toBe("http://10.7.8.12:8189/api/v2/jobs/job_1");
+        expect(url).toBe("http://10.7.8.12:8188/history/job_1");
         expect(init.headers.Authorization).toBe("Bearer tok");
         await vi.advanceTimersByTimeAsync(2000);
-        await expect(result).resolves.toEqual(["asset_1", "asset_2"]);
+        await expect(result).resolves.toEqual(["asset_1.png", "asset_2.png"]);
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
-    it("throws ComfyuiJobError when the job status is failed or cancelled", async () => {
-        fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ status: "failed" }) });
-        const failed: unknown = await pollJob("job_1", "http://10.7.8.12:8189").catch((reason) => reason);
+    it("throws ComfyuiJobError when the job status is failed", async () => {
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                job_1: { status: { status_str: "error", messages: ["Node error"] } },
+            }),
+        });
+        const failed: unknown = await pollJob("job_1", "http://10.7.8.12:8188").catch((reason) => reason);
         expect(failed).toBeInstanceOf(ComfyuiJobError);
-        expect(failed).toMatchObject({ name: "ComfyuiJobError", status: "failed" });
-        fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ status: "cancelled" }) });
-        const cancelled: unknown = await pollJob("job_1", "http://10.7.8.12:8189").catch((reason) => reason);
-        expect(cancelled).toBeInstanceOf(ComfyuiJobError);
-        expect(cancelled).toMatchObject({ status: "cancelled" });
     });
 
     it("keeps polling every 2 seconds until the job completes", async () => {
@@ -345,9 +300,13 @@ describe("pollJob", () => {
         let polls = 0;
         fetchMock.mockImplementation(async () => {
             polls += 1;
-            return { ok: true, status: 200, json: async () => (polls < 3 ? { status: "in_progress" } : { status: "completed", outputs: [] }) };
+            return {
+                ok: true,
+                status: 200,
+                json: async () => (polls < 3 ? {} : { job_1: { status: { completed: true }, outputs: {} } }),
+            };
         });
-        const result = pollJob("job_1", "http://10.7.8.12:8189");
+        const result = pollJob("job_1", "http://10.7.8.12:8188");
         await vi.advanceTimersByTimeAsync(4000);
         await expect(result).resolves.toEqual([]);
         expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -355,9 +314,9 @@ describe("pollJob", () => {
 
     it("resolves undefined without throwing when the signal is aborted", async () => {
         vi.useFakeTimers();
-        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ status: "in_progress" }) });
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
         const controller = new AbortController();
-        const result = pollJob("job_1", "http://10.7.8.12:8189", "tok", controller.signal);
+        const result = pollJob("job_1", "http://10.7.8.12:8188", "tok", controller.signal);
         controller.abort();
         await vi.advanceTimersByTimeAsync(2000);
         await expect(result).resolves.toBeUndefined();
@@ -366,7 +325,7 @@ describe("pollJob", () => {
 
     it("throws ComfyuiApiError with the status on a non-2xx poll response", async () => {
         fetchMock.mockResolvedValue({ ok: false, status: 502, json: async () => ({}) });
-        const error: unknown = await pollJob("job_1", "http://10.7.8.12:8189").catch((reason) => reason);
+        const error: unknown = await pollJob("job_1", "http://10.7.8.12:8188").catch((reason) => reason);
         expect(error).toBeInstanceOf(ComfyuiApiError);
         expect(error).toMatchObject({ name: "ComfyuiApiError", status: 502 });
     });
@@ -387,9 +346,9 @@ describe("downloadAsset", () => {
     it("downloads the asset content and converts the blob to a data url", async () => {
         const png = new Blob(["fake-png"], { type: "image/png" });
         fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => png });
-        const result = await downloadAsset("asset_1", "http://10.7.8.12:8189/", "tok");
+        const result = await downloadAsset("asset_1.png", "http://10.7.8.12:8188/", "tok");
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
-        expect(url).toBe("http://10.7.8.12:8189/api/v2/assets/asset_1/content");
+        expect(url).toBe("http://10.7.8.12:8188/view?filename=asset_1.png&subfolder=&type=output");
         expect(init.headers.Authorization).toBe("Bearer tok");
         expect(result.blob).toBe(png);
         expect(result.dataUrl).toBe("data:image/png;base64,ZmFrZS1wbmc=");
@@ -397,14 +356,14 @@ describe("downloadAsset", () => {
 
     it("throws ComfyuiApiError with the status when the asset content is unavailable", async () => {
         fetchMock.mockResolvedValue({ ok: false, status: 404, blob: async () => new Blob() });
-        const error: unknown = await downloadAsset("asset_404", "http://10.7.8.12:8189").catch((reason) => reason);
+        const error: unknown = await downloadAsset("asset_404.png", "http://10.7.8.12:8188").catch((reason) => reason);
         expect(error).toBeInstanceOf(ComfyuiApiError);
         expect(error).toMatchObject({ status: 404 });
     });
 
     it("throws ComfyuiApiError when the downloaded asset is empty", async () => {
         fetchMock.mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob() });
-        await expect(downloadAsset("asset_empty", "http://10.7.8.12:8189")).rejects.toThrow(ComfyuiApiError);
+        await expect(downloadAsset("asset_empty.png", "http://10.7.8.12:8188")).rejects.toThrow(ComfyuiApiError);
     });
 });
 
@@ -420,18 +379,18 @@ describe("cancelJob", () => {
         vi.unstubAllGlobals();
     });
 
-    it("posts to the job cancel endpoint with the bearer token", async () => {
+    it("posts to /interrupt endpoint with bearer token if provided", async () => {
         fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
-        await expect(cancelJob("job_1", "http://10.7.8.12:8189", "tok")).resolves.toBeUndefined();
+        await expect(cancelJob("job_1", "http://10.7.8.12:8188", "tok")).resolves.toBeUndefined();
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
-        expect(url).toBe("http://10.7.8.12:8189/api/v2/jobs/job_1/cancel");
+        expect(url).toBe("http://10.7.8.12:8188/interrupt");
         expect(init.method).toBe("POST");
         expect(init.headers.Authorization).toBe("Bearer tok");
     });
 
     it("resolves without throwing when the cancel response is not ok", async () => {
         fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
-        await expect(cancelJob("job_1", "http://10.7.8.12:8189")).resolves.toBeUndefined();
+        await expect(cancelJob("job_1", "http://10.7.8.12:8188")).resolves.toBeUndefined();
     });
 
     it("resolves without throwing when the cancel request never reaches the proxy", async () => {
@@ -472,7 +431,7 @@ function proxyFlowWith(jobStatus: string, extra?: Record<string, unknown>) {
         const url = String(input);
         const method = init?.method || "GET";
         if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
-        if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: jobStatus, ...(jobStatus === "completed" ? { outputs: [{ image: [{ asset_id: "asset_1" }] }] } : {}), ...extra }) };
+        if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: jobStatus, ...(jobStatus === "succeeded" ? { outputs: [{ id: "asset_1", type: "image" }] } : {}), ...extra }) };
         if (method === "GET" && url.endsWith("/api/v2/assets/asset_1/content")) return { ok: true, status: 200, blob: async () => png };
         return { ok: false, status: 500, json: async () => ({}) };
     };
@@ -499,7 +458,7 @@ describe("requestComfyuiImage", () => {
             const method = init?.method || "GET";
             if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
             if (method === "POST" && url.endsWith("/api/v2/jobs/job_1/cancel")) return { ok: true, status: 200, json: async () => ({}) };
-            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "in_progress" }) };
+            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "running" }) };
             return { ok: false, status: 500, json: async () => ({}) };
         });
         const controller = new AbortController();
@@ -530,13 +489,13 @@ describe("requestComfyuiImage", () => {
         expect((cancelCall?.[1] as RequestInit).method).toBe("POST");
     });
 
-    it("throws ComfyuiTimeoutError after the 10 minute deadline without calling the cancel endpoint", async () => {
+    it("throws ComfyuiTimeoutError after the 2 hour deadline without calling the cancel endpoint", async () => {
         vi.useFakeTimers();
         fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = String(input);
             const method = init?.method || "GET";
             if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
-            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "in_progress" }) };
+            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "running" }) };
             return { ok: false, status: 500, json: async () => ({}) };
         });
         let resolveSubmitted: () => void = () => undefined;
@@ -554,7 +513,7 @@ describe("requestComfyuiImage", () => {
         // Attach the rejection handler before the clock advances so the rejection is never unhandled.
         const settled = result.catch((reason: unknown) => reason);
         await submitted;
-        await vi.advanceTimersByTimeAsync(600_000);
+        await vi.advanceTimersByTimeAsync(7_200_000);
         await expect(settled).resolves.toBeInstanceOf(ComfyuiTimeoutError);
         expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/cancel"))).toBe(false);
     });
@@ -565,7 +524,7 @@ describe("requestComfyuiImage", () => {
             const url = String(input);
             const method = init?.method || "GET";
             if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
-            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "in_progress" }) };
+            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "running" }) };
             return { ok: false, status: 500, json: async () => ({}) };
         });
         let resolveSubmitted: () => void = () => undefined;
@@ -583,15 +542,15 @@ describe("requestComfyuiImage", () => {
         // Attach the rejection handler before the clock advances so the rejection is never unhandled.
         const settled = result.catch((reason: unknown) => reason);
         await submitted;
-        await vi.advanceTimersByTimeAsync(600_000);
+        await vi.advanceTimersByTimeAsync(7_200_000);
         const error: unknown = await settled;
         expect(error).toBeInstanceOf(ComfyuiTimeoutError);
-        expect(error).toMatchObject({ name: "ComfyuiTimeoutError", timeoutMs: 600_000 });
-        expect((error as Error).message).toMatch(/600s|600秒/);
+        expect(error).toMatchObject({ name: "ComfyuiTimeoutError", timeoutMs: 7_200_000 });
+        expect((error as Error).message).toMatch(/2h|7200/);
     });
 
     it("completes the request without ever calling the cancel endpoint", async () => {
-        fetchMock.mockImplementation(proxyFlowWith("completed"));
+        fetchMock.mockImplementation(proxyFlowWith("succeeded"));
         const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫", size: "1024x768" });
         await expect(result).resolves.toMatchObject({
             jobId: "job_1",
@@ -601,7 +560,7 @@ describe("requestComfyuiImage", () => {
     });
 
     it("does not call the cancel endpoint when a never-aborted signal is provided", async () => {
-        fetchMock.mockImplementation(proxyFlowWith("completed"));
+        fetchMock.mockImplementation(proxyFlowWith("succeeded"));
         const controller = new AbortController();
         const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫", signal: controller.signal });
         await expect(result).resolves.toMatchObject({ jobId: "job_1" });
@@ -615,7 +574,7 @@ describe("requestComfyuiImage", () => {
             const method = init?.method || "GET";
             if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
             if (method === "POST" && url.endsWith("/api/v2/jobs/job_1/cancel")) return { ok: true, status: 200, json: async () => ({}) };
-            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "in_progress" }) };
+            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "running" }) };
             return { ok: false, status: 500, json: async () => ({}) };
         });
         const controller = new AbortController();
@@ -647,7 +606,7 @@ describe("requestComfyuiImage", () => {
     });
 
     it("writes a success log entry with the job id and duration", async () => {
-        fetchMock.mockImplementation(proxyFlowWith("completed"));
+        fetchMock.mockImplementation(proxyFlowWith("succeeded"));
         const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫" });
         await expect(result).resolves.toMatchObject({ jobId: "job_1" });
         expect(comfyuiLogStore.setItem).toHaveBeenCalledTimes(1);
@@ -665,7 +624,7 @@ describe("requestComfyuiImage", () => {
         const [key, record] = comfyuiLogStore.setItem.mock.calls[0] as [string, Record<string, unknown>];
         expect(key).toBe(String(record.id));
         expect(record).toMatchObject({ status: "failed", provider: "comfyui", model: "ComfyUI T2I", prompt: "一只猫", jobId: "job_1" });
-        expect(String(record.errorMessage)).toContain("ComfyUI job failed");
+        expect(String(record.errorMessage)).toBe(i18n.t("comfyui.failed"));
     });
 
     it("throws ComfyuiNoWorkflowError and logs a failed entry without a job id when the model has no workflow", async () => {
@@ -675,47 +634,32 @@ describe("requestComfyuiImage", () => {
         expect(comfyuiLogStore.setItem).toHaveBeenCalledTimes(1);
         const [, record] = comfyuiLogStore.setItem.mock.calls[0] as [string, Record<string, unknown>];
         expect(record).toMatchObject({ status: "failed", jobId: "" });
+        expect(String(record.errorMessage)).toContain("ComfyUI T2I");
         expect(String(record.errorMessage)).toContain("workflow");
     });
 
-    it("submits the workflow with the prompt and pixel size bound into the nodes", async () => {
-        fetchMock.mockImplementation(proxyFlowWith("completed"));
-        const result = requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "一只猫", size: "1024x768" });
-        await expect(result).resolves.toMatchObject({ jobId: "job_1" });
-        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-        expect(url).toBe("http://10.7.8.12:8189/api/v2/jobs");
-        const body = JSON.parse(String(init.body)) as { prompt: Record<string, { inputs: Record<string, unknown> }> };
-        expect(body.prompt["1"].inputs.text).toBe("一只猫");
-        expect(body.prompt["2"].inputs.value).toBe(1024);
-        expect(body.prompt["3"].inputs.value).toBe(768);
-    });
-
-    it("uploads each reference image and binds the asset ids into the ref nodes", async () => {
-        const uploadedAssetIds = ["asset_a", "asset_b"];
-        const png = new Blob(["fake-png"], { type: "image/png" });
-        fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = String(input);
-            const method = init?.method || "GET";
-            if (url.startsWith("data:")) return { ok: true, status: 200, blob: async () => png };
-            if (method === "POST" && url.endsWith("/api/v2/assets")) return { ok: true, status: 200, json: async () => ({ id: uploadedAssetIds.shift() }) };
-            if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
-            if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: "completed", outputs: [] }) };
-            return { ok: false, status: 500, json: async () => ({}) };
-        });
+    it("submits the workflow with the prompt, pixel size, and random seed bound into the nodes", async () => {
+        fetchMock.mockImplementation(proxyFlowWith("succeeded"));
         const config = buildComfyuiConfig({
             workflow: {
                 "1": { inputs: { text: "" }, class_type: "CLIPTextEncode", _meta: { title: "prompt" } },
-                "4": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
-                "5": { inputs: { image: "" }, class_type: "LoadImage", _meta: { title: "ref_image_02" } },
+                "2": { inputs: { value: 0 }, class_type: "PrimitiveInt", _meta: { title: "width" } },
+                "3": { inputs: { value: 0 }, class_type: "PrimitiveInt", _meta: { title: "height" } },
+                "4": { inputs: { seed: 0 }, class_type: "KSampler", _meta: { title: "seed" } },
             },
         });
-        const result = requestComfyuiImage({ config, model: "comfy::ComfyUI T2I", prompt: "一只猫", images: ["data:image/png;base64,ZmFrZS1wbmc", "data:image/png;base64,ZmFrZS1wbmc"] });
-        await expect(result).resolves.toMatchObject({ jobId: "job_1" });
-        const assetCalls = fetchMock.mock.calls.filter(([url, init]) => String(url).endsWith("/api/v2/assets") && init?.method === "POST");
-        expect(assetCalls).toHaveLength(2);
-        const submitCall = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith("/api/v2/jobs") && init?.method === "POST") as [string, RequestInit];
-        const body = JSON.parse(String(submitCall[1].body)) as { prompt: Record<string, { inputs: Record<string, unknown> }> };
-        expect(body.prompt["4"].inputs.image).toBe("asset_a");
-        expect(body.prompt["5"].inputs.image).toBe("asset_b");
+        const result = await requestComfyuiImage({ config, model: "comfy::ComfyUI T2I", prompt: "一只猫", size: "1024x768" });
+        expect(result).toMatchObject({ jobId: "job_1" });
+        expect(typeof result.seed).toBe("number");
+        expect(result.seed).toBeGreaterThanOrEqual(0);
+        expect(result.items[0].seed).toBe(result.seed);
+
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe("http://10.7.8.12:8189/api/v2/jobs");
+        const body = JSON.parse(String(init.body)) as { workflow: Record<string, { inputs: Record<string, unknown> }> };
+        expect(body.workflow["1"].inputs.text).toBe("一只猫");
+        expect(body.workflow["2"].inputs.value).toBe(1024);
+        expect(body.workflow["3"].inputs.value).toBe(768);
+        expect(body.workflow["4"].inputs.seed).toBe(result.seed);
     });
 });

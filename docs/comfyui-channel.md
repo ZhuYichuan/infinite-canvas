@@ -23,11 +23,30 @@ Web 端永远只跟 `comfy-api-proxy` 对话，不会直接连 ComfyUI。Proxy �
 | --- | --- | --- |
 | `/api/v2/assets` | `POST` | 上传参考图，返回 `asset_id` |
 | `/api/v2/jobs` | `POST` | 提交 workflow JSON，返回 `job_id` |
-| `/api/v2/jobs/{job_id}` | `GET` | 轮询 job 状态（`pending` / `in_progress` / `completed` / `failed`） |
+| `/api/v2/jobs/{job_id}` | `GET` | 轮询 job 状态（`queued` / `running` 未完成；`succeeded` 成功；`failed` / `canceled` / `expired` 失败） |
 | `/api/v2/jobs/{job_id}/cancel` | `POST` | 主动取消 |
 | `/api/v2/assets/{asset_id}/content` | `GET` | 下载产出资产 |
 
 完整协议与字段说明见 [`comfy-api-proxy` 仓库](https://github.com/basketikun/comfy-api-proxy)。
+
+### 与 OpenAI / Gemini 的区别
+
+| 维度 | OpenAI / Gemini | ComfyUI |
+| --- | --- | --- |
+| 协议 | HTTP REST / SSE 流式 | 异步任务：提交 → 轮询 → 下载 |
+| 返回时机 | 流式或一次性返回 | 后端完成后再统一返回 |
+| UI 状态 | 流式预览 | LOADING（不显示中间帧） |
+| 超时 | 一般 < 1 分钟 | **10 分钟**（仅 UI 提示，不调 cancel） |
+| 取消 | 直接 abort | abort 时调用 `/api/v2/jobs/{id}/cancel` |
+
+简而言之：ComfyUI 是「提交一份 workflow JSON + 异步等结果」，不是「一段 prompt + 流式增量返回」。现有 OpenAI / Gemini 流程完全不受影响。
+
+### 一期限制
+
+- 一期仅支持 **T2I（文生图）** 能力；I2I（图生图）与 video / text / audio 属于未来扩展。
+- 每个 `ChannelModel` **一对一绑定一份 workflow JSON**，没有仓库、没有版本管理。
+- 仅对接本地 `comfy-api-proxy`，**不支持 ComfyUI Cloud**（`cloud.comfy.org`），后者需另写 adapter。
+- Workflow JSON 内嵌于 AiConfig，会进 localStorage 并随 `exportAppConfig` 一同导出；单份一般 100–500 KB，仍在 localStorage 限额内。
 
 ---
 
@@ -57,15 +76,13 @@ Web 端永远只跟 `comfy-api-proxy` 对话，不会直接连 ComfyUI。Proxy �
    - `Proxy URL`：proxy 的 base URL，例如 `http://10.7.8.12:8189`
    - `Proxy Token`：Bearer token（proxy `--allow` 模式下必填；不填保存按钮会被禁用并提示）
    - `Base URL` / `API Key`：ComfyUI 渠道下可忽略
-4. 保存后会自动注入 3 个默认 image model（你之后可重命名、删除、上传 workflow）：
+4. 保存后会自动注入 1 个默认 image model（你之后可重命名、上传 workflow）：
    - `ComfyUI T2I`（文生图）
-   - `ComfyUI I2I 1ref`（1 张参考图）
-   - `ComfyUI I2I 3ref`（最多 3 张参考图）
 5. 首次创建 ComfyUI channel 时，`imageModel` 偏好会自动设为 `ComfyUI T2I`；`videoModel` / `textModel` / `audioModel` 保持空。
 
 ### ChannelEditorDrawer 必填校验
 
-`apiFormat === "comfyui"` 时，`Proxy URL` 和 `Proxy Token` 两个字段是必填的，缺失时保存按钮禁用并显示对应错误文案（来自 `web/src/i18n/locales/*` 里的 `config.channelEditor.comfyuiProxyUrlRequired` / `comfyuiProxyTokenRequired`）。
+`apiFormat === "comfyui"` 时，`Proxy URL` 和 `Proxy Token` 两个字段是必填的，缺失时保存按钮禁用并显示对应错误文案（来自 `web/src/i18n/locales/*` 里的 `config.channelEditor.comfyuiProxyUrlError` / `comfyuiProxyTokenError`）。
 
 ---
 
@@ -89,7 +106,7 @@ Web 端永远只跟 `comfy-api-proxy` 对话，不会直接连 ComfyUI。Proxy �
 > | `prompt` | 文本提示词 | `inputs.text` |
 > | `width` | 输出宽度 | `inputs.value` |
 > | `height` | 输出高度 | `inputs.value` |
-> | `ref_image_01` / `ref_image_02` / `ref_image_03` | 参考图 1/2/3 | `inputs.image`（写 asset 引用） |
+> | `seed` | 随机种子（用户不可见，系统自动随机生成） | `inputs.seed` / `noise_seed` / `value` |
 >
 > 这个约定继承自 `tools/comfyui-task/src/binding.ts` 的 `TITLE_TO_INPUT_SLOT` 映射，不要自行改名。
 
@@ -98,15 +115,10 @@ Web 端永远只跟 `comfy-api-proxy` 对话，不会直接连 ComfyUI。Proxy �
 ## 5. 在画布上调用
 
 1. 在画布上选中或新建一个 generation 节点。
-2. ModelPicker 选 `ComfyUI T2I` / `ComfyUI I2I 1ref` / `ComfyUI I2I 3ref`。
-3. 输入 prompt，按生成：
-   - T2I：仅 prompt
-   - I2I 1ref：把 1 张已有图片拖到生成节点的引用槽
-   - I2I 3ref：把最多 3 张已有图片拖到引用槽（拖入顺序决定 `ref_image_01..03`）
+2. ModelPicker 选 `ComfyUI T2I`。
+3. 输入 prompt，按生成。
 4. 节点状态进入 LOADING，等待后台完成。
 5. ComfyUI 完成后图片作为新 image 节点出现在画布上。
-
-> 图生图的 model 选择是手动行为，画布**不会**根据当前 prompt 里有没有参考图去自动切 model；用户自选避免歧义。
 
 ---
 

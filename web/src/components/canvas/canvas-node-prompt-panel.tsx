@@ -110,8 +110,26 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </>
                     ) : mode === "video" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="video" onMissingConfig={() => openConfigDialog(true)} className="max-w-[190px]" />
-                            <CanvasVideoSettingsPopover config={config} buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-full !px-3" onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))} />
+                            <ModelPicker
+                                config={config}
+                                value={config.model}
+                                onChange={(model) => {
+                                    const isFrame = model.toLowerCase().includes("frame") || model.includes("首尾帧");
+                                    const isOmni = model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
+                                    onConfigChange(node.id, {
+                                        model,
+                                        ...(isFrame ? { videoMode: "frame" } : isOmni ? { videoMode: "omni" } : {}),
+                                    });
+                                }}
+                                capability="video"
+                                onMissingConfig={() => openConfigDialog(true)}
+                                className="max-w-[190px]"
+                            />
+                            <CanvasVideoSettingsPopover
+                                config={config}
+                                buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-full !px-3"
+                                onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, globalConfig))}
+                            />
                         </>
                     ) : mode === "audio" ? (
                         <>
@@ -168,9 +186,16 @@ function defaultMode(type: CanvasNodeData["type"]): CanvasNodeGenerationMode {
 }
 
 function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: CanvasNodeGenerationMode): AiConfig {
+    const rawModel = node.metadata?.model;
+    const model = resolveModelForCapability(globalConfig, rawModel, mode);
+    const isFrame = model.toLowerCase().includes("frame") || model.includes("首尾帧");
+    const isOmni = model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
+    const videoMode = node.metadata?.videoMode || (isFrame ? "frame" : isOmni ? "omni" : globalConfig.videoMode || defaultConfig.videoMode || "omni");
+
     return {
         ...globalConfig,
-        model: resolveModelForCapability(globalConfig, node.metadata?.model, mode),
+        model,
+        videoMode,
         reasoningEffort: node.metadata?.reasoningEffort || globalConfig.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
         size: node.metadata?.size || globalConfig.size || defaultConfig.size,
@@ -187,10 +212,24 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     };
 }
 
-function videoConfigPatch(key: keyof AiConfig, value: string) {
+function videoConfigPatch(key: keyof AiConfig, value: string, globalConfig?: AiConfig) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
+    if (key === "videoMode") {
+        const patch: Record<string, unknown> = { videoMode: value };
+        if (globalConfig) {
+            const channel = globalConfig.channels[0];
+            if (value === "frame") {
+                const frameModel = channel?.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
+                if (frameModel) patch.model = `${channel?.id || "default"}::${frameModel.name}`;
+            } else if (value === "omni") {
+                const omniModel = channel?.models.find((m) => m.name === "ComfyUI Video");
+                if (omniModel) patch.model = `${channel?.id || "default"}::${omniModel.name}`;
+            }
+        }
+        return patch;
+    }
     return { [key]: value };
 }
 
