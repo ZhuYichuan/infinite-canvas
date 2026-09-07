@@ -69,13 +69,13 @@ export function getGenerationResourceNodes(nodeId: string, nodes: CanvasNodeData
 
 function getContextInputNodes(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]) {
     return connections
-        .filter((connection) => connection.toNodeId === nodeId)
+        .filter((connection) => connection.kind === "input" && connection.toNodeId === nodeId)
         .map((connection) => nodes.find((node) => node.id === connection.fromNodeId))
         .filter((node): node is CanvasNodeData => Boolean(node && isCanvasReferenceNode(node, nodes)));
 }
 
 function getConnectedConfigInputNodes(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]) {
-    const configConnection = connections.find((connection) => connection.fromNodeId === nodeId && nodes.find((node) => node.id === connection.toNodeId)?.type === CanvasNodeType.Config);
+    const configConnection = connections.find((connection) => connection.kind === "input" && connection.fromNodeId === nodeId && nodes.find((node) => node.id === connection.toNodeId)?.type === CanvasNodeType.Config);
     if (!configConnection) return [];
     return getContextInputNodes(configConnection.toNodeId, nodes, connections).filter((node) => node.id !== nodeId);
 }

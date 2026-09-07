@@ -23,7 +23,17 @@ export type CanvasNodeTypeId = CanvasNodeType | (string & {});
 
 export type CanvasNodeStatus = "idle" | "success" | "loading" | "error";
 export type CanvasGenerationMode = "text" | "image" | "video" | "audio";
+export type CanvasGenerationIntent = "new" | "repeat" | "derive" | "retry" | "resume";
 export type CanvasImageGenerationType = "generation" | "edit";
+
+export type CanvasGenerationReferenceSnapshot = {
+    nodeId: string;
+    kind: "image" | "video" | "audio" | "text";
+    storageKey?: string;
+    url?: string;
+    text?: string;
+    mimeType?: string;
+};
 
 export type CanvasNodeImage = {
     id: string;
@@ -36,6 +46,8 @@ export type CanvasNodeImage = {
     bytes: number;
     mimeType: string;
     seed?: number;
+    jobId?: string;
+    isTimeout?: boolean;
 };
 
 export type CanvasNodeText = {
@@ -43,6 +55,8 @@ export type CanvasNodeText = {
     status: CanvasNodeStatus;
     errorDetails?: string;
     content: string;
+    jobId?: string;
+    isTimeout?: boolean;
 };
 
 export type CanvasNodeMetadata = {
@@ -50,6 +64,8 @@ export type CanvasNodeMetadata = {
     composerContent?: string;
     prompt?: string;
     effectivePrompt?: string;
+    generationReferences?: CanvasGenerationReferenceSnapshot[];
+    generationOriginNodeId?: string;
     jobId?: string;
     isTimeout?: boolean;
     status?: CanvasNodeStatus;
@@ -100,10 +116,13 @@ export type CanvasNodeData = {
     metadata?: CanvasNodeMetadata;
 };
 
+export type CanvasConnectionKind = "input" | "lineage";
+
 export type CanvasConnection = {
     id: string;
     fromNodeId: string;
     toNodeId: string;
+    kind: CanvasConnectionKind;
 };
 
 export type CanvasAssistantReference = {

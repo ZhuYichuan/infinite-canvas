@@ -3,12 +3,13 @@ import i18n from "@/i18n";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
-import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
+import { CanvasNodeType, type CanvasConnection, type CanvasGenerationReferenceSnapshot, type CanvasNodeData } from "@/types/canvas";
 import { getGenerationResourceNodes, getGroupResourceNodes } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 
 export type NodeGenerationContext = {
     prompt: string;
+    generationReferences: CanvasGenerationReferenceSnapshot[];
     referenceImages: ReferenceImage[];
     referenceVideos: ReferenceVideo[];
     referenceAudios: ReferenceAudio[];
@@ -48,6 +49,7 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
     const referenceImages = resourceInputs.map((input) => input.image).filter((image): image is ReferenceImage => Boolean(image));
     const referenceVideos = resourceInputs.map((input) => input.video).filter((video): video is ReferenceVideo => Boolean(video));
     const referenceAudios = resourceInputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
+    const generationReferences = snapshotGenerationInputs(resourceInputs);
 
     let cleanPrompt = prompt.trim();
     const textResources = resourceInputs.filter((input) => input.type === "text" && Boolean(input.text));
@@ -89,6 +91,7 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
 
     return {
         prompt: resolvedPrompt.trim(),
+        generationReferences,
         referenceImages,
         referenceVideos,
         referenceAudios,
@@ -102,6 +105,7 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
 function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: string): NodeGenerationContext {
     const inputByNodeId = new Map(inputs.map((input) => [input.nodeId, input]));
     const selectedInputs: NodeGenerationResourceInput[] = [];
+    const snapshotInputs = new Map<string, NodeGenerationResourceInput>();
     const labelByNodeId = new Map<string, string>();
     const counts = { image: 0, video: 0, audio: 0, text: 0 };
     let hasToken = false;
@@ -114,7 +118,11 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
         nextPrompt += prompt.slice(lastIndex, match.index);
         const input = inputByNodeId.get(match[1]);
         if (input) {
-            const labels = flattenGenerationInputs([input]).map((resource) => {
+            const resources = flattenGenerationInputs([input]);
+            resources.forEach((resource) => {
+                if (!snapshotInputs.has(resource.nodeId)) snapshotInputs.set(resource.nodeId, resource);
+            });
+            const labels = resources.map((resource) => {
                 if (resource.type === "text") {
                     counts.text++;
                     return (resource.text || "").trim();
@@ -140,6 +148,7 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
     if (!hasToken) {
         return {
             prompt: prompt.trim(),
+            generationReferences: [],
             referenceImages: [],
             referenceVideos: [],
             referenceAudios: [],
@@ -152,6 +161,7 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
 
     return {
         prompt: nextPrompt.trim(),
+        generationReferences: snapshotGenerationInputs([...snapshotInputs.values()]),
         referenceImages,
         referenceVideos,
         referenceAudios,
@@ -160,6 +170,23 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
         videoCount: referenceVideos.length,
         audioCount: referenceAudios.length,
     };
+}
+
+function snapshotGenerationInputs(inputs: NodeGenerationResourceInput[]): CanvasGenerationReferenceSnapshot[] {
+    return inputs.flatMap((input): CanvasGenerationReferenceSnapshot[] => {
+        if (input.type === "text" && input.text !== undefined) return [{ nodeId: input.nodeId, kind: "text", text: input.text }];
+        if (input.type === "image" && input.image) {
+            const url = input.image.storageKey ? undefined : input.image.url || (!input.image.dataUrl.startsWith("data:") ? input.image.dataUrl : undefined);
+            return [{ nodeId: input.nodeId, kind: "image", storageKey: input.image.storageKey, url, mimeType: input.image.type }];
+        }
+        if (input.type === "video" && input.video) {
+            return [{ nodeId: input.nodeId, kind: "video", storageKey: input.video.storageKey, url: input.video.storageKey ? undefined : input.video.url, mimeType: input.video.type }];
+        }
+        if (input.type === "audio" && input.audio) {
+            return [{ nodeId: input.nodeId, kind: "audio", storageKey: input.audio.storageKey, url: input.audio.storageKey ? undefined : input.audio.url, mimeType: input.audio.type }];
+        }
+        return [];
+    });
 }
 
 export function buildNodeGenerationInputs(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]): NodeGenerationInput[] {
