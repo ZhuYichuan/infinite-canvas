@@ -4,7 +4,7 @@ import { Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
-import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { defaultConfig, encodeChannelModel, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -129,7 +129,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                             <CanvasVideoSettingsPopover
                                 config={config}
                                 buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-full !px-3"
-                                onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, globalConfig))}
+                                onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, config))}
                             />
                         </>
                     ) : mode === "audio" ? (
@@ -215,20 +215,20 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     };
 }
 
-function videoConfigPatch(key: keyof AiConfig, value: string, globalConfig?: AiConfig) {
+function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     if (key === "videoMode") {
         const patch: Record<string, unknown> = { videoMode: value };
-        if (globalConfig) {
-            const channel = globalConfig.channels[0];
+        if (config) {
+            const channel = resolveModelChannel(config, config.model || config.videoModel);
             if (value === "frame") {
-                const frameModel = channel?.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
-                if (frameModel) patch.model = `${channel?.id || "default"}::${frameModel.name}`;
+                const frameModel = channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
+                if (frameModel) patch.model = encodeChannelModel(channel.id, frameModel.name);
             } else if (value === "omni") {
-                const omniModel = channel?.models.find((m) => m.name === "ComfyUI Video");
-                if (omniModel) patch.model = `${channel?.id || "default"}::${omniModel.name}`;
+                const omniModel = channel.models.find((m) => m.name === "ComfyUI Video");
+                if (omniModel) patch.model = encodeChannelModel(channel.id, omniModel.name);
             }
         }
         return patch;

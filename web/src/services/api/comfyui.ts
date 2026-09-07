@@ -2,7 +2,7 @@ import localforage from "localforage";
 
 import { nanoid } from "nanoid";
 import i18n from "@/i18n";
-import { resolveModelChannel, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
+import { modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 import {
     DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
     DEFAULT_COMFYUI_I2I_WORKFLOW,
@@ -909,6 +909,9 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
             // pollJob exited silently because the signal aborted; the abort listener already cancelled the job.
             throw new ComfyuiAbortedError();
         }
+        if (resultAssetIds.length === 0) {
+            throw new ComfyuiError(i18n.t("comfyui.noImageOutput"));
+        }
 
         const items: Array<{ id: string; dataUrl: string; seed?: number }> = [];
         for (const assetId of resultAssetIds) {
@@ -1038,6 +1041,9 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
         const resultAssetIds = await waiting;
         if (!resultAssetIds) {
             throw new ComfyuiAbortedError();
+        }
+        if (resultAssetIds.length === 0) {
+            throw new ComfyuiError(i18n.t("comfyui.noImageOutput"));
         }
 
         // 5. Download outputs
@@ -1343,8 +1349,11 @@ export async function requestComfyuiText(req: ComfyuiTextRequest): Promise<{ tex
     let jobId = req.jobId || "";
     let seed: number | undefined = req.seed;
     try {
-        const channel = resolveModelChannel(req.config, req.config.textModel || req.config.model);
+        const requestedModel = req.config.model || req.config.textModel;
+        const channel = resolveModelChannel(req.config, requestedModel);
+        const selectedModel = channel.models.find((m) => m.name === modelOptionName(requestedModel));
         const textWorkflow =
+            selectedModel?.comfyuiWorkflow ||
             channel.comfyuiTextWorkflow ||
             channel.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text")?.comfyuiWorkflow ||
             DEFAULT_COMFYUI_TEXT_WORKFLOW;
@@ -1763,13 +1772,17 @@ export interface ComfyuiVideoRequest {
 }
 
 export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{ jobId: string; baseUrl: string; token?: string }> {
-    const channel = resolveModelChannel(req.config, req.config.videoModel || req.config.model);
+    const requestedModel = req.config.model || req.config.videoModel;
+    const channel = resolveModelChannel(req.config, requestedModel);
+    const selectedModel = channel.models.find((m) => m.name === modelOptionName(requestedModel));
     const videoMode = req.videoMode || (req.config.videoMode === "frame" ? "frame" : "omni");
     const videoWorkflow = videoMode === "frame"
-        ? channel.comfyuiFrameVideoWorkflow ||
+        ? selectedModel?.comfyuiWorkflow ||
+          channel.comfyuiFrameVideoWorkflow ||
           channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"))?.comfyuiWorkflow ||
           DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW
-        : channel.comfyuiVideoWorkflow ||
+        : selectedModel?.comfyuiWorkflow ||
+          channel.comfyuiVideoWorkflow ||
           channel.models.find((m) => m.name === "ComfyUI Video" || m.capability === "video")?.comfyuiWorkflow ||
           DEFAULT_COMFYUI_VIDEO_WORKFLOW;
 
@@ -1787,9 +1800,27 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const audioAssetIds: string[] = [];
 
     if (videoMode === "frame") {
-        // 首尾帧模式
-        const firstFrameImg = req.firstFrame || req.references?.[0];
-        const lastFrameImg = req.lastFrame || (req.references && req.references.length > 1 ? req.references[1] : undefined);
+        // 首尾帧模式 - 严格校验（Fail-loud）：在任何上传之前先构建去重后的参考图并校验数量/类型
+        const frameCandidates: Array<ReferenceImage | undefined> = [req.firstFrame, req.lastFrame, ...(req.references || [])];
+        const frameImages: ReferenceImage[] = [];
+        const seenFrameIds = new Set<string>();
+        for (const candidate of frameCandidates) {
+            if (!candidate) continue;
+            if (seenFrameIds.has(candidate.id)) continue;
+            seenFrameIds.add(candidate.id);
+            frameImages.push(candidate);
+        }
+        if (frameImages.length < 1) {
+            throw new ComfyuiError("首尾帧模式至少需要 1 张参考图");
+        }
+        if (frameImages.length > 2) {
+            throw new ComfyuiError(`首尾帧模式最多支持 2 张参考图，已连接 ${frameImages.length} 张`);
+        }
+        if ((req.referenceVideos && req.referenceVideos.length > 0) || (req.referenceAudios && req.referenceAudios.length > 0)) {
+            throw new ComfyuiError("首尾帧模式不支持视频或音频参考，请移除后再生成");
+        }
+        const firstFrameImg = frameImages[0];
+        const lastFrameImg = frameImages[1];
         if (firstFrameImg?.dataUrl) {
             firstFrameAssetId = await uploadComfyuiAsset(baseUrl, token, firstFrameImg.dataUrl, "first_frame.png", req.signal);
         }
@@ -1874,15 +1905,19 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
 
 export async function pollComfyuiVideoJob(jobId: string, baseUrl: string, token?: string, signal?: AbortSignal): Promise<{ url: string; mimeType: string }> {
     const assetIds = await pollJob(jobId, baseUrl, token, signal, Date.now() + JOB_TIMEOUT_MS, collectVideoAssetIds);
-    if (!assetIds || assetIds.length === 0) {
+    if (!assetIds) {
         throw new ComfyuiAbortedError();
+    }
+    if (assetIds.length === 0) {
+        throw new ComfyuiError(i18n.t("comfyui.noVideoOutput"));
     }
     const { dataUrl, mimeType } = await downloadComfyuiVideo(assetIds[0], baseUrl, token);
     return { url: dataUrl, mimeType };
 }
 
 export async function requestComfyuiVideo(req: ComfyuiVideoRequest): Promise<{ url: string; mimeType: string; jobId: string }> {
-    const channel = resolveModelChannel(req.config, req.config.videoModel || req.config.model);
+    const requestedModel = req.config.model || req.config.videoModel;
+    const channel = resolveModelChannel(req.config, requestedModel);
     const baseUrl = (channel.comfyuiProxyUrl || "").trim();
     const token = channel.comfyuiProxyToken;
 

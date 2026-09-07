@@ -218,9 +218,8 @@ export function videoSecondsLabel(value: string) {
 
 export function normalizeVideoSizeValue(value?: string) {
     if (!value) return "544x960";
-    const match = value.match(/^(\d+)x(\d+)$/);
-    if (!match) return "544x960";
-    return value;
+    const isValid = videoSizeOptions.some((option) => option.value === value);
+    return isValid ? value : "544x960";
 }
 
 export function normalizeVideoResolutionValue(value?: string) {

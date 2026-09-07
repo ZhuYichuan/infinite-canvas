@@ -597,6 +597,8 @@ export default {
         timeout: "ComfyUI generation timed out",
         cancelled: "ComfyUI generation cancelled",
         failed: "ComfyUI generation failed",
+        noImageOutput: "The ComfyUI job completed without an image output",
+        noVideoOutput: "The ComfyUI job completed without a video output",
     },
     agent: {
         status: { failed: "Connection failed", connected: "Connected", connecting: "Connecting", disconnected: "Disconnected" },

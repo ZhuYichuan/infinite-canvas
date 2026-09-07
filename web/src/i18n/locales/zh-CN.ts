@@ -597,6 +597,8 @@ export default {
         timeout: "ComfyUI 生成超时",
         cancelled: "ComfyUI 生成已取消",
         failed: "ComfyUI 生成失败",
+        noImageOutput: "ComfyUI 任务已完成，但没有图片输出",
+        noVideoOutput: "ComfyUI 任务已完成，但没有视频输出",
     },
     agent: {
         status: { failed: "连接失败", connected: "已连接", connecting: "连接中", disconnected: "未连接" },
