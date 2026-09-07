@@ -733,15 +733,30 @@ export async function downloadAsset(
 }
 
 /**
- * Best-effort interrupt of a running job via /interrupt.
+ * 按任务取消：任务仍在排队（queue_pending）时 POST /queue { delete: [jobId] } 删除该排队任务；
+ * 仅在确认目标任务正在运行（queue_running）时才 POST /interrupt 中断。
+ * 任务不在队列、GET/解析/请求失败均 best-effort 静默返回，绝不全局 interrupt。
  */
-export async function cancelJob(_jobId: string, baseUrl: string, token?: string): Promise<void> {
+export async function cancelJob(jobId: string, baseUrl: string, token?: string): Promise<void> {
+    if (!jobId) return;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
+    const queueUrl = `${normalizeBaseUrl(baseUrl)}/queue`;
     try {
-        await fetch(`${normalizeBaseUrl(baseUrl)}/interrupt`, { method: "POST", headers, body: "{}" });
+        const queueResponse = await comfyuiFetch(queueUrl, { headers }, baseUrl);
+        if (!queueResponse.ok) return;
+        const queue = (await queueResponse.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
+        const isQueued = Array.isArray(queue.queue_pending) && queue.queue_pending.some((item) => Array.isArray(item) && String(item[1]) === jobId);
+        const isRunning = Array.isArray(queue.queue_running) && queue.queue_running.some((item) => Array.isArray(item) && String(item[1]) === jobId);
+        if (isQueued) {
+            await comfyuiFetch(queueUrl, { method: "POST", headers, body: JSON.stringify({ delete: [jobId] }) }, baseUrl);
+            return;
+        }
+        if (isRunning) {
+            await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/interrupt`, { method: "POST", headers, body: "{}" }, baseUrl);
+        }
     } catch {
-        // The abort takes priority over the cancel outcome.
+        // Best-effort: 无法确认目标任务位置时静默返回，绝不全局 interrupt。
     }
 }
 
@@ -1879,7 +1894,27 @@ export async function requestComfyuiVideo(req: ComfyuiVideoRequest): Promise<{ u
     }
 
     try {
-        const result = await pollComfyuiVideoJob(jobId, baseUrl, token, req.signal);
+        const signal = req.signal;
+        if (signal?.aborted) {
+            await cancelJob(jobId, baseUrl, token);
+            throw new ComfyuiAbortedError();
+        }
+
+        const polling = pollComfyuiVideoJob(jobId, baseUrl, token, signal);
+        let waiting: Promise<{ url: string; mimeType: string }> = polling;
+        if (signal) {
+            // `{ once: true }` keeps the cancel call idempotent across repeated aborts;
+            // the timeout path never reaches this listener. Aborting rejects the race
+            // immediately so polling can stop without leaking on the heap.
+            const aborted: Promise<never> = new Promise((_resolve, reject) => {
+                signal.addEventListener("abort", () => {
+                    void cancelJob(jobId, baseUrl, token).catch(() => undefined);
+                    reject(new ComfyuiAbortedError());
+                }, { once: true });
+            });
+            waiting = Promise.race([polling, aborted]);
+        }
+        const result = await waiting;
         return { ...result, jobId };
     } catch (error) {
         if (error instanceof ComfyuiTimeoutError && !error.jobId) {
