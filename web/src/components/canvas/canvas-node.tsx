@@ -502,7 +502,7 @@ function LoadingContent({ theme }: Pick<NodeContentRendererProps, "theme">) {
 
 function ErrorContent({ node, theme, onRetry }: Pick<NodeContentRendererProps, "node" | "theme" | "onRetry">) {
     const { t } = useTranslation();
-    const canResume = Boolean(node.metadata?.jobId);
+    const canResume = Boolean(node.metadata?.isTimeout && node.metadata.jobId);
     return (
         <div className="flex max-w-[260px] flex-col items-center gap-3 px-5 text-center">
             <div className="text-xs leading-5 text-red-300">{node.metadata?.errorDetails || t("canvas.node.failed")}</div>
@@ -777,7 +777,7 @@ function ImageContent({
                     <ImageSlotStatus image={primaryImage} />
                 )}
             </div>
-            {primaryImage?.status === "error" ? <BatchImageFailureActions placement="left" onRetry={() => onRetryBatchImage?.(primaryImage.id)} onDelete={() => onDeleteBatchImage?.(primaryImage.id)} /> : null}
+            {primaryImage?.status === "error" ? <BatchImageFailureActions placement="left" canResume={Boolean(primaryImage.isTimeout && primaryImage.jobId)} onRetry={() => onRetryBatchImage?.(primaryImage.id)} onDelete={() => onDeleteBatchImage?.(primaryImage.id)} /> : null}
             {primaryImage?.content ? (
                 <button type="button" className="absolute left-2.5 top-2.5 z-30 flex h-8 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition hover:scale-[1.02]" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }} title={t("common.download")} onClick={(event) => (event.stopPropagation(), onDownloadBatchImage?.(primaryImage.id))}>
                     <Download className="size-3" />
@@ -860,19 +860,19 @@ function ExpandedImageCard({ node, image, index, onView, onSetPrimary, onDuplica
                     </button>
                 </div>
             ) : null}
-            {image.status === "error" ? <BatchImageFailureActions placement="right" onRetry={onRetry} onDelete={onDelete} /> : null}
+            {image.status === "error" ? <BatchImageFailureActions placement="right" canResume={Boolean(image.isTimeout && image.jobId)} onRetry={onRetry} onDelete={onDelete} /> : null}
         </div>
     );
 }
 
-function BatchImageFailureActions({ placement, onRetry, onDelete }: { placement: "left" | "right"; onRetry: () => void; onDelete: () => void }) {
+function BatchImageFailureActions({ placement, canResume, onRetry, onDelete }: { placement: "left" | "right"; canResume: boolean; onRetry: () => void; onDelete: () => void }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const { t } = useTranslation();
     return (
         <div className={`absolute top-3 z-30 flex items-center gap-1.5 ${placement === "left" ? "left-3" : "right-3"}`}>
             <button type="button" className="flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium shadow-sm transition hover:scale-[1.02]" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }} onClick={(event) => (event.stopPropagation(), onRetry())}>
                 <RefreshCw className="size-3.5" />
-                {t("canvas.node.retry")}
+                {canResume ? t("canvas.node.resumePolling") : t("canvas.node.retry")}
             </button>
             <button type="button" className="grid size-8 place-items-center rounded-lg border shadow-sm transition hover:scale-[1.02]" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }} onClick={(event) => (event.stopPropagation(), onDelete())} aria-label={t("common.delete")} title={t("common.delete")}>
                 <Trash2 className="size-3.5" />
