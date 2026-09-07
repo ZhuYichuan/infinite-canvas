@@ -18,6 +18,7 @@
 
 - [本地开发](/zh-CN/docs/development/local-development)
 - [画布节点系统架构](/zh-CN/docs/development/canvas-node-system)
+- [Canvas 生成链路 Bug 修复实施手册](CANVAS_GENERATION_BUG_FIX_MANUAL.md)
 - [ComfyUI 工作流标准](/zh-CN/docs/development/comfyui-workflow-standard)
 - [全能参考视频生成需求规格](/zh-CN/docs/development/multimodal-video-workflow-spec)
 - [画布数据结构](/zh-CN/docs/development/canvas-data-structure)
