@@ -202,8 +202,18 @@ export function modelCapabilityOf(config: AiConfig, value: string): ModelCapabil
     return findChannelModel(config, value)?.model.capability;
 }
 
+function isInpaintModelName(name: string): boolean {
+    const lower = name.toLowerCase();
+    return lower.includes("inpaint") || name.includes("局部编辑") || name.includes("局部修改") || name.includes("局部") || name.includes("遮罩");
+}
+
 export function modelMatchesCapability(config: AiConfig, value: string, capability?: ModelCapability) {
     if (!capability) return true;
+    if (capability === "image") {
+        const decoded = decodeChannelModel(value);
+        const name = decoded?.model || value;
+        if (isInpaintModelName(name)) return false;
+    }
     return modelCapabilityOf(config, value) === capability;
 }
 
@@ -217,7 +227,15 @@ export function resolveModelForCapability(config: AiConfig, currentModel: string
 
 export function selectableModelsByCapability(config: AiConfig, capability?: ModelCapability) {
     if (!capability) return config.models;
-    return config.channels.flatMap((channel) => channel.models.filter((model) => model.capability === capability).map((model) => encodeChannelModel(channel.id, model.name)));
+    return config.channels.flatMap((channel) =>
+        channel.models
+            .filter((model) => {
+                if (model.capability !== capability) return false;
+                if (capability === "image" && isInpaintModelName(model.name)) return false;
+                return true;
+            })
+            .map((model) => encodeChannelModel(channel.id, model.name))
+    );
 }
 
 /** The user script (if any) attached to a model; empty string means use the system default call. */
