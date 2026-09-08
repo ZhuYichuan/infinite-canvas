@@ -107,28 +107,16 @@ description: 槽位词汇表、标注约定、解析规则、传输契约与数�
 
 ## 传输契约
 
-系统可支持本地原生 ComfyUI API 或 `comfy-api-proxy` 中转两种传输形态：
-
-### 形态一：自建本地 ComfyUI 原生 API
+系统仅支持浏览器直连本地原生 ComfyUI API：
 
 | 操作 | 端点 | 说明 |
 |------|------|------|
 | 上传参考文件 | `POST /upload/image` (multipart, `overwrite=true`) | 返回 `{ name, subfolder }`，`name` 填入 LoadImage 的 `image` 输入 |
-| 提交工作流 | `POST /prompt` | body: `{ "prompt": <填好的 workflow JSON> }` → 返回 `{ prompt_id }` |
-| 轮询状态 | `GET /history/{prompt_id}` | 完成时 `outputs` 含结果文件名；`status.status_message` 含错误信息 |
+| 提交工作流 | `POST /prompt` | body: `{ "prompt": <填好的 workflow JSON>, "client_id": <客户端标识> }` → 返回 `{ prompt_id }` |
+| 轮询状态 | `GET /history/{prompt_id}` | 完成时 `outputs` 含结果文件名；错误信息在 `status.status_str` 与 `messages`（execution_error）中 |
 | 获取结果文件 | `GET /view?filename=&subfolder=&type=output` | 直接返回 blob |
-| 取消 | `POST /queue` | body: `{ "delete": [promptId] }` |
+| 取消 | `GET /queue` + `POST /queue` / `POST /interrupt` | 先 `GET /queue` 查任务状态：仍在排队则 `POST /queue` body `{ "delete": [promptId] }` 移除；只有确认目标正在运行才 `POST /interrupt` 中断 |
 | 进度（v1.5） | `WS /ws` | 消息类型：`progress`, `executed`, `execution_success`, `execution_error` |
-
-### 形态二：comfy-api-proxy 代理模式
-
-| 端点 | 方法 | 用途 |
-|------|------|------|
-| `/api/v2/assets` | `POST` | 上传参考图资产，返回 `asset_id` |
-| `/api/v2/jobs` | `POST` | 提交包含资产绑定的 workflow JSON，返回 `job_id` |
-| `/api/v2/jobs/{job_id}` | `GET` | 轮询 job 状态（`queued` / `running` / `succeeded` / `failed`） |
-| `/api/v2/jobs/{job_id}/cancel` | `POST` | 主动取消执行 |
-| `/api/v2/assets/{asset_id}/content` | `GET` | 下载产出成果物 |
 
 ### 错误映射
 
@@ -143,10 +131,10 @@ description: 槽位词汇表、标注约定、解析规则、传输契约与数�
 ```
 ① 收集上游资源（buildNodeGenerationContext，复用现有）
 ② 槽位指派（metadata.slotAssignments → 解析为 {slot: value}）
-③ 上传参考文件到 ComfyUI（缓存：storageKey → filename 或 asset_id）
+③ 上传参考文件到 ComfyUI（缓存：storageKey → ComfyUI filename）
 ④ 填充工作流 JSON（深拷贝模板 + 写入槽位值 + 动态抹除未传参考节点及输入连线 + 校验）
-⑤ 提交 /prompt 或 /jobs → 任务 ID → 轮询状态
-⑥ 取结果（/view 或 /assets/content → blob）
+⑤ 提交 /prompt → prompt_id → 轮询 /history
+⑥ 取结果（/view → blob）
 ⑦ 落本地存储（uploadImage/uploadMediaFile → storageKey → 写回节点 metadata）
 ```
 
@@ -190,7 +178,7 @@ description: 槽位词汇表、标注约定、解析规则、传输契约与数�
 | 批量 UI（images[]/texts[]） | 不动 |
 | 状态/重试（loading/error/retry） | 不动 |
 | mask 编辑弹窗 | 不动（产物作为 ref_mask 上传） |
-| `services/api/` | 保持 ComfyUI 适配与代理请求扩展 |
+| `services/api/` | 原生 ComfyUI 薄客户端 |
 | `ChannelModel` | 扩展：`workflow` (API JSON), `workflowId` (可选) |
 | 渠道编辑器 | 支持 ComfyUI 配置；模型条目 = 工作流档案 |
 | 参数面板 UI | 数据驱动：按解析出的槽位动态渲染控件 |

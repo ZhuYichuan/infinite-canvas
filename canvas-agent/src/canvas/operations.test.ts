@@ -25,3 +25,15 @@ test("generation flow still creates a prompt node for prose prompts", () => {
     const config = ops.find((op) => op.type === "add_node" && op.nodeType === "config");
     assert.match(String(config?.metadata?.prompt), /@\[node:text-/);
 });
+
+test("canvas_generate_audio synchronously throws unsupported ComfyUI audio error", () => {
+    assert.throws(
+        () => buildCanvasToolRequest("canvas_generate_audio", { prompt: "some audio prompt" }, null),
+        /当前项目尚未支持 ComfyUI 音频生成/,
+    );
+});
+
+test("canvas_generate_image still produces run_generation", () => {
+    const ops = opsOf("canvas_generate_image", { prompt: "a dog", autoRun: true });
+    assert.ok(ops.some((op) => op.type === "run_generation"));
+});

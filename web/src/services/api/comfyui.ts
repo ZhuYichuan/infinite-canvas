@@ -837,9 +837,9 @@ function imageReferenceSlots(workflow: ComfyuiWorkflowJson) {
 /**
  * Run a full ComfyUI image generation: resolve the channel and model, bind the
  * generation params into the model's workflow, submit the job, poll it until
- * completion (10 minute deadline) and download the outputs as data urls.
+ * completion and download the outputs as data urls.
  *
- * - Aborting the signal cancels the job on the proxy and rejects with
+ * - Aborting the signal cancels the matching ComfyUI job and rejects with
  *   ComfyuiAbortedError; the timeout window does NOT cancel the job, it only
  *   rejects with ComfyuiTimeoutError.
  * - Exactly one image_generation_logs entry (success or failed) is written

@@ -1,6 +1,7 @@
 {
     "name": "infinite-canvas",
     "version": "0.1.0",
+    "packageManager": "bun@1.4.0",
     "private": true,
     "type": "module",
     "scripts": {

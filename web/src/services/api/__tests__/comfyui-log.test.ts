@@ -29,20 +29,25 @@ function buildComfyuiConfig(): AiConfig {
         apiKey: "",
         apiFormat: "comfyui",
         models: [{ name: "ComfyUI T2I", capability: "image", comfyuiWorkflow: { name: "t2i", json: FULL_FLOW_WORKFLOW, createdAt: 0 } }],
-        comfyuiProxyUrl: "http://127.0.0.1:8189",
+        comfyuiProxyUrl: "http://127.0.0.1:8188",
         comfyuiProxyToken: "tok",
     };
     return { ...defaultConfig, channels: [channel], model: "comfy::ComfyUI T2I", imageModel: "comfy::ComfyUI T2I", models: ["comfy::ComfyUI T2I"] };
 }
 
-function proxyFlowWith(jobStatus: string) {
+function nativeFlowWith(jobStatus: string) {
     const png = new Blob(["fake-png"], { type: "image/png" });
     return (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         const method = init?.method || "GET";
-        if (method === "POST" && url.endsWith("/api/v2/jobs")) return { ok: true, status: 200, json: async () => ({ id: "job_1" }) };
-        if (method === "GET" && url.endsWith("/api/v2/jobs/job_1")) return { ok: true, status: 200, json: async () => ({ status: jobStatus, ...(jobStatus === "succeeded" ? { outputs: [{ id: "asset_1", type: "image" }] } : {}) }) };
-        if (method === "GET" && url.endsWith("/api/v2/assets/asset_1/content")) return { ok: true, status: 200, blob: async () => png };
+        if (method === "POST" && url.endsWith("/prompt")) return { ok: true, status: 200, json: async () => ({ prompt_id: "job_1" }) };
+        if (method === "GET" && url.endsWith("/history/job_1")) {
+            if (jobStatus === "succeeded") {
+                return { ok: true, status: 200, json: async () => ({ job_1: { status: { status_str: "success", completed: true }, outputs: { "4": { images: [{ filename: "prompt_out.png", subfolder: "", type: "output" }] } } } }) };
+            }
+            return { ok: true, status: 200, json: async () => ({ job_1: { status: { status_str: "error", messages: ["boom"] } } }) };
+        }
+        if (method === "GET" && url.includes("/api/view?")) return { ok: true, status: 200, blob: async () => png };
         return { ok: false, status: 500, json: async () => ({}) };
     };
 }
@@ -62,18 +67,16 @@ describe("image_generation_logs provider field (T19 AC 8)", () => {
     });
 
     it("writes a ComfyUI log entry tagged with provider: 'comfyui' on success", async () => {
-        fetchMock.mockImplementation(proxyFlowWith("succeeded"));
+        fetchMock.mockImplementation(nativeFlowWith("succeeded"));
         await expect(requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "a cat" })).resolves.toMatchObject({ jobId: "job_1" });
         expect(comfyuiLogStore.setItem).toHaveBeenCalledTimes(1);
         const [, record] = comfyuiLogStore.setItem.mock.calls[0] as [string, Record<string, unknown>];
-        // The provider field is what lets the workbench distinguish ComfyUI entries from OpenAI/Gemini entries
-        // that share the same `image_generation_logs` localforage store.
         expect(record.provider).toBe("comfyui");
         expect(record.status).toBe("success");
     });
 
     it("writes a ComfyUI log entry tagged with provider: 'comfyui' on failure", async () => {
-        fetchMock.mockImplementation(proxyFlowWith("failed"));
+        fetchMock.mockImplementation(nativeFlowWith("failed"));
         await expect(requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "a cat" })).rejects.toBeDefined();
         expect(comfyuiLogStore.setItem).toHaveBeenCalledTimes(1);
         const [, record] = comfyuiLogStore.setItem.mock.calls[0] as [string, Record<string, unknown>];
