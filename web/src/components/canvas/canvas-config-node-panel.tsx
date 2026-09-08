@@ -117,7 +117,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         config={config}
                         placement="topRight"
                         buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2"
-                        onConfigChange(node.id, videoConfigPatch(key, value, config))
+                        onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, config))}
                     />
                 ) : mode === "image" ? (
                     <CanvasImageSettingsPopover config={config} placement="topRight" autoAdjustOverflow={false} buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })} />
