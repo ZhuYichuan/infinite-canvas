@@ -733,15 +733,30 @@ export async function downloadAsset(
 }
 
 /**
- * Best-effort interrupt of a running job via /interrupt.
+ * 按任务取消：任务仍在排队（queue_pending）时 POST /queue { delete: [jobId] } 删除该排队任务；
+ * 仅在确认目标任务正在运行（queue_running）时才 POST /interrupt 中断。
+ * 任务不在队列、GET/解析/请求失败均 best-effort 静默返回，绝不全局 interrupt。
  */
-export async function cancelJob(_jobId: string, baseUrl: string, token?: string): Promise<void> {
+export async function cancelJob(jobId: string, baseUrl: string, token?: string): Promise<void> {
+    if (!jobId) return;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
+    const queueUrl = `${normalizeBaseUrl(baseUrl)}/queue`;
     try {
-        await fetch(`${normalizeBaseUrl(baseUrl)}/interrupt`, { method: "POST", headers, body: "{}" });
+        const queueResponse = await comfyuiFetch(queueUrl, { headers }, baseUrl);
+        if (!queueResponse.ok) return;
+        const queue = (await queueResponse.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
+        const isQueued = Array.isArray(queue.queue_pending) && queue.queue_pending.some((item) => Array.isArray(item) && String(item[1]) === jobId);
+        const isRunning = Array.isArray(queue.queue_running) && queue.queue_running.some((item) => Array.isArray(item) && String(item[1]) === jobId);
+        if (isQueued) {
+            await comfyuiFetch(queueUrl, { method: "POST", headers, body: JSON.stringify({ delete: [jobId] }) }, baseUrl);
+            return;
+        }
+        if (isRunning) {
+            await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/interrupt`, { method: "POST", headers, body: "{}" }, baseUrl);
+        }
     } catch {
-        // The abort takes priority over the cancel outcome.
+        // Best-effort: 无法确认目标任务位置时静默返回，绝不全局 interrupt。
     }
 }
 
@@ -822,9 +837,9 @@ function imageReferenceSlots(workflow: ComfyuiWorkflowJson) {
 /**
  * Run a full ComfyUI image generation: resolve the channel and model, bind the
  * generation params into the model's workflow, submit the job, poll it until
- * completion (10 minute deadline) and download the outputs as data urls.
+ * completion and download the outputs as data urls.
  *
- * - Aborting the signal cancels the job on the proxy and rejects with
+ * - Aborting the signal cancels the matching ComfyUI job and rejects with
  *   ComfyuiAbortedError; the timeout window does NOT cancel the job, it only
  *   rejects with ComfyuiTimeoutError.
  * - Exactly one image_generation_logs entry (success or failed) is written
@@ -891,6 +906,9 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
         if (!resultAssetIds) {
             // pollJob exited silently because the signal aborted; the abort listener already cancelled the job.
             throw new ComfyuiAbortedError();
+        }
+        if (resultAssetIds.length === 0) {
+            throw new ComfyuiError(i18n.t("comfyui.noImageOutput"));
         }
 
         const items: Array<{ id: string; dataUrl: string; seed?: number }> = [];
@@ -1025,6 +1043,9 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
         const resultAssetIds = await waiting;
         if (!resultAssetIds) {
             throw new ComfyuiAbortedError();
+        }
+        if (resultAssetIds.length === 0) {
+            throw new ComfyuiError(i18n.t("comfyui.noImageOutput"));
         }
 
         // 5. Download outputs
@@ -1783,9 +1804,27 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const audioAssetIds: string[] = [];
 
     if (videoMode === "frame") {
-        // 首尾帧模式
-        const firstFrameImg = req.firstFrame || req.references?.[0];
-        const lastFrameImg = req.lastFrame || (req.references && req.references.length > 1 ? req.references[1] : undefined);
+        // 首尾帧模式 - 严格校验（Fail-loud）：在任何上传之前先构建去重后的参考图并校验数量/类型
+        const frameCandidates: Array<ReferenceImage | undefined> = [req.firstFrame, req.lastFrame, ...(req.references || [])];
+        const frameImages: ReferenceImage[] = [];
+        const seenFrameIds = new Set<string>();
+        for (const candidate of frameCandidates) {
+            if (!candidate) continue;
+            if (seenFrameIds.has(candidate.id)) continue;
+            seenFrameIds.add(candidate.id);
+            frameImages.push(candidate);
+        }
+        if (frameImages.length < 1) {
+            throw new ComfyuiError("首尾帧模式至少需要 1 张参考图");
+        }
+        if (frameImages.length > 2) {
+            throw new ComfyuiError(`首尾帧模式最多支持 2 张参考图，已连接 ${frameImages.length} 张`);
+        }
+        if ((req.referenceVideos && req.referenceVideos.length > 0) || (req.referenceAudios && req.referenceAudios.length > 0)) {
+            throw new ComfyuiError("首尾帧模式不支持视频或音频参考，请移除后再生成");
+        }
+        const firstFrameImg = frameImages[0];
+        const lastFrameImg = frameImages[1];
         if (firstFrameImg?.dataUrl) {
             firstFrameAssetId = await uploadComfyuiAsset(baseUrl, token, firstFrameImg.dataUrl, "first_frame.png", req.signal);
         }
@@ -1870,8 +1909,11 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
 
 export async function pollComfyuiVideoJob(jobId: string, baseUrl: string, token?: string, signal?: AbortSignal): Promise<{ url: string; mimeType: string }> {
     const assetIds = await pollJob(jobId, baseUrl, token, signal, Date.now() + JOB_TIMEOUT_MS, collectVideoAssetIds);
-    if (!assetIds || assetIds.length === 0) {
+    if (!assetIds) {
         throw new ComfyuiAbortedError();
+    }
+    if (assetIds.length === 0) {
+        throw new ComfyuiError(i18n.t("comfyui.noVideoOutput"));
     }
     const { dataUrl, mimeType } = await downloadComfyuiVideo(assetIds[0], baseUrl, token);
     return { url: dataUrl, mimeType };
@@ -1891,7 +1933,27 @@ export async function requestComfyuiVideo(req: ComfyuiVideoRequest): Promise<{ u
     }
 
     try {
-        const result = await pollComfyuiVideoJob(jobId, baseUrl, token, req.signal);
+        const signal = req.signal;
+        if (signal?.aborted) {
+            await cancelJob(jobId, baseUrl, token);
+            throw new ComfyuiAbortedError();
+        }
+
+        const polling = pollComfyuiVideoJob(jobId, baseUrl, token, signal);
+        let waiting: Promise<{ url: string; mimeType: string }> = polling;
+        if (signal) {
+            // `{ once: true }` keeps the cancel call idempotent across repeated aborts;
+            // the timeout path never reaches this listener. Aborting rejects the race
+            // immediately so polling can stop without leaking on the heap.
+            const aborted: Promise<never> = new Promise((_resolve, reject) => {
+                signal.addEventListener("abort", () => {
+                    void cancelJob(jobId, baseUrl, token).catch(() => undefined);
+                    reject(new ComfyuiAbortedError());
+                }, { once: true });
+            });
+            waiting = Promise.race([polling, aborted]);
+        }
+        const result = await waiting;
         return { ...result, jobId };
     } catch (error) {
         if (error instanceof ComfyuiTimeoutError && !error.jobId) {

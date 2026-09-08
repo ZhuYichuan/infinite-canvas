@@ -399,7 +399,7 @@ test("画布 Skill 草稿源保留流程信息并移除媒体、本地路径、�
             height: 480,
             metadata: { content: "data:image/png;base64,c2VjcmV0" },
         }],
-        connections: [{ id: "connection-1", fromNodeId: "prompt-node", toNodeId: "output-node" }],
+        connections: [{ id: "connection-1", fromNodeId: "prompt-node", toNodeId: "output-node", kind: "lineage" }],
         selectedNodeIds: ["prompt-node"],
     });
 
@@ -550,7 +550,7 @@ test("画布 Skill 草稿源限制总长度并优先保留选中流程", () => {
     }));
     const source = canvasSkillSource({
         nodes,
-        connections: [{ id: "private-connection", fromNodeId: "node-319", toNodeId: "node-320" }],
+        connections: [{ id: "private-connection", fromNodeId: "node-319", toNodeId: "node-320", kind: "input" }],
         selectedNodeIds: ["node-320"],
     });
     const sourceNodes = source.nodes as Array<Record<string, unknown>>;

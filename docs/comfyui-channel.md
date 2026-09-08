@@ -1,231 +1,64 @@
-# ComfyUI 渠道完整指南
+# ComfyUI 渠道指南
 
-> 本文档面向已经把本地 ComfyUI 跑起来、希望通过无限画布调用 ComfyUI workflow 的用户。
-> 如果你只是想大致了解这是什么、能做什么，先看 [`README.md`](../README.md) 里的 `## ComfyUI 渠道` 节，再回到这里看细节。
+本项目仅支持浏览器直连本地自建 ComfyUI 原生 API，默认地址为 `http://127.0.0.1:8188`，不需要额外的中间服务。
 
----
+## 启动 ComfyUI
 
-## 1. 架构与协议层
+浏览器直连时，ComfyUI 必须允许来自前端站点的跨域请求。典型启动参数如下：
 
-调用链分三层：
-
-```
-画布 (Web)
-   ↓ HTTP
-comfy-api-proxy（例：http://10.7.8.12:8189）
-   ↓ HTTP
-本机 ComfyUI（http://127.0.0.1:8188）
+```bash
+python main.py --listen 0.0.0.0 --enable-cors-header "*"
 ```
 
-Web 端永远只跟 `comfy-api-proxy` 对话，不会直接连 ComfyUI。Proxy 把 ComfyUI 的「提交 workflow → 异步产出资产 → 资产可下载」三步，包装成同步 API：
+如果只在本机访问，渠道地址填写 `http://127.0.0.1:8188`。从其他设备访问时，应填写运行 ComfyUI 的局域网地址，并确保端口可访问。
 
-| 端点 | 方法 | 用途 |
+## 配置渠道
+
+在「配置」中创建或编辑 ComfyUI 渠道：
+
+1. 填写 ComfyUI 地址。
+2. 只有在本地 ComfyUI 前另行配置了认证时才填写 Token；标准本地实例通常留空。
+3. 为需要的能力选择内置工作流，或上传符合项目规范的 API 格式工作流 JSON。
+4. 使用连接测试确认浏览器能访问 ComfyUI。
+
+工作流槽位、`_meta.title` 标注和输入候选名规则见 [ComfyUI 工作流配置指南](COMFYUI_WORKFLOW_GUIDE.md) 与 [ComfyUI 工作流标准](/docs/development/comfyui-workflow-standard)。
+
+## 原生接口契约
+
+| 操作 | 原生端点 | 说明 |
 | --- | --- | --- |
-| `/api/v2/assets` | `POST` | 上传参考图，返回 `asset_id` |
-| `/api/v2/jobs` | `POST` | 提交 workflow JSON，返回 `job_id` |
-| `/api/v2/jobs/{job_id}` | `GET` | 轮询 job 状态（`queued` / `running` 未完成；`succeeded` 成功；`failed` / `canceled` / `expired` 失败） |
-| `/api/v2/jobs/{job_id}/cancel` | `POST` | 主动取消 |
-| `/api/v2/assets/{asset_id}/content` | `GET` | 下载产出资产 |
+| 上传参考资源 | `POST /upload/image` | multipart 上传到 ComfyUI `input` 目录 |
+| 提交工作流 | `POST /prompt` | body 为 `{ prompt, client_id }`，返回 `prompt_id` |
+| 查询结果 | `GET /history/{prompt_id}` | 读取任务状态与输出文件信息 |
+| 下载产物 | `GET /view?...` 或 `GET /api/view?...` | 返回图片、视频、音频或文本产物 |
+| 查询队列 | `GET /queue` | 确认目标任务处于排队或运行状态 |
+| 删除排队任务 | `POST /queue` | body 为 `{ "delete": [promptId] }` |
+| 中断运行任务 | `POST /interrupt` | 仅在确认目标任务正在运行时调用 |
 
-完整协议与字段说明见 [`comfy-api-proxy` 仓库](https://github.com/basketikun/comfy-api-proxy)。
+取消采用按任务保护策略：排队任务只删除自己的队列项；只有目标任务确实正在运行时才调用全局中断，避免误伤其他并发生成。
 
-### 与 OpenAI / Gemini 的区别
+## 生成与恢复
 
-| 维度 | OpenAI / Gemini | ComfyUI |
-| --- | --- | --- |
-| 协议 | HTTP REST / SSE 流式 | 异步任务：提交 → 轮询 → 下载 |
-| 返回时机 | 流式或一次性返回 | 后端完成后再统一返回 |
-| UI 状态 | 流式预览 | LOADING（不显示中间帧） |
-| 超时 | 一般 < 1 分钟 | **10 分钟**（仅 UI 提示，不调 cancel） |
-| 取消 | 直接 abort | abort 时调用 `/api/v2/jobs/{id}/cancel` |
+- 每次新生成通过 `/prompt` 获得独立 `prompt_id`。
+- 任务超时不会自动重新提交；节点保留任务 ID，可通过「继续查询」恢复 `/history/{prompt_id}` 轮询。
+- 普通失败的「重试」会提交新任务，不复用旧失败任务 ID。
+- 主动停止只取消对应节点的任务，不应把其他并发节点改为失败。
+- ComfyUI 报告完成但没有目标图片或视频产物时，前端会显式报错。
 
-简而言之：ComfyUI 是「提交一份 workflow JSON + 异步等结果」，不是「一段 prompt + 流式增量返回」。现有 OpenAI / Gemini 流程完全不受影响。
+## 常见问题
 
-### 一期限制
+### 浏览器无法访问 8188
 
-- 一期仅支持 **T2I（文生图）** 能力；I2I（图生图）与 video / text / audio 属于未来扩展。
-- 每个 `ChannelModel` **一对一绑定一份 workflow JSON**，没有仓库、没有版本管理。
-- 仅对接本地 `comfy-api-proxy`，**不支持 ComfyUI Cloud**（`cloud.comfy.org`），后者需另写 adapter。
-- Workflow JSON 内嵌于 AiConfig，会进 localStorage 并随 `exportAppConfig` 一同导出；单份一般 100–500 KB，仍在 localStorage 限额内。
+确认 ComfyUI 已使用 `--listen` 启动、端口未被防火墙阻止，并启用了允许当前前端来源的 CORS 配置。
 
----
+### HTTPS 页面无法请求 HTTP ComfyUI
 
-## 2. 安装 comfy-api-proxy
+这是浏览器的混合内容限制。按界面提示为本地地址放行，或在同一安全上下文中访问前端与 ComfyUI。
 
-最小步骤：
+### 提交后立即报节点错误
 
-1. 拉取并在能联通本机 ComfyUI 的机器上启动 proxy：
-   ```bash
-   git clone https://github.com/basketikun/comfy-api-proxy.git
-   cd comfy-api-proxy
-   bun install   # 或 npm install
-   bun run start # 默认监听 http://127.0.0.1:8189
-   ```
-2. 启动 `--allow` 模式时，proxy 会要求每个请求带 `Authorization: Bearer <token>`，Web 端会把这个 token 写到 channel 的 `Proxy Token` 字段并自动附带。
-3. 验证联通：在浏览器直接访问 `http://<proxy host>:8189/health`（或 proxy 自带 health 端点）确认 200。
+检查上传的是 ComfyUI 的 API 格式工作流，并确认必需模型已安装、保留槽位没有重复、槽位节点存在兼容输入。系统会直接展示 `/prompt` 返回的 `node_errors`。
 
-> 如果你的 ComfyUI 跑在同一台机器但 Web 也想从局域网/公网访问，建议把 proxy 暴露到 `0.0.0.0:8189` 而不是 `127.0.0.1`，并在 channel 的 `Proxy URL` 填可路由的地址（如 `http://10.7.8.12:8189`）。
+### 任务完成但没有产物
 
----
-
-## 3. 在画布里配置一个 ComfyUI channel
-
-1. 进入画布右上角「配置」面板的 channel 区，点新增 channel。
-2. `API 格式` 下拉里选 `ComfyUI`（这是新增的第三个选项，与 `OpenAI 兼容` / `Gemini` 平行）。
-3. 填写：
-   - `Proxy URL`：proxy 的 base URL，例如 `http://10.7.8.12:8189`
-   - `Proxy Token`：Bearer token（proxy `--allow` 模式下必填；不填保存按钮会被禁用并提示）
-   - `Base URL` / `API Key`：ComfyUI 渠道下可忽略
-4. 保存后会自动注入 1 个默认 image model（你之后可重命名、上传 workflow）：
-   - `ComfyUI T2I`（文生图）
-5. 首次创建 ComfyUI channel 时，`imageModel` 偏好会自动设为 `ComfyUI T2I`；`videoModel` / `textModel` / `audioModel` 保持空。
-
-### ChannelEditorDrawer 必填校验
-
-`apiFormat === "comfyui"` 时，`Proxy URL` 和 `Proxy Token` 两个字段是必填的，缺失时保存按钮禁用并显示对应错误文案（来自 `web/src/i18n/locales/*` 里的 `config.channelEditor.comfyuiProxyUrlError` / `comfyuiProxyTokenError`）。
-
----
-
-## 4. 上传 workflow JSON
-
-每个 `ChannelModel` 一对一绑定一份 workflow（`comfyuiWorkflow` 字段，嵌入 AiConfig）。
-
-1. 在 channel 的 model 列表里点要编辑的 model，进入 `ComfyuiWorkflowEditor`（位于 Script 编辑器旁边）。
-2. 点击「上传 workflow JSON」（来自 i18n key `comfyui.uploadWorkflow`）：
-   - 弹出文件选择器，仅接受 `.json`
-   - 读取后用 `JSON.parse` 校验；失败时显示 `comfyui.workflowParseFailed` 错误
-   - 成功后写入 `channelModel.comfyuiWorkflow = { name, json, createdAt }`
-3. 顶部会显示当前 workflow 的 `name`，便于你区分多份工作流。
-4. 点「清空」（`comfyui.clearWorkflow`）可解绑当前 workflow。
-5. 保存 channel 后 workflow 随 AiConfig 一起进 localStorage，并随 `exportAppConfig` 一起导出，导入新设备后无需重新上传。
-
-> **节点约定**：上传的 workflow JSON 里，节点 `_meta.title` 需要等于以下字面量之一，Web 端才会写入对应 inputs：
->
-> | `_meta.title` | 含义 | 写入字段 |
-> | --- | --- | --- |
-> | `prompt` | 文本提示词 | `inputs.text` |
-> | `width` | 输出宽度 | `inputs.value` |
-> | `height` | 输出高度 | `inputs.value` |
-> | `seed` | 随机种子（用户不可见，系统自动随机生成） | `inputs.seed` / `noise_seed` / `value` |
->
-> 这个约定继承自 `tools/comfyui-task/src/binding.ts` 的 `TITLE_TO_INPUT_SLOT` 映射，不要自行改名。
-
----
-
-## 5. 在画布上调用
-
-1. 在画布上选中或新建一个 generation 节点。
-2. ModelPicker 选 `ComfyUI T2I`。
-3. 输入 prompt，按生成。
-4. 节点状态进入 LOADING，等待后台完成。
-5. ComfyUI 完成后图片作为新 image 节点出现在画布上。
-
----
-
-## 6. 进度、超时、取消
-
-| 行为 | 表现 |
-| --- | --- |
-| 进行中 | generation 节点显示 LOADING |
-| 完成 | 产出图落到画布 |
-| **10 分钟超时** | UI 提示 `comfyui.timeout` 文案；**不会**调 `/api/v2/jobs/{id}/cancel`，GPU 不会被动释放，再次点生成会继续等待 |
-| 用户手动取消 | 调用 `/api/v2/jobs/{job_id}/cancel`，UI 提示 `comfyui.cancelled` |
-| Proxy 返回 `failed` | UI 提示 `comfyui.failed` |
-| 缺 workflow | 立即抛错并提示（`comfyui.noWorkflowAttached`） |
-
-> 取消 / 超时都会写一条 `image_generation_logs` 进 workbench 历史，可在「生成记录」里排查。
-
----
-
-## 7. 调试技巧
-
-- **Web 端 console**：`web/src/services/api/comfyui.ts:requestComfyuiImage` 会打印：
-  - 提交后的 `job_id`
-  - 每次轮询的状态与时间戳
-  - 失败 / 超时的具体原因
-  开发模式（`bun run dev`）下浏览器 DevTools Console 直接看。
-- **Proxy 日志**：盯着 proxy 的 stdout，重点看：
-  - `POST /api/v2/assets` —— 参考图是否上传成功（失败多为 CORS / 大小超限）
-  - `POST /api/v2/jobs` —— workflow 是否被接受（失败多为节点缺字段 / 模型缺失）
-  - `GET /api/v2/jobs/{id}` —— 轮询频率（默认 2 秒一次，不要再加速）
-  - `GET /api/v2/assets/{id}/content` —— 产出下载是否 200
-- **ComfyUI 后端**：连本机 ComfyUI 自己的 stdout 看 workflow 节点执行进度；Proxy 通常会把 verbose 模式打开以便对照。
-- **快速回归**：在 proxy 端用 `curl` 模拟一次 `POST /api/v2/jobs` 能最快定位是 Web → Proxy 还是 Proxy → ComfyUI 哪一段挂了。
-
----
-
-## 8. 常见问题
-
-**Q: 选完 ComfyUI 模型后画布一直 LOADING，但 proxy 端没收到 `POST /api/v2/jobs`？**
-A: 99% 是 channel 的 `Proxy URL` / `Proxy Token` 没填对，或者 Web → Proxy 这段网络不通（多见于反代 / HTTPS 自签证书）。
-
-**Q: 提示 `workflow JSON 解析失败`？**
-A: 你上传的 JSON 不是合法 JSON，或根节点缺 `_meta.title` 字段。先用本地编辑器或 `jq` 校验一下格式。
-
-**Q: 输出图很小或被裁剪？**
-A: 检查 workflow 里 `width` / `height` 节点的 `inputs.value` 是否被覆写；或者参考 `parseSize`（`web/src/services/api/comfyui.ts`）默认是 `1024x1024`。
-
-**Q: 我想用 ComfyUI Cloud（cloud.comfy.org）行不行？**
-A: 不行。本期只对接本地 `comfy-api-proxy`，Cloud 的鉴权用 `X-API-Key`、状态端点路径不同，需要另写一层 cloud adapter（属于未来扩展）。
-
-**Q: 我能在多个 model 间复用同一份 workflow 吗？**
-A: 当前数据模型是一对一绑定。如需复用，可把同一份 workflow JSON 单独上传到每个 model；或 fork model 后再传。
-
-**Q: 我能编辑已上传的 workflow 吗？**
-A: 一期只支持「上传 / 清空」，没有内置编辑器。请在 ComfyUI / VSCode 里改好 JSON 后重新上传。
-
----
-
-## 9. 未来扩展
-
-### 9.1 多模态（video / text / audio）
-
-service 层（`requestComfyuiImage`）已基于 capability 抽象，video / text / audio 不需要新写 service，只需要：
-
-1. 在 ComfyUI channel 下新增一个 model，`name: "ComfyUI T2V"`，`capability: "video"`（或 `"text"` / `"audio"`）。
-2. 上传对应的 workflow JSON。
-3. 在偏好面板把 `videoModel` / `textModel` / `audioModel` 设为该 model。
-
-### 9.2 ComfyUI Cloud
-
-Cloud 的协议与本地 proxy 不同：
-
-- 鉴权用 `X-API-Key` 而不是 `Bearer`。
-- 状态端点 `/api/jobs/{id}` vs 本地 `/api/job/{id}/status`。
-- 资产下载路径与本地 proxy 不一致。
-
-接入方式：在 `requestComfyuiImage` 之上加一层 cloud adapter，根据 `channel.comfyuiCloud === true` 走不同 fetch 调用即可。一期不实现。
-
-### 9.3 Workflow 版本管理 / 复用
-
-当前是一对一绑定 + 全量上传。未来若需要：
-
-- 给 `ChannelModel.comfyuiWorkflow` 加 `version` 字段
-- 提供「从已上传 workflow 复制到新 model」按钮
-- 在 IndexedDB 维护一份 workflow 仓库，channel 只引用 `workflow_id`
-
-均属于数据模型改造，需要新一期。
-
----
-
-## 10. 相关代码位置
-
-| 模块 | 文件 |
-| --- | --- |
-| Service 主入口 | `web/src/services/api/comfyui.ts` |
-| Service 工具函数 | `parseSize` / `resolveReferenceImage`（同上文件） |
-| image.ts 分支 | `web/src/services/api/image.ts` 顶部的 `if (apiFormat === "comfyui")` |
-| 渠道编辑器 | `ChannelEditorDrawer` 里的 `apiFormat` 下拉 + proxyUrl/token 行 |
-| Workflow 上传组件 | `ComfyuiWorkflowEditor` |
-| 数据模型 | `ApiCallFormat` / `ModelChannel` / `ChannelModel` 的扩展字段 |
-| i18n | `web/src/i18n/locales/zh-CN.ts` / `en-US.ts` 的 `comfyui.*` 块 |
-| 测试 | `web/src/services/api/__tests__/comfyui.test.ts`（vitest） |
-| Spec | `docs/specs/comfyui-channel.md` |
-
----
-
-## 11. 参考链接
-
-- [comfy-api-proxy 仓库](https://github.com/basketikun/comfy-api-proxy)
-- [`docs/specs/comfyui-channel.md`](specs/comfyui-channel.md) — 完整协议与决策记录
-- [ComfyUI 官方文档](https://github.com/comfyanonymous/ComfyUI)
+确认工作流包含对应的保存节点，并能在 `/history/{prompt_id}` 的 `outputs` 中看到目标类型文件。图片流程需要图片输出，视频流程需要视频输出。

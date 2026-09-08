@@ -20,6 +20,7 @@
 
 - [Local Development](/docs/development/local-development)
 - [Canvas Node System Architecture](/docs/development/canvas-node-system)
+- [Canvas 生成链路 Bug 修复实施手册](CANVAS_GENERATION_BUG_FIX_MANUAL.md)
 - [ComfyUI Workflow Standard](/docs/development/comfyui-workflow-standard)
 - [Multimodal Video Workflow Spec](/docs/development/multimodal-video-workflow-spec)
 - [Canvas Data Structure](/docs/development/canvas-data-structure)

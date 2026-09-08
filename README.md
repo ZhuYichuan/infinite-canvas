@@ -39,7 +39,7 @@
 - 本地 Agent：通过本机 Canvas Agent 连接 Codex / Claude Code，让 Agent 通过 MCP 操作当前画布；提供 Codex App 插件。
 - 插件系统：支持通过 URL 动态安装 / 启用 / 更新 / 卸载远程节点插件，并提供 TypeScript SDK 开发画布节点插件。
 - 提示词库：浏览器前端直连多个 GitHub 开源项目，并缓存到 IndexedDB。
-- 纯前端架构：画布、素材、生成记录与 ComfyUI 凭据（如 Proxy Token）均保存在浏览器本地，无服务端依赖。
+- 纯前端架构：画布、素材、生成记录与 ComfyUI 访问凭据（如可选 Token）均保存在浏览器本地，无服务端依赖。
 
 完整功能说明见 [功能介绍](docs/content/docs/overview/features.zh-CN.mdx)。
 

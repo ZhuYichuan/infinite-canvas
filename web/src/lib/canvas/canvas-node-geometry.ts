@@ -1,4 +1,4 @@
-import { CanvasNodeType, type CanvasNodeData, type ConnectionHandle } from "@/types/canvas";
+import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type ConnectionHandle } from "@/types/canvas";
 
 export function nodeBounds(nodes: CanvasNodeData[]) {
     return nodes.reduce(
@@ -63,14 +63,35 @@ export function getConnectionTargetAnchor(node: CanvasNodeData, current: Connect
     };
 }
 
-export function normalizeConnection(firstNodeId: string, secondNodeId: string, nodes: CanvasNodeData[], firstHandleType: "source" | "target") {
+export function validateInputConnection(
+    fromNodeId: string,
+    toNodeId: string,
+    nodes: CanvasNodeData[],
+    connections: CanvasConnection[] = [],
+): { fromNodeId: string; toNodeId: string } | null {
+    const fromNode = nodes.find((node) => node.id === fromNodeId);
+    const toNode = nodes.find((node) => node.id === toNodeId);
+    if (!fromNode || !toNode) return null;
+    if (fromNodeId === toNodeId) return null;
+    if (toNode.type === CanvasNodeType.Group) return null;
+    if (fromNode.type === CanvasNodeType.Config) return null;
+    if (connections.some((connection) => connection.fromNodeId === fromNodeId && connection.toNodeId === toNodeId)) return null;
+    return { fromNodeId, toNodeId };
+}
+
+export function normalizeConnection(
+    firstNodeId: string,
+    secondNodeId: string,
+    nodes: CanvasNodeData[],
+    firstHandleType: "source" | "target",
+    connections: CanvasConnection[] = [],
+) {
     const first = nodes.find((node) => node.id === firstNodeId);
     const second = nodes.find((node) => node.id === secondNodeId);
-    if (!first || !second || first.id === second.id) return null;
-    if (second.type === CanvasNodeType.Group) return null;
-    if (first.type === CanvasNodeType.Config && second.type === CanvasNodeType.Config) return null;
-    if (second.type === CanvasNodeType.Config) return { fromNodeId: first.id, toNodeId: second.id };
-    if (first.type === CanvasNodeType.Config && firstHandleType === "target") return { fromNodeId: second.id, toNodeId: first.id };
-    if (first.type === CanvasNodeType.Config) return { fromNodeId: first.id, toNodeId: second.id };
-    return { fromNodeId: first.id, toNodeId: second.id };
+    if (!first || !second) return null;
+    const [fromNodeId, toNodeId] =
+        first.type === CanvasNodeType.Config && firstHandleType === "target"
+            ? [second.id, first.id]
+            : [first.id, second.id];
+    return validateInputConnection(fromNodeId, toNodeId, nodes, connections);
 }

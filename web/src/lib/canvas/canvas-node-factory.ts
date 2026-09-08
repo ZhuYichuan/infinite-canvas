@@ -49,6 +49,13 @@ export function buildImageGenerationMetadata(type: CanvasImageGenerationType, co
         ...(config.background ? { background: config.background } : {}),
         count,
         references: references.map(referenceUrl).filter((url): url is string => Boolean(url)),
+        generationReferences: references.map((reference) => ({
+            nodeId: reference.id,
+            kind: "image" as const,
+            storageKey: reference.storageKey,
+            url: reference.storageKey ? undefined : reference.url || (!reference.dataUrl.startsWith("data:") ? reference.dataUrl : undefined),
+            mimeType: reference.type,
+        })),
         ...(seed !== undefined ? { seed } : {}),
     };
 }

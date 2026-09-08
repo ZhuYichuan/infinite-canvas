@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { ArrowUp, LoaderCircle, Maximize2, Square } from "lucide-react";
+import { ArrowUp, LoaderCircle, Maximize2, RefreshCw, Sparkles, Square } from "lucide-react";
 import { Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
-import { decodeChannelModel, defaultConfig, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { decodeChannelModel, defaultConfig, encodeChannelModel, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -13,7 +13,7 @@ import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas
 import { CanvasPromptChipInput } from "./canvas-prompt-chip-input";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
 import { CanvasTextSettingsPopover } from "./canvas-text-settings-popover";
-import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "@/types/canvas";
+import { CanvasNodeType, type CanvasGenerationIntent, type CanvasGenerationMode, type CanvasNodeData } from "@/types/canvas";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
 
@@ -24,7 +24,7 @@ type CanvasNodePromptPanelProps = {
     isRunning: boolean;
     onPromptChange: (nodeId: string, prompt: string) => void;
     onConfigChange: (nodeId: string, patch: Partial<CanvasNodeData["metadata"]>) => void;
-    onGenerate: (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => void;
+    onGenerate: (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, intent?: CanvasGenerationIntent) => void;
     onStop: (nodeId: string) => void;
     mentionReferences?: CanvasResourceReference[];
     nodes: CanvasNodeData[];
@@ -45,6 +45,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
     const hasTextContent = node.type === CanvasNodeType.Text && Boolean(node.metadata?.content?.trim());
     const hasImageContent = node.type === CanvasNodeType.Image && Boolean(node.metadata?.content);
     const isEditingExistingContent = hasTextContent || hasImageContent;
+    const canRepeat = node.metadata?.status === "success" && node.metadata.effectivePrompt !== undefined && Array.isArray(node.metadata.generationReferences);
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
     const [expanded, setExpanded] = useState(false);
 
@@ -60,10 +61,10 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
         else onPromptChange(node.id, value);
     };
 
-    const submit = () => {
+    const submit = (intent: CanvasGenerationIntent = canRepeat ? "derive" : "new") => {
         const text = prompt.trim();
-        if (!text || isRunning) return;
-        onGenerate(node.id, mode, text);
+        if ((!text && intent !== "repeat") || isRunning) return;
+        onGenerate(node.id, mode, text, intent);
     };
 
     const openExpandedEditor = () => {
@@ -128,7 +129,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                             <CanvasVideoSettingsPopover
                                 config={config}
                                 buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-full !px-3"
-                                onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, globalConfig, config.model))}
+                                onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, config))}
                             />
                         </>
                     ) : mode === "audio" ? (
@@ -143,26 +144,28 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </>
                     )}
                 </div>
-                <Button
-                    type="primary"
-                    className="!h-10 !min-w-16 shrink-0 !rounded-full !px-3"
-                    danger={isRunning}
-                    disabled={!isRunning && !prompt.trim()}
-                    onClick={() => (isRunning ? onStop(node.id) : submit())}
-                    aria-label={t(isRunning ? "canvas.promptPanel.stopGeneration" : "canvas.promptPanel.generate")}
-                >
-                    <span className="flex items-center gap-1.5">
-                        {isRunning ? (
-                            <>
-                                <LoaderCircle className="size-4 animate-spin" />
-                                <Square className="size-3.5 fill-current" />
-                                <span className="text-xs font-medium">{t("canvas.promptPanel.stop")}</span>
-                            </>
-                        ) : (
-                            <ArrowUp className="size-4" />
-                        )}
-                    </span>
-                </Button>
+                {isRunning ? (
+                    <Button type="primary" danger className="!h-10 shrink-0 !rounded-full !px-3" onClick={() => onStop(node.id)} aria-label={t("canvas.promptPanel.stopGeneration")}>
+                        <span className="flex items-center gap-1.5">
+                            <LoaderCircle className="size-4 animate-spin" />
+                            <Square className="size-3.5 fill-current" />
+                            <span className="text-xs font-medium">{t("canvas.promptPanel.stop")}</span>
+                        </span>
+                    </Button>
+                ) : canRepeat ? (
+                    <div className="flex shrink-0 items-center gap-1">
+                        <Button type="text" className="!h-10 !rounded-full !px-3" icon={<RefreshCw className="size-3.5" />} onClick={() => submit("repeat")}>
+                            {t("canvas.promptPanel.repeatGeneration")}
+                        </Button>
+                        <Button type="primary" className="!h-10 !rounded-full !px-3" disabled={!prompt.trim()} icon={<Sparkles className="size-3.5" />} onClick={() => submit("derive")}>
+                            {t("canvas.promptPanel.deriveGeneration")}
+                        </Button>
+                    </div>
+                ) : (
+                    <Button type="primary" className="!h-10 !min-w-16 shrink-0 !rounded-full !px-3" disabled={!prompt.trim()} onClick={() => submit("new")} aria-label={t("canvas.promptPanel.generate")}>
+                        <ArrowUp className="size-4" />
+                    </Button>
+                )}
             </div>
             <Modal title={t("canvas.promptPanel.editorTitle")} open={expanded} centered width={760} footer={null} onCancel={() => setExpanded(false)} destroyOnHidden>
                 <div data-canvas-no-zoom className="pt-2" onWheelCapture={(event) => event.stopPropagation()}>
@@ -216,20 +219,20 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     };
 }
 
-function videoConfigPatch(key: keyof AiConfig, value: string, globalConfig?: AiConfig, currentModel?: string) {
+function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     if (key === "videoMode") {
         const patch: Record<string, unknown> = { videoMode: value };
-        if (globalConfig) {
-            const channel = resolveModelChannel(globalConfig, currentModel || globalConfig.videoModel);
+        if (config) {
+            const channel = resolveModelChannel(config, config.model || config.videoModel);
             if (value === "frame") {
-                const frameModel = channel?.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
-                if (frameModel) patch.model = `${channel?.id || "default"}::${frameModel.name}`;
+                const frameModel = channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
+                if (frameModel) patch.model = encodeChannelModel(channel.id, frameModel.name);
             } else if (value === "omni") {
-                const omniModel = channel?.models.find((m) => m.name === "ComfyUI Video" || (!m.name.toLowerCase().includes("frame") && !m.name.includes("首尾帧") && m.capability === "video"));
-                if (omniModel) patch.model = `${channel?.id || "default"}::${omniModel.name}`;
+                const omniModel = channel.models.find((m) => m.name === "ComfyUI Video" || (!m.name.toLowerCase().includes("frame") && !m.name.includes("首尾帧") && m.capability === "video"));
+                if (omniModel) patch.model = encodeChannelModel(channel.id, omniModel.name);
             }
         }
         return patch;

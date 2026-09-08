@@ -69,13 +69,13 @@ export function getGenerationResourceNodes(nodeId: string, nodes: CanvasNodeData
 
 function getContextInputNodes(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]) {
     return connections
-        .filter((connection) => connection.toNodeId === nodeId)
+        .filter((connection) => connection.kind === "input" && connection.toNodeId === nodeId)
         .map((connection) => nodes.find((node) => node.id === connection.fromNodeId))
         .filter((node): node is CanvasNodeData => Boolean(node && isCanvasReferenceNode(node, nodes)));
 }
 
 function getConnectedConfigInputNodes(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]) {
-    const configConnection = connections.find((connection) => connection.fromNodeId === nodeId && nodes.find((node) => node.id === connection.toNodeId)?.type === CanvasNodeType.Config);
+    const configConnection = connections.find((connection) => connection.kind === "input" && connection.fromNodeId === nodeId && nodes.find((node) => node.id === connection.toNodeId)?.type === CanvasNodeType.Config);
     if (!configConnection) return [];
     return getContextInputNodes(configConnection.toNodeId, nodes, connections).filter((node) => node.id !== nodeId);
 }
@@ -94,7 +94,26 @@ function expandGroupResourceNodes(inputNodes: CanvasNodeData[], nodes: CanvasNod
 }
 
 export function getGroupResourceNodes(groupId: string, nodes: CanvasNodeData[]) {
-    return nodes.filter((node) => node.metadata?.groupId === groupId && isResourceNode(node));
+    const visitedGroups = new Set<string>([groupId]);
+    const seenResources = new Set<string>();
+    const result: CanvasNodeData[] = [];
+    const collect = (currentGroupId: string) => {
+        for (const node of nodes) {
+            if (node.metadata?.groupId !== currentGroupId) continue;
+            if (node.type === CanvasNodeType.Group) {
+                if (visitedGroups.has(node.id)) continue;
+                visitedGroups.add(node.id);
+                collect(node.id);
+                continue;
+            }
+            if (isResourceNode(node) && !seenResources.has(node.id)) {
+                seenResources.add(node.id);
+                result.push(node);
+            }
+        }
+    };
+    collect(groupId);
+    return result;
 }
 
 function labelResourceNodes(nodes: CanvasNodeData[], active: boolean) {

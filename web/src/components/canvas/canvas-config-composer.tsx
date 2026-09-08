@@ -61,7 +61,11 @@ export function CanvasConfigComposer({ nodeId, nodes, value, inputs, connectedNo
                 return;
             }
             const input = referenceById.get(token.nodeId);
-            if (input) editor.append(createReferenceChip(input, inputs, theme, setImagePreview));
+            if (input) {
+                editor.append(createReferenceChip(input, inputs, theme, setImagePreview));
+            } else {
+                editor.append(document.createTextNode(`@[node:${token.nodeId}]`));
+            }
         });
     }, [inputs, referenceById, theme, tokens]);
 
