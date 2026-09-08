@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { COMFYUI_DEFAULT_MODELS, createModelChannel, defaultConfig, isAiConfigReady, normalizeApiFormat, normalizeChannelModels, resolveModelRequestConfig, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { COMFYUI_DEFAULT_MODELS, createModelChannel, defaultConfig, isAiConfigReady, normalizeApiFormat, normalizeChannelModels, resolveModelChannel, resolveModelRequestConfig, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 
 describe("COMFYUI_DEFAULT_MODELS", () => {
     it("pre-provisions the default ComfyUI models", () => {
@@ -98,6 +98,37 @@ describe("ComfyUI model resolution", () => {
         const resolved = resolveModelRequestConfig(config, "comfy::ComfyUI T2I");
         expect(resolved.apiFormat).toBe("comfyui");
         expect(resolved.model).toBe("ComfyUI T2I");
+        expect(resolved.baseUrl).toBe("http://127.0.0.1:8189");
+    });
+
+    it("resolves multiple ComfyUI channels to their respective IP addresses", () => {
+        const channel1: ModelChannel = {
+            id: "channel-1",
+            name: "ComfyUI 1",
+            baseUrl: "",
+            apiKey: "",
+            apiFormat: "comfyui",
+            models: [{ name: "ComfyUI Video", capability: "video" }],
+            comfyuiProxyUrl: "http://127.0.0.1:8188",
+        };
+        const channel2: ModelChannel = {
+            id: "channel-2",
+            name: "ComfyUI 2",
+            baseUrl: "",
+            apiKey: "",
+            apiFormat: "comfyui",
+            models: [{ name: "ComfyUI Video", capability: "video" }],
+            comfyuiProxyUrl: "http://192.168.1.200:8188",
+        };
+        const cfg: AiConfig = { ...defaultConfig, channels: [channel1, channel2] };
+
+        const res1 = resolveModelChannel(cfg, "channel-1::ComfyUI Video");
+        expect(res1.id).toBe("channel-1");
+        expect(res1.comfyuiProxyUrl).toBe("http://127.0.0.1:8188");
+
+        const res2 = resolveModelChannel(cfg, "channel-2::ComfyUI Video");
+        expect(res2.id).toBe("channel-2");
+        expect(res2.comfyuiProxyUrl).toBe("http://192.168.1.200:8188");
     });
 });
 

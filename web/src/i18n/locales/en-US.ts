@@ -446,6 +446,9 @@ export default {
             defaultName: "Default provider",
             newName: "New provider",
             indexedName: "Provider {{index}}",
+            defaultTag: "Default",
+            setDefault: "Set as default",
+            defaultSetSuccess: "Set as default provider",
         },
         preferences: {
             interface: "Interface",

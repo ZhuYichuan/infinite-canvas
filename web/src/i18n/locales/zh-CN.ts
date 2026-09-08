@@ -446,6 +446,9 @@ export default {
             defaultName: "默认渠道",
             newName: "新渠道",
             indexedName: "渠道 {{index}}",
+            defaultTag: "默认",
+            setDefault: "设为默认",
+            defaultSetSuccess: "已设为默认渠道",
         },
         preferences: {
             interface: "界面偏好",

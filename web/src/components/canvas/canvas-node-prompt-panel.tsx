@@ -4,7 +4,7 @@ import { Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
-import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { decodeChannelModel, defaultConfig, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -128,7 +128,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                             <CanvasVideoSettingsPopover
                                 config={config}
                                 buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-full !px-3"
-                                onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, globalConfig))}
+                                onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, globalConfig, config.model))}
                             />
                         </>
                     ) : mode === "audio" ? (
@@ -195,6 +195,10 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     return {
         ...globalConfig,
         model,
+        videoModel: mode === "video" ? model : globalConfig.videoModel,
+        imageModel: mode === "image" ? model : globalConfig.imageModel,
+        textModel: mode === "text" ? model : globalConfig.textModel,
+        audioModel: mode === "audio" ? model : globalConfig.audioModel,
         videoMode,
         reasoningEffort: node.metadata?.reasoningEffort || globalConfig.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
@@ -212,19 +216,19 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     };
 }
 
-function videoConfigPatch(key: keyof AiConfig, value: string, globalConfig?: AiConfig) {
+function videoConfigPatch(key: keyof AiConfig, value: string, globalConfig?: AiConfig, currentModel?: string) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     if (key === "videoMode") {
         const patch: Record<string, unknown> = { videoMode: value };
         if (globalConfig) {
-            const channel = globalConfig.channels[0];
+            const channel = resolveModelChannel(globalConfig, currentModel || globalConfig.videoModel);
             if (value === "frame") {
                 const frameModel = channel?.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
                 if (frameModel) patch.model = `${channel?.id || "default"}::${frameModel.name}`;
             } else if (value === "omni") {
-                const omniModel = channel?.models.find((m) => m.name === "ComfyUI Video");
+                const omniModel = channel?.models.find((m) => m.name === "ComfyUI Video" || (!m.name.toLowerCase().includes("frame") && !m.name.includes("首尾帧") && m.capability === "video"));
                 if (omniModel) patch.model = `${channel?.id || "default"}::${omniModel.name}`;
             }
         }

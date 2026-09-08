@@ -17,14 +17,15 @@ type RequestOptions = {
 };
 
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
-    const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
+    const rawModel = config.imageModel || config.model;
+    const requestConfig = resolveModelRequestConfig(config, rawModel);
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     if (n > 1) {
         const results = await Promise.all(
             Array.from({ length: n }, () =>
                 requestComfyuiImage({
                     config: requestConfig,
-                    model: requestConfig.model,
+                    model: rawModel,
                     prompt,
                     size: requestConfig.size,
                     signal: options?.signal,
@@ -38,7 +39,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
     return (
         await requestComfyuiImage({
             config: requestConfig,
-            model: requestConfig.model,
+            model: rawModel,
             prompt,
             size: requestConfig.size,
             signal: options?.signal,
@@ -49,9 +50,11 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
 }
 
 export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], mask?: ReferenceImage, options?: RequestOptions) {
+    const rawModel = config.imageModel || config.model;
     if (mask && references[0]?.dataUrl) {
         const result = await requestComfyuiInpaint({
             config,
+            model: rawModel,
             prompt,
             sourceDataUrl: references[0].dataUrl,
             maskDataUrl: mask.dataUrl,
@@ -64,7 +67,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     return (
         await requestComfyuiImage({
             config,
-            model: config.model || config.imageModel,
+            model: rawModel,
             prompt,
             size: config.size,
             references,
@@ -92,8 +95,10 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
         }
     }
 
+    const rawModel = config.textModel || config.model;
     const res = await requestComfyuiText({
         config,
+        model: rawModel,
         prompt,
         imageDataUrl,
         signal: options?.signal,

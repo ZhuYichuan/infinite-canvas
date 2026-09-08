@@ -421,8 +421,23 @@ export function normalizeModelOptionValue(value: string | undefined, channels: M
 
 export function resolveModelChannel(config: AiConfig, value: string) {
     const decoded = decodeChannelModel(value);
+    if (decoded) {
+        const matched = config.channels.find((channel) => channel.id === decoded.channelId);
+        if (matched) return matched;
+    }
     const model = decoded?.model || value;
-    const matched = decoded ? config.channels.find((channel) => channel.id === decoded.channelId) : config.channels.find((channel) => channel.models.some((item) => item.name === model));
+    const cap = guessCapability(model);
+    const preferredCand = cap === "video" ? config.videoModel : cap === "text" ? config.textModel : cap === "audio" ? config.audioModel : config.imageModel;
+    const modelCandidates = [preferredCand, config.model, config.videoModel, config.imageModel, config.textModel, config.audioModel].filter(Boolean) as string[];
+    for (const cand of modelCandidates) {
+        if (!cand) continue;
+        const candDecoded = decodeChannelModel(cand);
+        if (candDecoded && (!value || candDecoded.model === value)) {
+            const matched = config.channels.find((channel) => channel.id === candDecoded.channelId);
+            if (matched) return matched;
+        }
+    }
+    const matched = config.channels.find((channel) => channel.models.some((item) => item.name === model));
     return matched || config.channels[0] || createModelChannel({ id: "default", name: "ComfyUI", apiFormat: "comfyui", models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
 }
 
@@ -431,8 +446,8 @@ export function resolveModelRequestConfig(config: AiConfig, value: string) {
     return {
         ...config,
         model: modelOptionName(value || config.model),
-        baseUrl: channel.baseUrl,
-        apiKey: channel.apiKey,
+        baseUrl: channel.baseUrl || channel.comfyuiProxyUrl,
+        apiKey: channel.apiKey || channel.comfyuiProxyToken,
         apiFormat: channel.apiFormat,
     };
 }

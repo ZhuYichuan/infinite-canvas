@@ -7,6 +7,13 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Multi-channel ComfyUI (Different IPs) Independent Requests & Exact Routing:
+  - **Channel Prefix Preservation**: Preserves the full `channelId::` model identifier during image, video, text, and inpaint generation, preventing fallback to the first channel caused by premature stripping via `modelOptionName`.
+  - **Decouple Node Model from Global Preference**: Prioritizes the node's own model (`req.config.model`) over global preferences (such as `config.videoModel` or `config.textModel`), ensuring that node-specific channel selections are respected.
+  - **Preserve Current Channel on Video Mode Toggle**: Toggling between "Omni" and "Frame" on a video node stays on the node's currently selected channel instead of hardcoding `channels[0]`.
+  - **One-click Set as Default Channel**: In the "Config - Channels" tab, the first channel displays a "Default" tag while other channels have a "Set as default" button that reorders the channel to first and syncs default models.
+  - **Custom Workflow Priority & Safe Fallback**: Prioritizes `channelModel.comfyuiWorkflow` over channel-level defaults across all modalities (T2I, I2I, inpaint, text, and video), ensuring user-uploaded custom workflows on specific models are strictly executed. Removed cross-capability `models[0]` fallback.
+
 - User Manual & ComfyUI Workflow Downloads Page (/guide):
   - **Comprehensive 6-Workflow Coverage**: Built-in cards and JSON downloads for all 6 core workflows (Z-Image-Turbo T2I, Flux2.Dev I2I, Qwen Inpaint, Qwen 3.5 LLM, MiniMax H3 FL2V, and MiniMax H3 Ref2V).
   - **One-click ZIP Packager**: Bundles all 6 workflow JSONs and a structured `README_模型与存放目录清单.txt` with fflate for client-side offline saving.

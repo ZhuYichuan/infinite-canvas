@@ -4,7 +4,7 @@ import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
-import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { decodeChannelModel, defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -120,7 +120,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         config={config}
                         placement="topRight"
                         buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2"
-                        onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, globalConfig))}
+                        onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, globalConfig, config.model))}
                     />
                 ) : mode === "image" ? (
                     <CanvasImageSettingsPopover config={config} placement="topRight" autoAdjustOverflow={false} buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })} />
@@ -177,6 +177,10 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     return {
         ...globalConfig,
         model,
+        videoModel: mode === "video" ? model : globalConfig.videoModel,
+        imageModel: mode === "image" ? model : globalConfig.imageModel,
+        textModel: mode === "text" ? model : globalConfig.textModel,
+        audioModel: mode === "audio" ? model : globalConfig.audioModel,
         videoMode,
         reasoningEffort: node.metadata?.reasoningEffort || globalConfig.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
@@ -194,14 +198,15 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     };
 }
 
-function videoConfigPatch(key: keyof AiConfig, value: string, globalConfig?: AiConfig) {
+function videoConfigPatch(key: keyof AiConfig, value: string, globalConfig?: AiConfig, currentModel?: string) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     if (key === "videoMode") {
         const patch: Record<string, unknown> = { videoMode: value };
         if (globalConfig) {
-            const channel = globalConfig.channels[0];
+            const currentChannelId = decodeChannelModel(currentModel || "")?.channelId;
+            const channel = (currentChannelId && globalConfig.channels.find((c) => c.id === currentChannelId)) || globalConfig.channels[0];
             if (value === "frame") {
                 const frameModel = channel?.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
                 if (frameModel) patch.model = `${channel?.id || "default"}::${frameModel.name}`;

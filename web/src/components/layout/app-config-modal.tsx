@@ -1,4 +1,4 @@
-import { App, Button, Form, Input, Modal, Progress, Select, Tabs } from "antd";
+import { App, Button, Form, Input, Modal, Progress, Select, Tabs, Tag } from "antd";
 import type { TFunction } from "i18next";
 import { Cloud, Download, Pencil, Plus, RefreshCw, Trash2, Upload, Wifi } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -121,6 +121,23 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
         updateChannels(config.channels.map((item) => (item.id === channel.id ? channel : item)), channel);
     };
 
+    const setDefaultChannel = (id: string) => {
+        const target = config.channels.find((c) => c.id === id);
+        if (!target) return;
+        const reordered = [target, ...config.channels.filter((c) => c.id !== id)];
+        const nextConfig = withChannels(config, reordered, target);
+        const t2i = target.models.find((m) => m.name === "ComfyUI T2I" || m.capability === "image");
+        const video = target.models.find((m) => m.name === "ComfyUI Video" || m.capability === "video");
+        const text = target.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text");
+        saveConfig({
+            ...nextConfig,
+            ...(t2i ? { model: encodeChannelModel(target.id, t2i.name), imageModel: encodeChannelModel(target.id, t2i.name) } : {}),
+            ...(video ? { videoModel: encodeChannelModel(target.id, video.name) } : {}),
+            ...(text ? { textModel: encodeChannelModel(target.id, text.name) } : {}),
+        });
+        message.success(t("config.channels.defaultSetSuccess"));
+    };
+
     const testWebdav = async () => {
         if (!webdavReady) {
             message.error(t("config.webdav.missingUrl"));
@@ -201,7 +218,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                     </Button>
                                 </div>
                                 <div className="space-y-3">
-                                    {config.channels.map((channel) => {
+                                    {config.channels.map((channel, index) => {
                                         const isComfyui = channel.apiFormat === "comfyui";
                                         const t2iModel = channel.models.find((m) => m.name === "ComfyUI T2I") || channel.models[0];
                                         const t2iWorkflow = channel.comfyuiT2iWorkflow || t2iModel?.comfyuiWorkflow;
@@ -293,12 +310,20 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                             <div key={channel.id} className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
                                                 <div className="flex items-center justify-between gap-3">
                                                     <div className="min-w-0">
-                                                        <div className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</span>
+                                                            {index === 0 && <Tag color="blue">{t("config.channels.defaultTag")}</Tag>}
+                                                        </div>
                                                         <div className="mt-1 truncate text-xs text-stone-500">
-                                                             {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {isComfyui ? channel.comfyuiProxyUrl || "http://127.0.0.1:8188" : channel.baseUrl || t("config.channels.missingUrl")}
+                                                            {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {isComfyui ? channel.comfyuiProxyUrl || "http://127.0.0.1:8188" : channel.baseUrl || t("config.channels.missingUrl")}
                                                         </div>
                                                     </div>
                                                     <div className="flex shrink-0 gap-2">
+                                                        {index !== 0 && (
+                                                            <Button size="small" onClick={() => setDefaultChannel(channel.id)}>
+                                                                {t("config.channels.setDefault")}
+                                                            </Button>
+                                                        )}
                                                         <Button size="small" icon={<Pencil className="size-3.5" />} onClick={() => setEditingChannelId(channel.id)}>
                                                             {t("common.edit")}
                                                         </Button>
@@ -562,6 +587,7 @@ function withChannels(config: AiConfig, channels: ModelChannel[], changed?: Mode
     }
     return {
         ...next,
+        model: imageModel,
         imageModel,
         videoModel: pickDefaultModel(next, "video", config.videoModel),
         textModel: pickDefaultModel(next, "text", config.textModel),

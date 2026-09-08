@@ -2,7 +2,7 @@ import localforage from "localforage";
 
 import { nanoid } from "nanoid";
 import i18n from "@/i18n";
-import { resolveModelChannel, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
+import { modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 import {
     DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
     DEFAULT_COMFYUI_I2I_WORKFLOW,
@@ -836,22 +836,20 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
     let jobId = req.jobId || "";
     let seed: number | undefined = req.seed;
     try {
-        requestConfig = resolveModelRequestConfig(req.config, req.model);
-        const channel = resolveModelChannel(req.config, req.model);
-        const requestModel = requestConfig.model;
+        const rawModel = req.model || req.config.imageModel || req.config.model;
+        requestConfig = resolveModelRequestConfig(req.config, rawModel);
+        const channel = resolveModelChannel(req.config, rawModel);
+        const requestModel = modelOptionName(rawModel);
         const channelModel = channel.models.find((model) => model.name === requestModel);
         const references = req.references || [];
         const isI2i = references.length > 0;
         const workflow = isI2i
-            ? channel.comfyuiI2iWorkflow ||
-              channel.models.find((m) => m.name === "ComfyUI I2I" || m.name.toLowerCase().includes("i2i") || m.name.includes("图生图"))?.comfyuiWorkflow ||
-              channelModel?.comfyuiWorkflow ||
-              channel.models[0]?.comfyuiWorkflow ||
-              DEFAULT_COMFYUI_I2I_WORKFLOW
+            ? channelModel?.comfyuiWorkflow ||
+              channel.comfyuiI2iWorkflow ||
+              channel.models.find((m) => m.name === "ComfyUI I2I" || m.name.toLowerCase().includes("i2i") || m.name.includes("图生图"))?.comfyuiWorkflow
             : channelModel?.comfyuiWorkflow ||
-              channel.models.find((m) => m.name === "ComfyUI T2I" || m.name.toLowerCase().includes("t2i") || m.name.includes("文生图"))?.comfyuiWorkflow ||
-              channel.models[0]?.comfyuiWorkflow ||
-              DEFAULT_COMFYUI_T2I_WORKFLOW;
+              channel.comfyuiT2iWorkflow ||
+              channel.models.find((m) => m.name === "ComfyUI T2I" || m.name.toLowerCase().includes("t2i") || m.name.includes("文生图"))?.comfyuiWorkflow;
         if (!workflow) throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noWorkflow", { model: requestModel }));
         const baseUrl = (channel.comfyuiProxyUrl || "").trim();
         const token = channel.comfyuiProxyToken;
@@ -956,6 +954,7 @@ export async function uploadComfyuiAsset(
 
 export interface ComfyuiInpaintRequest {
     config: AiConfig;
+    model?: string;
     prompt: string;
     sourceDataUrl: string;
     maskDataUrl: string;
@@ -970,11 +969,14 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
     let jobId = req.jobId || "";
     let seed: number | undefined = req.seed;
     try {
-        const channel = resolveModelChannel(req.config, req.config.model || req.config.imageModel);
+        const rawModel = req.model || req.config.imageModel || req.config.model;
+        const channel = resolveModelChannel(req.config, rawModel);
+        const requestModel = modelOptionName(rawModel);
+        const channelModel = channel.models.find((model) => model.name === requestModel);
         const inpaintWorkflow =
+            channelModel?.comfyuiWorkflow ||
             channel.comfyuiInpaintWorkflow ||
-            channel.models.find((m) => m.name.toLowerCase().includes("inpaint") || m.name.includes("局部编辑"))?.comfyuiWorkflow ||
-            DEFAULT_COMFYUI_INPAINT_WORKFLOW;
+            channel.models.find((m) => m.name === "ComfyUI Inpaint" || m.name.toLowerCase().includes("inpaint") || m.name.includes("局部编辑"))?.comfyuiWorkflow;
         if (!inpaintWorkflow) {
             throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noInpaintWorkflow"));
         }
@@ -1315,6 +1317,7 @@ export async function downloadComfyuiText(assetIdOrUrl: string, baseUrl: string,
 export interface ComfyuiTextRequest {
     config: AiConfig;
     prompt: string;
+    model?: string;
     imageDataUrl?: string;
     seed?: number;
     jobId?: string;
@@ -1328,11 +1331,14 @@ export async function requestComfyuiText(req: ComfyuiTextRequest): Promise<{ tex
     let jobId = req.jobId || "";
     let seed: number | undefined = req.seed;
     try {
-        const channel = resolveModelChannel(req.config, req.config.textModel || req.config.model);
+        const rawModel = req.model || req.config.textModel || req.config.model;
+        const channel = resolveModelChannel(req.config, rawModel);
+        const requestModel = modelOptionName(rawModel);
+        const channelModel = channel.models.find((model) => model.name === requestModel);
         const textWorkflow =
+            channelModel?.comfyuiWorkflow ||
             channel.comfyuiTextWorkflow ||
-            channel.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text")?.comfyuiWorkflow ||
-            DEFAULT_COMFYUI_TEXT_WORKFLOW;
+            channel.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text")?.comfyuiWorkflow;
 
         if (!textWorkflow) {
             throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noTextWorkflow"));
@@ -1734,6 +1740,7 @@ export function applyVideoBindings(
 
 export interface ComfyuiVideoRequest {
     config: AiConfig;
+    model?: string;
     prompt: string;
     references?: ReferenceImage[];
     referenceVideos?: ReferenceVideo[];
@@ -1748,15 +1755,19 @@ export interface ComfyuiVideoRequest {
 }
 
 export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{ jobId: string; baseUrl: string; token?: string }> {
-    const channel = resolveModelChannel(req.config, req.config.videoModel || req.config.model);
+    const rawModel = req.model || req.config.videoModel || req.config.model;
+    const channel = resolveModelChannel(req.config, rawModel);
+    const requestModel = modelOptionName(rawModel);
+    const channelModel = channel.models.find((model) => model.name === requestModel);
     const videoMode = req.videoMode || (req.config.videoMode === "frame" ? "frame" : "omni");
     const videoWorkflow = videoMode === "frame"
-        ? channel.comfyuiFrameVideoWorkflow ||
+        ? (channelModel && (channelModel.name.toLowerCase().includes("frame") || channelModel.name.includes("首尾帧")) ? channelModel.comfyuiWorkflow : undefined) ||
+          channel.comfyuiFrameVideoWorkflow ||
           channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"))?.comfyuiWorkflow ||
-          DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW
-        : channel.comfyuiVideoWorkflow ||
-          channel.models.find((m) => m.name === "ComfyUI Video" || m.capability === "video")?.comfyuiWorkflow ||
-          DEFAULT_COMFYUI_VIDEO_WORKFLOW;
+          channelModel?.comfyuiWorkflow
+        : channelModel?.comfyuiWorkflow ||
+          channel.comfyuiVideoWorkflow ||
+          channel.models.find((m) => m.name === "ComfyUI Video" || m.capability === "video")?.comfyuiWorkflow;
 
     if (!videoWorkflow) {
         throw new ComfyuiNoWorkflowError(i18n.t(videoMode === "frame" ? "comfyui.noFrameVideoWorkflow" : "comfyui.noVideoWorkflow"));
@@ -1867,13 +1878,14 @@ export async function pollComfyuiVideoJob(jobId: string, baseUrl: string, token?
 }
 
 export async function requestComfyuiVideo(req: ComfyuiVideoRequest): Promise<{ url: string; mimeType: string; jobId: string }> {
-    const channel = resolveModelChannel(req.config, req.config.videoModel || req.config.model);
+    const rawModel = req.model || req.config.videoModel || req.config.model;
+    const channel = resolveModelChannel(req.config, rawModel);
     const baseUrl = (channel.comfyuiProxyUrl || "").trim();
     const token = channel.comfyuiProxyToken;
 
     let jobId = req.jobId;
     if (!jobId) {
-        const submitted = await submitComfyuiVideoJob(req);
+        const submitted = await submitComfyuiVideoJob({ ...req, model: rawModel });
         jobId = submitted.jobId;
         req.onProgress?.("submitted", { jobId });
     }

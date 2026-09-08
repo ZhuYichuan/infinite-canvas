@@ -46,8 +46,10 @@ function aiHeaders(config: AiConfig, contentType?: string) {
 }
 
 export async function requestVideoGeneration(config: AiConfig, prompt: string, references: ReferenceImage[] = [], options?: VideoRequestOptions): Promise<VideoGenerationResult> {
+    const rawModel = config.videoModel || config.model;
     const res = await requestComfyuiVideo({
         config,
+        model: rawModel,
         prompt,
         references,
         referenceVideos: options?.referenceVideos,
@@ -64,8 +66,10 @@ export async function requestVideoGeneration(config: AiConfig, prompt: string, r
 }
 
 export async function createVideoGenerationTask(config: AiConfig, prompt: string, references: ReferenceImage[] = [], options?: VideoRequestOptions): Promise<VideoGenerationTask> {
+    const rawModel = config.videoModel || config.model;
     const { jobId } = await submitComfyuiVideoJob({
         config,
+        model: rawModel,
         prompt,
         references,
         referenceVideos: options?.referenceVideos,
@@ -73,7 +77,7 @@ export async function createVideoGenerationTask(config: AiConfig, prompt: string
         seed: options?.seed,
         signal: options?.signal,
     });
-    return { id: jobId, provider: "comfyui", model: config.videoModel || "ComfyUI Video" };
+    return { id: jobId, provider: "comfyui", model: rawModel || "ComfyUI Video" };
 }
 
 export async function pollVideoGenerationTask(config: AiConfig, task: VideoGenerationTask, options?: VideoRequestOptions): Promise<VideoGenerationTaskState> {
