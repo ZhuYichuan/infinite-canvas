@@ -63,6 +63,7 @@ import {
     isGenerationCanceled,
     resetInterruptedGeneration,
     restoreGenerationContext,
+    shouldMarkGenerationSourceStatus,
 } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition, isBuiltinNodeType as isBuiltinType, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { registerBuiltinNodes } from "@/components/canvas/nodes/builtin-nodes";
@@ -521,16 +522,13 @@ function InfiniteCanvasPage() {
         (current: ConnectionHandle, targetNodeId: string) => {
             if (current.nodeId === targetNodeId) return;
 
-            const connection = normalizeConnection(current.nodeId, targetNodeId, nodesRef.current, current.handleType);
+            const connection = normalizeConnection(current.nodeId, targetNodeId, nodesRef.current, current.handleType, connectionsRef.current);
             if (!connection) {
                 message.warning(t("canvas.projectPage.configConnection"));
                 return;
             }
             const { fromNodeId, toNodeId } = connection;
-            const exists = connectionsRef.current.some((conn) => conn.fromNodeId === fromNodeId && conn.toNodeId === toNodeId);
-            if (!exists) {
-                setConnections((prev) => [...prev, { id: `conn-${Date.now()}`, fromNodeId, toNodeId, kind: "input" }]);
-            }
+            setConnections((prev) => [...prev, { id: `conn-${Date.now()}`, fromNodeId, toNodeId, kind: "input" }]);
             setContextMenu(null);
         },
         [message, t],
@@ -2242,7 +2240,7 @@ function InfiniteCanvasPage() {
                 finishGenerationRequest(nodeId, runController);
                 return;
             }
-            const markSourceStatus = sourceNode?.type !== CanvasNodeType.Image && !editingTextNode;
+            const markSourceStatus = shouldMarkGenerationSourceStatus(sourceNode);
             if (!effectivePrompt && (mode === "text" || mode === "audio")) {
                 finishGenerationRequest(nodeId, runController);
                 return;
@@ -3333,7 +3331,7 @@ function InfiniteCanvasPage() {
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node, nodes) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
+                            showPanel={!isNodeResizing && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel && node.type !== CanvasNodeType.Audio}
                             groupChildCount={groupChildCountById.get(node.id) || 0}
                             isGroupDropTarget={dropTargetGroupId === node.id}
                             batchExpanded={expandedBatchNodeIds.has(node.id)}

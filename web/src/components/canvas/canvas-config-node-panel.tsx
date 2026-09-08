@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, Settings2, Square, Video } from "lucide-react";
+import { Image as ImageIcon, LoaderCircle, MessageSquare, Play, Settings2, Square, Video } from "lucide-react";
 import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -9,7 +9,6 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { normalizeVideoSizeValue } from "@/components/video-settings-panel";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
-import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
 import { CanvasTextSettingsPopover } from "./canvas-text-settings-popover";
 import type { CanvasGenerationMode, CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
@@ -34,7 +33,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
     const chipStyle = { background: theme.node.fill, borderColor: theme.node.stroke, color: theme.node.text };
     const hasAnyInput = Boolean(inputSummary.textCount || inputSummary.imageCount || inputSummary.videoCount || inputSummary.audioCount);
     const hasComposerContent = Boolean((node.metadata?.composerContent ?? node.metadata?.prompt ?? "").trim());
-    const canGenerate = hasComposerContent || (mode === "audio" ? inputSummary.textCount > 0 : hasAnyInput);
+    const canGenerate = hasComposerContent || hasAnyInput;
 
     return (
         <div className="flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm" style={{ color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
@@ -80,15 +79,6 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                                     </span>
                                 ),
                             },
-                            {
-                                value: "audio",
-                                label: (
-                                    <span className="inline-flex items-center gap-1">
-                                        <Music2 className="size-3.5" />
-                                        {t("canvas.configNode.audio")}
-                                    </span>
-                                ),
-                            },
                         ]}
                     />
                 </div>
@@ -131,8 +121,6 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                     />
                 ) : mode === "image" ? (
                     <CanvasImageSettingsPopover config={config} placement="topRight" autoAdjustOverflow={false} buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })} />
-                ) : mode === "audio" ? (
-                    <CanvasAudioSettingsPopover config={config} placement="topRight" buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))} />
                 ) : (
                     <CanvasTextSettingsPopover config={config} count={node.metadata?.textCount || 1} placement="topRight" buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })} onCountChange={(textCount) => onConfigChange(node.id, { textCount })} />
                 )}
@@ -220,11 +208,4 @@ function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig)
         return patch;
     }
     return { [key]: value };
-}
-
-function audioConfigPatch(key: CanvasAudioSettingKey, value: string) {
-    if (key === "audioVoice") return { audioVoice: value };
-    if (key === "audioFormat") return { audioFormat: value };
-    if (key === "audioSpeed") return { audioSpeed: value };
-    return { audioInstructions: value };
 }

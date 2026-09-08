@@ -187,6 +187,15 @@ export function findRetrySourceNode(nodeId: string, nodes: CanvasNodeData[], con
     return null;
 }
 
+export function shouldMarkGenerationSourceStatus(sourceNode: CanvasNodeData | null | undefined): boolean {
+    if (!sourceNode) return true;
+    const hasSuccessContent =
+        sourceNode.type !== CanvasNodeType.Config &&
+        sourceNode.metadata?.status === "success" &&
+        !!sourceNode.metadata?.content;
+    return !hasSuccessContent;
+}
+
 export function sourceNodeReferenceImages(node: CanvasNodeData | null) {
     if (!node || node.type !== CanvasNodeType.Image || !node.metadata?.content) return [];
     return [

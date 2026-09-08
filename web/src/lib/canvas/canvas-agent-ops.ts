@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 
 import i18n from "@/i18n";
 import { getNodeSpec, isRegisteredNodeType } from "@/lib/canvas/node-registry";
+import { validateInputConnection } from "@/lib/canvas/canvas-node-geometry";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata, type CanvasNodeTypeId, type ViewportTransform } from "@/types/canvas";
 
 export type CanvasAgentOp =
@@ -73,9 +74,8 @@ export function applyCanvasAgentOps(snapshot: CanvasAgentSnapshot, ops?: CanvasA
         }
         if (op.type === "connect_nodes") {
             if (!op.fromNodeId || !op.toNodeId) return;
-            const exists = connections.some((conn) => conn.fromNodeId === op.fromNodeId && conn.toNodeId === op.toNodeId);
-            const hasNodes = nodes.some((node) => node.id === op.fromNodeId) && nodes.some((node) => node.id === op.toNodeId);
-            if (!exists && hasNodes) connections = [...connections, { id: op.id || nanoid(), fromNodeId: op.fromNodeId, toNodeId: op.toNodeId, kind: "input" }];
+            const connection = validateInputConnection(op.fromNodeId, op.toNodeId, nodes, connections);
+            if (connection) connections = [...connections, { id: op.id || nanoid(), ...connection, kind: "input" }];
         }
         if (op.type === "set_viewport" && op.viewport) viewport = op.viewport;
         if (op.type === "select_nodes") selectedNodeIds = (op.ids || []).filter((id) => nodes.some((node) => node.id === id));
