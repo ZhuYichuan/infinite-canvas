@@ -2,7 +2,7 @@ import localforage from "localforage";
 
 import { nanoid } from "nanoid";
 import i18n from "@/i18n";
-import { modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
+import { modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig, type ChannelModel } from "@/stores/use-config-store";
 import {
     DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
     DEFAULT_COMFYUI_I2I_WORKFLOW,
@@ -825,6 +825,46 @@ export interface ComfyuiImageResult {
     seed?: number;
 }
 
+function isT2iWorkflowModel(m?: ChannelModel): boolean {
+    if (!m) return false;
+    const name = m.name.toLowerCase();
+    if (name.includes("i2i") || m.name.includes("图生图") || name.includes("inpaint") || m.name.includes("局部") || name.includes("遮罩") || name.includes("video") || m.name.includes("视频") || name.includes("audio") || name.includes("音频") || name.includes("llm")) {
+        return false;
+    }
+    return m.name === "ComfyUI T2I" || name.includes("t2i") || m.name.includes("文生图") || m.capability === "image";
+}
+
+function isI2iWorkflowModel(m?: ChannelModel): boolean {
+    if (!m) return false;
+    const name = m.name.toLowerCase();
+    return m.name === "ComfyUI I2I" || name.includes("i2i") || m.name.includes("图生图");
+}
+
+function isInpaintWorkflowModel(m?: ChannelModel): boolean {
+    if (!m) return false;
+    const name = m.name.toLowerCase();
+    return m.name === "ComfyUI Inpaint" || name.includes("inpaint") || m.name.includes("局部编辑") || m.name.includes("局部修改") || m.name.includes("局部") || m.name.includes("遮罩");
+}
+
+function isTextWorkflowModel(m?: ChannelModel): boolean {
+    if (!m) return false;
+    const name = m.name.toLowerCase();
+    return m.capability === "text" || m.name === "ComfyUI LLM" || name.includes("llm") || name.includes("text") || name.includes("文本") || name.includes("qwen") || name.includes("chat");
+}
+
+function isFrameVideoWorkflowModel(m?: ChannelModel): boolean {
+    if (!m) return false;
+    const name = m.name.toLowerCase();
+    return m.name === "ComfyUI Frame Video" || name.includes("frame") || m.name.includes("首尾帧");
+}
+
+function isOmniVideoWorkflowModel(m?: ChannelModel): boolean {
+    if (!m) return false;
+    const name = m.name.toLowerCase();
+    if (name.includes("frame") || m.name.includes("首尾帧")) return false;
+    return m.name === "ComfyUI Video" || m.capability === "video" || name.includes("video") || m.name.includes("视频");
+}
+
 function imageReferenceSlots(workflow: ComfyuiWorkflowJson) {
     return Object.values(workflow)
         .map((node) => (node && typeof node === "object" ? (node as { _meta?: { title?: unknown } })._meta?.title : undefined))
@@ -859,12 +899,12 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
         const references = req.references || [];
         const isI2i = references.length > 0;
         const workflow = isI2i
-            ? channelModel?.comfyuiWorkflow ||
+            ? (channelModel && isI2iWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiI2iWorkflow ||
-              channel.models.find((m) => m.name === "ComfyUI I2I" || m.name.toLowerCase().includes("i2i") || m.name.includes("图生图"))?.comfyuiWorkflow
-            : channelModel?.comfyuiWorkflow ||
+              channel.models.find((m) => isI2iWorkflowModel(m))?.comfyuiWorkflow
+            : (channelModel && isT2iWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiT2iWorkflow ||
-              channel.models.find((m) => m.name === "ComfyUI T2I" || m.name.toLowerCase().includes("t2i") || m.name.includes("文生图"))?.comfyuiWorkflow;
+              channel.models.find((m) => isT2iWorkflowModel(m))?.comfyuiWorkflow;
         if (!workflow) throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noWorkflow", { model: requestModel }));
         const baseUrl = (channel.comfyuiProxyUrl || "").trim();
         const token = channel.comfyuiProxyToken;
@@ -992,9 +1032,9 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
         const requestModel = modelOptionName(rawModel);
         const channelModel = channel.models.find((model) => model.name === requestModel);
         const inpaintWorkflow =
-            channelModel?.comfyuiWorkflow ||
+            (channelModel && isInpaintWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
             channel.comfyuiInpaintWorkflow ||
-            channel.models.find((m) => m.name === "ComfyUI Inpaint" || m.name.toLowerCase().includes("inpaint") || m.name.includes("局部编辑"))?.comfyuiWorkflow;
+            channel.models.find((m) => isInpaintWorkflowModel(m))?.comfyuiWorkflow;
         if (!inpaintWorkflow) {
             throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noInpaintWorkflow"));
         }
@@ -1357,9 +1397,9 @@ export async function requestComfyuiText(req: ComfyuiTextRequest): Promise<{ tex
         const requestModel = modelOptionName(rawModel);
         const channelModel = channel.models.find((model) => model.name === requestModel);
         const textWorkflow =
-            channelModel?.comfyuiWorkflow ||
+            (channelModel && isTextWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
             channel.comfyuiTextWorkflow ||
-            channel.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text")?.comfyuiWorkflow;
+            channel.models.find((m) => isTextWorkflowModel(m))?.comfyuiWorkflow;
 
         if (!textWorkflow) {
             throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noTextWorkflow"));
@@ -1782,13 +1822,12 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const channelModel = channel.models.find((model) => model.name === requestModel);
     const videoMode = req.videoMode || (req.config.videoMode === "frame" ? "frame" : "omni");
     const videoWorkflow = videoMode === "frame"
-        ? (channelModel && (channelModel.name.toLowerCase().includes("frame") || channelModel.name.includes("首尾帧")) ? channelModel.comfyuiWorkflow : undefined) ||
+        ? (channelModel && isFrameVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
           channel.comfyuiFrameVideoWorkflow ||
-          channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"))?.comfyuiWorkflow ||
-          channelModel?.comfyuiWorkflow
-        : channelModel?.comfyuiWorkflow ||
+          channel.models.find((m) => isFrameVideoWorkflowModel(m))?.comfyuiWorkflow
+        : (channelModel && isOmniVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
           channel.comfyuiVideoWorkflow ||
-          channel.models.find((m) => m.name === "ComfyUI Video" || m.capability === "video")?.comfyuiWorkflow;
+          channel.models.find((m) => isOmniVideoWorkflowModel(m))?.comfyuiWorkflow;
 
     if (!videoWorkflow) {
         throw new ComfyuiNoWorkflowError(i18n.t(videoMode === "frame" ? "comfyui.noFrameVideoWorkflow" : "comfyui.noVideoWorkflow"));
