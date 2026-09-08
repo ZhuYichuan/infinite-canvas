@@ -138,14 +138,14 @@ export function CanvasNodeHoverToolbar({
         { id: "info", title: t("canvas.nodeToolbar.infoTitle"), label: t("canvas.nodeToolbar.info"), icon: <Info className="size-4" />, onClick: () => onInfo(node) },
         { id: "delete", title: t("canvas.nodeToolbar.removeTitle"), label: t("common.delete"), icon: <Trash2 className="size-4" />, onClick: () => onDelete(node), danger: true },
     ];
-    const isTimeoutWithJob = Boolean(node.metadata?.isTimeout && node.metadata.jobId);
+    const canResume = Boolean(node.metadata?.jobId);
     const nodeToolbarTools: ToolbarTool[] = [
         ...(canRetry
             ? [
                   {
                       id: "retry",
-                      title: isTimeoutWithJob ? t("canvas.node.resumePolling") : t("canvas.nodeToolbar.retryTitle"),
-                      label: isTimeoutWithJob ? t("canvas.node.resumePolling") : t("canvas.node.retry"),
+                      title: canResume ? t("canvas.node.resumePolling") : t("canvas.nodeToolbar.retryTitle"),
+                      label: canResume ? t("canvas.node.resumePolling") : t("canvas.node.retry"),
                       icon: <RefreshCw className="size-4" />,
                       onClick: () => onRetry(node),
                   },

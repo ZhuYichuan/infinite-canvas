@@ -21,7 +21,10 @@ The current release needs manual verification in these areas:
 - Agent invalid connections: the canvas Agent should reject missing-node, self, Config-source, Group-target, and duplicate connections, leaving no invalid edge in the snapshot.
 - Nested groups: groups nested inside groups should collapse, expand, reference, and generate correctly, including when the inner and outer group are referenced by the same generation node.
 - Source media status: when a generation derived from a successful image/video/audio/text node fails, the source node should keep its original content and `success` status.
-- Audio generation entry: the audio generation entry point is hidden, while audio assets still upload, connect, and act as reference media normally.
+- Component Job ID Binding & Resume Polling:
+  - Immediately binds `jobId` to the target component upon submission across all modalities (single image, batch images, derived edits, inpaint masks, videos, and texts).
+  - On page reload, unexpected interruption, or timeout, components retain the `jobId` and display the "Query again" (重新查询) action instead of degrading to resubmission.
+  - Clicking "Query again" invokes ComfyUI `/history/{jobId}` directly to fetch the finished asset without restarting GPU computation.
 
 - User Manual & ComfyUI Workflow Downloads Page (/guide):
   - **Comprehensive 6-Workflow Coverage**: Built-in cards and JSON downloads for all 6 core workflows (Z-Image-Turbo T2I, Flux2.Dev I2I, Qwen Inpaint, Qwen 3.5 LLM, MiniMax H3 FL2V, and MiniMax H3 Ref2V).
