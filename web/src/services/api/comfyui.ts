@@ -1853,9 +1853,6 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
             seenFrameIds.add(candidate.id);
             frameImages.push(candidate);
         }
-        if (frameImages.length < 1) {
-            throw new ComfyuiError("首尾帧模式至少需要 1 张参考图");
-        }
         if (frameImages.length > 2) {
             throw new ComfyuiError(`首尾帧模式最多支持 2 张参考图，已连接 ${frameImages.length} 张`);
         }

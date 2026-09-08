@@ -16,7 +16,7 @@ The current release needs manual verification in these areas:
 
 - Intent-driven generation and connection semantics: verify that existing `input` connections remain intact, generated results add only `lineage` connections, and `repeat`, `derive`, `retry`, and `resume` each use the intended request inputs.
 - Concurrent jobs & cancellation: cancel one job while others continue independently; after `GET /queue`, confirm a queued target is deleted with `POST /queue`, while `/interrupt` is used only when that exact target is running.
-- Fail-loud validation: invalid model/Frame inputs, and an empty generation result, should each surface an explicit localized error instead of failing silently or leaving the node in a broken state.
+- Fail-loud validation: invalid model inputs, excessive Frame inputs (>2 reference images or audio/video inputs), and an empty generation result, should each surface an explicit localized error instead of failing silently or leaving the node in a broken state. Frame video mode now supports 0-2 reference images (supports text-only generation without reference images).
 - Stable `@[node:id]` references: `@[node:id]` tokens should stay stable across edits, refresh, and re-referencing without duplicating or reordering the underlying connection.
 - Agent invalid connections: the canvas Agent should reject missing-node, self, Config-source, Group-target, and duplicate connections, leaving no invalid edge in the snapshot.
 - Nested groups: groups nested inside groups should collapse, expand, reference, and generate correctly, including when the inner and outer group are referenced by the same generation node.
