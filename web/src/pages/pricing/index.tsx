@@ -80,7 +80,7 @@ export default function PricingPage() {
                                 <div>
                                     <div className="text-sm font-semibold text-stone-900 dark:text-stone-100">真实 GPU 算力实报实销：极其实惠</div>
                                     <div className="text-xs text-stone-500 dark:text-stone-400">
-                                        主流卡（RTX 3090/4070 24G）仅 <span className="font-semibold text-emerald-600 dark:text-emerald-400">¥1~2 /小时</span>；旗舰卡（4090/A100）约 <span className="font-semibold text-emerald-600 dark:text-emerald-400">¥7~8 /小时</span>
+                                        主流卡（RTX 3090/4070 24G）仅仅 <span className="font-semibold text-emerald-600 dark:text-emerald-400">¥1~2 /小时</span>；旗舰卡（4090/5090）约 <span className="font-semibold text-emerald-600 dark:text-emerald-400">¥3~5 /小时</span>；服务器级显卡（RTX PRO 6000）约 <span className="font-semibold text-emerald-600 dark:text-emerald-400">¥6~8 /小时</span>
                                     </div>
                                 </div>
                             </div>
