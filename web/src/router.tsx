@@ -10,6 +10,7 @@ import GuidePage from "@/pages/guide";
 import HomePage from "@/pages/home";
 import ImagePage from "@/pages/image";
 import NotFound from "@/pages/not-found";
+import PricingPage from "@/pages/pricing";
 import PromptsPage from "@/pages/prompts";
 import VideoPage from "@/pages/video";
 
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
             { path: "/canvas/:id", element: <CanvasProjectPage /> },
             { path: "/config", element: <ConfigPage /> },
             { path: "/guide", element: <GuidePage /> },
+            { path: "/pricing", element: <PricingPage /> },
         ],
     },
     { path: "*", element: <NotFound /> },

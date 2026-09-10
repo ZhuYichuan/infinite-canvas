@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, Sparkles } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { App, Button, Image, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
@@ -57,6 +57,9 @@ export default function IndexPage() {
                         </Button>
                         <Button size="large" onClick={() => navigate("/guide")} icon={<BookOpen className="size-4" />}>
                             {t("topNav.guide")}
+                        </Button>
+                        <Button size="large" onClick={() => navigate("/pricing")} icon={<Sparkles className="size-4 text-amber-500" />}>
+                            部署与镜像方案
                         </Button>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { Tooltip } from "antd";
-import { BookOpen, Keyboard, Puzzle, Settings2 } from "lucide-react";
+import { BookOpen, Keyboard, Puzzle, Settings2, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -39,6 +39,9 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
             ) : null}
             <Link to="/guide" className={naturalIconClass} style={iconStyle} aria-label={t("topNav.guide")} title={t("topNav.guide")}>
                 <BookOpen className="size-4" />
+            </Link>
+            <Link to="/pricing" className={naturalIconClass} style={iconStyle} aria-label="部署方案与算力镜像" title="部署方案与算力镜像">
+                <Sparkles className="size-4 text-amber-500" />
             </Link>
             {showConfig ? (
                 <button type="button" className={naturalIconClass} style={iconStyle} onClick={() => openConfigDialog(false)} aria-label={t("navigation.config")} title={t("navigation.config")}>
