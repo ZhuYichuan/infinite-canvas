@@ -5,6 +5,13 @@ description: 当前版本已实现但仍需人工验证的变更项
 
 # 待测试
 
+- 运行必备 5 大 ComfyUI 核心插件在用户手册与工作流指引中全量集成：
+  - **用户手册专区展示**：访问 `/guide` 页面，在 4 步起步流程下方直观展示「运行必备 5 大 ComfyUI 核心扩展插件」专区，列明 5 大插件（Comfyui-kktools、ComfyUI-KJNodes、ComfyLiterals、ComfyUI-UniversalToolkit、ComfyUI_LayerStyle）名称、仓库链接、功能简介与对应工作流模块；
+  - **一键复制克隆脚本**：专区右上角提供「一键复制全部克隆命令」，各插件卡片底部支持单独复制对应 `git clone` 命令；
+  - **工作流卡片依赖标注**：6 大核心工作流卡片中，局部编辑、文本生成、首尾帧视频、全能参考视频均准确展示对应插件徽标与 GitHub 链接；
+  - **一键打包 ZIP 清单**：点击「一键打包全部 (.zip)」下载的压缩包内 `README_模型与存放目录清单.txt` 完整包含 5 大插件列表与一键克隆脚本；
+  - **配置指南文档同步**：`docs/COMFYUI_WORKFLOW_GUIDE.md` 中英文版第 2 节均补充 5 大核心插件前置安装表格与终端命令。
+
 - 画布节点复制（右键「Duplicate」与快捷键复制粘贴）的完整性与语义修复：
   - **统一深拷贝与瞬时态清理**：右键复制与快捷键 Ctrl+C / Ctrl+V 均统一使用 `cloneNodeMetadata` 进行结构化深拷贝；新节点重置 `metadata.status` / `jobId` / `errorDetails` / `isTimeout` 为初始未生成就绪态，底部控制栏正确显示「AI 生成」而非「再次生成 / 基于当前结果生成」，杜绝任务与报错信息串扰；
   - **批次子项（多图/多文本）净化**：深拷贝时对 `images` / `texts` 子项重新分配唯一 `id`，清理子任务 `jobId` 和报错详情，过滤掉未出图的 loading 占位项，彻底避免子卡片重试触发 `resume` 串扰老任务或永久转圈；

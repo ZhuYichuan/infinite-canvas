@@ -28,9 +28,35 @@
 
 ---
 
-## 2. 如何在画布中配置 ComfyUI 渠道
+## 2. 环境前置与 ComfyUI 渠道配置
 
-整个配置流程非常简单：**在 ComfyUI 导出 API 格式 JSON** ➔ **在画布设置中添加 ComfyUI 渠道** ➔ **上传自定义工作流（可选）**。
+### 前置要求：必须安装的 5 大 ComfyUI 核心插件
+
+为保证本系统全部 6 大内置工作流与导出的工作流顺畅运行，请务必在本地 ComfyUI 的 `custom_nodes/` 目录下安装以下 5 个核心扩展插件：
+
+| 序号 | 插件名称 | 仓库地址 | 作用与对应功能 |
+| :--- | :--- | :--- | :--- |
+| 1 | **Comfyui-kktools** | `https://github.com/zhiwendesign/Comfyui-kktools` | 大语言模型多模态文本生成、提示词润色扩写与反推 |
+| 2 | **ComfyUI-KJNodes** | `https://github.com/kijai/ComfyUI-KJNodes` | 高级逻辑控制与视频多模态组件解包提取 (`GetVideoComponents` 等)，驱动全能参考视频 |
+| 3 | **ComfyLiterals** | `https://github.com/M1kep/ComfyLiterals` | 字面量、常数类型及动态参数输入端口节点，驱动首尾帧与全能视频 |
+| 4 | **ComfyUI-UniversalToolkit** | `https://github.com/whmc76/ComfyUI-UniversalToolkit` | 通用工具箱与多类型参数转接桥接，驱动文本生成工作流 |
+| 5 | **ComfyUI_LayerStyle** | `https://github.com/chflame163/ComfyUI_LayerStyle` | 图层样式合成与局部重绘遮罩 (`ref_mask`) 处理，驱动局部修图 |
+
+#### 一键克隆安装命令
+
+在终端中进入 ComfyUI 根目录的 `custom_nodes/` 目录执行：
+
+```bash
+cd custom_nodes
+git clone https://github.com/zhiwendesign/Comfyui-kktools.git
+git clone https://github.com/kijai/ComfyUI-KJNodes.git
+git clone https://github.com/M1kep/ComfyLiterals.git
+git clone https://github.com/whmc76/ComfyUI-UniversalToolkit.git
+git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
+```
+安装完成后请**重启本地 ComfyUI** 服务保证节点加载生效。
+
+---
 
 ### 第一步：从 ComfyUI 导出 API 格式 JSON
 
@@ -302,9 +328,35 @@ Native ComfyUI (Default http://127.0.0.1:8188)
 
 ---
 
-## 2. How to Configure ComfyUI Workflows
+## 2. Prerequisites & ComfyUI Channel Configuration
 
-Setup requires three straightforward steps: **Export API JSON from ComfyUI** ➔ **Add ComfyUI Channel in Settings** ➔ **Upload Custom Workflow (Optional)**.
+### Prerequisites: 5 Mandatory ComfyUI Custom Node Plugins
+
+To ensure all built-in workflows and exported API JSON workflows execute without missing node errors, you must install the following 5 plugins into your ComfyUI `custom_nodes/` directory:
+
+| # | Plugin Name | Repository URL | Purpose & Target Capabilities |
+| :--- | :--- | :--- | :--- |
+| 1 | **Comfyui-kktools** | `https://github.com/zhiwendesign/Comfyui-kktools` | LLM multimodal text generation, prompt expansion & vision captioning |
+| 2 | **ComfyUI-KJNodes** | `https://github.com/kijai/ComfyUI-KJNodes` | Advanced logic control & video component extraction (`GetVideoComponents`), powers Omni Reference Video |
+| 3 | **ComfyLiterals** | `https://github.com/M1kep/ComfyLiterals` | Literal / constant values and dynamic parameter ports, powers FL2V & Omni Video |
+| 4 | **ComfyUI-UniversalToolkit** | `https://github.com/whmc76/ComfyUI-UniversalToolkit` | Universal toolset and multi-type parameter routing bridge, powers LLM workflows |
+| 5 | **ComfyUI_LayerStyle** | `https://github.com/chflame163/ComfyUI_LayerStyle` | Layer compositing and inpaint mask (`ref_mask`) processing, powers Inpaint workflows |
+
+#### One-Click Clone Installation Commands
+
+Open a terminal in your ComfyUI root directory's `custom_nodes/` folder:
+
+```bash
+cd custom_nodes
+git clone https://github.com/zhiwendesign/Comfyui-kktools.git
+git clone https://github.com/kijai/ComfyUI-KJNodes.git
+git clone https://github.com/M1kep/ComfyLiterals.git
+git clone https://github.com/whmc76/ComfyUI-UniversalToolkit.git
+git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
+```
+Restart ComfyUI after cloning so the custom nodes are registered.
+
+---
 
 ### Step 1: Export Workflow in API Format from ComfyUI
 

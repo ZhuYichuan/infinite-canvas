@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [新增] 使用手册与工作流指引全量集成 5 大必备 ComfyUI 插件（Comfyui-kktools、ComfyUI-KJNodes、ComfyLiterals、ComfyUI-UniversalToolkit、ComfyUI_LayerStyle）：在用户使用手册页面新增必备插件专区与一键克隆安装命令、在各工作流卡片中标注关联插件、在工作流 ZIP 打包清单与配置指南文档中同步完整插件依赖说明。
 + [修复] 修复画布节点复制（右键「Duplicate」与快捷键复制粘贴）的完整性与语义缺陷：统一通过 cloneNodeMetadata 深度克隆元数据并重置瞬时态，修复批次子项 ID 重复、残留 jobId 导致的重试串扰与未完成 loading 占位，并支持组节点级联复制所有子节点与内部连线。
 + [新增] 画布「AI 修改」局部遮罩编辑弹窗支持选择不同渠道的 Inpaint 工作流：自动枚举各 ComfyUI 渠道的 Inpaint 工作流（渠道内 Inpaint 模型优先，否则回退渠道级 Inpaint 工作流），选中后生成精准路由到所选渠道，默认跟随当前图片模型。
 + [优化] 局部遮罩编辑生成的新节点与源图片建立 input 输入参考连线，使得衍生新节点参考图栏能自动保留上一张重绘底图作为参考素材。

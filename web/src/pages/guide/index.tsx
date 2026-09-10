@@ -29,6 +29,53 @@ import { useConfigStore } from "@/stores/use-config-store";
 const CORS_FLAG = '--enable-cors-header "*"';
 const LAUNCH_CMD_EXAMPLE = 'python.exe main.py --listen 0.0.0.0 --enable-manager --enable-cors-header "*"';
 
+export const REQUIRED_PLUGINS = [
+    {
+        name: "Comfyui-kktools",
+        repo: "zhiwendesign/Comfyui-kktools",
+        url: "https://github.com/zhiwendesign/Comfyui-kktools",
+        desc: "大语言模型多模态文本生成、提示词润色扩写与反推",
+        usedBy: "文本生成 / 反推工作流",
+    },
+    {
+        name: "ComfyUI-KJNodes",
+        repo: "kijai/ComfyUI-KJNodes",
+        url: "https://github.com/kijai/ComfyUI-KJNodes",
+        desc: "高级逻辑控制与视频多模态组件解包提取 (GetVideoComponents 等)",
+        usedBy: "全能参考视频工作流",
+    },
+    {
+        name: "ComfyLiterals",
+        repo: "M1kep/ComfyLiterals",
+        url: "https://github.com/M1kep/ComfyLiterals",
+        desc: "字面量、常数类型及动态参数输入端口节点",
+        usedBy: "首尾帧视频 / 全能参考视频工作流",
+    },
+    {
+        name: "ComfyUI-UniversalToolkit",
+        repo: "whmc76/ComfyUI-UniversalToolkit",
+        url: "https://github.com/whmc76/ComfyUI-UniversalToolkit",
+        desc: "通用工具箱与多类型参数转接桥接",
+        usedBy: "文本生成 / 反推工作流",
+    },
+    {
+        name: "ComfyUI_LayerStyle",
+        repo: "chflame163/ComfyUI_LayerStyle",
+        url: "https://github.com/chflame163/ComfyUI_LayerStyle",
+        desc: "图层样式合成与局部重绘遮罩 (Mask) 处理",
+        usedBy: "局部编辑 (Inpaint) 工作流",
+    },
+];
+
+export const CLONE_PLUGINS_CMD = [
+    "cd custom_nodes",
+    "git clone https://github.com/zhiwendesign/Comfyui-kktools.git",
+    "git clone https://github.com/kijai/ComfyUI-KJNodes.git",
+    "git clone https://github.com/M1kep/ComfyLiterals.git",
+    "git clone https://github.com/whmc76/ComfyUI-UniversalToolkit.git",
+    "git clone https://github.com/chflame163/ComfyUI_LayerStyle.git",
+].join("\n");
+
 type WorkflowModelSpec = {
     category: string;
     folder: string;
@@ -44,10 +91,10 @@ type WorkflowItem = {
     fileName: string;
     downloadUrl: string;
     description: string;
-    plugin?: {
+    plugins?: {
         name: string;
         url: string;
-    };
+    }[];
     models: WorkflowModelSpec[];
     tips?: string;
 };
@@ -67,7 +114,7 @@ const WORKFLOWS: WorkflowItem[] = [
             { category: "扩散模型", folder: "models/diffusion_models/", files: ["z_image_turbo_bf16.safetensors"] },
             { category: "文本编码器", folder: "models/text_encoders/", files: ["qwen_3_4b.safetensors"] },
         ],
-        tips: "标准节点即可运行，无需第三方插件；ComfyUI 需确保支持新版 Qwen 文本编码器。",
+        tips: "标准原生节点即可运行，极速出图；ComfyUI 需确保支持新版 Qwen 文本编码器。",
     },
     {
         id: "i2i",
@@ -95,13 +142,19 @@ const WORKFLOWS: WorkflowItem[] = [
         fileName: "mask_edit_workflow.json",
         downloadUrl: "/workflows/mask_edit_workflow.json",
         description: "专为无限画布局部涂抹修图设计，支持接收前端遮罩图（ref_mask）对指定区域进行精准修改与内容补全。",
+        plugins: [
+            {
+                name: "ComfyUI_LayerStyle",
+                url: "https://github.com/chflame163/ComfyUI_LayerStyle",
+            },
+        ],
         models: [
             { category: "LoRA", folder: "models/loras/", files: ["Qwen-Image-Lightning-4steps-V1.0.safetensors"] },
             { category: "VAE", folder: "models/vae/", files: ["qwen_image_vae.safetensors"] },
             { category: "扩散模型", folder: "models/diffusion_models/", files: ["qwen_image_fp8_e4m3fn.safetensors"] },
             { category: "文本编码器", folder: "models/text_encoders/", files: ["qwen_2.5_vl_7b_fp8_scaled.safetensors"] },
         ],
-        tips: "画布节点涂抹生成的白色 Mask 会自动送入 ref_mask 槽位；未连线时系统会自动抹除遮罩引用。",
+        tips: "画布节点涂抹生成的白色 Mask 会自动送入 ref_mask 槽位；依赖 ComfyUI_LayerStyle 插件处理遮罩与图层。",
     },
     {
         id: "llm",
@@ -112,14 +165,20 @@ const WORKFLOWS: WorkflowItem[] = [
         fileName: "llm_qwen3_5_text_gen_workflow.json",
         downloadUrl: "/workflows/llm_qwen3_5_text_gen_workflow.json",
         description: "用于无限画布中的多模态文本生成、提示词润色扩写与画面反推，由本地端侧大语言模型直接驱动。",
-        plugin: {
-            name: "Comfyui-kktools",
-            url: "https://github.com/zhiwendesign/Comfyui-kktools",
-        },
+        plugins: [
+            {
+                name: "Comfyui-kktools",
+                url: "https://github.com/zhiwendesign/Comfyui-kktools",
+            },
+            {
+                name: "ComfyUI-UniversalToolkit",
+                url: "https://github.com/whmc76/ComfyUI-UniversalToolkit",
+            },
+        ],
         models: [
             { category: "扩散模型", folder: "models/diffusion_models/", files: ["qwen3.5_4b_bf16.safetensors"] },
         ],
-        tips: "⚠️ 依赖第三方插件 Comfyui-kktools，请先通过 ComfyUI-Manager 或 git clone 安装到 custom_nodes/ 目录。",
+        tips: "⚠️ 依赖第三方插件 Comfyui-kktools 和 ComfyUI-UniversalToolkit，请先安装到 custom_nodes/ 目录。",
     },
     {
         id: "frame_video",
@@ -130,12 +189,18 @@ const WORKFLOWS: WorkflowItem[] = [
         fileName: "minimax_H3_i2v&t2v_workflow.json",
         downloadUrl: "/workflows/minimax_H3_i2v&t2v_workflow.json",
         description: "支持指定视频的起始首帧与终止尾帧，在两张画面之间平滑插值演化，生成动感连贯的高清音画同步视频。",
+        plugins: [
+            {
+                name: "ComfyLiterals",
+                url: "https://github.com/M1kep/ComfyLiterals",
+            },
+        ],
         models: [
             { category: "VAE", folder: "models/vae/", files: ["minimax_h3_video_vae_fp16.safetensors", "minimax_h3_audio_vae_fp32.safetensors"] },
             { category: "扩散模型", folder: "models/diffusion_models/", files: ["minimax_h3_fl2va_pruned_fp8_scaled.safetensors"] },
             { category: "文本编码器", folder: "models/text_encoders/", files: ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"] },
         ],
-        tips: "包含视频与音频双 VAE；视频分辨率硬件对齐锁定，支持 16:9 与 9:16 画幅。",
+        tips: "包含视频与音频双 VAE；视频分辨率硬件对齐锁定，支持 16:9 与 9:16 画幅；依赖 ComfyLiterals 节点。",
     },
     {
         id: "ref_video",
@@ -146,13 +211,23 @@ const WORKFLOWS: WorkflowItem[] = [
         fileName: "minimax_h3_ref2v_workflow.json",
         downloadUrl: "/workflows/minimax_h3_ref2v_workflow.json",
         description: "支持最多 9 张参考图 + 3 段参考视频 + 3 段参考音频多模态混音生成，未连满的插槽会被系统自动优雅裁剪。",
+        plugins: [
+            {
+                name: "ComfyUI-KJNodes",
+                url: "https://github.com/kijai/ComfyUI-KJNodes",
+            },
+            {
+                name: "ComfyLiterals",
+                url: "https://github.com/M1kep/ComfyLiterals",
+            },
+        ],
         models: [
             { category: "LoRA", folder: "models/loras/", files: ["minimax_h3_ref2v_lightx2v_turbo_4step_v0.1_resized_avg_rank_20_bf16.safetensors"] },
             { category: "VAE", folder: "models/vae/", files: ["minimax_h3_video_vae_fp16.safetensors", "minimax_h3_audio_vae_fp32.safetensors"] },
             { category: "扩散模型", folder: "models/diffusion_models/", files: ["minimax_h3_ref2va_pruned_fp8_scaled.safetensors"] },
             { category: "文本编码器", folder: "models/text_encoders/", files: ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"] },
         ],
-        tips: "MiniMax H3 旗舰参考视频架构，支持多模态输入，生成耗时与显存需求较高，建议配置充足显存或使用 FP8 精度。",
+        tips: "MiniMax H3 旗舰参考视频架构，支持多模态输入，生成耗时与显存需求较高；依赖 ComfyUI-KJNodes 与 ComfyLiterals。",
     },
 ];
 
@@ -227,15 +302,23 @@ export default function GuidePage() {
                 "# Infinite Canvas · ComfyUI 官方核心工作流包",
                 "",
                 "本压缩包包含了本系统全部 6 个开箱即用的工作流文件（.json）：",
-                ...WORKFLOWS.map((wf) => `\n## ${wf.name} (${wf.fileName})\n- 基础模型：${wf.baseModel}\n- 模型放置要求：\n${wf.models.map((m) => `  * [${m.category}] ${m.folder}: ${m.files.join(", ")}`).join("\n")}`),
+                ...WORKFLOWS.map((wf) => `\n## ${wf.name} (${wf.fileName})\n- 基础模型：${wf.baseModel}\n- 模型放置要求：\n${wf.models.map((m) => `  * [${m.category}] ${m.folder}: ${m.files.join(", ")}`).join("\n")}${wf.plugins?.length ? `\n- 依赖插件：${wf.plugins.map((p) => `${p.name} (${p.url})`).join(", ")}` : ""}`),
+                "",
+                "----------------------------------------",
+                "必须安装的 5 大 ComfyUI 核心插件（克隆至 custom_nodes/ 目录）：",
+                ...REQUIRED_PLUGINS.map((p, idx) => `${idx + 1}. ${p.name} - ${p.desc}\n   仓库地址: ${p.url}\n   适用模块: ${p.usedBy}`),
+                "",
+                "一键克隆全部插件安装脚本（在 ComfyUI 的 custom_nodes/ 目录下运行）：",
+                CLONE_PLUGINS_CMD,
                 "",
                 "----------------------------------------",
                 "部署调试说明：",
                 `1. 启动本地 ComfyUI 必须开启跨域：例如 \`${LAUNCH_CMD_EXAMPLE}\`；`,
                 "2. 将对应的模型 safetensors 放入 ComfyUI 的 `models/` 对应子目录；",
-                "3. 缺少节点时在 ComfyUI-Manager 中点击「Install Missing Custom Nodes」；",
-                "4. 将工作流拖入 ComfyUI Web 界面点击 Queue Prompt 测试；",
-                "5. 在本系统中「设置 → 模型渠道」确认服务地址与端口并保存即可！",
+                "3. 将上述 5 大必备插件克隆到 `custom_nodes/` 目录并重启 ComfyUI；",
+                "4. 缺少节点时在 ComfyUI-Manager 中点击「Install Missing Custom Nodes」；",
+                "5. 将工作流拖入 ComfyUI Web 界面点击 Queue Prompt 测试；",
+                "6. 在本系统中「设置 → 模型渠道」确认服务地址与端口并保存即可！",
             ].join("\n");
 
             zipFiles.push({ name: "README_模型与存放目录清单.txt", data: readmeContent });
@@ -404,10 +487,10 @@ export default function GuidePage() {
                                 <span className="flex size-5 items-center justify-center rounded-full bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900">
                                     3
                                 </span>
-                                放置模型与插件
+                                安装插件与模型
                             </div>
                             <p className="text-xs leading-5 text-stone-600 dark:text-stone-400">
-                                将对应的 Checkpoint、VAE、Text Encoder 权重放入本地 <code className="font-mono">models/</code> 目录，安装提示的必要插件。
+                                将下方 5 大核心插件克隆至 <code className="font-mono">custom_nodes/</code>，并将权重放入 <code className="font-mono">models/</code> 对应目录。
                             </p>
                         </div>
 
@@ -422,6 +505,81 @@ export default function GuidePage() {
                                 将工作流拖入 ComfyUI 页面点击 Queue 生成测试无报错后，回到本项目配置渠道，即可畅享画布生成！
                             </p>
                         </div>
+                    </div>
+                </div>
+
+                {/* 运行必备 5 大 ComfyUI 核心插件专区 */}
+                <div className="mb-12">
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-lg font-bold text-stone-950 dark:text-stone-100">
+                                    运行必备 5 大 ComfyUI 核心扩展插件
+                                </h2>
+                                <Tag color="blue" className="m-0 text-xs">
+                                    必须安装
+                                </Tag>
+                            </div>
+                            <p className="mt-0.5 text-xs text-stone-500">
+                                本项目所有官方工作流均基于这 5 个插件构建。在 ComfyUI 的 <code className="rounded bg-stone-100 px-1 py-0.5 font-mono text-[11px] text-stone-700 dark:bg-stone-800 dark:text-stone-300">custom_nodes/</code> 目录下完成克隆并重启 ComfyUI。
+                            </p>
+                        </div>
+                        <Button
+                            size="small"
+                            icon={<Copy className="size-3.5" />}
+                            onClick={() => copyText(CLONE_PLUGINS_CMD, "已复制全部插件克隆命令")}
+                        >
+                            一键复制全部克隆命令
+                        </Button>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {REQUIRED_PLUGINS.map((plugin, idx) => (
+                            <div
+                                key={plugin.name}
+                                className="flex flex-col justify-between rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800"
+                            >
+                                <div>
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-stone-100 font-mono text-[11px] font-semibold text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+                                                {idx + 1}
+                                            </span>
+                                            <a
+                                                href={plugin.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 font-semibold text-stone-900 underline underline-offset-2 hover:text-blue-600 dark:text-stone-100 dark:hover:text-blue-400"
+                                            >
+                                                {plugin.name}
+                                                <ExternalLink className="size-3" />
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <p className="mt-2 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+                                        {plugin.desc}
+                                    </p>
+                                    <div className="mt-2.5">
+                                        <Tag className="text-[10px] text-stone-500 dark:text-stone-400">
+                                            {plugin.usedBy}
+                                        </Tag>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between rounded bg-stone-100 px-2 py-1.5 font-mono text-[11px] text-stone-700 dark:bg-stone-900/60 dark:text-stone-300">
+                                    <span className="truncate" title={`git clone ${plugin.url}.git`}>
+                                        git clone .../{plugin.name}.git
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => copyText(`git clone ${plugin.url}.git`, `已复制 ${plugin.name} 克隆命令`)}
+                                        className="ml-1 shrink-0 text-stone-500 hover:text-stone-900 dark:hover:text-stone-100"
+                                        title="复制克隆命令"
+                                    >
+                                        <Copy className="size-3" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
@@ -486,19 +644,24 @@ export default function GuidePage() {
                                     </p>
 
                                     {/* 依赖插件 */}
-                                    {wf.plugin && (
-                                        <div className="mt-2.5 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50/60 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+                                    {wf.plugins && wf.plugins.length > 0 && (
+                                        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50/60 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
                                             <Puzzle className="size-3.5 shrink-0" />
-                                            <span>需要第三方插件：</span>
-                                            <a
-                                                href={wf.plugin.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 font-medium underline underline-offset-2"
-                                            >
-                                                {wf.plugin.name}
-                                                <ExternalLink className="size-3" />
-                                            </a>
+                                            <span>依赖插件：</span>
+                                            <div className="inline-flex flex-wrap items-center gap-2">
+                                                {wf.plugins.map((plugin) => (
+                                                    <a
+                                                        key={plugin.name}
+                                                        href={plugin.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 font-medium underline underline-offset-2 hover:text-amber-950 dark:hover:text-amber-100"
+                                                    >
+                                                        {plugin.name}
+                                                        <ExternalLink className="size-3" />
+                                                    </a>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
 

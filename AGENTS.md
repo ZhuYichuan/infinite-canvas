@@ -12,6 +12,7 @@
 - 每次写完代码，不需要检查语法，不需要执行构建，用户会自己做。
 - 不要改无关文件，不要顺手重构。
 - 如果工作区已有用户改动，不要回滚，不要覆盖；只在必要范围内追加修改。
+- 每次改动代码都进去 `git commit`,并写上详情的 message
 
 ## 反复提醒沉淀
 
@@ -79,6 +80,13 @@
 - 全能参考视频生成（MiniMax H3）需求规格、尺寸硬件锁死与多模态 FIFO 路由参见：`docs/content/docs/development/multimodal-video-workflow-spec.zh-CN.mdx`。
 - 多模态参考资源连线支持最多 9 图 + 3 视频 + 3 音频；未连满的插槽及其级联桥接节点（如 `GetVideoComponents`）必须在提交前自动抹除；连线超出上限时必须 Fail-loud 报错拦截。
 - 视频生成尺寸严禁开放手动数字输入，必须严格收敛为 16:9 与 9:16 对称对调，且锁定在 0.2M~0.98M 的 9 档硬件对齐预设中，上限严格锁死在 0.98 MP。
+- 运行本项目工作流所必须安装的 5 大 ComfyUI 核心插件（克隆至 ComfyUI 的 `custom_nodes/` 目录）：
+  1. `https://github.com/zhiwendesign/Comfyui-kktools`（文本生成/反推）
+  2. `https://github.com/kijai/ComfyUI-KJNodes`（全能参考视频及组件处理）
+  3. `https://github.com/M1kep/ComfyLiterals`（首尾帧/全能视频字面量与基础常数）
+  4. `https://github.com/whmc76/ComfyUI-UniversalToolkit`（通用工具与参数解析）
+  5. `https://github.com/chflame163/ComfyUI_LayerStyle`（遮罩处理与图层合成）
+  使用手册、文档与环境配置指引中必须完整同步此 5 大插件清单。
 
 ## 文档规范
 
@@ -86,6 +94,7 @@
 - `docs/index.md` 放给 AI 使用的文档索引，不要再放到 `docs/content/docs/` 内容目录里。
 - 用户向 ComfyUI 工作流配置指南参见：`docs/COMFYUI_WORKFLOW_GUIDE.md`。
 - 原生 ComfyUI 直连与调试实战记录参见：`comfyui_api_doc/experience.md`。
+- ComfyUI 本地渠道与云端渠道系统内建工作流文档参见:`comfyui_api/README.md`。
 - 详细功能介绍写到 `docs/content/docs/overview/features.mdx`。
 - 后续待办写到 `docs/content/docs/progress/todo.mdx`。
 - 已实现但还需要用户测试确认的事项写到 `docs/content/docs/progress/pending-test.mdx`。
@@ -102,6 +111,9 @@
 - 将当前未提交的代码全部提交到 Git。
 - 提交完成后，给当前提交打最新版本号对应的 tag，例如 `v0.0.5`。
 - 发版本流程中不要执行编译、测试或构建，除非用户明确要求。
+
+## 发布代码生产环境
+- 部署上线一定要阅读 `DEPLOY.md`
 
 ## PR 审查与处理
 

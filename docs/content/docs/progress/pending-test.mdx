@@ -7,6 +7,13 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Full Integration of 5 Mandatory ComfyUI Custom Node Plugins in User Guide & Documentation:
+  - **Guide Page Section**: Visiting `/guide` displays a dedicated "5 Mandatory ComfyUI Custom Node Plugins" section beneath the 4-step quickstart, listing the 5 plugins (Comfyui-kktools, ComfyUI-KJNodes, ComfyLiterals, ComfyUI-UniversalToolkit, ComfyUI_LayerStyle) with names, repository links, descriptions, and applicable workflow tags;
+  - **One-Click Script Copying**: Includes an "Copy All Git Clone Commands" action button as well as per-plugin clone command copy buttons;
+  - **Workflow Card Badges**: The 6 core workflow cards clearly display plugin badges with external GitHub links for Inpaint, Text Generation, FL2V, and Omni Video;
+  - **All-in-One ZIP Package**: Downloading the workflow zip includes an updated `README_模型与存放目录清单.txt` with plugin repositories and clone commands;
+  - **Documentation Sync**: `docs/COMFYUI_WORKFLOW_GUIDE.md` (both Chinese & English) Section 2 details prerequisite plugin tables and installation instructions.
+
 - Preserve Source Image as Reference on Mask Edit Derived Node:
   - **Automatic Input Connection**: After completing brush painting and "AI Edit" in "Local Mask Edit" on an image node, the newly generated node automatically establishes an `input` reference connection with the source image;
   - **Reference Bar Display**: Expanding the bottom prompt bar on the new node displays the previous repainted base image thumbnail in the "References" section, supporting hover preview and disconnection;
