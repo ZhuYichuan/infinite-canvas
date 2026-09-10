@@ -23,7 +23,7 @@ import { useCopyText } from "@/hooks/use-copy-text";
 // 联系方式与渠道配置
 export const CONTACT_INFO = {
     wechat: {
-        wechatId: "comfy-canvas-service", // 预留微信号
+        wechatId: "openlts", // 真实微信号
         title: "微信扫码咨询与购买",
         qrPath: "/images/contact/wechat-qr.png",
         tip: "添加时请备注：【云端镜像】/【本地部署】/【1对1咨询】，极速优先通过！",
