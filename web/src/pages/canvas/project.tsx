@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
-import { defaultConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { defaultConfig, inpaintModelOptions, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadImage } from "@/services/image-storage";
 import { uploadMediaFile } from "@/services/file-storage";
 import { nanoid } from "nanoid";
@@ -46,7 +46,7 @@ import { useAgentBridge } from "@/pages/canvas/hooks/use-agent-bridge";
 import { usePluginHost } from "@/pages/canvas/hooks/use-plugin-host";
 import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNode, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
-import { applyNodeConfigPatch, audioMetadata, buildAudioGenerationMetadata, buildImageGenerationMetadata, createCanvasNode, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-node-factory";
+import { applyNodeConfigPatch, audioMetadata, buildAudioGenerationMetadata, buildImageGenerationMetadata, cloneNodeMetadata, createCanvasNode, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-node-factory";
 import { findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, normalizeConnection, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
@@ -185,6 +185,7 @@ function InfiniteCanvasPage() {
 
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
+    const inpaintOptions = inpaintModelOptions(effectiveConfig);
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const addAsset = useAssetStore((state) => state.addAsset);
@@ -279,11 +280,13 @@ function InfiniteCanvasPage() {
         if (previous?.controller !== controller) previous?.controller.abort();
         generationRequestsRef.current.set(targetNodeId, { targetNodeId, originNodeId, runningNodeId: runningId, controller });
         setRunningNodeIds((current) => {
-            const hadRunning = current.has(runningId);
             const next = new Set(current);
             next.add(runningId);
-            if (previous && previous.runningNodeId !== runningId && ![...generationRequestsRef.current.values()].some((request) => request.runningNodeId === previous.runningNodeId)) next.delete(previous.runningNodeId);
-            return hadRunning && next.size === current.size ? current : next;
+            if (targetNodeId) next.add(targetNodeId);
+            if (previous && previous.runningNodeId !== runningId && previous.runningNodeId !== targetNodeId && ![...generationRequestsRef.current.values()].some((request) => request.runningNodeId === previous.runningNodeId || request.targetNodeId === previous.runningNodeId)) {
+                next.delete(previous.runningNodeId);
+            }
+            return next;
         });
         return controller;
     }, []);
@@ -292,11 +295,16 @@ function InfiniteCanvasPage() {
         const request = generationRequestsRef.current.get(targetNodeId);
         if (request?.controller !== controller) return;
         generationRequestsRef.current.delete(targetNodeId);
-        if ([...generationRequestsRef.current.values()].some((item) => item.runningNodeId === request.runningNodeId)) return;
         setRunningNodeIds((current) => {
-            if (!current.has(request.runningNodeId)) return current;
             const next = new Set(current);
-            next.delete(request.runningNodeId);
+            next.delete(targetNodeId);
+            const remaining = [...generationRequestsRef.current.values()];
+            if (!remaining.some((item) => item.runningNodeId === request.runningNodeId || item.targetNodeId === request.runningNodeId)) {
+                next.delete(request.runningNodeId);
+            }
+            if (!remaining.some((item) => item.originNodeId === request.originNodeId || item.targetNodeId === request.originNodeId)) {
+                next.delete(request.originNodeId);
+            }
             return next;
         });
     }, []);
@@ -304,15 +312,16 @@ function InfiniteCanvasPage() {
     const stopGenerationByRunningId = useCallback((runningId: string) => {
         const affectedNodeIds = new Set<string>();
         generationRequestsRef.current.forEach((request) => {
-            if (request.runningNodeId !== runningId) return;
+            if (request.runningNodeId !== runningId && request.targetNodeId !== runningId && request.originNodeId !== runningId) return;
             request.controller.abort();
             generationRequestsRef.current.delete(request.targetNodeId);
             affectedNodeIds.add(request.targetNodeId);
             affectedNodeIds.add(request.originNodeId);
+            affectedNodeIds.add(request.runningNodeId);
         });
         setRunningNodeIds((current) => {
-            if (!current.has(runningId)) return current;
             const next = new Set(current);
+            affectedNodeIds.forEach((id) => next.delete(id));
             next.delete(runningId);
             return next;
         });
@@ -855,12 +864,66 @@ function InfiniteCanvasPage() {
         if (!source) return;
 
         const id = `${source.type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const clonedMetadata = cloneNodeMetadata(source.metadata);
+
+        // 如果是 Group 组节点，级联复制组及其包含的所有子节点与内部连线
+        if (source.type === CanvasNodeType.Group) {
+            const childNodes = nodesRef.current.filter((node) => node.metadata?.groupId === source.id);
+            const idMap = new Map<string, string>();
+            idMap.set(source.id, id);
+
+            const groupNext: CanvasNodeData = {
+                ...source,
+                id,
+                title: source.title.endsWith(" Copy") ? source.title : `${source.title} Copy`,
+                position: { x: source.position.x + 36, y: source.position.y + 36 },
+                metadata: clonedMetadata,
+            };
+
+            const childNextNodes: CanvasNodeData[] = childNodes.map((child, index) => {
+                const childId = `${child.type}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`;
+                idMap.set(child.id, childId);
+                const childMetadata = cloneNodeMetadata(child.metadata);
+                if (childMetadata) childMetadata.groupId = id;
+                return {
+                    ...child,
+                    id: childId,
+                    title: child.title.endsWith(" Copy") ? child.title : `${child.title} Copy`,
+                    position: { x: child.position.x + 36, y: child.position.y + 36 },
+                    metadata: childMetadata,
+                };
+            });
+
+            const allGroupNodeIds = new Set([source.id, ...childNodes.map((c) => c.id)]);
+            const nextConnections = connectionsRef.current
+                .filter((c) => allGroupNodeIds.has(c.fromNodeId) && allGroupNodeIds.has(c.toNodeId))
+                .map((c, index) => ({
+                    ...c,
+                    id: `conn-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+                    fromNodeId: idMap.get(c.fromNodeId) || c.fromNodeId,
+                    toNodeId: idMap.get(c.toNodeId) || c.toNodeId,
+                }));
+
+            setNodes((prev) => [...prev, groupNext, ...childNextNodes]);
+            if (nextConnections.length) setConnections((prev) => [...prev, ...nextConnections]);
+            setSelectedNodeIds(new Set([id, ...childNextNodes.map((c) => c.id)]));
+            setSelectedConnectionId(null);
+            return;
+        }
+
         const next: CanvasNodeData = {
             ...source,
             id,
-            title: `${source.title} Copy`,
+            title: source.title.endsWith(" Copy") ? source.title : `${source.title} Copy`,
             position: { x: source.position.x + 36, y: source.position.y + 36 },
+            metadata: clonedMetadata,
         };
+
+        // 如果原节点属于某个组，检查新位置是否仍落在组内；若偏移后脱离了组范围，则清除 groupId
+        if (next.metadata?.groupId) {
+            const containingGroupId = findContainingGroupId(next, nodesRef.current);
+            next.metadata.groupId = containingGroupId;
+        }
 
         setNodes((prev) => [...prev, next]);
         setSelectedNodeIds(new Set([id]));
@@ -869,22 +932,33 @@ function InfiniteCanvasPage() {
     }, []);
 
     const copySelectedNodes = useCallback(() => {
-        const selectedIds = selectedNodeIdsRef.current;
+        const selectedIds = new Set(selectedNodeIdsRef.current);
         if (!selectedIds.size) return;
+
+        // 选中组节点时，自动连带包含其组内所有子节点
+        nodesRef.current.forEach((node) => {
+            if (node.type === CanvasNodeType.Group && selectedIds.has(node.id)) {
+                nodesRef.current.forEach((child) => {
+                    if (child.metadata?.groupId === node.id) selectedIds.add(child.id);
+                });
+            }
+        });
 
         const copiedNodes = nodesRef.current
             .filter((node) => selectedIds.has(node.id))
             .map((node) => ({
                 ...node,
                 position: { ...node.position },
-                metadata: node.metadata ? { ...node.metadata } : undefined,
+                metadata: node.metadata ? structuredClone(node.metadata) : undefined,
             }));
 
         if (!copiedNodes.length) return;
 
         clipboardRef.current = {
             nodes: copiedNodes,
-            connections: connectionsRef.current.filter((connection) => selectedIds.has(connection.fromNodeId) && selectedIds.has(connection.toNodeId)).map((connection) => ({ ...connection })),
+            connections: connectionsRef.current
+                .filter((connection) => selectedIds.has(connection.fromNodeId) && selectedIds.has(connection.toNodeId))
+                .map((connection) => ({ ...connection })),
         };
     }, []);
 
@@ -916,14 +990,20 @@ function InfiniteCanvasPage() {
                     x: node.position.x + dx,
                     y: node.position.y + dy,
                 },
-                metadata: node.metadata ? { ...node.metadata } : undefined,
+                metadata: cloneNodeMetadata(node.metadata),
             };
         });
 
         const pastedNodes = nextNodes.map((node) => {
-            const groupId = node.metadata?.groupId;
-            if (!groupId) return node;
-            return { ...node, metadata: { ...node.metadata, groupId: idMap.get(groupId) } };
+            const oldGroupId = node.metadata?.groupId;
+            if (!oldGroupId) return node;
+            const mappedGroupId = idMap.get(oldGroupId);
+            if (mappedGroupId) {
+                return { ...node, metadata: { ...node.metadata, groupId: mappedGroupId } };
+            }
+            // 若原分组未连带复制，检查新位置是否落在画布上某个既有组内
+            const containingGroupId = findContainingGroupId(node, nodesRef.current);
+            return { ...node, metadata: { ...node.metadata, groupId: containingGroupId } };
         });
 
         const nextConnections = clipboard.connections.flatMap((connection, index) => {
@@ -1612,7 +1692,7 @@ function InfiniteCanvasPage() {
                 quality: node.metadata?.quality,
                 ...(image.seed !== undefined ? { seed: image.seed } : {}),
                 background: node.metadata?.background,
-                references: node.metadata?.references,
+                references: node.metadata?.references ? [...node.metadata.references] : undefined,
             },
         };
         setNodes((prev) => [...prev, copy]);
@@ -1825,7 +1905,7 @@ function InfiniteCanvasPage() {
     const maskEditImageNode = useCallback(
         async (node: CanvasNodeData, payload: CanvasImageMaskEditPayload) => {
             if (!node.metadata?.content) return;
-            const generationConfig = { ...buildGenerationConfig(effectiveConfig, node, "image"), count: "1", size: node.metadata?.size || "auto" };
+            const generationConfig = { ...buildGenerationConfig(effectiveConfig, node, "image"), count: "1", size: node.metadata?.size || "auto", ...(payload.model ? { model: payload.model, imageModel: payload.model } : {}) };
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog(true);
                 return;
@@ -1848,7 +1928,7 @@ function InfiniteCanvasPage() {
                     metadata: { prompt, status: NODE_STATUS_LOADING, ...generationMetadata },
                 },
             ]);
-            setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId, kind: "lineage" }]);
+            setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId, kind: "input" }]);
             setSelectedNodeIds(new Set([childId]));
             setSelectedConnectionId(null);
             setDialogNodeId(childId);
@@ -3490,7 +3570,7 @@ function InfiniteCanvasPage() {
                 {cropNode?.metadata?.content ? <CanvasNodeCropDialog dataUrl={cropNode.metadata.content} open={Boolean(cropNode)} onClose={() => setCropNodeId(null)} onConfirm={(crop) => void cropImageNode(cropNode!, crop)} /> : null}
 
                 {maskEditNode?.metadata?.content ? (
-                    <CanvasNodeMaskEditDialog dataUrl={maskEditNode.metadata.content} open={Boolean(maskEditNode)} onClose={() => setMaskEditNodeId(null)} onConfirm={(payload) => void maskEditImageNode(maskEditNode!, payload)} />
+                    <CanvasNodeMaskEditDialog dataUrl={maskEditNode.metadata.content} open={Boolean(maskEditNode)} onClose={() => setMaskEditNodeId(null)} onConfirm={(payload) => void maskEditImageNode(maskEditNode!, payload)} inpaintOptions={inpaintOptions} defaultModel={effectiveConfig.imageModel} />
                 ) : null}
 
                 {splitNode?.metadata?.content ? <CanvasNodeSplitDialog dataUrl={splitNode.metadata.content} open={Boolean(splitNode)} onClose={() => setSplitNodeId(null)} onConfirm={(params) => void splitImageNode(splitNode!, params)} /> : null}

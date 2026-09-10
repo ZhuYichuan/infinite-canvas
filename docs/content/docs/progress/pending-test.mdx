@@ -7,6 +7,24 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Preserve Source Image as Reference on Mask Edit Derived Node:
+  - **Automatic Input Connection**: After completing brush painting and "AI Edit" in "Local Mask Edit" on an image node, the newly generated node automatically establishes an `input` reference connection with the source image;
+  - **Reference Bar Display**: Expanding the bottom prompt bar on the new node displays the previous repainted base image thumbnail in the "References" section, supporting hover preview and disconnection;
+  - **Downstream Generation Inheritance**: Future prompt submissions or generation requests on the new node inherit the source base image for image-to-image workflows.
+
+- Derived Target Node Generating State & Submission Lock:
+  - **Target Node Running Perception**: Any new node derived from another node ("Generate again" or "Generate from result") is strictly treated as "generating" during its active generation process on both the card and the bottom prompt bar;
+  - **Prompt Bar & Stop Interaction**: If the new node is selected to view the bottom prompt bar while generating, the action button renders as a spinning "Stop" button and strictly disallows clicking the upward arrow to duplicate submissions; clicking "Stop" cleanly cancels the task and resets the node;
+  - **Ready for Submission upon Completion**: Once generation succeeds, the new node transitions to ready state, unlocking "Generate again" and "Generate from result" as valid submittable actions.
+
+- Canvas Node Prompt Panel Bottom Toolbar Collision Prevention:
+  - **Component Layout & Separation**: Left controls (expand, prompt library, model picker, popover settings) and right action buttons ("Generate" or "Generate again" + "Generate from result") display side-by-side without overflowing or overlapping each other.
+  - **Width & Flex Wrapping**: Upgraded panel width to 720px, added `min-w-0` truncation protection, and enabled `flex-wrap` fallback with `ml-auto` alignment for ultra-tight contexts.
+
+- Remove "Quality" and "Transparent Background" from Image Workbench & Canvas Image Generation Nodes:
+  - **Image Workbench**: The image settings panel removes the "Quality" pill options and "Transparent Background" switch; mobile bar summary text no longer displays the quality field.
+  - **Canvas Image Generation Nodes**: The image settings popover for canvas prompt toolbar and image config nodes removes "Quality" and "Transparent Background", retaining only dimensions, aspect ratio, and count controls.
+
 - Multi-channel ComfyUI (Different IPs) Independent Requests & Exact Routing:
   - **Channel Prefix Preservation**: Preserves the full `channelId::` model identifier during image, video, text, and inpaint generation, preventing fallback to the first channel caused by premature stripping via `modelOptionName`.
   - **Decouple Node Model from Global Preference**: Prioritizes the node's own model (`req.config.model`) over global preferences (such as `config.videoModel` or `config.textModel`), ensuring that node-specific channel selections are respected.
@@ -113,4 +131,6 @@ The current release needs manual verification in these areas:
 - Prompt Center layout, source synchronization, search, asset insertion, prompt detail dialogs, and compact split-layout prompt pickers in the image and video workbenches.
 - Workbench history image cleanup: after generating content in the image or video workbench, deleting an asset, canvas image node, canvas content, or canvas project must not remove thumbnails, results, or references from generation history; deleting a generation record should still remove its dedicated local files.
 - Settings import/export and WebDAV-related configuration.
+- Canvas node duplication (right-click "Duplicate" and keyboard copy-paste) integrity and semantics: unifying deep-cloning with `cloneNodeMetadata` across both right-click and Ctrl+C/V paths; resetting transient generation state (`status`, `jobId`, `errorDetails`, `isTimeout`) to ungenerated ready state with the "AI 生成" button; regenerating unique IDs and clearing `jobId`/errors for batch `images` and `texts` sub-items to prevent retry resume interference; cascading duplication for Group nodes to include all children and internal connections; and auto-validating group containment on single-node duplication.
 The Chinese version contains the complete item-by-item acceptance checklist.
+
