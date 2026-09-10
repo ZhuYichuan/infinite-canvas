@@ -93,6 +93,7 @@
 - README 保持简洁，只放项目介绍、核心功能、快速开始和文档入口。
 - `docs/index.md` 放给 AI 使用的文档索引，不要再放到 `docs/content/docs/` 内容目录里。
 - 用户向 ComfyUI 工作流配置指南参见：`docs/COMFYUI_WORKFLOW_GUIDE.md`。
+- ComfyUI 核心依赖插件全景说明与安装指南参见：`docs/COMFYUI_PLUGINS.md`。
 - 原生 ComfyUI 直连与调试实战记录参见：`comfyui_api_doc/experience.md`。
 - ComfyUI 本地渠道与云端渠道系统内建工作流文档参见:`comfyui_api/README.md`。
 - 详细功能介绍写到 `docs/content/docs/overview/features.mdx`。

@@ -5,6 +5,7 @@
 - [Quick Start](/docs/overview/quick-start)
 - [Features](/docs/overview/features)
 - [ComfyUI 工作流配置指南 (中英文)](COMFYUI_WORKFLOW_GUIDE.md)
+- [ComfyUI 必备插件安装与说明指南](COMFYUI_PLUGINS.md)
 - [ComfyUI 渠道指南](comfyui-channel.md)
 - [部署与发布指南](../DEPLOY.md)
 - [Deploy on Render](/docs/overview/render)

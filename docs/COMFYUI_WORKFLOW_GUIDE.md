@@ -56,6 +56,8 @@ git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
 ```
 安装完成后请**重启本地 ComfyUI** 服务保证节点加载生效。
 
+> 💡 **更详尽的 5 大插件核心节点解析、工作流对应矩阵与排错指南，请参阅统一专文：[ComfyUI 必备插件安装与说明指南](COMFYUI_PLUGINS.md)**。
+
 ---
 
 ### 第一步：从 ComfyUI 导出 API 格式 JSON
@@ -355,6 +357,8 @@ git clone https://github.com/whmc76/ComfyUI-UniversalToolkit.git
 git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
 ```
 Restart ComfyUI after cloning so the custom nodes are registered.
+
+> 💡 **For in-depth explanations, node breakdowns, workflow matrix, and troubleshooting for all 5 plugins, see the consolidated guide: [ComfyUI Plugins Guide](COMFYUI_PLUGINS.md)**.
 
 ---
 
