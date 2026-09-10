@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
-import { Button, Input, Modal, Slider, Tooltip } from "antd";
+import { Button, Input, Modal, Select, Slider, Tooltip } from "antd";
 import { Brush, Eraser, Redo2, RotateCcw, Undo2, WandSparkles, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -10,6 +10,7 @@ import { useImageEditorViewport } from "@/components/canvas/use-image-editor-vie
 export type CanvasImageMaskEditPayload = {
     prompt: string;
     maskDataUrl: string;
+    model?: string;
 };
 
 type DrawMode = "paint" | "erase";
@@ -20,7 +21,7 @@ type BrushPreview = { x: number; y: number; size: number; adjusting: boolean };
 const defaultBrushSize = 100;
 const maskFillColor = "rgba(37, 99, 235, .38)";
 
-export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: { dataUrl: string; open: boolean; onClose: () => void; onConfirm: (payload: CanvasImageMaskEditPayload) => void }) {
+export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm, inpaintOptions = [], defaultModel = "" }: { dataUrl: string; open: boolean; onClose: () => void; onConfirm: (payload: CanvasImageMaskEditPayload) => void; inpaintOptions?: Array<{ value: string; label: string }>; defaultModel?: string }) {
     const { t } = useTranslation();
     const maskCanvasRef = useRef<HTMLCanvasElement>(null);
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,6 +34,7 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
     const [brushSize, setBrushSize] = useState(defaultBrushSize);
     const [mode, setMode] = useState<DrawMode>("paint");
     const [error, setError] = useState("");
+    const [model, setModel] = useState("");
     const [historySize, setHistorySize] = useState(0);
     const [redoSize, setRedoSize] = useState(0);
     const [brushPreview, setBrushPreview] = useState<BrushPreview | null>(null);
@@ -51,6 +53,7 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
         redoRef.current = [];
         brushAdjustRef.current = null;
         drawingRef.current = { active: false, stroke: null };
+        setModel(inpaintOptions.some((option) => option.value === defaultModel) ? defaultModel : inpaintOptions[0]?.value ?? "");
         void readImageMeta(dataUrl).then(setImage);
     }, [dataUrl, open]);
 
@@ -206,7 +209,7 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
         if (!nextPrompt) return setError(t("canvas.editors.maskPromptRequired"));
         if (!canvas) return;
         if (!canvasHasPaint(canvas)) return setError(t("canvas.editors.maskRequired"));
-        onConfirm({ prompt: nextPrompt, maskDataUrl: buildEditMask(canvas) });
+        onConfirm({ prompt: nextPrompt, maskDataUrl: buildEditMask(canvas), model });
     };
 
     return (
@@ -300,6 +303,13 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
                         </div>
                         <Slider min={8} max={160} step={2} value={brushSize} onChange={setBrushSize} />
                     </div>
+
+                    {inpaintOptions.length ? (
+                        <div className="space-y-2">
+                            <div className="text-sm font-medium opacity-75">{t("canvas.editors.inpaintWorkflow")}</div>
+                            <Select size="small" value={model} onChange={setModel} options={inpaintOptions} style={{ width: "100%" }} />
+                        </div>
+                    ) : null}
 
                     <div className="space-y-2">
                         <div className="text-sm font-medium opacity-75">{t("canvas.editors.editInstructions")}</div>

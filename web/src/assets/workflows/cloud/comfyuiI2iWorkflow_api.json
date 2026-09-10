@@ -1,0 +1,433 @@
+{
+  "9": {
+    "inputs": {
+      "filename_prefix": "Flux2",
+      "images": [
+        "62:8",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "output_image"
+    }
+  },
+  "42": {
+    "inputs": {
+      "image": "21b1562d-70cf-4dc9-b00f-54b717bb1a17.jpeg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_01"
+    }
+  },
+  "46": {
+    "inputs": {
+      "image": "5f01f079-b365-4e98-9d20-a2044ddfa4c8.jpeg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_02"
+    }
+  },
+  "141": {
+    "inputs": {
+      "value": 1088
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "142": {
+    "inputs": {
+      "value": 1920
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "143": {
+    "inputs": {
+      "value": -1101592687506201
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "seed"
+    }
+  },
+  "146": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "prompt"
+    }
+  },
+  "62:48": {
+    "inputs": {
+      "steps": [
+        "62:94",
+        0
+      ],
+      "width": [
+        "62:66",
+        0
+      ],
+      "height": [
+        "62:66",
+        1
+      ]
+    },
+    "class_type": "Flux2Scheduler",
+    "_meta": {
+      "title": "Flux2调度器"
+    }
+  },
+  "62:22": {
+    "inputs": {
+      "model": [
+        "62:93",
+        0
+      ],
+      "conditioning": [
+        "62:39",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "基本引导器"
+    }
+  },
+  "62:10": {
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "62:40": {
+    "inputs": {
+      "pixels": [
+        "62:41",
+        0
+      ],
+      "vae": [
+        "62:10",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE编码"
+    }
+  },
+  "62:44": {
+    "inputs": {
+      "pixels": [
+        "62:45",
+        0
+      ],
+      "vae": [
+        "62:10",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE编码"
+    }
+  },
+  "62:41": {
+    "inputs": {
+      "upscale_method": "area",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "46",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "缩放图像（像素）"
+    }
+  },
+  "62:26": {
+    "inputs": {
+      "guidance": 4,
+      "conditioning": [
+        "62:6",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "Flux引导"
+    }
+  },
+  "62:8": {
+    "inputs": {
+      "samples": [
+        "62:13",
+        0
+      ],
+      "vae": [
+        "62:10",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "62:13": {
+    "inputs": {
+      "noise": [
+        "62:25",
+        0
+      ],
+      "guider": [
+        "62:22",
+        0
+      ],
+      "sampler": [
+        "62:16",
+        0
+      ],
+      "sigmas": [
+        "62:48",
+        0
+      ],
+      "latent_image": [
+        "62:47",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "自定义采样器（高级）"
+    }
+  },
+  "62:16": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "K采样器选择"
+    }
+  },
+  "62:43": {
+    "inputs": {
+      "conditioning": [
+        "62:26",
+        0
+      ],
+      "latent": [
+        "62:44",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "参考Latent"
+    }
+  },
+  "62:39": {
+    "inputs": {
+      "conditioning": [
+        "62:43",
+        0
+      ],
+      "latent": [
+        "62:40",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "参考Latent"
+    }
+  },
+  "62:12": {
+    "inputs": {
+      "unet_name": "flux2_dev_fp8mixed.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "62:6": {
+    "inputs": {
+      "text": [
+        "146",
+        0
+      ],
+      "clip": [
+        "62:38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "62:25": {
+    "inputs": {
+      "noise_seed": [
+        "143",
+        0
+      ]
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "随机噪波"
+    }
+  },
+  "62:45": {
+    "inputs": {
+      "upscale_method": "area",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "42",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "缩放图像（像素）"
+    }
+  },
+  "62:66": {
+    "inputs": {
+      "image": [
+        "62:45",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "获取图像尺寸"
+    }
+  },
+  "62:47": {
+    "inputs": {
+      "width": [
+        "141",
+        0
+      ],
+      "height": [
+        "142",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyFlux2LatentImage",
+    "_meta": {
+      "title": "空Latent图像（Flux2）"
+    }
+  },
+  "62:38": {
+    "inputs": {
+      "clip_name": "mistral_3_small_flux2_fp8.safetensors",
+      "type": "flux2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "62:88": {
+    "inputs": {
+      "lora_name": "Flux2TurboComfyv2.safetensors",
+      "strength_model": 1,
+      "model": [
+        "62:12",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器（仅模型）"
+    }
+  },
+  "62:90": {
+    "inputs": {
+      "value": 20
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Step"
+    }
+  },
+  "62:92": {
+    "inputs": {
+      "value": 8
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Step"
+    }
+  },
+  "62:93": {
+    "inputs": {
+      "switch": [
+        "62:95",
+        0
+      ],
+      "on_false": [
+        "62:12",
+        0
+      ],
+      "on_true": [
+        "62:88",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Switch (Model)"
+    }
+  },
+  "62:94": {
+    "inputs": {
+      "switch": [
+        "62:95",
+        0
+      ],
+      "on_false": [
+        "62:90",
+        0
+      ],
+      "on_true": [
+        "62:92",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Switch (Step)"
+    }
+  },
+  "62:95": {
+    "inputs": {
+      "value": true
+    },
+    "class_type": "PrimitiveBoolean",
+    "_meta": {
+      "title": "Enable 8steps LoRA"
+    }
+  }
+}

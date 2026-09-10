@@ -34,6 +34,8 @@
 
 ## 3. 发布流程（打版本）
 
+> **硬性规则：发布（部署到生产）前必须先打 tag。没有 tag 的构建产物不允许部署。** 执行第 4 节部署前，必须确认第 3 节步骤 4 的 tag 已存在（`git tag -l` 可见、与 `VERSION` 一致）。
+
 遵循 `AGENTS.md` 的发版本流程：
 
 1. 把 `CHANGELOG.md` 的 `Unreleased` 变更整理成新的版本记录，保留空 `Unreleased` 标题。
@@ -41,6 +43,15 @@
 3. 将当前代码全部提交到 Git。
 4. 提交完成后打对应 tag，如 `v0.17.0`。
 5. 发版本流程中不执行编译、测试或构建（除非另行手动构建用于部署）。
+
+发布前的 tag 校验（必做）：
+
+```bash
+# 确认 VERSION 与最新 tag 一致，且 tag 已打在已提交的 commit 上
+cat VERSION                     # 如 v0.17.0
+git tag -l 'v0.17.0'            # 非空
+git log -1 --format='%H %d'    # tag 指向当前提交（或已包含在当前提交中）
+```
 
 注意：`web/dist` 会被 `Dockerfile` 打进镜像时重新构建，且 `dist` 已加入 `.gitignore`，**产物不进 Git**，每次部署都从当前工作区重新构建。
 
@@ -108,6 +119,10 @@ nginx -t && nginx -s reload
 ### 4.2 每次发版（本机操作）
 
 ```bash
+# 0) 发布前检查：必须已按第 3 节完成提交并打好 tag（硬性规则，未打 tag 不得部署）
+cd infinite-canvas
+cat VERSION && git tag -l | tail -3
+
 # 1) 构建
 cd infinite-canvas/web
 bun install

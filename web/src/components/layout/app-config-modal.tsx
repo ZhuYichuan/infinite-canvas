@@ -13,14 +13,7 @@ import type { AppLocale } from "@/i18n";
 import { exportAppConfig, importAppConfig } from "@/services/config-file";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
-import {
-    DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
-    DEFAULT_COMFYUI_I2I_WORKFLOW,
-    DEFAULT_COMFYUI_INPAINT_WORKFLOW,
-    DEFAULT_COMFYUI_T2I_WORKFLOW,
-    DEFAULT_COMFYUI_TEXT_WORKFLOW,
-    DEFAULT_COMFYUI_VIDEO_WORKFLOW,
-} from "@/services/api/comfyui-default-workflows";
+import { getDefaultComfyuiWorkflows } from "@/services/api/comfyui-default-workflows";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
 import { createModelChannel, encodeChannelModel, isChannelReady, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ComfyuiWorkflow, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 
@@ -331,93 +324,96 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                     </div>
                                                 </div>
 
-                                                {isComfyui && (
-                                                    <div className="mt-3.5 space-y-3 border-t border-stone-100 pt-3 dark:border-stone-800/80">
-                                                        <div>
-                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.t2iWorkflowTitle")}</span>
-                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.t2iWorkflowDesc")}</span>
+                                                {isComfyui && (() => {
+                                                    const defaultWorkflows = getDefaultComfyuiWorkflows(channel);
+                                                    return (
+                                                        <div className="mt-3.5 space-y-3 border-t border-stone-100 pt-3 dark:border-stone-800/80">
+                                                            <div>
+                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.t2iWorkflowTitle")}</span>
+                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.t2iWorkflowDesc")}</span>
+                                                                </div>
+                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                    <ComfyuiWorkflowEditor
+                                                                        value={t2iWorkflow}
+                                                                        defaultWorkflow={defaultWorkflows.t2i}
+                                                                        onChange={handleT2iWorkflowChange}
+                                                                    />
+                                                                </div>
                                                             </div>
-                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                <ComfyuiWorkflowEditor
-                                                                    value={t2iWorkflow}
-                                                                    defaultWorkflow={DEFAULT_COMFYUI_T2I_WORKFLOW}
-                                                                    onChange={handleT2iWorkflowChange}
-                                                                />
-                                                            </div>
-                                                        </div>
 
-                                                        <div>
-                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.i2iWorkflowTitle")}</span>
-                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.i2iWorkflowDesc")}</span>
+                                                            <div>
+                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.i2iWorkflowTitle")}</span>
+                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.i2iWorkflowDesc")}</span>
+                                                                </div>
+                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                    <ComfyuiWorkflowEditor
+                                                                        value={i2iWorkflow}
+                                                                        defaultWorkflow={defaultWorkflows.i2i}
+                                                                        onChange={handleI2iWorkflowChange}
+                                                                    />
+                                                                </div>
                                                             </div>
-                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                <ComfyuiWorkflowEditor
-                                                                    value={i2iWorkflow}
-                                                                    defaultWorkflow={DEFAULT_COMFYUI_I2I_WORKFLOW}
-                                                                    onChange={handleI2iWorkflowChange}
-                                                                />
-                                                            </div>
-                                                        </div>
 
-                                                        <div>
-                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.inpaintWorkflowTitle")}</span>
-                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.inpaintWorkflowDesc")}</span>
+                                                            <div>
+                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.inpaintWorkflowTitle")}</span>
+                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.inpaintWorkflowDesc")}</span>
+                                                                </div>
+                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                    <ComfyuiWorkflowEditor
+                                                                        value={inpaintWorkflow}
+                                                                        defaultWorkflow={defaultWorkflows.inpaint}
+                                                                        onChange={handleInpaintWorkflowChange}
+                                                                    />
+                                                                </div>
                                                             </div>
-                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                <ComfyuiWorkflowEditor
-                                                                    value={inpaintWorkflow}
-                                                                    defaultWorkflow={DEFAULT_COMFYUI_INPAINT_WORKFLOW}
-                                                                    onChange={handleInpaintWorkflowChange}
-                                                                />
-                                                            </div>
-                                                        </div>
 
-                                                        <div>
-                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.textWorkflowTitle")}</span>
-                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.textWorkflowDesc")}</span>
+                                                            <div>
+                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.textWorkflowTitle")}</span>
+                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.textWorkflowDesc")}</span>
+                                                                </div>
+                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                    <ComfyuiWorkflowEditor
+                                                                        value={textWorkflow}
+                                                                        defaultWorkflow={defaultWorkflows.text}
+                                                                        onChange={handleTextWorkflowChange}
+                                                                    />
+                                                                </div>
                                                             </div>
-                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                <ComfyuiWorkflowEditor
-                                                                    value={textWorkflow}
-                                                                    defaultWorkflow={DEFAULT_COMFYUI_TEXT_WORKFLOW}
-                                                                    onChange={handleTextWorkflowChange}
-                                                                />
-                                                            </div>
-                                                        </div>
 
-                                                        <div>
-                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.videoWorkflowTitle")}</span>
-                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.videoWorkflowDesc")}</span>
+                                                            <div>
+                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.videoWorkflowTitle")}</span>
+                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.videoWorkflowDesc")}</span>
+                                                                </div>
+                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                    <ComfyuiWorkflowEditor
+                                                                        value={videoWorkflow}
+                                                                        defaultWorkflow={defaultWorkflows.video}
+                                                                        onChange={handleVideoWorkflowChange}
+                                                                    />
+                                                                </div>
                                                             </div>
-                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                <ComfyuiWorkflowEditor
-                                                                    value={videoWorkflow}
-                                                                    defaultWorkflow={DEFAULT_COMFYUI_VIDEO_WORKFLOW}
-                                                                    onChange={handleVideoWorkflowChange}
-                                                                />
-                                                            </div>
-                                                        </div>
 
-                                                        <div>
-                                                            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.frameVideoWorkflowTitle")}</span>
-                                                                <span className="text-[11px] text-stone-400">{t("config.channelEditor.frameVideoWorkflowDesc")}</span>
-                                                            </div>
-                                                            <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                <ComfyuiWorkflowEditor
-                                                                    value={frameVideoWorkflow}
-                                                                    defaultWorkflow={DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW}
-                                                                    onChange={handleFrameVideoWorkflowChange}
-                                                                />
+                                                            <div>
+                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.frameVideoWorkflowTitle")}</span>
+                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.frameVideoWorkflowDesc")}</span>
+                                                                </div>
+                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                    <ComfyuiWorkflowEditor
+                                                                        value={frameVideoWorkflow}
+                                                                        defaultWorkflow={defaultWorkflows.frameVideo}
+                                                                        onChange={handleFrameVideoWorkflowChange}
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    );
+                                                })()}
                                             </div>
                                         );
                                     })}

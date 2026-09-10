@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Native Built-in Dual Channels (Local ComfyUI & Cloud ComfyUI):
+  - **Dual Channels Provisioning**: On fresh startup or configuration reset, the system provides both "Local ComfyUI" (`http://127.0.0.1:8188`) and "Cloud ComfyUI" (user-configured cloud endpoint) as built-in channels, encompassing 12 pre-provisioned models (`local::...` and `cloud::...`);
+  - **Differentiated Workflows & Weights**: The local channel binds workflows targeting consumer GPUs with pruned/FP8 weights; the cloud channel binds workflows targeting high-VRAM cloud GPUs with full BF16 weights and 8-step Turbo acceleration;
+  - **Context-Aware Default Restoration**: In the channel editor drawer, "Restore Default Workflow" restores the local workflow for Local ComfyUI and the cloud workflow for Cloud ComfyUI;
+  - **Precise Request Routing**: Executing generations with models bound to local or cloud channels correctly routes requests to the corresponding backend instances.
+
 - Multi-Channel Support in Guide Page "Service Probe":
   - **Title Update**: Updated "Local Service Probe" to "Service Probe" to encompass both local and remote/cloud ComfyUI channels;
   - **Multi-channel Selection**: Provides a multi-select dropdown for choosing configured ComfyUI channels, with quick "Select All" and "Clear" actions;

@@ -175,8 +175,24 @@ describe("persistence merge stability", () => {
             useConfigStore.getState(),
         );
 
-        expect(merged.config.imageModel).toBe("default::ComfyUI T2I");
-        expect(merged.config.videoModel).toBe("default::ComfyUI Video");
-        expect(merged.config.textModel).toBe("default::ComfyUI LLM");
+        expect(merged.config.imageModel).toBe("local::ComfyUI T2I");
+        expect(merged.config.videoModel).toBe("local::ComfyUI Video");
+        expect(merged.config.textModel).toBe("local::ComfyUI LLM");
+    });
+});
+
+describe("default dual ComfyUI channels", () => {
+    it("provides both local and cloud channels in defaultConfig", () => {
+        expect(defaultConfig.channels.map((c) => c.id)).toEqual(["local", "cloud"]);
+        expect(defaultConfig.channels[0].name).toBe("本地 ComfyUI");
+        expect(defaultConfig.channels[1].name).toBe("云端 ComfyUI");
+        expect(defaultConfig.channels[0].comfyuiProxyUrl).toBe("http://127.0.0.1:8188");
+        expect(defaultConfig.channels[1].comfyuiProxyUrl).toBe("");
+    });
+
+    it("creates cloud channel with cloud models and workflows", () => {
+        const cloudChannel = createModelChannel({ id: "cloud" });
+        expect(cloudChannel.name).toBe("云端 ComfyUI");
+        expect(cloudChannel.models.length).toBe(6);
     });
 });

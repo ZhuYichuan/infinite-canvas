@@ -2,6 +2,8 @@
 
 ## Unreleased
 
++ [新增] 系统原生内置「本地 ComfyUI」与「云端 ComfyUI」双渠道：开箱即用支持消费级本地显卡（轻量裁剪/FP8 权重工作流）与云端高性能 GPU（全量 BF16 与 8-step Turbo 加速工作流），全模态模型自动按渠道绑定对应 Prompt Graph API，支持独立配置接口地址与凭据并在工作流重置时按渠道自适应还原。
+
 + [优化] 用户手册服务诊断条升级为「服务探测」并支持多渠道并行探测：支持下拉多选或全选已配置的 ComfyUI 渠道批量发起连通性与跨域检测，展示各渠道在线就绪状态、响应毫秒延迟与错误信息，并提供单渠道快速重测。
 + [新增] 集中整理并发布《ComfyUI 核心依赖插件全景说明与安装指南》(docs/COMFYUI_PLUGINS.md)：全量集中归纳说明 5 大必备插件（Comfyui-kktools、ComfyUI-KJNodes、ComfyLiterals、ComfyUI-UniversalToolkit、ComfyUI_LayerStyle）的作用、依赖矩阵、关键节点原理、一键克隆安装与排错方案，并在文档索引、渠道指南及用户手册中全量同步。
 + [修复] 修复画布节点复制（右键「Duplicate」与快捷键复制粘贴）的完整性与语义缺陷：统一通过 cloneNodeMetadata 深度克隆元数据并重置瞬时态，修复批次子项 ID 重复、残留 jobId 导致的重试串扰与未完成 loading 占位，并支持组节点级联复制所有子节点与内部连线。

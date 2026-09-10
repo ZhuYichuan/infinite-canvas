@@ -5,14 +5,7 @@ import { ShieldAlert } from "lucide-react";
 
 import { checkComfyuiConnection, isMixedContentHttp, notifyMixedContentBlocked } from "@/services/api/comfyui";
 import { normalizeChannelModels, type ChannelModel, type ComfyuiWorkflow, type ModelChannel } from "@/stores/use-config-store";
-import {
-    DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
-    DEFAULT_COMFYUI_I2I_WORKFLOW,
-    DEFAULT_COMFYUI_INPAINT_WORKFLOW,
-    DEFAULT_COMFYUI_T2I_WORKFLOW,
-    DEFAULT_COMFYUI_TEXT_WORKFLOW,
-    DEFAULT_COMFYUI_VIDEO_WORKFLOW,
-} from "@/services/api/comfyui-default-workflows";
+import { getDefaultComfyuiWorkflows } from "@/services/api/comfyui-default-workflows";
 import { ComfyuiWorkflowEditor } from "./comfyui-workflow-editor";
 
 export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: boolean; channel: ModelChannel | null; onSave: (channel: ModelChannel) => void; onClose: () => void }) {
@@ -202,96 +195,99 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                 </label>
             </div>
 
-            {draft.apiFormat === "comfyui" && (
-                <>
-                    <div className="mt-5 space-y-2">
-                        <div>
-                            <div className="text-sm font-semibold">{t("config.channelEditor.t2iWorkflowTitle")}</div>
-                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.t2iWorkflowDesc")}</div>
+            {draft.apiFormat === "comfyui" && (() => {
+                const defaultWorkflows = getDefaultComfyuiWorkflows(draft);
+                return (
+                    <>
+                        <div className="mt-5 space-y-2">
+                            <div>
+                                <div className="text-sm font-semibold">{t("config.channelEditor.t2iWorkflowTitle")}</div>
+                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.t2iWorkflowDesc")}</div>
+                            </div>
+                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                                <ComfyuiWorkflowEditor
+                                    value={draft.comfyuiT2iWorkflow || draft.models.find((m) => m.name === "ComfyUI T2I")?.comfyuiWorkflow || draft.models[0]?.comfyuiWorkflow}
+                                    defaultWorkflow={defaultWorkflows.t2i}
+                                    onChange={setComfyuiT2iWorkflow}
+                                />
+                            </div>
                         </div>
-                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                            <ComfyuiWorkflowEditor
-                                value={draft.comfyuiT2iWorkflow || draft.models.find((m) => m.name === "ComfyUI T2I")?.comfyuiWorkflow || draft.models[0]?.comfyuiWorkflow}
-                                defaultWorkflow={DEFAULT_COMFYUI_T2I_WORKFLOW}
-                                onChange={setComfyuiT2iWorkflow}
-                            />
-                        </div>
-                    </div>
 
-                    <div className="mt-5 space-y-2">
-                        <div>
-                            <div className="text-sm font-semibold">{t("config.channelEditor.i2iWorkflowTitle")}</div>
-                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.i2iWorkflowDesc")}</div>
+                        <div className="mt-5 space-y-2">
+                            <div>
+                                <div className="text-sm font-semibold">{t("config.channelEditor.i2iWorkflowTitle")}</div>
+                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.i2iWorkflowDesc")}</div>
+                            </div>
+                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                                <ComfyuiWorkflowEditor
+                                    value={draft.comfyuiI2iWorkflow || draft.models.find((m) => m.name === "ComfyUI I2I")?.comfyuiWorkflow}
+                                    defaultWorkflow={defaultWorkflows.i2i}
+                                    onChange={setComfyuiI2iWorkflow}
+                                />
+                            </div>
                         </div>
-                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                            <ComfyuiWorkflowEditor
-                                value={draft.comfyuiI2iWorkflow || draft.models.find((m) => m.name === "ComfyUI I2I")?.comfyuiWorkflow}
-                                defaultWorkflow={DEFAULT_COMFYUI_I2I_WORKFLOW}
-                                onChange={setComfyuiI2iWorkflow}
-                            />
-                        </div>
-                    </div>
 
-                    <div className="mt-5 space-y-2">
-                        <div>
-                            <div className="text-sm font-semibold">{t("config.channelEditor.inpaintWorkflowTitle")}</div>
-                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.inpaintWorkflowDesc")}</div>
+                        <div className="mt-5 space-y-2">
+                            <div>
+                                <div className="text-sm font-semibold">{t("config.channelEditor.inpaintWorkflowTitle")}</div>
+                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.inpaintWorkflowDesc")}</div>
+                            </div>
+                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                                <ComfyuiWorkflowEditor
+                                    value={draft.comfyuiInpaintWorkflow || draft.models.find((m) => m.name === "ComfyUI Inpaint")?.comfyuiWorkflow}
+                                    defaultWorkflow={defaultWorkflows.inpaint}
+                                    onChange={setComfyuiInpaintWorkflow}
+                                />
+                            </div>
                         </div>
-                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                            <ComfyuiWorkflowEditor
-                                value={draft.comfyuiInpaintWorkflow || draft.models.find((m) => m.name === "ComfyUI Inpaint")?.comfyuiWorkflow}
-                                defaultWorkflow={DEFAULT_COMFYUI_INPAINT_WORKFLOW}
-                                onChange={setComfyuiInpaintWorkflow}
-                            />
-                        </div>
-                    </div>
 
-                    <div className="mt-5 space-y-2">
-                        <div>
-                            <div className="text-sm font-semibold">{t("config.channelEditor.textWorkflowTitle")}</div>
-                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.textWorkflowDesc")}</div>
+                        <div className="mt-5 space-y-2">
+                            <div>
+                                <div className="text-sm font-semibold">{t("config.channelEditor.textWorkflowTitle")}</div>
+                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.textWorkflowDesc")}</div>
+                            </div>
+                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                                <ComfyuiWorkflowEditor
+                                    value={draft.comfyuiTextWorkflow || draft.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text")?.comfyuiWorkflow}
+                                    defaultWorkflow={defaultWorkflows.text}
+                                    onChange={setComfyuiTextWorkflow}
+                                />
+                            </div>
                         </div>
-                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                            <ComfyuiWorkflowEditor
-                                value={draft.comfyuiTextWorkflow || draft.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text")?.comfyuiWorkflow}
-                                defaultWorkflow={DEFAULT_COMFYUI_TEXT_WORKFLOW}
-                                onChange={setComfyuiTextWorkflow}
-                            />
-                        </div>
-                    </div>
 
-                    <div className="mt-5 space-y-2">
-                        <div>
-                            <div className="text-sm font-semibold">{t("config.channelEditor.videoWorkflowTitle")}</div>
-                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.videoWorkflowDesc")}</div>
+                        <div className="mt-5 space-y-2">
+                            <div>
+                                <div className="text-sm font-semibold">{t("config.channelEditor.videoWorkflowTitle")}</div>
+                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.videoWorkflowDesc")}</div>
+                            </div>
+                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                                <ComfyuiWorkflowEditor
+                                    value={draft.comfyuiVideoWorkflow || draft.models.find((m) => m.name === "ComfyUI Video")?.comfyuiWorkflow}
+                                    defaultWorkflow={defaultWorkflows.video}
+                                    onChange={setComfyuiVideoWorkflow}
+                                />
+                            </div>
                         </div>
-                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                            <ComfyuiWorkflowEditor
-                                value={draft.comfyuiVideoWorkflow || draft.models.find((m) => m.name === "ComfyUI Video")?.comfyuiWorkflow}
-                                defaultWorkflow={DEFAULT_COMFYUI_VIDEO_WORKFLOW}
-                                onChange={setComfyuiVideoWorkflow}
-                            />
-                        </div>
-                    </div>
 
-                    <div className="mt-5 space-y-2">
-                        <div>
-                            <div className="text-sm font-semibold">{t("config.channelEditor.frameVideoWorkflowTitle")}</div>
-                            <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.frameVideoWorkflowDesc")}</div>
+                        <div className="mt-5 space-y-2">
+                            <div>
+                                <div className="text-sm font-semibold">{t("config.channelEditor.frameVideoWorkflowTitle")}</div>
+                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.frameVideoWorkflowDesc")}</div>
+                            </div>
+                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
+                                <ComfyuiWorkflowEditor
+                                    value={
+                                        draft.comfyuiFrameVideoWorkflow ||
+                                        draft.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"))?.comfyuiWorkflow
+                                    }
+                                    defaultWorkflow={defaultWorkflows.frameVideo}
+                                    onChange={setComfyuiFrameVideoWorkflow}
+                                />
+                            </div>
                         </div>
-                        <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                            <ComfyuiWorkflowEditor
-                                value={
-                                    draft.comfyuiFrameVideoWorkflow ||
-                                    draft.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"))?.comfyuiWorkflow
-                                }
-                                defaultWorkflow={DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW}
-                                onChange={setComfyuiFrameVideoWorkflow}
-                            />
-                        </div>
-                    </div>
-                </>
-            )}
+                    </>
+                );
+            })()}
         </Drawer>
     );
 }

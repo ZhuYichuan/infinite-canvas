@@ -1,0 +1,18 @@
+# 说明
+
+- [系统内建](minimax_h3_ref2v_api.json)
+- [使用手册一键打包提供](minimax_h3_ref2v_workflow.json) 
+
+
+## 必要模型
+
+模型目录 `models\`
+### `loras\` 
+模型名:`minimax_h3_ref2v_lightx2v_turbo_4step_v0.1_resized_avg_rank_20_bf16.safetensors` <br/>
+### `vae\` 
+模型名:`minimax_h3_video_vae_fp16.safetensors` <br/>
+模型名:`minimax_h3_audio_vae_fp32.safetensors` <br/>
+### `diffusion_models\` 
+模型名:`minimax_h3_ref2va_pruned_fp8_scaled.safetensors` <br/>
+### `text_encoders\` 
+模型名:`qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` <br/>
