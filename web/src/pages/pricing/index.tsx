@@ -10,7 +10,11 @@ import {
     Copy,
     MessageSquare,
     Cpu,
+    Database,
+    Heart,
     HelpCircle,
+    RefreshCw,
+    Server,
 } from "lucide-react";
 
 import { useCopyText } from "@/hooks/use-copy-text";
@@ -405,7 +409,56 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {/* 4. 常见问题 FAQ */}
+                {/* 4. 为什么需要适量收费？（坦诚告知：关于镜像存储成本与项目持续运营） */}
+                <div className="mt-16 rounded-3xl border border-stone-200 bg-stone-50/70 p-6 sm:p-10 dark:border-stone-800 dark:bg-stone-900/50">
+                    <div className="mx-auto max-w-3xl text-center">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-background px-3 py-1 text-xs font-medium text-stone-600 dark:border-stone-700 dark:text-stone-300">
+                            <Heart className="size-3.5 text-rose-500 fill-rose-500" />
+                            <span>坦诚告知 · 关于收费与项目维护的真心话</span>
+                        </div>
+                        <h2 className="mt-3 text-2xl font-bold tracking-tight text-stone-950 dark:text-stone-100 sm:text-3xl">
+                            为什么我们提供镜像和部署需要收取适量费用？
+                        </h2>
+                        <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-400">
+                            《无限画布》前端代码与文档 100% 保持开源免费。但<strong>维护开箱即用的云端镜像与百 G 大模型并非零成本</strong>。
+                            没有持续的费用支持，云端镜像随时会因欠费被存储厂商清理，项目也无法得到持续的精力投入与维护迭代。
+                        </p>
+                    </div>
+
+                    <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-stone-200/80 bg-background p-5 dark:border-stone-800">
+                            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                                <Database className="size-5" />
+                            </div>
+                            <h3 className="mt-3 text-sm font-bold text-stone-900 dark:text-stone-100">1. 云端镜像高昂的长期存储租金</h3>
+                            <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                                一个包含 5 大核心插件、MiniMax H3、Flux2、Qwen3.5 等全模态高精度权重的完整 ComfyUI 镜像，体积高达 <strong>80GB ~ 120GB</strong>。算力云平台按天收取持续的镜像存储费与公网分发流量费，每月均有固定的云账单支出。
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-stone-200/80 bg-background p-5 dark:border-stone-800">
+                            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                                <RefreshCw className="size-5" />
+                            </div>
+                            <h3 className="mt-3 text-sm font-bold text-stone-900 dark:text-stone-100">2. ComfyUI 频繁更新与破坏性断连</h3>
+                            <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                                开源 AI 社区日新月异，ComfyUI 官方、底层 PyTorch 与第三方插件每周都在升级，极易造成旧工作流红字报错。我们需要持续投入真机环境进行回归测试、修补兼容性，并重制稳定镜像。
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-stone-200/80 bg-background p-5 dark:border-stone-800">
+                            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                <Server className="size-5" />
+                            </div>
+                            <h3 className="mt-3 text-sm font-bold text-stone-900 dark:text-stone-100">3. 以服务养开源，拒绝牛皮癣广告</h3>
+                            <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                                我们坚持前端界面零弹窗、零广告植入，纯粹为创作者提供极致生产力体验。通过为需要节省时间的同学提供经过严格测试的标准化镜像与专业部署服务，收取的适量费用全部用于支撑算力与项目长久发展。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 5. 常见问题 FAQ */}
                 <div className="mt-16">
                     <h2 className="text-center text-2xl font-bold">常见疑问解答 (FAQ)</h2>
                     <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -446,6 +499,16 @@ export default function PricingPage() {
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
                                 承诺<strong>包跑通、包测试出图</strong>。若因您的电脑硬件严重损坏或不可抗力导致确实无法跑通，承诺 100% 全额退款，无任何后顾之忧。
+                            </p>
+                        </Card>
+
+                        <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40 md:col-span-2">
+                            <h3 className="flex items-center gap-2 text-base font-semibold">
+                                <HelpCircle className="size-4 text-blue-500" />
+                                这个项目是开源的，为什么还要收取镜像和部署费用？
+                            </h3>
+                            <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                                《无限画布》的前端代码、架构文档和使用手册完全开源免费开放给所有人。我们收费的唯一原因在于：<strong>云端存储一个包含 MiniMax、Flux、Qwen 等全套百 G 模型的预装镜像，每个月都需要持续向云平台缴纳昂贵的存储费与分发账单</strong>。若完全没有任何收入支撑，镜像会因欠费随时被平台清理删除，开发者也无法持续跟进 ComfyUI 的新版本适配与 BUG 修复。适度收费是“以服务养项目”，让这个好用的工具能够长久活下去、持续为大家提供稳定的创作体验。
                             </p>
                         </Card>
                     </div>
