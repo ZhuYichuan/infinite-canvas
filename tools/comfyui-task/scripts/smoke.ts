@@ -4,7 +4,7 @@
 import { findNodes, checkRequired, applyBindings, parseStdin } from "../src/index.ts";
 import { readFileSync } from "node:fs";
 
-const DEMO_DIR = "../../comfyui_api";
+const DEMO_DIR = "../../Comfy-Api";
 
 const tests: Array<{ file: string; needs: { prompt: boolean; width: boolean; height: boolean; refImages: number } }> = [
     { file: "comfyuiT2iWorkflow_api.json", needs: { prompt: true, width: true, height: true, refImages: 0 } },
