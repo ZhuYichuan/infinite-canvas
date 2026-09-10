@@ -75,7 +75,7 @@ description: 当前版本已实现但仍需人工验证的变更项
   - **双端点兼容与无缝回退**：默认支持 `/api/view` 与 `/view` 双端点，遇 404 时自动尝试备选端点无缝回退。
 
 - 系统内置 ComfyUI 6 大能力默认工作流与自定义绑定管理：
-  - **内置默认绑定**：系统默认将 `Comfy-Api` 的 6 个标准 API 工作流（文生图 `comfyuiT2iWorkflow_api.json`、图生图 `comfyuiI2iWorkflow_api.json`、局部编辑 `comfyuiInpaintWorkflow_api.json`、文本/反推 `comfyuiTextWorkflow_api.json`、全能参考生视频 `comfyuiVideoWorkflow_api.json`、首尾帧视频 `comfyuiFrameVideoWorkflow_api.json`）内置至系统中，开箱即用。
+  - **内置默认绑定**：系统默认将 `Comfy/Comfy-Api` 的 6 个标准 API 工作流（文生图 `comfyuiT2iWorkflow_api.json`、图生图 `comfyuiI2iWorkflow_api.json`、局部编辑 `comfyuiInpaintWorkflow_api.json`、文本/反推 `comfyuiTextWorkflow_api.json`、全能参考生视频 `comfyuiVideoWorkflow_api.json`、首尾帧视频 `comfyuiFrameVideoWorkflow_api.json`）内置至系统中，开箱即用。
   - **用户自定义与状态指示**：在渠道管理编辑抽屉中，工作流卡片根据当前状态直观展示「系统内置」或「自定义」徽标及文件体积；
   - **重置与清除**：未自定义时展示系统内置工作流，支持上传覆盖；用户上传自定义工作流后，提供「恢复默认」一键重置回系统内置工作流，并保留清空功能。
   - **生成执行兜底**：生图（T2I/I2I）、局部重绘、文本反推、视频生成（全能参考/首尾帧）在渠道或模型未单独指定工作流时，无缝兜底使用对应的系统默认工作流。

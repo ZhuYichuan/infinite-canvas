@@ -31,4 +31,4 @@ git clone https://github.com/whmc76/ComfyUI-UniversalToolkit.git
 git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
 ```
 
-> 详细说明与排错请参考完整指南：[docs/COMFYUI_PLUGINS.md](../docs/COMFYUI_PLUGINS.md)
+> 详细说明与排错请参考完整指南：[docs/COMFYUI_PLUGINS.md](../../docs/COMFYUI_PLUGINS.md)

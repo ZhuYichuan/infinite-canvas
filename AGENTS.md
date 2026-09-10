@@ -67,7 +67,7 @@
 - 节点高频拖拽/连线/视口变动在 `project.tsx` 本地 React State + Ref 内部运行以保障 60fps，不要在拖拽过程中直接高频触发 Zustand 全量 store 更新。
 - 对接自建 ComfyUI 时的工作流标准、槽位词汇表（prompt, seed, width, height, ref_image_01..09, ref_mask 等）、`_meta.title` 标注约定与解析契约参见：`docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx`。
 - 用户向 ComfyUI 工作流配置指南与 `_meta.title` 标注范例参见：`docs/COMFYUI_WORKFLOW_GUIDE.md`。
-- 原生 ComfyUI 8188 直连接口契约与调试踩坑经验参见：`Comfy-Experience/experience.md`。
+- 原生 ComfyUI 8188 直连接口契约与调试踩坑经验参见：`Comfy/Comfy-Experience/experience.md`。
 
 ## ComfyUI 与工作流规范
 
@@ -94,8 +94,12 @@
 - `docs/index.md` 放给 AI 使用的文档索引，不要再放到 `docs/content/docs/` 内容目录里。
 - 用户向 ComfyUI 工作流配置指南参见：`docs/COMFYUI_WORKFLOW_GUIDE.md`。
 - ComfyUI 核心依赖插件全景说明与安装指南参见：`docs/COMFYUI_PLUGINS.md`。
-- 原生 ComfyUI 直连与调试实战记录参见：`Comfy-Experience/experience.md`。
-- ComfyUI 本地渠道与云端渠道系统内建工作流文档参见:`Comfy-Api/README.md`。
+- 原生 ComfyUI 直连与调试实战记录参见：`Comfy/Comfy-Experience/experience.md`。
+- ComfyUI 本地渠道与云端渠道系统内建工作流文档参见：`Comfy/Comfy-Api/README.md`。
+- `Comfy/` 统一管理 ComfyUI 相关资产与文档（下设 3 个子目录）：
+  - `Comfy-Api`：系统内置 ComfyUI API 存放目录。
+  - `Comfy-Experience`：ComfyUI 调试产生的经验 BUG 等 都存放到这里。
+  - `Comfy-Org`：COmfyUI 官方的文档。
 - 详细功能介绍写到 `docs/content/docs/overview/features.mdx`。
 - 后续待办写到 `docs/content/docs/progress/todo.mdx`。
 - 已实现但还需要用户测试确认的事项写到 `docs/content/docs/progress/pending-test.mdx`。
