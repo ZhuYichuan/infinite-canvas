@@ -6,7 +6,7 @@
 - [Features](/docs/overview/features)
 - [ComfyUI 工作流配置指南 (中英文)](COMFYUI_WORKFLOW_GUIDE.md)
 - [ComfyUI 渠道指南](comfyui-channel.md)
-- [部署与发布指南](DEPLOY.md)
+- [部署与发布指南](../DEPLOY.md)
 - [Deploy on Render](/docs/overview/render)
 - [Docker Deployment](/docs/overview/docker)
 - [Third-party GitHub Prompt Repositories](/docs/overview/third-party-prompt-repositories)
