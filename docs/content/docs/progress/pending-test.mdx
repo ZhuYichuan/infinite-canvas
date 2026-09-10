@@ -7,6 +7,13 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Multi-Channel Support in Guide Page "Service Probe":
+  - **Title Update**: Updated "Local Service Probe" to "Service Probe" to encompass both local and remote/cloud ComfyUI channels;
+  - **Multi-channel Selection**: Provides a multi-select dropdown for choosing configured ComfyUI channels, with quick "Select All" and "Clear" actions;
+  - **Concurrent Parallel Probing**: Clicking "Probe Selected Channels" concurrently pings each selected channel's `/system_stats` endpoint and reports aggregate status;
+  - **Itemized Channel Cards**: Details channel name, URL endpoint, default channel tag, online/offline status, latency in milliseconds, or connection error messages;
+  - **Single Channel Quick Re-test**: Includes a dedicated refresh button on each channel row to re-test individual channels without triggering a full re-probe.
+
 - Full Integration of 5 Mandatory ComfyUI Custom Node Plugins in User Guide & Documentation:
   - **Guide Page Section**: Visiting `/guide` displays a dedicated "5 Mandatory ComfyUI Custom Node Plugins" section beneath the 4-step quickstart, listing the 5 plugins (Comfyui-kktools, ComfyUI-KJNodes, ComfyLiterals, ComfyUI-UniversalToolkit, ComfyUI_LayerStyle) with names, repository links, descriptions, and applicable workflow tags;
   - **One-Click Script Copying**: Includes an "Copy All Git Clone Commands" action button as well as per-plugin clone command copy buttons;

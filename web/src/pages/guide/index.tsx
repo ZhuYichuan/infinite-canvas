@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { App, Button, Card, Divider, Tag, Tooltip } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { App, Button, Card, Divider, Select, Tag, Tooltip } from "antd";
 import {
     AlertCircle,
     ArrowRight,
@@ -24,7 +24,7 @@ import { saveAs } from "file-saver";
 
 import { createZip } from "@/lib/zip";
 import { useCopyText } from "@/hooks/use-copy-text";
-import { useConfigStore } from "@/stores/use-config-store";
+import { type ModelChannel, useConfigStore } from "@/stores/use-config-store";
 
 const CORS_FLAG = '--enable-cors-header "*"';
 const LAUNCH_CMD_EXAMPLE = 'python.exe main.py --listen 0.0.0.0 --enable-manager --enable-cors-header "*"';
@@ -231,28 +231,50 @@ const WORKFLOWS: WorkflowItem[] = [
     },
 ];
 
+type ChannelProbeStatus = {
+    state: "unknown" | "probing" | "online" | "offline";
+    statusCode?: number;
+    latencyMs?: number;
+    message?: string;
+};
+
 export default function GuidePage() {
     const { message } = App.useApp();
     const copyText = useCopyText();
     const [downloadingZip, setDownloadingZip] = useState(false);
     const [detecting, setDetecting] = useState(false);
-    const [comfyStatus, setComfyStatus] = useState<"unknown" | "online" | "offline">("unknown");
 
     const config = useConfigStore((state) => state.config);
-    const comfyChannel = config.channels.find((c) => c.apiFormat === "comfyui" && c.comfyuiProxyUrl?.trim()) || config.channels[0];
-    const configuredUrl = (comfyChannel?.comfyuiProxyUrl || "").trim() || "http://127.0.0.1:8188";
-    const channelName = comfyChannel?.name || "默认渠道";
+    const comfyChannels = useMemo(() => {
+        const list = config.channels.filter((c) => c.apiFormat === "comfyui" || c.comfyuiProxyUrl?.trim());
+        return list.length > 0 ? list : config.channels;
+    }, [config.channels]);
 
-    const handleCheckComfy = async () => {
-        setDetecting(true);
-        const baseEndpoint = configuredUrl.replace(/\/+$/, "");
+    const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>(() => {
+        return comfyChannels.map((c) => c.id);
+    });
+    const [probeStatuses, setProbeStatuses] = useState<Record<string, ChannelProbeStatus>>({});
+
+    useEffect(() => {
+        setSelectedChannelIds((prev) => {
+            const validIds = new Set(comfyChannels.map((c) => c.id));
+            const filtered = prev.filter((id) => validIds.has(id));
+            return filtered.length > 0 ? filtered : comfyChannels.map((c) => c.id);
+        });
+    }, [comfyChannels]);
+
+    const probeSingleChannel = async (channel: ModelChannel): Promise<ChannelProbeStatus> => {
+        const rawUrl = (channel.comfyuiProxyUrl || "").trim() || "http://127.0.0.1:8188";
+        const baseEndpoint = rawUrl.replace(/\/+$/, "");
         const probeUrl = `${baseEndpoint}/system_stats`;
+        const start = performance.now();
+
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
             const headers: Record<string, string> = {};
-            if (comfyChannel?.comfyuiProxyToken?.trim()) {
-                headers.Authorization = `Bearer ${comfyChannel.comfyuiProxyToken.trim()}`;
+            if (channel.comfyuiProxyToken?.trim()) {
+                headers.Authorization = `Bearer ${channel.comfyuiProxyToken.trim()}`;
             }
             const res = await fetch(probeUrl, {
                 method: "GET",
@@ -260,18 +282,90 @@ export default function GuidePage() {
                 signal: controller.signal,
             });
             clearTimeout(timeoutId);
+            const latencyMs = Math.round(performance.now() - start);
+
             if (res.ok) {
-                setComfyStatus("online");
-                message.success(`ComfyUI 服务 (${configuredUrl}) 连接正常！`);
+                return {
+                    state: "online",
+                    statusCode: res.status,
+                    latencyMs,
+                    message: "服务正常，已就绪",
+                };
             } else {
-                setComfyStatus("offline");
-                message.warning(`ComfyUI 响应状态码: ${res.status}`);
+                return {
+                    state: "offline",
+                    statusCode: res.status,
+                    latencyMs,
+                    message: `响应状态码: ${res.status}`,
+                };
             }
-        } catch {
-            setComfyStatus("offline");
-            message.error(`未能连接到 ${configuredUrl}。请确认 ComfyUI 已启动且配置了 --enable-cors-header "*"`);
-        } finally {
-            setDetecting(false);
+        } catch (err) {
+            const isAbort = err instanceof DOMException && err.name === "AbortError";
+            return {
+                state: "offline",
+                message: isAbort ? "请求超时" : "未连通 / 跨域受限",
+            };
+        }
+    };
+
+    const handleProbeSelected = async (targetIds?: string[]) => {
+        const ids = targetIds || selectedChannelIds;
+        if (ids.length === 0) {
+            message.warning("请至少选择一个渠道进行探测");
+            return;
+        }
+
+        const targets = comfyChannels.filter((c) => ids.includes(c.id));
+        if (targets.length === 0) return;
+
+        setDetecting(true);
+        setProbeStatuses((prev) => {
+            const next = { ...prev };
+            for (const t of targets) {
+                next[t.id] = { state: "probing" };
+            }
+            return next;
+        });
+
+        const results = await Promise.allSettled(
+            targets.map(async (channel) => {
+                const res = await probeSingleChannel(channel);
+                setProbeStatuses((prev) => ({
+                    ...prev,
+                    [channel.id]: res,
+                }));
+                return { channel, res };
+            })
+        );
+
+        setDetecting(false);
+
+        const onlineCount = results.filter(
+            (r) => r.status === "fulfilled" && r.value.res.state === "online"
+        ).length;
+        if (onlineCount === targets.length) {
+            message.success(`探测完成：全部 ${targets.length} 个渠道均在线就绪！`);
+        } else if (onlineCount > 0) {
+            message.info(`探测完成：${onlineCount}/${targets.length} 个渠道在线就绪`);
+        } else {
+            message.warning(`探测完成：选中的 ${targets.length} 个渠道均未能连通，请确认服务是否开启或跨域参数`);
+        }
+    };
+
+    const handleProbeSingle = async (channel: ModelChannel) => {
+        setProbeStatuses((prev) => ({
+            ...prev,
+            [channel.id]: { state: "probing" },
+        }));
+        const res = await probeSingleChannel(channel);
+        setProbeStatuses((prev) => ({
+            ...prev,
+            [channel.id]: res,
+        }));
+        if (res.state === "online") {
+            message.success(`渠道「${channel.name}」在线就绪 (${res.latencyMs}ms)`);
+        } else {
+            message.error(`渠道「${channel.name}」未连通 (${res.message || "请检查服务与跨域参数"})`);
         }
     };
 
@@ -368,7 +462,7 @@ export default function GuidePage() {
                     </div>
                 </div>
 
-                {/* ComfyUI 本地连通性轻量诊断条 */}
+                {/* ComfyUI 服务连通性轻量诊断条 */}
                 <div className="mb-8 rounded-lg border border-stone-200 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-900/40">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
@@ -377,43 +471,141 @@ export default function GuidePage() {
                             </div>
                             <div>
                                 <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                                    <span>本地服务探测</span>
-                                    <span className="text-xs text-stone-500">({channelName})：</span>
-                                    <code className="rounded bg-stone-200/60 px-1.5 py-0.5 text-xs text-stone-700 dark:bg-stone-800 dark:text-stone-300">
-                                        {configuredUrl}
-                                    </code>
-                                    {comfyStatus === "online" && (
-                                        <Tag color="success" className="m-0 inline-flex items-center gap-1">
-                                            <CheckCircle2 className="size-3" /> 在线就绪
-                                        </Tag>
-                                    )}
-                                    {comfyStatus === "offline" && (
-                                        <Tag color="error" className="m-0 inline-flex items-center gap-1">
-                                            <AlertCircle className="size-3" /> 未连通 (请加跨域参数)
-                                        </Tag>
-                                    )}
+                                    <span>服务探测</span>
+                                    <span className="text-xs text-stone-500">
+                                        (共 {comfyChannels.length} 个配置渠道，已选 {selectedChannelIds.length} 个)：
+                                    </span>
                                 </div>
                                 <p className="mt-0.5 text-xs text-stone-500">
-                                    探测目标为您在「配置」中设定的 ComfyUI 地址。启动时请务必开启跨域参数{" "}
+                                    选择需要测试连通性的 ComfyUI 服务渠道。启动时请务必开启跨域参数{" "}
                                     <code className="font-semibold text-stone-800 dark:text-stone-200">{CORS_FLAG}</code>
                                 </p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
                             <Link to="/config">
-                                <Button size="small">修改配置</Button>
+                                <Button size="small">修改渠道配置</Button>
                             </Link>
                             <Button
                                 size="small"
                                 type="primary"
                                 icon={<RefreshCw className={`size-3.5 ${detecting ? "animate-spin" : ""}`} />}
                                 loading={detecting}
-                                onClick={handleCheckComfy}
+                                disabled={selectedChannelIds.length === 0}
+                                onClick={() => handleProbeSelected()}
                             >
-                                测试连接
+                                探测选中渠道
                             </Button>
                         </div>
                     </div>
+
+                    {/* 渠道多选控件栏 */}
+                    <div className="mt-3.5 flex flex-wrap items-center gap-2 rounded-md border border-stone-200/80 bg-white/70 p-2 text-xs dark:border-stone-800 dark:bg-stone-950/40">
+                        <span className="shrink-0 font-medium text-stone-500">选择探测渠道：</span>
+                        <div className="min-w-[240px] flex-1">
+                            <Select
+                                mode="multiple"
+                                size="small"
+                                className="w-full"
+                                placeholder="请选择要探测的渠道"
+                                maxTagCount="responsive"
+                                value={selectedChannelIds}
+                                onChange={setSelectedChannelIds}
+                                options={comfyChannels.map((c) => ({
+                                    label: `${c.name} (${(c.comfyuiProxyUrl || "").trim() || "http://127.0.0.1:8188"})`,
+                                    value: c.id,
+                                }))}
+                            />
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                            <Button
+                                size="small"
+                                type="text"
+                                onClick={() => setSelectedChannelIds(comfyChannels.map((c) => c.id))}
+                                className="text-xs text-stone-500 hover:text-stone-900 dark:hover:text-stone-100"
+                            >
+                                全选
+                            </Button>
+                            <Button
+                                size="small"
+                                type="text"
+                                onClick={() => setSelectedChannelIds([])}
+                                className="text-xs text-stone-500 hover:text-stone-900 dark:hover:text-stone-100"
+                            >
+                                清空
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* 选中的渠道状态展示清单 */}
+                    {selectedChannelIds.length > 0 && (
+                        <div className="mt-3 space-y-1.5">
+                            {selectedChannelIds.map((channelId) => {
+                                const channel = comfyChannels.find((c) => c.id === channelId);
+                                if (!channel) return null;
+                                const channelUrl = (channel.comfyuiProxyUrl || "").trim() || "http://127.0.0.1:8188";
+                                const probe = probeStatuses[channel.id];
+
+                                return (
+                                    <div
+                                        key={channel.id}
+                                        className="flex flex-wrap items-center justify-between gap-2 rounded border border-stone-200/70 bg-stone-100/60 px-3 py-2 text-xs dark:border-stone-800/80 dark:bg-stone-900/60"
+                                    >
+                                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                            <span className="font-medium text-stone-900 dark:text-stone-100">
+                                                {channel.name}
+                                            </span>
+                                            <code className="max-w-[280px] truncate rounded bg-stone-200/60 px-1.5 py-0.5 font-mono text-[11px] text-stone-700 dark:bg-stone-800 dark:text-stone-300">
+                                                {channelUrl}
+                                            </code>
+                                            {channel.id === config.channels[0]?.id && (
+                                                <Tag className="m-0 origin-left scale-90 text-[10px]">
+                                                    默认渠道
+                                                </Tag>
+                                            )}
+                                        </div>
+
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            {(!probe || probe.state === "unknown") && (
+                                                <span className="text-xs text-stone-400">未测试</span>
+                                            )}
+                                            {probe?.state === "probing" && (
+                                                <Tag color="processing" className="m-0 inline-flex items-center gap-1">
+                                                    <RefreshCw className="size-3 animate-spin" /> 探测中...
+                                                </Tag>
+                                            )}
+                                            {probe?.state === "online" && (
+                                                <Tag color="success" className="m-0 inline-flex items-center gap-1">
+                                                    <CheckCircle2 className="size-3" /> 在线就绪
+                                                    {probe.latencyMs !== undefined && (
+                                                        <span className="font-mono text-[10px] opacity-80">
+                                                            {probe.latencyMs}ms
+                                                        </span>
+                                                    )}
+                                                </Tag>
+                                            )}
+                                            {probe?.state === "offline" && (
+                                                <Tag color="error" className="m-0 inline-flex items-center gap-1">
+                                                    <AlertCircle className="size-3" /> 未连通 ({probe.message || "请加跨域参数"})
+                                                </Tag>
+                                            )}
+
+                                            <Tooltip title="单独测试此渠道">
+                                                <button
+                                                    type="button"
+                                                    disabled={probe?.state === "probing"}
+                                                    onClick={() => handleProbeSingle(channel)}
+                                                    className="inline-flex size-6 items-center justify-center rounded text-stone-400 transition hover:bg-stone-200/70 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                                                >
+                                                    <RefreshCw className={`size-3 ${probe?.state === "probing" ? "animate-spin" : ""}`} />
+                                                </button>
+                                            </Tooltip>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {/* 完整启动命令举例与一键复制 */}
                     <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-stone-200/70 bg-stone-100/80 px-3 py-2 text-xs dark:border-stone-800 dark:bg-stone-800/60">
