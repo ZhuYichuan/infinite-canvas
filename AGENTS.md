@@ -94,12 +94,12 @@
 - `docs/index.md` 放给 AI 使用的文档索引，不要再放到 `docs/content/docs/` 内容目录里。
 - 用户向 ComfyUI 工作流配置指南参见：`docs/COMFYUI_WORKFLOW_GUIDE.md`。
 - ComfyUI 核心依赖插件全景说明与安装指南参见：`docs/COMFYUI_PLUGINS.md`。
-- 原生 ComfyUI 直连与调试实战记录参见：`Comfy/Comfy-Experience/experience.md`。
-- ComfyUI 本地渠道与云端渠道系统内建工作流文档参见：`Comfy/Comfy-Api/README.md`。
 - `Comfy/` 统一管理 ComfyUI 相关资产与文档（下设 3 个子目录）：
   - `Comfy-Api`：系统内置 ComfyUI API 存放目录。
+    - ComfyUI 本地渠道与云端渠道系统内建工作流文档参见：`Comfy/Comfy-Api/README.md`。
   - `Comfy-Experience`：ComfyUI 调试产生的经验 BUG 等 都存放到这里。
-  - `Comfy-Org`：COmfyUI 官方的文档。
+    - 原生 ComfyUI 直连与调试实战记录参见：`Comfy/Comfy-Experience/experience.md`。
+  - `Comfy-Org`：ComfyUI 官方的文档。
 - 详细功能介绍写到 `docs/content/docs/overview/features.mdx`。
 - 后续待办写到 `docs/content/docs/progress/todo.mdx`。
 - 已实现但还需要用户测试确认的事项写到 `docs/content/docs/progress/pending-test.mdx`。
