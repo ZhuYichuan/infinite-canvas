@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Card, Modal, Tag } from "antd";
+import { Button, Card, Modal, Segmented, Tag } from "antd";
 import {
     CheckCircle2,
     XCircle,
@@ -15,22 +15,33 @@ import {
     HelpCircle,
     RefreshCw,
     Server,
+    Video,
 } from "lucide-react";
 
 import { useCopyText } from "@/hooks/use-copy-text";
 
-// 预留微信号配置，方便后续随时修改
-export const WECHAT_CONTACT = {
-    wechatId: "comfy-canvas-service", // 预留微信号，后续提供真实微信号直接替换
-    title: "AI 部署专家专属咨询",
-    qrPlaceholderNote: "微信扫一扫上方二维码添加客服",
-    tip: "添加时请备注：【云端镜像】/【本地部署】/【1对1咨询】，极速优先通过！",
+// 联系方式与渠道配置
+export const CONTACT_INFO = {
+    wechat: {
+        wechatId: "comfy-canvas-service", // 预留微信号
+        title: "微信扫码咨询与购买",
+        qrPath: "/images/contact/wechat-qr.png",
+        tip: "添加时请备注：【云端镜像】/【本地部署】/【1对1咨询】，极速优先通过！",
+    },
+    douyin: {
+        name: "@同学你好",
+        douyinId: "574832860",
+        title: "抖音扫码关注官方教程",
+        qrPath: "/images/contact/douyin-qr.png",
+        tip: "关注抖音【同学你好】，获取第一手 ComfyUI 视频实操演示与最新大模型避坑技巧！",
+    },
 };
 
 export default function PricingPage() {
     const copyText = useCopyText();
     const [qrModalOpen, setQrModalOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<string>("云端算力镜像包");
+    const [activeContactTab, setActiveContactTab] = useState<"wechat" | "douyin">("wechat");
 
     const openContactModal = (planName: string) => {
         setSelectedPlan(planName);
@@ -525,14 +536,27 @@ export default function PricingPage() {
                             type="primary"
                             size="large"
                             className="!h-10 !px-6"
-                            onClick={() => openContactModal("专属微信咨询")}
+                            onClick={() => {
+                                setActiveContactTab("wechat");
+                                openContactModal("专属微信咨询");
+                            }}
                         >
                             扫码添加微信咨询
                         </Button>
                         <Button
                             size="large"
                             className="!h-10 !px-6 !text-white !border-stone-600 hover:!border-white"
-                            onClick={() => copyText(WECHAT_CONTACT.wechatId, `已复制微信号: ${WECHAT_CONTACT.wechatId}`)}
+                            onClick={() => {
+                                setActiveContactTab("douyin");
+                                openContactModal("抖音官方教程关注");
+                            }}
+                        >
+                            关注抖音官方账号
+                        </Button>
+                        <Button
+                            size="large"
+                            className="!h-10 !px-6 !text-white !border-stone-600 hover:!border-white"
+                            onClick={() => copyText(CONTACT_INFO.wechat.wechatId, `已复制微信号: ${CONTACT_INFO.wechat.wechatId}`)}
                         >
                             一键复制微信号
                         </Button>
@@ -540,12 +564,21 @@ export default function PricingPage() {
                 </div>
             </div>
 
-            {/* 微信咨询与购买二维码弹窗 */}
+            {/* 咨询与扫码弹窗（微信 + 抖音双通道） */}
             <Modal
                 title={
                     <div className="flex items-center gap-2 text-base font-bold">
-                        <MessageSquare className="size-5 text-emerald-500" />
-                        <span>{WECHAT_CONTACT.title}</span>
+                        {activeContactTab === "wechat" ? (
+                            <>
+                                <MessageSquare className="size-5 text-emerald-500" />
+                                <span>微信扫码咨询与专属服务</span>
+                            </>
+                        ) : (
+                            <>
+                                <Video className="size-5 text-rose-500" />
+                                <span>抖音扫码关注官方教程 (@同学你好)</span>
+                            </>
+                        )}
                     </div>
                 }
                 open={qrModalOpen}
@@ -554,51 +587,120 @@ export default function PricingPage() {
                 centered
                 destroyOnClose
             >
-                <div className="py-4 text-center">
-                    <Tag color="blue" className="mb-3">
-                        当前咨询意向：{selectedPlan}
+                <div className="py-2 text-center">
+                    <div className="mb-4 flex justify-center">
+                        <Segmented
+                            value={activeContactTab}
+                            onChange={(val) => setActiveContactTab(val as "wechat" | "douyin")}
+                            options={[
+                                {
+                                    label: "微信咨询与购买",
+                                    value: "wechat",
+                                    icon: <MessageSquare className="size-3.5 inline mr-1 text-emerald-500" />,
+                                },
+                                {
+                                    label: "抖音关注官方号",
+                                    value: "douyin",
+                                    icon: <Video className="size-3.5 inline mr-1 text-rose-500" />,
+                                },
+                            ]}
+                        />
+                    </div>
+
+                    <Tag color={activeContactTab === "wechat" ? "blue" : "magenta"} className="mb-3">
+                        {activeContactTab === "wechat" ? `当前咨询意向：${selectedPlan}` : "关注抖音获取第一手 ComfyUI 视频实操"}
                     </Tag>
 
-                    {/* 微信二维码占位容器（待用户提供截图后直接替换图片路径） */}
-                    <div className="mx-auto flex size-60 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50 p-4 dark:border-stone-700 dark:bg-stone-800">
-                        <div className="flex size-44 flex-col items-center justify-center rounded-xl bg-white p-3 shadow-inner dark:bg-stone-900">
-                            {/* 待用户提供微信截图后，将此处换成真实的二维码图片 */}
-                            <div className="flex flex-col items-center justify-center text-center">
-                                <div className="rounded-full bg-emerald-500/10 p-3 text-emerald-600 dark:text-emerald-400">
-                                    <MessageSquare className="size-8" />
+                    {activeContactTab === "wechat" ? (
+                        <div>
+                            {/* 微信二维码容器 */}
+                            <div className="mx-auto flex size-60 flex-col items-center justify-center rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-stone-700 dark:bg-stone-800">
+                                <div className="relative flex size-44 flex-col items-center justify-center overflow-hidden rounded-xl bg-white p-2 shadow-inner dark:bg-stone-900">
+                                    <img
+                                        src={CONTACT_INFO.wechat.qrPath}
+                                        alt="微信二维码"
+                                        className="size-full object-contain"
+                                        onError={(e) => {
+                                            // 图片尚未存在时显示占位
+                                            e.currentTarget.style.display = "none";
+                                            const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                            if (fallback) fallback.style.display = "flex";
+                                        }}
+                                    />
+                                    <div className="hidden flex-col items-center justify-center text-center">
+                                        <div className="rounded-full bg-emerald-500/10 p-3 text-emerald-600 dark:text-emerald-400">
+                                            <MessageSquare className="size-8" />
+                                        </div>
+                                        <span className="mt-2 text-xs font-semibold text-stone-800 dark:text-stone-200">
+                                            微信二维码待放入
+                                        </span>
+                                        <span className="mt-1 text-[11px] text-stone-400">
+                                            可直接复制微信号添加
+                                        </span>
+                                    </div>
                                 </div>
-                                <span className="mt-2 text-xs font-semibold text-stone-800 dark:text-stone-200">
-                                    【微信二维码待替换】
-                                </span>
-                                <span className="mt-1 text-[11px] text-stone-400">
-                                    提供截图后自动呈现
-                                </span>
+                                <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+                                    微信扫一扫上方二维码添加好友
+                                </p>
                             </div>
+
+                            {/* 微信号一键复制 */}
+                            <div className="mx-auto mt-4 flex max-w-xs items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs dark:border-stone-700 dark:bg-stone-800">
+                                <span className="text-stone-500 dark:text-stone-400">微信号：</span>
+                                <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
+                                    {CONTACT_INFO.wechat.wechatId}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 rounded bg-stone-200 px-2 py-1 text-[11px] font-medium text-stone-800 transition hover:bg-stone-300 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
+                                    onClick={() => copyText(CONTACT_INFO.wechat.wechatId, `已复制微信号: ${CONTACT_INFO.wechat.wechatId}`)}
+                                >
+                                    <Copy className="size-3" />
+                                    <span>复制</span>
+                                </button>
+                            </div>
+
+                            <p className="mt-3 text-xs leading-relaxed text-amber-600 dark:text-amber-400">
+                                💡 {CONTACT_INFO.wechat.tip}
+                            </p>
                         </div>
-                        <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-                            {WECHAT_CONTACT.qrPlaceholderNote}
-                        </p>
-                    </div>
+                    ) : (
+                        <div>
+                            {/* 抖音二维码展示 */}
+                            <div className="mx-auto flex size-60 flex-col items-center justify-center rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-stone-700 dark:bg-stone-800">
+                                <div className="flex size-44 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-inner dark:bg-stone-900">
+                                    <img
+                                        src={CONTACT_INFO.douyin.qrPath}
+                                        alt="抖音二维码"
+                                        className="size-full object-contain"
+                                    />
+                                </div>
+                                <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+                                    打开抖音 App 搜索页扫一扫
+                                </p>
+                            </div>
 
-                    {/* 微信号一键复制栏 */}
-                    <div className="mx-auto mt-5 flex max-w-xs items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs dark:border-stone-700 dark:bg-stone-800">
-                        <span className="text-stone-500 dark:text-stone-400">微信号：</span>
-                        <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
-                            {WECHAT_CONTACT.wechatId}
-                        </span>
-                        <button
-                            type="button"
-                            className="inline-flex items-center gap-1 rounded bg-stone-200 px-2 py-1 text-[11px] font-medium text-stone-800 transition hover:bg-stone-300 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
-                            onClick={() => copyText(WECHAT_CONTACT.wechatId, `已复制微信号: ${WECHAT_CONTACT.wechatId}`)}
-                        >
-                            <Copy className="size-3" />
-                            <span>复制</span>
-                        </button>
-                    </div>
+                            {/* 抖音号一键复制 */}
+                            <div className="mx-auto mt-4 flex max-w-xs items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs dark:border-stone-700 dark:bg-stone-800">
+                                <span className="text-stone-500 dark:text-stone-400">抖音号 ({CONTACT_INFO.douyin.name})：</span>
+                                <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
+                                    {CONTACT_INFO.douyin.douyinId}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 rounded bg-stone-200 px-2 py-1 text-[11px] font-medium text-stone-800 transition hover:bg-stone-300 dark:bg-stone-700 dark:text-stone-200 dark:hover:bg-stone-600"
+                                    onClick={() => copyText(CONTACT_INFO.douyin.douyinId, `已复制抖音号: ${CONTACT_INFO.douyin.douyinId}`)}
+                                >
+                                    <Copy className="size-3" />
+                                    <span>复制</span>
+                                </button>
+                            </div>
 
-                    <p className="mt-4 text-xs leading-relaxed text-amber-600 dark:text-amber-400">
-                        💡 {WECHAT_CONTACT.tip}
-                    </p>
+                            <p className="mt-3 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                                🎬 {CONTACT_INFO.douyin.tip}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </Modal>
         </main>
