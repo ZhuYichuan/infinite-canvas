@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Remove "Generate From Result" (Derive) and Consolidate on "Generate Again" (Repeat):
+  - **Complete Removal of Derive**: Cleaned up the "Generate from result" button and its `derive` dispatch branches across all modalities (image, video, text, audio) to eliminate implicit injection of current outputs into reference slots that caused unexpected workflow mode drift;
+  - **Unified "Generate Again" Button**: Successful nodes now display only the primary "Generate again" (`repeat`) action button in the prompt panel; submitting via Enter key defaults to `repeat`;
+  - **Clean Reference Snapshots with Prompt Editing**: "Generate again" strictly restores the clean reference material snapshot (`savedContext`) from the original generation (preventing graph wiring drift) while applying any updated prompt typed by the user into the input box;
+  - **Type and Locale Cleanup**: Removed `"derive"` from `CanvasGenerationIntent` and pruned deprecated locale keys (`deriveGeneration`, `frameVideoDeriveUnsupported`, `editTextPrompt`).
+
 - Settings & Preferences Full Persistence Across Page Refresh:
   - **Storage Migration to LocalForage**: Migrated `useConfigStore` and `usePromptSourceStore` to `localForageStorage` (with backward-compatible localStorage migration fallback) to avoid browser 5MB quota exhaustion;
   - **Channels Persistence**: Adding, editing (proxy URL, token, name, 6 modal workflow slots), deleting (cloud channel deletion honored), and reordering (setting default channel) persist across page refresh;

@@ -23,7 +23,7 @@ export type CanvasNodeTypeId = CanvasNodeType | (string & {});
 
 export type CanvasNodeStatus = "idle" | "success" | "loading" | "error";
 export type CanvasGenerationMode = "text" | "image" | "video" | "audio";
-export type CanvasGenerationIntent = "new" | "repeat" | "derive" | "retry" | "resume";
+export type CanvasGenerationIntent = "new" | "repeat" | "retry" | "resume";
 export type CanvasImageGenerationType = "generation" | "edit";
 
 export type CanvasGenerationReferenceSnapshot = {

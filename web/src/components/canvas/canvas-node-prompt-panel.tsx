@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowUp, LoaderCircle, Maximize2, RefreshCw, Sparkles, Square } from "lucide-react";
+import { ArrowUp, LoaderCircle, Maximize2, RefreshCw, Square } from "lucide-react";
 import { Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -62,7 +62,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
         else onPromptChange(node.id, value);
     };
 
-    const submit = (intent: CanvasGenerationIntent = canRepeat ? "derive" : "new") => {
+    const submit = (intent: CanvasGenerationIntent = canRepeat ? "repeat" : "new") => {
         const text = prompt.trim();
         if ((!text && intent !== "repeat") || isGenerating) return;
         onGenerate(node.id, mode, text, intent);
@@ -154,14 +154,14 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </span>
                     </Button>
                 ) : canRepeat ? (
-                    <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                        <Button type="text" className="!h-10 !rounded-full !px-3" icon={<RefreshCw className="size-3.5" />} onClick={() => submit("repeat")}>
-                            {t("canvas.promptPanel.repeatGeneration")}
-                        </Button>
-                        <Button type="primary" className="!h-10 !rounded-full !px-3" disabled={!prompt.trim()} icon={<Sparkles className="size-3.5" />} onClick={() => submit("derive")}>
-                            {t("canvas.promptPanel.deriveGeneration")}
-                        </Button>
-                    </div>
+                    <Button
+                        type="primary"
+                        className="ml-auto !h-10 !rounded-full !px-4"
+                        icon={<RefreshCw className="size-3.5" />}
+                        onClick={() => submit("repeat")}
+                    >
+                        {t("canvas.promptPanel.repeatGeneration")}
+                    </Button>
                 ) : (
                     <Button type="primary" className="ml-auto !h-10 !min-w-16 shrink-0 !rounded-full !px-3" disabled={!prompt.trim()} onClick={() => submit("new")} aria-label={t("canvas.promptPanel.generate")}>
                         <ArrowUp className="size-4" />

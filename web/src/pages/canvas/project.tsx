@@ -2234,7 +2234,7 @@ function InfiniteCanvasPage() {
     const handleGenerateNode = useCallback(
         async (nodeId: string, mode: CanvasNodeGenerationMode, submittedPrompt: string, intent: CanvasGenerationIntent = "new") => {
             const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
-            const prompt = intent === "repeat" ? sourceNode?.metadata?.prompt ?? submittedPrompt : submittedPrompt;
+            const prompt = intent === "repeat" ? (submittedPrompt.trim() || sourceNode?.metadata?.prompt || "") : submittedPrompt;
             const generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog(true);
@@ -2278,8 +2278,6 @@ function InfiniteCanvasPage() {
             }
 
             const runController = startGenerationRequest(nodeId, nodeId, nodeId);
-            const sourceTextContent = sourceNode?.type === CanvasNodeType.Text ? sourceNode.metadata?.content?.trim() || "" : "";
-            const editingTextNode = intent === "derive" && mode === "text" && Boolean(sourceTextContent);
             let generationContext: NodeGenerationContext;
             try {
                 const savedContext = intent === "repeat" && sourceNode?.metadata ? await restoreGenerationContext(sourceNode.metadata) : null;
@@ -2288,42 +2286,18 @@ function InfiniteCanvasPage() {
                     finishGenerationRequest(nodeId, runController);
                     return;
                 }
+                if (savedContext && submittedPrompt.trim()) {
+                    savedContext.prompt = submittedPrompt.trim();
+                }
                 generationContext =
                     savedContext ||
                     (await hydrateNodeGenerationContext(
-                        buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, editingTextNode ? t("canvas.projectPage.editTextPrompt", { source: sourceTextContent, prompt }) : prompt),
+                        buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, prompt),
                     ));
             } catch (error) {
                 message.error(error instanceof Error ? error.message : t("canvas.projectPage.referenceMissing"));
                 finishGenerationRequest(nodeId, runController);
                 return;
-            }
-            if (editingTextNode && sourceNode) {
-                generationContext = {
-                    ...generationContext,
-                    generationReferences: [
-                        { nodeId: sourceNode.id, kind: "text", text: sourceTextContent },
-                        ...generationContext.generationReferences.filter((reference) => reference.nodeId !== sourceNode.id),
-                    ],
-                    textCount: generationContext.generationReferences.some((reference) => reference.nodeId === sourceNode.id) ? generationContext.textCount : generationContext.textCount + 1,
-                };
-            }
-            if (intent === "derive" && mode === "video" && sourceNode?.type === CanvasNodeType.Video && sourceNode.metadata?.content) {
-                if (generationConfig.videoMode === "frame") {
-                    message.warning(t("canvas.projectPage.frameVideoDeriveUnsupported"));
-                    finishGenerationRequest(nodeId, runController);
-                    return;
-                }
-                const sourceVideo = { id: sourceNode.id, name: sourceNode.title + ".mp4", type: sourceNode.metadata.mimeType || "video/mp4", url: sourceNode.metadata.content, storageKey: sourceNode.metadata.storageKey };
-                generationContext = {
-                    ...generationContext,
-                    referenceVideos: [sourceVideo, ...generationContext.referenceVideos.filter((reference) => reference.id !== sourceNode.id)],
-                    generationReferences: [
-                        { nodeId: sourceNode.id, kind: "video", storageKey: sourceNode.metadata.storageKey, url: sourceNode.metadata.storageKey ? undefined : sourceNode.metadata.content, mimeType: sourceNode.metadata.mimeType || "video/mp4" },
-                        ...generationContext.generationReferences.filter((reference) => reference.nodeId !== sourceNode.id),
-                    ],
-                    videoCount: generationContext.referenceVideos.some((reference) => reference.id === sourceNode.id) ? generationContext.referenceVideos.length : generationContext.referenceVideos.length + 1,
-                };
             }
             const effectivePrompt = generationContext.prompt.trim();
             if (runController.signal.aborted) {
@@ -2344,17 +2318,8 @@ function InfiniteCanvasPage() {
                     const isConfigNode = sourceNode?.type === CanvasNodeType.Config;
                     const isImageNode = sourceNode?.type === CanvasNodeType.Image;
                     const isEmptyImageNode = isImageNode && !sourceNode?.metadata?.content;
-                    const sourceReference =
-                        intent === "derive" && isImageNode && sourceNode?.metadata?.content
-                            ? [{ id: sourceNode.id, name: `${sourceNode.title || sourceNode.id}.png`, type: sourceNode.metadata.mimeType || "image/png", dataUrl: sourceNode.metadata.content, storageKey: sourceNode.metadata.storageKey }]
-                            : [];
-                    const referenceImages = [...new Map([...sourceReference, ...generationContext.referenceImages].map((image) => [image.id, image])).values()];
-                    const generationReferences = sourceReference.length
-                        ? [
-                              { nodeId: sourceReference[0].id, kind: "image" as const, storageKey: sourceReference[0].storageKey, url: sourceReference[0].storageKey ? undefined : (!sourceReference[0].dataUrl.startsWith("data:") ? sourceReference[0].dataUrl : undefined), mimeType: sourceReference[0].type },
-                              ...generationContext.generationReferences.filter((reference) => reference.nodeId !== sourceReference[0].id),
-                          ]
-                        : generationContext.generationReferences;
+                    const referenceImages = generationContext.referenceImages;
+                    const generationReferences = generationContext.generationReferences;
                     const generationType = referenceImages.length ? ("edit" as const) : ("generation" as const);
                     const generationMetadata = buildImageGenerationMetadata(generationType, generationConfig, count, referenceImages);
                     const parentConfig = NODE_DEFAULT_SIZE[isConfigNode ? CanvasNodeType.Config : isImageNode ? CanvasNodeType.Image : CanvasNodeType.Text];
