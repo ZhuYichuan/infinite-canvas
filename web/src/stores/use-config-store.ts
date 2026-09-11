@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
+
+import { localForageStorage } from "@/lib/localforage-storage";
 
 import {
     DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW,
@@ -335,6 +337,7 @@ export const useConfigStore = create<ConfigStore>()(
         {
             name: CONFIG_STORE_KEY,
             version: 1,
+            storage: createJSONStorage(() => localForageStorage),
             migrate: (persistedState: any, version: number) => {
                 if (version < 1) {
                     return {
@@ -471,18 +474,18 @@ export function createModelChannel(channel?: Partial<ModelChannel>, options?: { 
     const result: ModelChannel = {
         id: channel?.id?.trim() || nanoid(),
         name: channel?.name?.trim() || (isCloud ? "云端 ComfyUI" : "本地 ComfyUI"),
-        baseUrl: "",
-        apiKey: "",
+        baseUrl: channel?.baseUrl !== undefined ? channel.baseUrl : "",
+        apiKey: channel?.apiKey !== undefined ? channel.apiKey : "",
         apiFormat: "comfyui",
         models: models.length ? models : options?.preprovisionComfyuiModels !== false ? [...defaultModels] : [],
         comfyuiProxyUrl: channel?.comfyuiProxyUrl !== undefined ? channel.comfyuiProxyUrl : isCloud ? "" : "http://127.0.0.1:8188",
         comfyuiProxyToken: channel?.comfyuiProxyToken !== undefined ? channel.comfyuiProxyToken : "",
-        comfyuiT2iWorkflow: channel?.comfyuiT2iWorkflow ?? workflows.t2i,
-        comfyuiI2iWorkflow: channel?.comfyuiI2iWorkflow ?? workflows.i2i,
-        comfyuiInpaintWorkflow: channel?.comfyuiInpaintWorkflow ?? workflows.inpaint,
-        comfyuiTextWorkflow: channel?.comfyuiTextWorkflow ?? workflows.text,
-        comfyuiVideoWorkflow: channel?.comfyuiVideoWorkflow ?? workflows.video,
-        comfyuiFrameVideoWorkflow: channel?.comfyuiFrameVideoWorkflow ?? workflows.frameVideo,
+        comfyuiT2iWorkflow: channel?.comfyuiT2iWorkflow !== undefined ? channel.comfyuiT2iWorkflow : workflows.t2i,
+        comfyuiI2iWorkflow: channel?.comfyuiI2iWorkflow !== undefined ? channel.comfyuiI2iWorkflow : workflows.i2i,
+        comfyuiInpaintWorkflow: channel?.comfyuiInpaintWorkflow !== undefined ? channel.comfyuiInpaintWorkflow : workflows.inpaint,
+        comfyuiTextWorkflow: channel?.comfyuiTextWorkflow !== undefined ? channel.comfyuiTextWorkflow : workflows.text,
+        comfyuiVideoWorkflow: channel?.comfyuiVideoWorkflow !== undefined ? channel.comfyuiVideoWorkflow : workflows.video,
+        comfyuiFrameVideoWorkflow: channel?.comfyuiFrameVideoWorkflow !== undefined ? channel.comfyuiFrameVideoWorkflow : workflows.frameVideo,
     };
     return result;
 }
@@ -563,21 +566,22 @@ export function resolveModelRequestConfig(config: AiConfig, value: string) {
 
 function normalizeChannels(config: AiConfig) {
     const persistedChannels = Array.isArray(config.channels) ? config.channels : [];
-    const channels = persistedChannels.map((channel, index) =>
-        createModelChannel(
+    const channels = persistedChannels.map((channel, index) => {
+        const isCloud = isCloudChannel(channel);
+        const defaultId = channel.id || (isCloud ? "cloud" : index === 0 ? "local" : `channel-${index + 1}`);
+        const defaultName = channel.name || (defaultId === "cloud" ? "云端 ComfyUI" : defaultId === "local" ? "本地 ComfyUI" : i18n.t("config.channels.indexedName", { index: index + 1 }));
+        return createModelChannel(
             {
                 ...channel,
-                id: channel.id || (index === 0 ? "local" : index === 1 ? "cloud" : `channel-${index + 1}`),
-                name: channel.name || (index === 0 ? "本地 ComfyUI" : index === 1 ? "云端 ComfyUI" : i18n.t("config.channels.indexedName", { index: index + 1 })),
+                id: defaultId,
+                name: defaultName,
                 models: normalizeChannelModels(channel.models),
             },
             { preprovisionComfyuiModels: false },
-        ),
-    );
+        );
+    });
     if (!channels.length) {
         channels.push(createLocalModelChannel(), createCloudModelChannel());
-    } else if (!channels.some((c) => isCloudChannel(c))) {
-        channels.push(createCloudModelChannel());
     }
     return channels;
 }

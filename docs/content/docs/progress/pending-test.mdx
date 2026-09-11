@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Channel Configuration Persistence Across Page Refresh:
+  - **LocalForage Storage Migration**: Settings store migrated to `localForageStorage` (with backward-compatible migration fallback to localStorage) to safely store large ComfyUI workflow JSON payloads without hitting browser `localStorage` quotas;
+  - **Preserve User Modifications**: Editing a channel's proxy URL, proxy token, model bindings, or custom workflows stays intact after refreshing the page;
+  - **Deletion & Reordering Persistence**: Deleting a channel (such as the cloud channel) or reordering channels (clicking "Set as default") is fully persisted and does not resurrect deleted channels upon reload;
+  - **Drawer Validation & Auto-Prefixing**: Missing `http://` or `https://` in the channel URL is auto-prefixed on save, and non-local channels are allowed to have an empty URL without failing validation.
+
 - Native Built-in Dual Channels (Local ComfyUI & Cloud ComfyUI):
   - **Dual Channels Provisioning**: On fresh startup or configuration reset, the system provides both "Local ComfyUI" (`http://127.0.0.1:8188`) and "Cloud ComfyUI" (user-configured cloud endpoint) as built-in channels, encompassing 12 pre-provisioned models (`local::...` and `cloud::...`);
   - **Differentiated Workflows & Weights**: The local channel binds workflows targeting consumer GPUs with pruned/FP8 weights; the cloud channel binds workflows targeting high-VRAM cloud GPUs with full BF16 weights and 8-step Turbo acceleration;

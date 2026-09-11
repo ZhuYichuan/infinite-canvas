@@ -308,7 +308,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                             {index === 0 && <Tag color="blue">{t("config.channels.defaultTag")}</Tag>}
                                                         </div>
                                                         <div className="mt-1 truncate text-xs text-stone-500">
-                                                            {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {isComfyui ? channel.comfyuiProxyUrl || "http://127.0.0.1:8188" : channel.baseUrl || t("config.channels.missingUrl")}
+                                                            {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {isComfyui ? (channel.comfyuiProxyUrl || (channel.id === "local" ? "http://127.0.0.1:8188" : t("config.channels.missingUrl"))) : (channel.baseUrl || t("config.channels.missingUrl"))}
                                                         </div>
                                                     </div>
                                                     <div className="flex shrink-0 gap-2">

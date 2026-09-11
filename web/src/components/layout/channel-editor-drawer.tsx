@@ -109,11 +109,23 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
 
     const save = () => {
         const errors: ProxyFieldErrors = {};
-        const proxyUrl = (draft.comfyuiProxyUrl || "").trim();
-        if (!/^https?:\/\/.+/.test(proxyUrl)) errors.url = t("config.channelEditor.comfyuiProxyUrlError");
+        let proxyUrl = (draft.comfyuiProxyUrl || "").trim();
+        if (!proxyUrl && draft.id === "local") {
+            proxyUrl = "http://127.0.0.1:8188";
+        } else if (proxyUrl && !/^https?:\/\//i.test(proxyUrl)) {
+            proxyUrl = `http://${proxyUrl}`;
+        }
+        if (proxyUrl && !/^https?:\/\/.+/i.test(proxyUrl)) {
+            errors.url = t("config.channelEditor.comfyuiProxyUrlError");
+        }
         setProxyErrors(errors);
         if (Object.keys(errors).length) return;
-        onSave({ ...draft, name: draft.name.trim() || t("config.channels.unnamed"), models: normalizeChannelModels(draft.models) });
+        onSave({
+            ...draft,
+            name: draft.name.trim() || t("config.channels.unnamed"),
+            comfyuiProxyUrl: proxyUrl,
+            models: normalizeChannelModels(draft.models),
+        });
         onClose();
     };
 

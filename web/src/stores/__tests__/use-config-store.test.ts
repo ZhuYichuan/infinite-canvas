@@ -133,6 +133,10 @@ describe("ComfyUI model resolution", () => {
 });
 
 describe("persistence merge stability", () => {
+    beforeEach(() => {
+        useConfigStore.setState({ config: defaultConfig });
+    });
+
     it("preserves custom workflows and proxy URL across merge", () => {
         const customT2i = { name: "custom-t2i.json", json: { test: 1 }, createdAt: 100 };
         const customChannel: ModelChannel = createModelChannel({
@@ -178,6 +182,45 @@ describe("persistence merge stability", () => {
         expect(merged.config.imageModel).toBe("local::ComfyUI T2I");
         expect(merged.config.videoModel).toBe("local::ComfyUI Video");
         expect(merged.config.textModel).toBe("local::ComfyUI LLM");
+    });
+
+    it("rehydrates after modifying channel via setConfig", async () => {
+        const initialChannels = useConfigStore.getState().config.channels;
+        const modifiedChannel = {
+            ...initialChannels[0],
+            comfyuiProxyUrl: "http://192.168.1.99:8188",
+        };
+        useConfigStore.getState().setConfig({
+            ...useConfigStore.getState().config,
+            channels: [modifiedChannel, initialChannels[1]],
+        });
+        expect(useConfigStore.getState().config.channels[0].comfyuiProxyUrl).toBe("http://192.168.1.99:8188");
+
+        await useConfigStore.persist.rehydrate();
+        expect(useConfigStore.getState().config.channels[0].comfyuiProxyUrl).toBe("http://192.168.1.99:8188");
+    });
+
+    it("persists when deleting cloud channel", async () => {
+        const initialChannels = useConfigStore.getState().config.channels;
+        const keptChannels = initialChannels.filter((c) => c.id !== "cloud");
+        useConfigStore.getState().setConfig({
+            ...useConfigStore.getState().config,
+            channels: keptChannels,
+        });
+        await useConfigStore.persist.rehydrate();
+        expect(useConfigStore.getState().config.channels.length).toBe(1);
+    });
+
+    it("persists when reordering channels via setDefaultChannel", async () => {
+        const initialChannels = useConfigStore.getState().config.channels;
+        const cloudChannel = initialChannels.find((c) => c.id === "cloud")!;
+        const localChannel = initialChannels.find((c) => c.id === "local")!;
+        useConfigStore.getState().setConfig({
+            ...useConfigStore.getState().config,
+            channels: [cloudChannel, localChannel],
+        });
+        await useConfigStore.persist.rehydrate();
+        expect(useConfigStore.getState().config.channels[0].id).toBe("cloud");
     });
 });
 
