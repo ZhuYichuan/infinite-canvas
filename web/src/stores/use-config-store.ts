@@ -320,6 +320,7 @@ export const useConfigStore = create<ConfigStore>()(
                     config: {
                         ...state.config,
                         [key]: value,
+                        ...(key === "imageModel" ? { model: value as string } : {}),
                     },
                 })),
             updateWebdavConfig: (key, value) =>
@@ -368,6 +369,7 @@ export const useConfigStore = create<ConfigStore>()(
                     const firstMatch = channels.flatMap((c) => c.models.filter((m) => m.capability === capability).map((m) => encodeChannelModel(c.id, m.name)))[0];
                     return firstMatch || "";
                 };
+                const imageModel = resolveOption(config.imageModel || config.model, defaultConfig.imageModel, "image");
                 return {
                     ...current,
                     webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
@@ -377,7 +379,8 @@ export const useConfigStore = create<ConfigStore>()(
                         apiFormat: normalizeApiFormat(config.apiFormat),
                         channels,
                         models,
-                        imageModel: resolveOption(config.imageModel || config.model, defaultConfig.imageModel, "image"),
+                        model: imageModel,
+                        imageModel,
                         videoModel: resolveOption(config.videoModel, defaultConfig.videoModel, "video"),
                         textModel: resolveOption(config.textModel || config.model, defaultConfig.textModel, "text"),
                         audioModel: normalizeModelOptionValue(config.audioModel || defaultConfig.audioModel, channels),
@@ -385,6 +388,7 @@ export const useConfigStore = create<ConfigStore>()(
                         audioFormat: config.audioFormat || defaultConfig.audioFormat,
                         audioSpeed: config.audioSpeed || defaultConfig.audioSpeed,
                         audioInstructions: config.audioInstructions || "",
+                        systemPrompt: config.systemPrompt || "",
                         reasoningEffort: config.reasoningEffort || "auto",
                         videoSeconds: config.videoSeconds || "6",
                         videoMode: config.videoMode || "omni",

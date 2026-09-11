@@ -7,11 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
-- Channel Configuration Persistence Across Page Refresh:
-  - **LocalForage Storage Migration**: Settings store migrated to `localForageStorage` (with backward-compatible migration fallback to localStorage) to safely store large ComfyUI workflow JSON payloads without hitting browser `localStorage` quotas;
-  - **Preserve User Modifications**: Editing a channel's proxy URL, proxy token, model bindings, or custom workflows stays intact after refreshing the page;
-  - **Deletion & Reordering Persistence**: Deleting a channel (such as the cloud channel) or reordering channels (clicking "Set as default") is fully persisted and does not resurrect deleted channels upon reload;
-  - **Drawer Validation & Auto-Prefixing**: Missing `http://` or `https://` in the channel URL is auto-prefixed on save, and non-local channels are allowed to have an empty URL without failing validation.
+- Settings & Preferences Full Persistence Across Page Refresh:
+  - **Storage Migration to LocalForage**: Migrated `useConfigStore` and `usePromptSourceStore` to `localForageStorage` (with backward-compatible localStorage migration fallback) to avoid browser 5MB quota exhaustion;
+  - **Channels Persistence**: Adding, editing (proxy URL, token, name, 6 modal workflow slots), deleting (cloud channel deletion honored), and reordering (setting default channel) persist across page refresh;
+  - **Preferences Persistence**: Default models (`imageModel`, `videoModel`, `textModel`, `audioModel`), canvas image count (`canvasImageCount`), TTS settings (`audioVoice`, `audioFormat`, `audioSpeed`, `audioInstructions`), and `systemPrompt` all persist across page refresh;
+  - **Prompt Sources Persistence**: Built-in source enable/disable toggles, custom added prompt sources, and scheduling configuration persist across page refresh;
+  - **WebDAV Persistence**: WebDAV URL, directory, username, password, and last sync timestamp persist across page refresh.
 
 - Native Built-in Dual Channels (Local ComfyUI & Cloud ComfyUI):
   - **Dual Channels Provisioning**: On fresh startup or configuration reset, the system provides both "Local ComfyUI" (`http://127.0.0.1:8188`) and "Cloud ComfyUI" (user-configured cloud endpoint) as built-in channels, encompassing 12 pre-provisioned models (`local::...` and `cloud::...`);

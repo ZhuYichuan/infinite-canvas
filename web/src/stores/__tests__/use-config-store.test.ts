@@ -222,6 +222,79 @@ describe("persistence merge stability", () => {
         await useConfigStore.persist.rehydrate();
         expect(useConfigStore.getState().config.channels[0].id).toBe("cloud");
     });
+
+    it("persists all preferences fields across rehydration", async () => {
+        useConfigStore.getState().updateConfig("imageModel", "cloud::ComfyUI T2I");
+        useConfigStore.getState().updateConfig("videoModel", "cloud::ComfyUI Video");
+        useConfigStore.getState().updateConfig("textModel", "cloud::ComfyUI LLM");
+        useConfigStore.getState().updateConfig("canvasImageCount", "5");
+        useConfigStore.getState().updateConfig("audioVoice", "echo");
+        useConfigStore.getState().updateConfig("audioFormat", "wav");
+        useConfigStore.getState().updateConfig("audioSpeed", "1.25");
+        useConfigStore.getState().updateConfig("audioInstructions", "Speak in a calm voice");
+        useConfigStore.getState().updateConfig("systemPrompt", "You are a professional designer");
+
+        await useConfigStore.persist.rehydrate();
+
+        const config = useConfigStore.getState().config;
+        expect(config.imageModel).toBe("cloud::ComfyUI T2I");
+        expect(config.model).toBe("cloud::ComfyUI T2I");
+        expect(config.videoModel).toBe("cloud::ComfyUI Video");
+        expect(config.textModel).toBe("cloud::ComfyUI LLM");
+        expect(config.canvasImageCount).toBe("5");
+        expect(config.audioVoice).toBe("echo");
+        expect(config.audioFormat).toBe("wav");
+        expect(config.audioSpeed).toBe("1.25");
+        expect(config.audioInstructions).toBe("Speak in a calm voice");
+        expect(config.systemPrompt).toBe("You are a professional designer");
+    });
+
+    it("persists all WebDAV configuration fields across rehydration", async () => {
+        useConfigStore.getState().updateWebdavConfig("url", "https://nas.example.com/webdav");
+        useConfigStore.getState().updateWebdavConfig("directory", "my-canvas-backup");
+        useConfigStore.getState().updateWebdavConfig("username", "admin");
+        useConfigStore.getState().updateWebdavConfig("password", "secret123");
+        useConfigStore.getState().updateWebdavConfig("lastSyncedAt", "2026-09-11T12:00:00.000Z");
+
+        await useConfigStore.persist.rehydrate();
+
+        const webdav = useConfigStore.getState().webdav;
+        expect(webdav.url).toBe("https://nas.example.com/webdav");
+        expect(webdav.directory).toBe("my-canvas-backup");
+        expect(webdav.username).toBe("admin");
+        expect(webdav.password).toBe("secret123");
+        expect(webdav.lastSyncedAt).toBe("2026-09-11T12:00:00.000Z");
+    });
+
+    it("persists all 6 custom workflow slots and token across rehydration", async () => {
+        const customWf = (name: string) => ({ name, json: { node: name }, createdAt: 1000 });
+        const channels = useConfigStore.getState().config.channels;
+        const modified = {
+            ...channels[0],
+            comfyuiProxyToken: "my-secret-token",
+            comfyuiT2iWorkflow: customWf("custom-t2i"),
+            comfyuiI2iWorkflow: customWf("custom-i2i"),
+            comfyuiInpaintWorkflow: customWf("custom-inpaint"),
+            comfyuiTextWorkflow: customWf("custom-text"),
+            comfyuiVideoWorkflow: customWf("custom-video"),
+            comfyuiFrameVideoWorkflow: customWf("custom-frame-video"),
+        };
+        useConfigStore.getState().setConfig({
+            ...useConfigStore.getState().config,
+            channels: [modified, channels[1]],
+        });
+
+        await useConfigStore.persist.rehydrate();
+
+        const savedChannel = useConfigStore.getState().config.channels[0];
+        expect(savedChannel.comfyuiProxyToken).toBe("my-secret-token");
+        expect(savedChannel.comfyuiT2iWorkflow?.name).toBe("custom-t2i");
+        expect(savedChannel.comfyuiI2iWorkflow?.name).toBe("custom-i2i");
+        expect(savedChannel.comfyuiInpaintWorkflow?.name).toBe("custom-inpaint");
+        expect(savedChannel.comfyuiTextWorkflow?.name).toBe("custom-text");
+        expect(savedChannel.comfyuiVideoWorkflow?.name).toBe("custom-video");
+        expect(savedChannel.comfyuiFrameVideoWorkflow?.name).toBe("custom-frame-video");
+    });
 });
 
 describe("default dual ComfyUI channels", () => {
