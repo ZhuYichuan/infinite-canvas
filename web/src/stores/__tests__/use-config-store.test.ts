@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { COMFYUI_DEFAULT_MODELS, createModelChannel, defaultConfig, isAiConfigReady, normalizeApiFormat, normalizeChannelModels, resolveModelChannel, resolveModelRequestConfig, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { COMFYUI_DEFAULT_MODELS, createModelChannel, defaultConfig, isAiConfigReady, modelOptionLabel, modelOptionsFromChannels, normalizeApiFormat, normalizeChannelModels, resolveModelChannel, resolveModelForCapability, resolveModelRequestConfig, selectableModelsByCapability, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 
 describe("COMFYUI_DEFAULT_MODELS", () => {
     it("pre-provisions the default ComfyUI models", () => {
@@ -294,6 +294,56 @@ describe("persistence merge stability", () => {
         expect(savedChannel.comfyuiTextWorkflow?.name).toBe("custom-text");
         expect(savedChannel.comfyuiVideoWorkflow?.name).toBe("custom-video");
         expect(savedChannel.comfyuiFrameVideoWorkflow?.name).toBe("custom-frame-video");
+    });
+
+    it("supports adding a 3rd channel, selecting its models, routing its API calls, and persisting across reload", async () => {
+        const initialChannels = useConfigStore.getState().config.channels;
+        const channel3 = createModelChannel({
+            id: "chan-3",
+            name: "私有 GPU",
+            comfyuiProxyUrl: "http://192.168.10.88:8188",
+            comfyuiProxyToken: "token3",
+        });
+
+        useConfigStore.getState().setConfig({
+            ...useConfigStore.getState().config,
+            channels: [...initialChannels, channel3],
+            models: modelOptionsFromChannels([...initialChannels, channel3]),
+        });
+
+        const stateBefore = useConfigStore.getState();
+        expect(stateBefore.config.channels.length).toBe(3);
+
+        // 1. Check selectable models include channel 3
+        const imageModels = selectableModelsByCapability(stateBefore.config, "image");
+        expect(imageModels).toContain("chan-3::ComfyUI T2I");
+        expect(modelOptionLabel(stateBefore.config, "chan-3::ComfyUI T2I")).toBe("ComfyUI T2I（私有 GPU）");
+
+        // 2. Check API resolution points to channel 3's URL and token
+        const reqConfig = resolveModelRequestConfig(stateBefore.config, "chan-3::ComfyUI T2I");
+        expect(reqConfig.baseUrl).toBe("http://192.168.10.88:8188");
+        expect(reqConfig.apiKey).toBe("token3");
+        expect(reqConfig.model).toBe("ComfyUI T2I");
+
+        // 3. Check canvas node resolution selects channel 3
+        const resolved = resolveModelForCapability(stateBefore.config, "chan-3::ComfyUI T2I", "image");
+        expect(resolved).toBe("chan-3::ComfyUI T2I");
+
+        // 4. Rehydrate (simulate browser refresh)
+        await useConfigStore.persist.rehydrate();
+
+        const stateAfter = useConfigStore.getState();
+        expect(stateAfter.config.channels.length).toBe(3);
+        const rehydratedChan3 = stateAfter.config.channels.find((c) => c.id === "chan-3");
+        expect(rehydratedChan3).toBeDefined();
+        expect(rehydratedChan3?.name).toBe("私有 GPU");
+        expect(rehydratedChan3?.comfyuiProxyUrl).toBe("http://192.168.10.88:8188");
+        expect(rehydratedChan3?.comfyuiProxyToken).toBe("token3");
+
+        // 5. Post-reload API resolution still routes correctly to channel 3
+        const postReloadReqConfig = resolveModelRequestConfig(stateAfter.config, "chan-3::ComfyUI T2I");
+        expect(postReloadReqConfig.baseUrl).toBe("http://192.168.10.88:8188");
+        expect(postReloadReqConfig.apiKey).toBe("token3");
     });
 });
 
