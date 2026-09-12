@@ -331,22 +331,55 @@ function InfiniteCanvasPage() {
         });
         if (!affectedNodeIds.size) return;
         setNodes((prev) =>
-            prev.map((node) =>
-                affectedNodeIds.has(node.id) && node.metadata?.status === NODE_STATUS_LOADING
-                    ? {
-                          ...node,
-                          metadata: {
-                              ...node.metadata,
-                              status: NODE_STATUS_IDLE,
-                              errorDetails: undefined,
-                              jobId: undefined,
-                              isTimeout: undefined,
-                              images: node.metadata.images?.map((image) => (image.status === NODE_STATUS_LOADING ? { ...image, status: NODE_STATUS_IDLE, errorDetails: undefined, jobId: undefined, isTimeout: undefined } : image)),
-                              texts: node.metadata.texts?.map((text) => (text.status === NODE_STATUS_LOADING ? { ...text, status: NODE_STATUS_IDLE, errorDetails: undefined, jobId: undefined, isTimeout: undefined } : text)),
-                          },
-                      }
-                    : node,
-            ),
+            prev.map((node) => {
+                if (!affectedNodeIds.has(node.id)) return node;
+                const completedImages = node.metadata?.images?.filter((img) => Boolean(img.content)) || [];
+                const completedTexts = node.metadata?.texts?.filter((txt) => Boolean(txt.content)) || [];
+                const hasSuccess = completedImages.length > 0 || completedTexts.length > 0 || Boolean(node.metadata?.content);
+                const primaryImage = completedImages.find((img) => img.id === node.metadata?.primaryImageId) || completedImages[0];
+                const primaryText = completedTexts.find((txt) => txt.id === node.metadata?.primaryTextId) || completedTexts[0];
+                return {
+                    ...node,
+                    metadata: {
+                        ...node.metadata,
+                        status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_IDLE,
+                        errorDetails: undefined,
+                        jobId: undefined,
+                        isTimeout: undefined,
+                        ...(hasSuccess && primaryImage && !node.metadata?.content
+                            ? {
+                                  content: primaryImage.content,
+                                  storageKey: primaryImage.storageKey,
+                                  primaryImageId: primaryImage.id,
+                                  naturalWidth: primaryImage.naturalWidth,
+                                  naturalHeight: primaryImage.naturalHeight,
+                                  bytes: primaryImage.bytes,
+                                  mimeType: primaryImage.mimeType,
+                              }
+                            : {}),
+                        ...(hasSuccess && primaryText && !node.metadata?.content
+                            ? {
+                                  content: primaryText.content,
+                                  primaryTextId: primaryText.id,
+                              }
+                            : {}),
+                        images: completedImages.length > 0
+                            ? node.metadata?.images?.map((image) =>
+                                  image.status === NODE_STATUS_LOADING
+                                      ? { ...image, status: NODE_STATUS_IDLE, errorDetails: undefined, jobId: undefined, isTimeout: undefined }
+                                      : image,
+                              )
+                            : undefined,
+                        texts: completedTexts.length > 0
+                            ? node.metadata?.texts?.map((text) =>
+                                  text.status === NODE_STATUS_LOADING
+                                      ? { ...text, status: NODE_STATUS_IDLE, errorDetails: undefined, jobId: undefined, isTimeout: undefined }
+                                      : text,
+                              )
+                            : undefined,
+                    },
+                };
+            }),
         );
     }, []);
 
@@ -2526,7 +2559,42 @@ function InfiniteCanvasPage() {
                     );
                     if (rootId !== nodeId) finishGenerationRequest(rootId, controller);
                     if (controller.signal.aborted) {
-                        setNodes((prev) => prev.map((node) => (node.id === nodeId && isConfigNode && node.metadata?.status === NODE_STATUS_LOADING ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_IDLE, errorDetails: undefined } } : node)));
+                        setNodes((prev) =>
+                            prev.map((node) => {
+                                if (node.id !== rootId && node.id !== nodeId) return node;
+                                const completedImages = node.metadata?.images?.filter((img) => Boolean(img.content)) || [];
+                                const hasCompleted = completedImages.length > 0 || Boolean(node.metadata?.content);
+                                const primaryImage = completedImages.find((img) => img.id === node.metadata?.primaryImageId) || completedImages[0];
+                                return {
+                                    ...node,
+                                    metadata: {
+                                        ...node.metadata,
+                                        status: hasCompleted ? NODE_STATUS_SUCCESS : NODE_STATUS_IDLE,
+                                        errorDetails: undefined,
+                                        jobId: undefined,
+                                        isTimeout: undefined,
+                                        ...(hasCompleted && primaryImage && !node.metadata?.content
+                                            ? {
+                                                  content: primaryImage.content,
+                                                  storageKey: primaryImage.storageKey,
+                                                  primaryImageId: primaryImage.id,
+                                                  naturalWidth: primaryImage.naturalWidth,
+                                                  naturalHeight: primaryImage.naturalHeight,
+                                                  bytes: primaryImage.bytes,
+                                                  mimeType: primaryImage.mimeType,
+                                              }
+                                            : {}),
+                                        images: completedImages.length > 0
+                                            ? node.metadata?.images?.map((image) =>
+                                                  image.status === NODE_STATUS_LOADING
+                                                      ? { ...image, status: NODE_STATUS_IDLE, errorDetails: undefined, jobId: undefined, isTimeout: undefined }
+                                                      : image,
+                                              )
+                                            : undefined,
+                                    },
+                                };
+                            }),
+                        );
                         return;
                     }
                     if (hasFailure) {
@@ -2878,8 +2946,40 @@ function InfiniteCanvasPage() {
                         }
                     }),
                 );
-                if (rootId !== nodeId) finishGenerationRequest(rootId, controller);
-                if (controller.signal.aborted) return;
+                if (controller.signal.aborted) {
+                    setNodes((prev) =>
+                        prev.map((node) => {
+                            if (node.id !== rootId && node.id !== nodeId) return node;
+                            const completedTexts = node.metadata?.texts?.filter((txt) => Boolean(txt.content)) || [];
+                            const hasCompleted = completedTexts.length > 0 || Boolean(node.metadata?.content);
+                            const primaryText = completedTexts.find((txt) => txt.id === node.metadata?.primaryTextId) || completedTexts[0];
+                            return {
+                                ...node,
+                                metadata: {
+                                    ...node.metadata,
+                                    status: hasCompleted ? NODE_STATUS_SUCCESS : NODE_STATUS_IDLE,
+                                    errorDetails: undefined,
+                                    jobId: undefined,
+                                    isTimeout: undefined,
+                                    ...(hasCompleted && primaryText && !node.metadata?.content
+                                        ? {
+                                              content: primaryText.content,
+                                              primaryTextId: primaryText.id,
+                                          }
+                                        : {}),
+                                    texts: completedTexts.length > 0
+                                        ? node.metadata?.texts?.map((text) =>
+                                              text.status === NODE_STATUS_LOADING
+                                                  ? { ...text, status: NODE_STATUS_IDLE, errorDetails: undefined, jobId: undefined, isTimeout: undefined }
+                                                  : text,
+                                          )
+                                        : undefined,
+                                },
+                            };
+                        }),
+                    );
+                    return;
+                }
                 const completedTexts = results.flatMap((item) => (item?.status === NODE_STATUS_SUCCESS ? [item] : []));
                 const failedTexts = results.flatMap((item) => (item?.status === NODE_STATUS_ERROR ? [item] : []));
                 const settledTexts = results.filter((item): item is CanvasNodeText => Boolean(item));
@@ -2907,7 +3007,33 @@ function InfiniteCanvasPage() {
                     }),
                 );
             } catch (error) {
-                if (isGenerationCanceled(error)) return;
+                if (isGenerationCanceled(error)) {
+                    setNodes((prev) =>
+                        prev.map((node) => {
+                            if (node.id !== nodeId && !pendingChildIds.includes(node.id)) return node;
+                            const completedImages = node.metadata?.images?.filter((img) => Boolean(img.content)) || [];
+                            const completedTexts = node.metadata?.texts?.filter((txt) => Boolean(txt.content)) || [];
+                            const hasCompleted = completedImages.length > 0 || completedTexts.length > 0 || Boolean(node.metadata?.content);
+                            return {
+                                ...node,
+                                metadata: {
+                                    ...node.metadata,
+                                    status: hasCompleted ? NODE_STATUS_SUCCESS : NODE_STATUS_IDLE,
+                                    errorDetails: undefined,
+                                    jobId: undefined,
+                                    isTimeout: undefined,
+                                    images: completedImages.length > 0
+                                        ? node.metadata?.images?.map((img) => (img.status === NODE_STATUS_LOADING ? { ...img, status: NODE_STATUS_IDLE, jobId: undefined, isTimeout: undefined } : img))
+                                        : undefined,
+                                    texts: completedTexts.length > 0
+                                        ? node.metadata?.texts?.map((txt) => (txt.status === NODE_STATUS_LOADING ? { ...txt, status: NODE_STATUS_IDLE, jobId: undefined, isTimeout: undefined } : txt))
+                                        : undefined,
+                                },
+                            };
+                        }),
+                    );
+                    return;
+                }
                 const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
                 const errorJobId = (error as { jobId?: string })?.jobId;
                 const isTimeout = (error as { name?: string })?.name === "ComfyuiTimeoutError" || errorDetails.includes("timeout") || errorDetails.includes("超时");

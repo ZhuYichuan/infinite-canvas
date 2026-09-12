@@ -889,10 +889,24 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const { t } = useTranslation();
     const failed = image?.status === "error";
+    const loading = image?.status === "loading";
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
-            {failed ? <span className="text-xs leading-5">{image.errorDetails || t("canvas.node.failed")}</span> : <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />}
-            {!failed ? <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span> : null}
+            {failed ? (
+                <span className="text-xs leading-5">{image?.errorDetails || t("canvas.node.failed")}</span>
+            ) : loading ? (
+                <>
+                    <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />
+                    <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span>
+                </>
+            ) : (
+                <div className="flex flex-col items-center justify-center gap-2" style={{ color: theme.node.placeholder }}>
+                    <div className="flex size-12 items-center justify-center rounded-2xl" style={{ background: theme.toolbar.activeBg }}>
+                        <ImageIcon className="size-5 opacity-30" />
+                    </div>
+                    <span className="text-[10px] tracking-[0.18em] opacity-50">{t("canvas.node.emptyImage")}</span>
+                </div>
+            )}
         </div>
     );
 }

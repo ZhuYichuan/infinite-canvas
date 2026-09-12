@@ -7,6 +7,10 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Batch Image Generation Stop Cancellation and Loading Spinner Fix:
+  - **Slot Status Evaluation Fix**: Fixed a bug in `<CanvasNode>`'s `ImageSlotStatus` where any non-error state was erroneously treated as loading and rendered with an infinite spinner. Added an explicit check for `loading`; cancelled/idle slots now correctly display the empty slot icon and "No image yet" text;
+  - **Batch Stop State Settlement**: When clicking "Stop", `stopGenerationByRunningId` and `handleGenerate` abort handling now cleanly abort the ComfyUI background job, retain any already generated images as primary/successful output, reset uncompleted loading slots to idle, and settle the root node status to success or idle. This prevents image cards from getting permanently stuck in the generating state after cancellation.
+
 - Image, Video, Text, and Audio Node "Generate Again" (Repeat) Successful Output On-Screen Display and Metadata Isolation Fix:
   - **Fix Undefined Variable in Text Generation**: Added the missing declaration for `sourceTextContent`, fixing the `sourceTextContent is not defined` runtime error encountered during text generation;
   - **Prune Cloned Stale Primary IDs and Sub-items**: When clicking "Generate again" on Image, Video, Text, or Audio nodes, `primaryImageId`, `primaryTextId`, `images`, `texts`, and obsolete media content/dimension fields (`naturalWidth`, `naturalHeight`, `bytes`, `mimeType`) are cleanly reset to prevent callbacks from mistakenly treating the node as having an existing completed item;

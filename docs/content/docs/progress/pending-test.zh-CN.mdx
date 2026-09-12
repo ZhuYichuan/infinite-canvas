@@ -5,6 +5,10 @@ description: 当前版本已实现但仍需人工验证的变更项
 
 # 待测试
 
+- 修复批量图片生成点击「停止」后节点仍显示「生成中」转圈问题：
+  - **槽位渲染状态纠正**：修复 `<CanvasNode>` 中 `ImageSlotStatus` 将所有非 error 状态均误当作 loading 渲染转圈动画的缺陷，补齐 `loading` 显式判定，子项处于 idle/取消状态时正确显示占位图标与「未生成图片」，杜绝幽灵转圈；
+  - **批量生成中断状态回写**：点击「停止」时 `stopGenerationByRunningId` 与 `handleGenerate` 中止链路不仅取消 ComfyUI 后台任务，还同步将已出图的项保留为主图/成功态，将未完成的 loading 子项重置为 idle，并将根节点状态置为 success 或 idle，确保停止后卡片状态立即结算恢复。
+
 - 修复图片/视频/文本/音频各节点「再次生成」产物上屏与元数据隔离：
   - **修复文本节点未声明变量报错**：补齐文本生成链路中缺失声明的 `sourceTextContent`，修复空文本节点与再次生成逻辑中出现的 `sourceTextContent is not defined` 运行时错误；
   - **清除克隆的陈旧主图与子项 ID**：在图片、视频、文本、音频节点点击「再次生成」时，严格清除上一节点克隆过来的 `primaryImageId`、`primaryTextId`、`images`、`texts` 及旧媒体内容与尺寸属性，杜绝回调因旧 ID 拦截误判提前退出；
