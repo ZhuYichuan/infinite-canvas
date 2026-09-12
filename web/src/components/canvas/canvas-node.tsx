@@ -128,7 +128,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const [isEditingContent, setIsEditingContent] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleDraft, setTitleDraft] = useState(data.title || "");
-    const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
+    const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content || data.metadata?.images?.some((img) => Boolean(img.content)));
     const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content);
     const isGroup = data.type === CanvasNodeType.Group;
@@ -753,8 +753,8 @@ function ImageContent({
     const images = node.metadata?.images || [];
     const batchCount = images.length;
     const isBatchRoot = batchCount > 1;
-    const primaryImageId = node.metadata?.primaryImageId || images[0]?.id;
-    const primaryImage = images.find((image) => image.id === primaryImageId);
+    const primaryImage = images.find((image) => image.id === node.metadata?.primaryImageId && Boolean(image.content)) || images.find((image) => Boolean(image.content)) || images[0];
+    const primaryImageId = primaryImage?.id || node.metadata?.primaryImageId || images[0]?.id;
     const primaryContent = primaryImage?.content || node.metadata?.content;
 
     return (

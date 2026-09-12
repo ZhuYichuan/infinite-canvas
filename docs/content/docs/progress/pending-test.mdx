@@ -7,6 +7,11 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Image Node "Generate Again" (Repeat) Successful Output On-Screen Display Fix:
+  - **Prune Cloned Stale Primary Image ID**: When clicking "Generate again" to create a new image node, `primaryImageId`, `content`, `storageKey`, and physical dimension fields (`naturalWidth`, `naturalHeight`, `bytes`, `mimeType`) are cleanly reset to prevent the completion callback from mistakenly treating the node as having an existing primary image;
+  - **Active Content Safety Check**: In the single/batch image completion callback, only return early without overriding primary properties if a primary image with valid `content` already exists, ensuring the newly generated image correctly sets `content`, `storageKey`, `primaryImageId`, and responsive dimensions;
+  - **Multi-tiered Rendering Fallback**: Added fallbacks in the job completion callback and `<CanvasNode>` rendering layer to resolve and render the active image from `images` whenever content exists, eliminating the perpetual "Generating" spinner.
+
 - Canvas Node Copy / Duplication (Context Menu "Duplicate", Ctrl+C / Ctrl+V Paste, Batch Image "Create Copy") Connection Preservation:
   - **Single Node Duplicate Connection Inheritance**: Right-clicking any node (Image, Text, Video, Audio, Config) and choosing "Duplicate" creates a new node (with ` Copy` suffix) that inherits all configuration/parameters AND automatically replicates all incoming parent connections via `duplicateIncomingConnections`, ensuring identical upstream input context;
   - **Batch Image Card "Create Copy" Connection Inheritance**: Clicking "Create copy" on an expanded batch item to extract a single image node now replicates all parent connections from the parent batch node;

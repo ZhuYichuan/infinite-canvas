@@ -2345,8 +2345,13 @@ function InfiniteCanvasPage() {
                             errorDetails: undefined,
                             seed: nextSeed,
                             images: imageIds.map((id, index) => ({ id, status: NODE_STATUS_LOADING, content: "", storageKey: "", naturalWidth: 0, naturalHeight: 0, bytes: 0, mimeType: "", seed: (nextSeed + index) % 9007199254740991 })),
+                            primaryImageId: undefined,
                             content: undefined,
                             storageKey: undefined,
+                            naturalWidth: undefined,
+                            naturalHeight: undefined,
+                            bytes: undefined,
+                            mimeType: undefined,
                             ...generationMetadata,
                             generationMode: mode,
                             generationReferences,
@@ -2467,7 +2472,8 @@ function InfiniteCanvasPage() {
                                     prev.map((node) => {
                                         if (node.id !== rootId) return node;
                                         const images = node.metadata?.images?.map((image) => (image.id === imageId ? item : image)) || [];
-                                        if (node.metadata?.primaryImageId) return { ...node, metadata: { ...node.metadata, images } };
+                                        const hasActivePrimary = Boolean(node.metadata?.primaryImageId && images.some((image) => image.id === node.metadata?.primaryImageId && Boolean(image.content)));
+                                        if (hasActivePrimary) return { ...node, metadata: { ...node.metadata, images } };
                                         const center = { x: node.position.x + node.width / 2, y: node.position.y + node.height / 2 };
                                         return {
                                             ...node,
@@ -2531,7 +2537,31 @@ function InfiniteCanvasPage() {
                             node.id === nodeId && isConfigNode
                                 ? { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed") } }
                                 : node.id === rootId
-                                  ? { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? (hasFailure ? t("canvas.projectPage.partialFailed") : undefined) : t("canvas.projectPage.allFailed"), ...(hasSuccess ? { jobId: undefined, isTimeout: undefined } : {}) } }
+                                  ? {
+                                        ...node,
+                                        metadata: {
+                                            ...node.metadata,
+                                            status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR,
+                                            errorDetails: hasSuccess ? (hasFailure ? t("canvas.projectPage.partialFailed") : undefined) : t("canvas.projectPage.allFailed"),
+                                            ...(hasSuccess ? { jobId: undefined, isTimeout: undefined } : {}),
+                                            ...(hasSuccess && !node.metadata?.content
+                                                ? (() => {
+                                                      const successfulImage = node.metadata?.images?.find((img) => Boolean(img.content));
+                                                      return successfulImage
+                                                          ? {
+                                                                content: successfulImage.content,
+                                                                storageKey: successfulImage.storageKey,
+                                                                primaryImageId: successfulImage.id,
+                                                                naturalWidth: successfulImage.naturalWidth,
+                                                                naturalHeight: successfulImage.naturalHeight,
+                                                                bytes: successfulImage.bytes,
+                                                                mimeType: successfulImage.mimeType,
+                                                            }
+                                                          : {};
+                                                  })()
+                                                : {}),
+                                        },
+                                    }
                                     : node,
                         ),
                     );
