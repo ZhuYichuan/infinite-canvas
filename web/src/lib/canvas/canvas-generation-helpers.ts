@@ -244,7 +244,8 @@ export function generateNextSeed(previousSeed?: number, max = 9007199254740991):
  * Builds connection(s) for a newly generated node.
  * When intent is "repeat", instead of connecting from the current node itself,
  * it connects from the current node's parent nodes (incoming connections).
- * If no valid parent connections exist, it falls back to connecting from the current node.
+ * If no valid parent connections exist, it returns an empty list (the repeated
+ * node is a sibling/re-roll, and should never connect to the current node).
  */
 export function buildGeneratedNodeConnections(
     sourceNodeId: string,
@@ -254,10 +255,7 @@ export function buildGeneratedNodeConnections(
     nodes: CanvasNodeData[],
 ): CanvasConnection[] {
     if (intent === "repeat") {
-        const parentConnections = duplicateIncomingConnections(sourceNodeId, targetNodeId, connections, nodes);
-        if (parentConnections.length > 0) {
-            return parentConnections;
-        }
+        return duplicateIncomingConnections(sourceNodeId, targetNodeId, connections, nodes);
     }
     return [{ id: nanoid(), fromNodeId: sourceNodeId, toNodeId: targetNodeId, kind: "lineage" }];
 }

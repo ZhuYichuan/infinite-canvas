@@ -2843,7 +2843,16 @@ function InfiniteCanvasPage() {
                 setNodes((prev) =>
                     isEmptyTextNode
                         ? prev.map((node) => (node.id === nodeId ? { ...node, ...rootNode } : node))
-                        : [...prev.map((node) => (node.id === nodeId && isConfigNode ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined } } : node)), rootNode],
+                        : [
+                              ...prev.map((node) =>
+                                  node.id === nodeId
+                                      ? isConfigNode
+                                          ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined } }
+                                          : { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS, errorDetails: undefined } }
+                                      : node,
+                              ),
+                              rootNode,
+                          ],
                 );
                 if (!isEmptyTextNode) {
                     const nextConnections = buildGeneratedNodeConnections(nodeId, rootId, intent, connectionsRef.current, nodesRef.current);

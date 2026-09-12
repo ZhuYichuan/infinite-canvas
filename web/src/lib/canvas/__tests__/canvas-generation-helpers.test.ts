@@ -203,26 +203,37 @@ describe("buildGeneratedNodeConnections", () => {
         expect(result.some((c) => c.fromNodeId === current.id)).toBe(false);
     });
 
-    it("falls back to connecting from current node if it has no parent connections", () => {
-        const current = makeNode(CanvasNodeType.Image, {}, "standalone-img");
-        const targetId = "new-img";
+    it("returns empty connections if current node has no parent connections on 'repeat' (never connects to current node)", () => {
+        const current = makeNode(CanvasNodeType.Text, {}, "standalone-text");
+        const targetId = "new-text";
         const result = buildGeneratedNodeConnections(current.id, targetId, "repeat", [], [current]);
 
-        expect(result).toHaveLength(1);
-        expect(result[0].fromNodeId).toBe("standalone-img");
-        expect(result[0].toNodeId).toBe("new-img");
-        expect(result[0].kind).toBe("lineage");
+        expect(result).toHaveLength(0);
+        expect(result.some((c) => c.fromNodeId === current.id)).toBe(false);
     });
 
-    it("falls back to current node if all parent nodes have been deleted from canvas", () => {
-        const current = makeNode(CanvasNodeType.Image, {}, "current-img");
-        const targetId = "new-img";
+    it("returns empty connections if all parent nodes have been deleted from canvas on 'repeat'", () => {
+        const current = makeNode(CanvasNodeType.Text, {}, "current-text");
+        const targetId = "new-text";
         const connections = [makeConnection("deleted-parent", current.id, "lineage")];
         const result = buildGeneratedNodeConnections(current.id, targetId, "repeat", connections, [current]);
 
+        expect(result).toHaveLength(0);
+        expect(result.some((c) => c.fromNodeId === current.id)).toBe(false);
+    });
+
+    it("connects text node to parent node(s) on 'repeat', identical to image nodes", () => {
+        const imageParent = makeNode(CanvasNodeType.Image, {}, "image-parent");
+        const currentText = makeNode(CanvasNodeType.Text, {}, "current-text");
+        const targetId = "new-text";
+        const connections = [makeConnection(imageParent.id, currentText.id, "input")];
+        const result = buildGeneratedNodeConnections(currentText.id, targetId, "repeat", connections, [imageParent, currentText]);
+
         expect(result).toHaveLength(1);
-        expect(result[0].fromNodeId).toBe("current-img");
-        expect(result[0].toNodeId).toBe("new-img");
+        expect(result[0].fromNodeId).toBe("image-parent");
+        expect(result[0].toNodeId).toBe("new-text");
+        expect(result[0].kind).toBe("input");
+        expect(result.some((c) => c.fromNodeId === currentText.id)).toBe(false);
     });
 
     it("deduplicates connections if multiple edges exist from the same parent", () => {
