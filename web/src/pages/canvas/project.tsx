@@ -2323,24 +2323,29 @@ function InfiniteCanvasPage() {
                     const rootId = isEmptyImageNode ? nodeId : nanoid();
                     const imageIds = Array.from({ length: count }, () => nanoid());
                     pendingChildIds = [rootId];
+                    const isRepeat = intent === "repeat";
                     const rootNode: CanvasNodeData = {
                         id: rootId,
                         type: CanvasNodeType.Image,
-                        title: effectivePrompt.slice(0, 32) || "Generated Image",
+                        title: isRepeat && sourceNode?.title ? sourceNode.title : (effectivePrompt.slice(0, 32) || "Generated Image"),
                         position: {
-                            x: isEmptyImageNode ? parentPosition.x : parentPosition.x + parentConfig.width + 96,
-                            y: parentPosition.y + parentConfig.height / 2 - imageConfig.height / 2,
+                            x: isEmptyImageNode ? parentPosition.x : parentPosition.x + (sourceNode?.width || parentConfig.width) + 96,
+                            y: isEmptyImageNode ? parentPosition.y : isRepeat ? parentPosition.y : parentPosition.y + parentConfig.height / 2 - imageConfig.height / 2,
                         },
-                        width: isEmptyImageNode ? sourceNode?.width || imageConfig.width : imageConfig.width,
-                        height: isEmptyImageNode ? sourceNode?.height || imageConfig.height : imageConfig.height,
+                        width: isEmptyImageNode ? sourceNode?.width || imageConfig.width : (isRepeat && sourceNode?.width ? sourceNode.width : imageConfig.width),
+                        height: isEmptyImageNode ? sourceNode?.height || imageConfig.height : (isRepeat && sourceNode?.height ? sourceNode.height : imageConfig.height),
                         metadata: {
+                            ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata) : {}),
                             prompt,
                             effectivePrompt,
                             status: NODE_STATUS_LOADING,
                             jobId: undefined,
                             isTimeout: undefined,
+                            errorDetails: undefined,
                             seed: nextSeed,
                             images: imageIds.map((id, index) => ({ id, status: NODE_STATUS_LOADING, content: "", storageKey: "", naturalWidth: 0, naturalHeight: 0, bytes: 0, mimeType: "", seed: (nextSeed + index) % 9007199254740991 })),
+                            content: undefined,
+                            storageKey: undefined,
                             ...generationMetadata,
                             generationMode: mode,
                             generationReferences,
@@ -2537,14 +2542,16 @@ function InfiniteCanvasPage() {
                     const isEmptyVideoNode = sourceNode?.type === CanvasNodeType.Video && !sourceNode.metadata?.content;
                     const videoId = isEmptyVideoNode ? nodeId : nanoid();
                     const parent = sourceNode?.position || { x: 0, y: 0 };
+                    const isRepeat = intent === "repeat";
                     const videoNode: CanvasNodeData = {
                         id: videoId,
                         type: CanvasNodeType.Video,
-                        title: effectivePrompt.slice(0, 32) || "Generated Video",
+                        title: isRepeat && sourceNode?.title ? sourceNode.title : (effectivePrompt.slice(0, 32) || "Generated Video"),
                         position: isEmptyVideoNode ? sourceNode.position : { x: parent.x + (sourceNode?.width || spec.width) + 96, y: parent.y },
-                        width: isEmptyVideoNode ? sourceNode.width : spec.width,
-                        height: isEmptyVideoNode ? sourceNode.height : spec.height,
+                        width: isEmptyVideoNode ? sourceNode.width : (isRepeat && sourceNode?.width ? sourceNode.width : spec.width),
+                        height: isEmptyVideoNode ? sourceNode.height : (isRepeat && sourceNode?.height ? sourceNode.height : spec.height),
                         metadata: {
+                            ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata) : {}),
                             prompt,
                             effectivePrompt,
                             status: NODE_STATUS_LOADING,
@@ -2560,6 +2567,11 @@ function InfiniteCanvasPage() {
                             generationReferences: generationContext.generationReferences,
                             generationOriginNodeId: sourceNode?.metadata?.generationOriginNodeId || nodeId,
                             seed: nextSeed,
+                            content: undefined,
+                            storageKey: undefined,
+                            jobId: undefined,
+                            isTimeout: undefined,
+                            errorDetails: undefined,
                         },
                     };
                     pendingChildIds = [videoId];
@@ -2629,15 +2641,29 @@ function InfiniteCanvasPage() {
                     const spec = NODE_DEFAULT_SIZE[CanvasNodeType.Audio];
                     const isEmptyAudioNode = sourceNode?.type === CanvasNodeType.Audio && !sourceNode.metadata?.content;
                     const audioId = isEmptyAudioNode ? nodeId : nanoid();
-                    const parent = sourceNode?.position || { x: 0, y: 0 };
+                    const isRepeat = intent === "repeat";
                     const audioNode: CanvasNodeData = {
                         id: audioId,
                         type: CanvasNodeType.Audio,
-                        title: effectivePrompt.slice(0, 32) || "Generated Audio",
+                        title: isRepeat && sourceNode?.title ? sourceNode.title : (effectivePrompt.slice(0, 32) || "Generated Audio"),
                         position: isEmptyAudioNode ? sourceNode.position : { x: parent.x + (sourceNode?.width || spec.width) + 96, y: parent.y + ((sourceNode?.height || spec.height) - spec.height) / 2 },
-                        width: isEmptyAudioNode ? sourceNode.width : spec.width,
-                        height: isEmptyAudioNode ? sourceNode.height : spec.height,
-                        metadata: { prompt, effectivePrompt, status: NODE_STATUS_LOADING, generationMode: mode, generationReferences: generationContext.generationReferences, generationOriginNodeId: sourceNode?.metadata?.generationOriginNodeId || nodeId, ...buildAudioGenerationMetadata(generationConfig) },
+                        width: isEmptyAudioNode ? sourceNode.width : (isRepeat && sourceNode?.width ? sourceNode.width : spec.width),
+                        height: isEmptyAudioNode ? sourceNode.height : (isRepeat && sourceNode?.height ? sourceNode.height : spec.height),
+                        metadata: {
+                            ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata) : {}),
+                            prompt,
+                            effectivePrompt,
+                            status: NODE_STATUS_LOADING,
+                            generationMode: mode,
+                            generationReferences: generationContext.generationReferences,
+                            generationOriginNodeId: sourceNode?.metadata?.generationOriginNodeId || nodeId,
+                            ...buildAudioGenerationMetadata(generationConfig),
+                            content: undefined,
+                            storageKey: undefined,
+                            jobId: undefined,
+                            isTimeout: undefined,
+                            errorDetails: undefined,
+                        },
                     };
                     pendingChildIds = [audioId];
                     setNodes((prev) =>
@@ -2668,18 +2694,20 @@ function InfiniteCanvasPage() {
                 const isEmptyTextNode = sourceNode?.type === CanvasNodeType.Text && !sourceTextContent;
                 const rootId = isEmptyTextNode ? nodeId : nanoid();
                 const textIds = Array.from({ length: textCount }, () => nanoid());
+                const isRepeat = intent === "repeat";
                 const rootNode: CanvasNodeData = {
                     id: rootId,
                     type: CanvasNodeType.Text,
-                    title: effectivePrompt.slice(0, 32) || "Generated Text",
-                    position: isEmptyTextNode ? sourceNode.position : { x: parentPosition.x + parentConfig.width + 96, y: parentPosition.y + parentConfig.height / 2 - textConfig.height / 2 },
-                    width: isEmptyTextNode ? sourceNode.width : textConfig.width,
-                    height: isEmptyTextNode ? sourceNode.height : textConfig.height,
+                    title: isRepeat && sourceNode?.title ? sourceNode.title : (effectivePrompt.slice(0, 32) || "Generated Text"),
+                    position: isEmptyTextNode ? sourceNode.position : { x: parentPosition.x + (sourceNode?.width || parentConfig.width) + 96, y: isRepeat ? parentPosition.y : parentPosition.y + parentConfig.height / 2 - textConfig.height / 2 },
+                    width: isEmptyTextNode ? sourceNode.width : (isRepeat && sourceNode?.width ? sourceNode.width : textConfig.width),
+                    height: isEmptyTextNode ? sourceNode.height : (isRepeat && sourceNode?.height ? sourceNode.height : textConfig.height),
                     metadata: {
+                        ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata) : {}),
                         prompt,
                         effectivePrompt,
                         status: NODE_STATUS_LOADING,
-                        fontSize: 14,
+                        fontSize: sourceNode?.metadata?.fontSize || 14,
                         model: generationConfig.model,
                         reasoningEffort: generationConfig.reasoningEffort,
                         generationMode: mode,
@@ -2687,8 +2715,12 @@ function InfiniteCanvasPage() {
                         generationOriginNodeId: sourceNode?.metadata?.generationOriginNodeId || nodeId,
                         textCount,
                         seed: nextSeed,
+                        content: "",
                         texts: textIds.map((id, index) => ({ id, status: NODE_STATUS_LOADING, content: "", seed: (nextSeed + index) % 9007199254740991 })),
                         primaryTextId: textIds[0],
+                        jobId: undefined,
+                        isTimeout: undefined,
+                        errorDetails: undefined,
                     },
                 };
                 pendingChildIds = [rootId];
