@@ -2676,6 +2676,7 @@ function InfiniteCanvasPage() {
                     const spec = NODE_DEFAULT_SIZE[CanvasNodeType.Audio];
                     const isEmptyAudioNode = sourceNode?.type === CanvasNodeType.Audio && !sourceNode.metadata?.content;
                     const audioId = isEmptyAudioNode ? nodeId : nanoid();
+                    const parent = sourceNode?.position || { x: 0, y: 0 };
                     const isRepeat = intent === "repeat";
                     const audioNode: CanvasNodeData = {
                         id: audioId,
@@ -2730,7 +2731,8 @@ function InfiniteCanvasPage() {
                 const parentConfig = NODE_DEFAULT_SIZE[isConfigNode ? CanvasNodeType.Config : CanvasNodeType.Text];
                 const textConfig = NODE_DEFAULT_SIZE[CanvasNodeType.Text];
                 const parentPosition = sourceNode?.position || { x: 0, y: 0 };
-                const isEmptyTextNode = sourceNode?.type === CanvasNodeType.Text && !sourceTextContent;
+                const sourceTextContent = sourceNode?.type === CanvasNodeType.Text ? sourceNode.metadata?.content?.trim() || "" : "";
+                const isEmptyTextNode = sourceNode?.type === CanvasNodeType.Text && !sourceTextContent && intent !== "repeat";
                 const rootId = isEmptyTextNode ? nodeId : nanoid();
                 const textIds = Array.from({ length: textCount }, () => nanoid());
                 const isRepeat = intent === "repeat";
@@ -2871,7 +2873,8 @@ function InfiniteCanvasPage() {
                                         : node,
                                 ),
                             );
-                            return { id: textId, status: NODE_STATUS_ERROR, content: "", errorDetails, jobId: errorJobId || node.metadata?.texts?.find((t) => t.id === textId)?.jobId, isTimeout: isTimeout ? true : undefined } satisfies CanvasNodeText;
+                            const currentJobId = errorJobId || nodesRef.current.find((n) => n.id === rootId)?.metadata?.texts?.find((item: CanvasNodeText) => item.id === textId)?.jobId;
+                            return { id: textId, status: NODE_STATUS_ERROR, content: "", errorDetails, jobId: currentJobId, isTimeout: isTimeout ? true : undefined } satisfies CanvasNodeText;
                         }
                     }),
                 );

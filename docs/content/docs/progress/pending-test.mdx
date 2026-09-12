@@ -8,6 +8,7 @@ description: Implemented changes that still need manual verification
 The current release needs manual verification in these areas:
 
 - Image, Video, Text, and Audio Node "Generate Again" (Repeat) Successful Output On-Screen Display and Metadata Isolation Fix:
+  - **Fix Undefined Variable in Text Generation**: Added the missing declaration for `sourceTextContent`, fixing the `sourceTextContent is not defined` runtime error encountered during text generation;
   - **Prune Cloned Stale Primary IDs and Sub-items**: When clicking "Generate again" on Image, Video, Text, or Audio nodes, `primaryImageId`, `primaryTextId`, `images`, `texts`, and obsolete media content/dimension fields (`naturalWidth`, `naturalHeight`, `bytes`, `mimeType`) are cleanly reset to prevent callbacks from mistakenly treating the node as having an existing completed item;
   - **Active Content Safety Check**: In the single/batch image completion callback, only return early without overriding primary properties if a primary image with valid `content` already exists, ensuring the newly generated image correctly sets `content`, `storageKey`, `primaryImageId`, and responsive dimensions;
   - **Multi-tiered Rendering Fallback**: Added fallbacks in the job completion callback and `<CanvasNode>` rendering layer (across image and text renderers) to resolve and render active content from items whenever content exists, eliminating the perpetual loading spinner.
