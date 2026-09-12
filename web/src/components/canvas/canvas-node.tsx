@@ -541,8 +541,12 @@ function TextContent({ node, theme, isEditingContent, textareaRef, mentionRefere
     const texts = node.metadata?.texts || [];
     const batchCount = texts.length;
     const isBatchRoot = batchCount > 1;
-    const primaryTextId = node.metadata?.primaryTextId || texts[0]?.id;
-    const primaryText = texts.find((text) => text.id === primaryTextId);
+    const primaryText =
+        texts.find((text) => text.id === node.metadata?.primaryTextId && Boolean(text.content)) ||
+        texts.find((text) => Boolean(text.content)) ||
+        texts.find((text) => text.id === node.metadata?.primaryTextId) ||
+        texts[0];
+    const primaryTextId = primaryText?.id || node.metadata?.primaryTextId || texts[0]?.id;
     const content = primaryText?.content || node.metadata?.content || "";
     const paddingClass = isBatchRoot ? "px-4 pb-4 pt-14" : "p-4";
 
