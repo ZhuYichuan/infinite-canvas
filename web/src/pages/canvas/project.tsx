@@ -2955,6 +2955,7 @@ function InfiniteCanvasPage() {
                         }
                     }),
                 );
+                if (rootId !== nodeId) finishGenerationRequest(rootId, controller);
                 if (controller.signal.aborted) {
                     setNodes((prev) =>
                         prev.map((node) => {
@@ -3066,6 +3067,12 @@ function InfiniteCanvasPage() {
                     }),
                 );
             } finally {
+                pendingChildIds.forEach((childId) => {
+                    if (childId !== nodeId) {
+                        const childRequest = generationRequestsRef.current.get(childId);
+                        if (childRequest) finishGenerationRequest(childId, childRequest.controller);
+                    }
+                });
                 finishGenerationRequest(nodeId, runController);
             }
         },

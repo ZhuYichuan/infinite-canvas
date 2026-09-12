@@ -7,6 +7,10 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Text Node LLM Generation Completion Stop Status Fix:
+  - **Immediate Deregistration on Completion**: Fixed an omission in the text generation callback where `finishGenerationRequest` was not called for `rootId`, leaving the new text node in `runningNodeIds`; now deregistrations run immediately upon LLM job completion and abort handling;
+  - **Global finally Cleanup Fallback**: Added iteration over `pendingChildIds` in `handleGenerateNode`'s `finally` block to deregister any child request IDs that were not already cleaned up, eliminating the persistent spinning "Stop" button after generated text has successfully rendered on screen.
+
 - Text Node and Canvas Node "Generate Again" (Repeat) Connection Logic Unification:
   - **Prohibit Connecting to Current Node**: Fixed an issue where repeating generation would mistakenly fall back to connecting from the current node if the current node had no upstream parent connections (e.g. standalone text nodes); "Generate again" now strictly adheres to "only inherit upstream parent connections" — if no parent exists, the new node has no incoming connections, preventing erroneous serial chaining;
   - **Consistent Cross-Modality Sibling Topology**: Text nodes now share identical connection semantics with Image, Video, and Audio nodes when repeating, always generating parallel sibling nodes.
