@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Canvas Node Copy / Duplication (Context Menu "Duplicate", Ctrl+C / Ctrl+V Paste, Batch Image "Create Copy") Connection Preservation:
+  - **Single Node Duplicate Connection Inheritance**: Right-clicking any node (Image, Text, Video, Audio, Config) and choosing "Duplicate" creates a new node (with ` Copy` suffix) that inherits all configuration/parameters AND automatically replicates all incoming parent connections via `duplicateIncomingConnections`, ensuring identical upstream input context;
+  - **Batch Image Card "Create Copy" Connection Inheritance**: Clicking "Create copy" on an expanded batch item to extract a single image node now replicates all parent connections from the parent batch node;
+  - **Clipboard Copy / Paste (Ctrl+C / Ctrl+V) Connection Preservation**: Copying and pasting single or multiple nodes using `buildPastedNodeConnections` maintains both internal connections between copied nodes (e.g. A->B maps to A'->B') and external connections from existing canvas parents (e.g. Parent->A maps to Parent->A'), avoiding orphaned isolated nodes;
+  - **Connection Deduplication and Safety Validation**: Validates that upstream parents exist on the canvas, filters out references to deleted nodes, and deduplicates identical connection edges from the same parent.
+
 - Text, Video, and Image "Generate Again" (Repeat) Aligned as "Copy and Regenerate with New Seed":
   - **Node Property & Metadata Inheritance**: When repeating generation, the new node fully inherits the original node's title, aspect ratio / dimensions (preserving custom dimensions without collapsing back to 512 default size), and all workflow parameters (model, prompt, size ratio, quality, video duration/mode, etc.). It aligns horizontally with the original node, only clearing transient execution states and injecting a newly generated random seed;
   - **Connected Directly to Parent Nodes**: Fixed an issue where repeating generation erroneously connected the new node as a child of the current node (forming a serial chain). Using `buildGeneratedNodeConnections`, the system automatically replicates the upstream parent connections of the current node (lineage and input references) to the new node, ensuring repeated generations form a parallel sibling topology. If the current node has no parents, it gracefully falls back to connecting from the current node;

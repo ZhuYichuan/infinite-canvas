@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { buildGeneratedNodeConnections, findRetrySourceNode, generateNextSeed, isGenerationCanceled, restoreGenerationContext, shouldMarkGenerationSourceStatus } from "@/lib/canvas/canvas-generation-helpers";
+import {
+    buildGeneratedNodeConnections,
+    buildPastedNodeConnections,
+    duplicateIncomingConnections,
+    findRetrySourceNode,
+    generateNextSeed,
+    isGenerationCanceled,
+    restoreGenerationContext,
+    shouldMarkGenerationSourceStatus,
+} from "@/lib/canvas/canvas-generation-helpers";
 import { CanvasNodeType } from "@/types/canvas";
 import type { CanvasConnection, CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
 
@@ -228,6 +237,92 @@ describe("buildGeneratedNodeConnections", () => {
 
         expect(result).toHaveLength(1);
         expect(result[0].fromNodeId).toBe("parent-1");
+    });
+});
+
+describe("duplicateIncomingConnections", () => {
+    it("duplicates incoming connections to the target node", () => {
+        const parent1 = makeNode(CanvasNodeType.Text, {}, "text-1");
+        const parent2 = makeNode(CanvasNodeType.Image, {}, "ref-1");
+        const target = makeNode(CanvasNodeType.Image, {}, "img-1");
+        const connections = [
+            makeConnection(parent1.id, target.id, "input"),
+            makeConnection(parent2.id, target.id, "lineage"),
+        ];
+
+        const result = duplicateIncomingConnections(target.id, "img-copy", connections, [parent1, parent2, target]);
+        expect(result).toHaveLength(2);
+        expect(result[0]).toMatchObject({ fromNodeId: "text-1", toNodeId: "img-copy", kind: "input" });
+        expect(result[1]).toMatchObject({ fromNodeId: "ref-1", toNodeId: "img-copy", kind: "lineage" });
+    });
+
+    it("returns empty array if source node has no incoming connections", () => {
+        const standalone = makeNode(CanvasNodeType.Text, {}, "text-1");
+        const result = duplicateIncomingConnections(standalone.id, "text-copy", [], [standalone]);
+        expect(result).toEqual([]);
+    });
+
+    it("filters out incoming connections whose parent nodes are not on canvas", () => {
+        const target = makeNode(CanvasNodeType.Image, {}, "img-1");
+        const connections = [makeConnection("missing-parent", target.id, "input")];
+        const result = duplicateIncomingConnections(target.id, "img-copy", connections, [target]);
+        expect(result).toEqual([]);
+    });
+
+    it("deduplicates connections from the same parent node", () => {
+        const parent = makeNode(CanvasNodeType.Text, {}, "text-1");
+        const target = makeNode(CanvasNodeType.Image, {}, "img-1");
+        const connections = [
+            { id: "c1", fromNodeId: parent.id, toNodeId: target.id, kind: "input" as const },
+            { id: "c2", fromNodeId: parent.id, toNodeId: target.id, kind: "input" as const },
+        ];
+        const result = duplicateIncomingConnections(target.id, "img-copy", connections, [parent, target]);
+        expect(result).toHaveLength(1);
+        expect(result[0].fromNodeId).toBe("text-1");
+        expect(result[0].toNodeId).toBe("img-copy");
+    });
+});
+
+describe("buildPastedNodeConnections", () => {
+    it("preserves internal connections between copied nodes and external connections from existing canvas parents", () => {
+        const externalParent = makeNode(CanvasNodeType.Text, {}, "ext-parent");
+        const childA = makeNode(CanvasNodeType.Image, {}, "orig-a");
+        const childB = makeNode(CanvasNodeType.Video, {}, "orig-b");
+
+        const idMap = new Map<string, string>([
+            ["orig-a", "pasted-a"],
+            ["orig-b", "pasted-b"],
+        ]);
+
+        const sourceConnections: CanvasConnection[] = [
+            makeConnection(externalParent.id, childA.id, "input"),
+            makeConnection(childA.id, childB.id, "lineage"),
+        ];
+
+        const result = buildPastedNodeConnections(sourceConnections, idMap, [externalParent, childA, childB]);
+        expect(result).toHaveLength(2);
+        // External parent connects to pasted child A
+        expect(result[0]).toMatchObject({ fromNodeId: "ext-parent", toNodeId: "pasted-a", kind: "input" });
+        // Internal connection connects pasted child A to pasted child B
+        expect(result[1]).toMatchObject({ fromNodeId: "pasted-a", toNodeId: "pasted-b", kind: "lineage" });
+    });
+
+    it("ignores connections if target node is not part of pasted mapping", () => {
+        const idMap = new Map<string, string>([["orig-a", "pasted-a"]]);
+        const sourceConnections: CanvasConnection[] = [
+            makeConnection("orig-a", "unmapped-b", "lineage"),
+        ];
+        const result = buildPastedNodeConnections(sourceConnections, idMap, []);
+        expect(result).toHaveLength(0);
+    });
+
+    it("ignores external connections if parent node was deleted from canvas", () => {
+        const idMap = new Map<string, string>([["orig-a", "pasted-a"]]);
+        const sourceConnections: CanvasConnection[] = [
+            makeConnection("deleted-parent", "orig-a", "input"),
+        ];
+        const result = buildPastedNodeConnections(sourceConnections, idMap, []);
+        expect(result).toHaveLength(0);
     });
 });
 

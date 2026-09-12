@@ -54,6 +54,8 @@ import {
     buildAnglePrompt,
     buildGeneratedNodeConnections,
     buildGenerationConfig,
+    buildPastedNodeConnections,
+    duplicateIncomingConnections,
     generateNextSeed,
     generationReferenceUrls,
     getGenerationCount,
@@ -897,17 +899,14 @@ function InfiniteCanvasPage() {
             });
 
             const allGroupNodeIds = new Set([source.id, ...childNodes.map((c) => c.id)]);
-            const nextConnections = connectionsRef.current
-                .filter((c) => allGroupNodeIds.has(c.fromNodeId) && allGroupNodeIds.has(c.toNodeId))
-                .map((c, index) => ({
-                    ...c,
-                    id: `conn-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
-                    fromNodeId: idMap.get(c.fromNodeId) || c.fromNodeId,
-                    toNodeId: idMap.get(c.toNodeId) || c.toNodeId,
-                }));
+            const groupConnections = connectionsRef.current.filter((c) => allGroupNodeIds.has(c.toNodeId));
+            const nextConnections = buildPastedNodeConnections(groupConnections, idMap, nodesRef.current);
 
             setNodes((prev) => [...prev, groupNext, ...childNextNodes]);
-            if (nextConnections.length) setConnections((prev) => [...prev, ...nextConnections]);
+            if (nextConnections.length) {
+                connectionsRef.current = [...connectionsRef.current, ...nextConnections];
+                setConnections((prev) => [...prev, ...nextConnections]);
+            }
             setSelectedNodeIds(new Set([id, ...childNextNodes.map((c) => c.id)]));
             setSelectedConnectionId(null);
             return;
@@ -927,7 +926,13 @@ function InfiniteCanvasPage() {
             next.metadata.groupId = containingGroupId;
         }
 
+        const parentConnections = duplicateIncomingConnections(source.id, id, connectionsRef.current, nodesRef.current);
+
         setNodes((prev) => [...prev, next]);
+        if (parentConnections.length) {
+            connectionsRef.current = [...connectionsRef.current, ...parentConnections];
+            setConnections((prev) => [...prev, ...parentConnections]);
+        }
         setSelectedNodeIds(new Set([id]));
         setSelectedConnectionId(null);
         if (next.type !== CanvasNodeType.Group) setDialogNodeId(id);
@@ -959,7 +964,7 @@ function InfiniteCanvasPage() {
         clipboardRef.current = {
             nodes: copiedNodes,
             connections: connectionsRef.current
-                .filter((connection) => selectedIds.has(connection.fromNodeId) && selectedIds.has(connection.toNodeId))
+                .filter((connection) => selectedIds.has(connection.toNodeId))
                 .map((connection) => ({ ...connection })),
         };
     }, []);
@@ -1008,22 +1013,13 @@ function InfiniteCanvasPage() {
             return { ...node, metadata: { ...node.metadata, groupId: containingGroupId } };
         });
 
-        const nextConnections = clipboard.connections.flatMap((connection, index) => {
-            const fromNodeId = idMap.get(connection.fromNodeId);
-            const toNodeId = idMap.get(connection.toNodeId);
-            if (!fromNodeId || !toNodeId) return [];
-            return [
-                {
-                    ...connection,
-                    id: `conn-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
-                    fromNodeId,
-                    toNodeId,
-                },
-            ];
-        });
+        const nextConnections = buildPastedNodeConnections(clipboard.connections, idMap, nodesRef.current);
 
         setNodes((prev) => [...prev, ...pastedNodes]);
-        setConnections((prev) => [...prev, ...nextConnections]);
+        if (nextConnections.length) {
+            connectionsRef.current = [...connectionsRef.current, ...nextConnections];
+            setConnections((prev) => [...prev, ...nextConnections]);
+        }
         setSelectedNodeIds(new Set(pastedNodes.map((node) => node.id)));
         setSelectedConnectionId(null);
         setContextMenu(null);
@@ -1697,7 +1693,12 @@ function InfiniteCanvasPage() {
                 references: node.metadata?.references ? [...node.metadata.references] : undefined,
             },
         };
+        const parentConnections = duplicateIncomingConnections(node.id, id, connectionsRef.current, nodesRef.current);
         setNodes((prev) => [...prev, copy]);
+        if (parentConnections.length) {
+            connectionsRef.current = [...connectionsRef.current, ...parentConnections];
+            setConnections((prev) => [...prev, ...parentConnections]);
+        }
         setSelectedNodeIds(new Set([id]));
         setSelectedConnectionId(null);
         setDialogNodeId(id);

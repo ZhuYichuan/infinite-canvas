@@ -254,26 +254,70 @@ export function buildGeneratedNodeConnections(
     nodes: CanvasNodeData[],
 ): CanvasConnection[] {
     if (intent === "repeat") {
-        const parentConnections = connections.filter(
-            (conn) => conn.toNodeId === sourceNodeId && nodes.some((node) => node.id === conn.fromNodeId),
-        );
+        const parentConnections = duplicateIncomingConnections(sourceNodeId, targetNodeId, connections, nodes);
         if (parentConnections.length > 0) {
-            const seenFromNodeIds = new Set<string>();
-            const result: CanvasConnection[] = [];
-            for (const conn of parentConnections) {
-                if (!seenFromNodeIds.has(conn.fromNodeId)) {
-                    seenFromNodeIds.add(conn.fromNodeId);
-                    result.push({
-                        id: nanoid(),
-                        fromNodeId: conn.fromNodeId,
-                        toNodeId: targetNodeId,
-                        kind: conn.kind,
-                    });
-                }
-            }
-            return result;
+            return parentConnections;
         }
     }
     return [{ id: nanoid(), fromNodeId: sourceNodeId, toNodeId: targetNodeId, kind: "lineage" }];
+}
+
+/**
+ * Clones incoming parent connections from a source node to a target node.
+ * Validates that parent nodes exist on the canvas and deduplicates connections from the same parent.
+ */
+export function duplicateIncomingConnections(
+    sourceNodeId: string,
+    targetNodeId: string,
+    connections: CanvasConnection[],
+    nodes: CanvasNodeData[],
+): CanvasConnection[] {
+    const parentConnections = connections.filter(
+        (conn) => conn.toNodeId === sourceNodeId && nodes.some((node) => node.id === conn.fromNodeId),
+    );
+    const seenFromNodeIds = new Set<string>();
+    const result: CanvasConnection[] = [];
+    for (const conn of parentConnections) {
+        if (!seenFromNodeIds.has(conn.fromNodeId)) {
+            seenFromNodeIds.add(conn.fromNodeId);
+            result.push({
+                id: nanoid(),
+                fromNodeId: conn.fromNodeId,
+                toNodeId: targetNodeId,
+                kind: conn.kind,
+            });
+        }
+    }
+    return result;
+}
+
+/**
+ * Builds connection list for pasted / duplicated nodes.
+ * Internal connections between duplicated nodes are remapped using idMap.
+ * External incoming connections from parent nodes that exist on canvas are preserved.
+ */
+export function buildPastedNodeConnections(
+    sourceConnections: CanvasConnection[],
+    idMap: Map<string, string>,
+    canvasNodes: CanvasNodeData[],
+): CanvasConnection[] {
+    const seenPairs = new Set<string>();
+    const result: CanvasConnection[] = [];
+    for (const conn of sourceConnections) {
+        const toNodeId = idMap.get(conn.toNodeId);
+        if (!toNodeId) continue;
+        const fromNodeId = idMap.get(conn.fromNodeId) || (canvasNodes.some((n) => n.id === conn.fromNodeId) ? conn.fromNodeId : undefined);
+        if (!fromNodeId) continue;
+        const key = `${fromNodeId}->${toNodeId}`;
+        if (seenPairs.has(key)) continue;
+        seenPairs.add(key);
+        result.push({
+            ...conn,
+            id: nanoid(),
+            fromNodeId,
+            toNodeId,
+        });
+    }
+    return result;
 }
 
