@@ -7,7 +7,8 @@ import type { NodeGenerationContext as NodeGenerationInputContext, NodeGeneratio
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
 import type { ReferenceImage } from "@/types/image";
-import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
+import { nanoid } from "nanoid";
+import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasGenerationIntent, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
 
 export function imageExtension(dataUrl: string) {
     return dataUrl.match(/^data:image[/]([^;]+)/)?.[1] || dataUrl.match(/image[/]([^;]+)/)?.[1] || "png";
@@ -237,5 +238,42 @@ export function generateNextSeed(previousSeed?: number, max = 9007199254740991):
         next = (next + 1) % max;
     }
     return next;
+}
+
+/**
+ * Builds connection(s) for a newly generated node.
+ * When intent is "repeat", instead of connecting from the current node itself,
+ * it connects from the current node's parent nodes (incoming connections).
+ * If no valid parent connections exist, it falls back to connecting from the current node.
+ */
+export function buildGeneratedNodeConnections(
+    sourceNodeId: string,
+    targetNodeId: string,
+    intent: CanvasGenerationIntent,
+    connections: CanvasConnection[],
+    nodes: CanvasNodeData[],
+): CanvasConnection[] {
+    if (intent === "repeat") {
+        const parentConnections = connections.filter(
+            (conn) => conn.toNodeId === sourceNodeId && nodes.some((node) => node.id === conn.fromNodeId),
+        );
+        if (parentConnections.length > 0) {
+            const seenFromNodeIds = new Set<string>();
+            const result: CanvasConnection[] = [];
+            for (const conn of parentConnections) {
+                if (!seenFromNodeIds.has(conn.fromNodeId)) {
+                    seenFromNodeIds.add(conn.fromNodeId);
+                    result.push({
+                        id: nanoid(),
+                        fromNodeId: conn.fromNodeId,
+                        toNodeId: targetNodeId,
+                        kind: conn.kind,
+                    });
+                }
+            }
+            return result;
+        }
+    }
+    return [{ id: nanoid(), fromNodeId: sourceNodeId, toNodeId: targetNodeId, kind: "lineage" }];
 }
 

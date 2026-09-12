@@ -52,6 +52,7 @@ import {
     audioExtension,
     buildAngleLabel,
     buildAnglePrompt,
+    buildGeneratedNodeConnections,
     buildGenerationConfig,
     generateNextSeed,
     generationReferenceUrls,
@@ -2381,7 +2382,11 @@ function InfiniteCanvasPage() {
                         ),
                         ...(isEmptyImageNode ? [] : [rootNode]),
                     ]);
-                    if (!isEmptyImageNode) setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: nodeId, toNodeId: rootId, kind: "lineage" }]);
+                    if (!isEmptyImageNode) {
+                        const nextConnections = buildGeneratedNodeConnections(nodeId, rootId, intent, connectionsRef.current, nodesRef.current);
+                        connectionsRef.current = [...connectionsRef.current, ...nextConnections];
+                        setConnections((prev) => [...prev, ...nextConnections]);
+                    }
                     setSelectedNodeIds(new Set([nodeId]));
                     setSelectedConnectionId(null);
                     setDialogNodeId(nodeId);
@@ -2563,7 +2568,11 @@ function InfiniteCanvasPage() {
                             ? prev.map((node) => (node.id === nodeId ? { ...node, ...videoNode } : node))
                             : [...prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS } } : node)), videoNode],
                     );
-                    if (!isEmptyVideoNode) setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: nodeId, toNodeId: videoId, kind: "lineage" }]);
+                    if (!isEmptyVideoNode) {
+                        const nextConnections = buildGeneratedNodeConnections(nodeId, videoId, intent, connectionsRef.current, nodesRef.current);
+                        connectionsRef.current = [...connectionsRef.current, ...nextConnections];
+                        setConnections((prev) => [...prev, ...nextConnections]);
+                    }
                     const controller = startGenerationRequest(videoId, nodeId, nodeId, runController);
                     try {
                         const video = await storeGeneratedVideo(
@@ -2636,7 +2645,11 @@ function InfiniteCanvasPage() {
                             ? prev.map((node) => (node.id === nodeId ? { ...node, ...audioNode } : node))
                             : [...prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS } } : node)), audioNode],
                     );
-                    if (!isEmptyAudioNode) setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: nodeId, toNodeId: audioId, kind: "lineage" }]);
+                    if (!isEmptyAudioNode) {
+                        const nextConnections = buildGeneratedNodeConnections(nodeId, audioId, intent, connectionsRef.current, nodesRef.current);
+                        connectionsRef.current = [...connectionsRef.current, ...nextConnections];
+                        setConnections((prev) => [...prev, ...nextConnections]);
+                    }
                     const controller = startGenerationRequest(audioId, nodeId, nodeId, runController);
                     try {
                         const audio = await storeGeneratedAudio(await requestAudioGeneration(generationConfig, effectivePrompt, { signal: controller.signal }), generationConfig.audioFormat);
@@ -2684,7 +2697,11 @@ function InfiniteCanvasPage() {
                         ? prev.map((node) => (node.id === nodeId ? { ...node, ...rootNode } : node))
                         : [...prev.map((node) => (node.id === nodeId && isConfigNode ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined } } : node)), rootNode],
                 );
-                if (!isEmptyTextNode) setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: nodeId, toNodeId: rootId, kind: "lineage" }]);
+                if (!isEmptyTextNode) {
+                    const nextConnections = buildGeneratedNodeConnections(nodeId, rootId, intent, connectionsRef.current, nodesRef.current);
+                    connectionsRef.current = [...connectionsRef.current, ...nextConnections];
+                    setConnections((prev) => [...prev, ...nextConnections]);
+                }
                 setSelectedNodeIds(new Set([nodeId]));
                 setSelectedConnectionId(null);
                 setDialogNodeId(nodeId);

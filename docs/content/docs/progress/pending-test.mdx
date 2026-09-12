@@ -7,7 +7,8 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
-- Text, Video, and Image "Generate Again" (Repeat) Based on Connected Lines & New Seed:
+- Text, Video, and Image "Generate Again" (Repeat) Based on Connected Lines, New Seed & Parent Node Connections:
+  - **Connected Directly to Parent Nodes**: Fixed an issue where repeating generation erroneously connected the new node as a child of the current node (forming a serial chain). Using `buildGeneratedNodeConnections`, the system automatically replicates the upstream parent connections of the current node (lineage and input references) to the new node, ensuring repeated generations form a parallel sibling topology. If the current node has no parents, it gracefully falls back to connecting from the current node;
   - **Based on Current Connected Lines**: "Generate again" no longer relies on frozen historical snapshots (`restoreGenerationContext`). Instead, it dynamically queries the incoming wires currently connected to the node on the canvas (`buildNodeGenerationContext`), immediately reflecting any wire adjustments or new reference nodes;
   - **New Seed on Re-submission**: Clicking "Generate again" or pressing Enter generates a fresh random seed distinct from the previous run via `generateNextSeed`, explicitly forwarded across image (`requestGeneration` / `requestEdit`), video (`requestVideoGeneration`), and text (`requestImageQuestion`) pipelines;
   - **Complete Removal of Derive**: Cleaned up the "Generate from result" button and its `derive` dispatch branches across all modalities (image, video, text, audio) to eliminate implicit injection of current outputs into reference slots that caused unexpected workflow mode drift;
