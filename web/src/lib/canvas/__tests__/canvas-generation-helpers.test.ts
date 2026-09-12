@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findRetrySourceNode, isGenerationCanceled, restoreGenerationContext, shouldMarkGenerationSourceStatus } from "@/lib/canvas/canvas-generation-helpers";
+import { findRetrySourceNode, generateNextSeed, isGenerationCanceled, restoreGenerationContext, shouldMarkGenerationSourceStatus } from "@/lib/canvas/canvas-generation-helpers";
 import { CanvasNodeType } from "@/types/canvas";
 import type { CanvasConnection, CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
 
@@ -134,3 +134,19 @@ describe("isGenerationCanceled", () => {
         expect(isGenerationCanceled(null)).toBe(false);
     });
 });
+
+describe("generateNextSeed", () => {
+    it("returns a valid non-negative integer within range", () => {
+        const seed = generateNextSeed();
+        expect(typeof seed).toBe("number");
+        expect(seed).toBeGreaterThanOrEqual(0);
+        expect(seed).toBeLessThan(9007199254740991);
+    });
+
+    it("ensures next seed differs from previous seed", () => {
+        const fixedRandom = vi.spyOn(Math, "random").mockReturnValue(0);
+        expect(generateNextSeed(0, 10)).not.toBe(0);
+        fixedRandom.mockRestore();
+    });
+});
+

@@ -7,10 +7,10 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
-- Remove "Generate From Result" (Derive) and Consolidate on "Generate Again" (Repeat):
+- Text, Video, and Image "Generate Again" (Repeat) Based on Connected Lines & New Seed:
+  - **Based on Current Connected Lines**: "Generate again" no longer relies on frozen historical snapshots (`restoreGenerationContext`). Instead, it dynamically queries the incoming wires currently connected to the node on the canvas (`buildNodeGenerationContext`), immediately reflecting any wire adjustments or new reference nodes;
+  - **New Seed on Re-submission**: Clicking "Generate again" or pressing Enter generates a fresh random seed distinct from the previous run via `generateNextSeed`, explicitly forwarded across image (`requestGeneration` / `requestEdit`), video (`requestVideoGeneration`), and text (`requestImageQuestion`) pipelines;
   - **Complete Removal of Derive**: Cleaned up the "Generate from result" button and its `derive` dispatch branches across all modalities (image, video, text, audio) to eliminate implicit injection of current outputs into reference slots that caused unexpected workflow mode drift;
-  - **Unified "Generate Again" Button**: Successful nodes now display only the primary "Generate again" (`repeat`) action button in the prompt panel; submitting via Enter key defaults to `repeat`;
-  - **Clean Reference Snapshots with Prompt Editing**: "Generate again" strictly restores the clean reference material snapshot (`savedContext`) from the original generation (preventing graph wiring drift) while applying any updated prompt typed by the user into the input box;
   - **Type and Locale Cleanup**: Removed `"derive"` from `CanvasGenerationIntent` and pruned deprecated locale keys (`deriveGeneration`, `frameVideoDeriveUnsupported`, `editTextPrompt`).
 
 - Settings & Preferences Full Persistence Across Page Refresh:

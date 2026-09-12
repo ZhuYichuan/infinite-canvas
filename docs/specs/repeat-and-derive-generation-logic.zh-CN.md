@@ -64,26 +64,27 @@ const canRepeat =
 ## 4. 「再次生成 (Repeat)」的操作与底层逻辑
 
 ### 4.1 核心诉求
-当用户对某次生成的结果不满意（或者想再抽一张不同构图/姿态的图片），希望**原汁原味地复现当时的配置与连线上下文**，但生成一个全新的不同结果。
+当用户对某次生成的结果不满意（或希望基于最新连线重新抽卡），希望**基于当前节点在画布上连接的线，更换随机 seed 重新提交生成**。
 
 ### 4.2 执行时序与底层逻辑
-1. **参数提取**：
-   - 调度逻辑自动将提示词重置为上一次的原始提示词：
+1. **提示词动态获取**：
+   - 优先采纳用户当前在提示词输入框中微调的内容；若输入框为空则沿用上一轮提示词：
      ```ts
-     const prompt = intent === "repeat" ? sourceNode?.metadata?.prompt ?? submittedPrompt : submittedPrompt;
+     const prompt = intent === "repeat" ? (submittedPrompt.trim() || sourceNode?.metadata?.prompt || "") : submittedPrompt;
      ```
-2. **上下文快照还原（关键设计）**：
-   - 系统调用 `restoreGenerationContext(sourceNode.metadata)`：
-     - **不重新扫描画布当前的连线**（因为用户在生成之后，可能已经把上游的参考图移走或删线了）；
-     - 而是从节点内部持久化保存的快照 `sourceNode.metadata.generationReferences` 中，重新解析出当初生成时实际使用的那些素材；
-     - 若快照丢失，直接中断并提示“该结果缺少原始生成快照，无法再次生成”。
-3. **节点与连线创建**：
+2. **基于当前节点连接的线构建上下文（最新架构）**：
+   - 系统调用 `buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, prompt)`：
+     - **严格基于当前节点在画布上实时连接的输入连线**收集参考图片、文本、视频等素材；
+     - 用户如果中途新增、断开或更换了连线，再次生成时立即感知生效；
+     - 彻底解除了对旧快照保存状态的强依赖，避免出现“缺少原始生成快照”的报错。
+3. **更换 Seed 重新提交**：
+   - 系统通过 `generateNextSeed(previousSeed)` 生成一个与上一次完全不同的全新随机种子；
+   - 种子完整透传至图片（KSampler `seed`）、视频（`videoSeed`）及文本（`textSeed`）生成管道；
+   - 彻底避免 ComfyUI 命中相同缓存导致生成出完全相同的重试结果。
+4. **节点与连线创建**：
    - 保持原节点不变，在原节点右侧偏置 96px 的位置新建一个产物节点（`rootNode`）；
    - 从原节点到新节点连一条 `kind: "lineage"`（血缘关系）连线，展示版本的历史演进；
-   - 新节点初始为 `status: "loading"`。
-4. **提交至 ComfyUI**：
-   - 生成全新的随机种子 `seed = generateRandomSeed()`；
-   - 携带原工作流需要的完整提示词与素材，提交给 ComfyUI `/prompt`，任务 ID 绑定到新节点上。
+   - 新节点初始为 `status: "loading"`，将新 seed 记录至新节点的元数据中。
 
 ---
 

@@ -45,7 +45,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
     const hasTextContent = node.type === CanvasNodeType.Text && Boolean(node.metadata?.content?.trim());
     const hasImageContent = node.type === CanvasNodeType.Image && Boolean(node.metadata?.content);
     const isEditingExistingContent = hasTextContent || hasImageContent;
-    const canRepeat = node.metadata?.status === "success" && node.metadata.effectivePrompt !== undefined && Array.isArray(node.metadata.generationReferences);
+    const canRepeat = node.metadata?.status === "success";
     const isGenerating = isRunning || node.metadata?.status === "loading";
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
     const [expanded, setExpanded] = useState(false);

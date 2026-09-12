@@ -53,6 +53,7 @@ import {
     buildAngleLabel,
     buildAnglePrompt,
     buildGenerationConfig,
+    generateNextSeed,
     generationReferenceUrls,
     getGenerationCount,
     getInputSummary,
@@ -2241,6 +2242,9 @@ function InfiniteCanvasPage() {
                 return;
             }
 
+            const previousSeed = sourceNode?.metadata?.seed ?? sourceNode?.metadata?.images?.[0]?.seed;
+            const nextSeed = generateNextSeed(previousSeed, mode === "video" ? 1_000_000_000 : 9007199254740991);
+
             // useBuiltinPanel.writeBackToSelf reuses built-in generation while writing the result back to the plugin node.
             // Image mode currently supports display-only nodes such as panoramas, with a useBuiltinPanel.promptPrefix.
             const builtinPanel = sourceNode ? getNodeDefinition(sourceNode.type)?.useBuiltinPanel : undefined;
@@ -2248,21 +2252,22 @@ function InfiniteCanvasPage() {
                 const scene = prompt.trim();
                 if (!scene) return;
                 const controller = startGenerationRequest(nodeId, nodeId, nodeId);
-                setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, prompt: scene, status: NODE_STATUS_LOADING, errorDetails: undefined } } : node)));
+                setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, prompt: scene, status: NODE_STATUS_LOADING, errorDetails: undefined, seed: nextSeed } } : node)));
                 try {
                     const fullPrompt = (builtinPanel.promptPrefix || "") + scene;
                     const context = await hydrateNodeGenerationContext(buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, fullPrompt));
+                    const refs = context.referenceImages;
                     const onProgress = (status: string, detail?: { jobId?: string }) => {
                         if (status === "submitted" && detail?.jobId) {
                             setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, jobId: detail.jobId } } : node)));
                         }
                     };
                     const image = refs.length
-                        ? await requestEdit({ ...generationConfig, count: "1" }, context.prompt, refs, undefined, { signal: controller.signal, onProgress }).then((items) => items[0])
-                        : await requestGeneration({ ...generationConfig, count: "1" }, context.prompt, { signal: controller.signal, onProgress }).then((items) => items[0]);
+                        ? await requestEdit({ ...generationConfig, count: "1" }, context.prompt, refs, undefined, { signal: controller.signal, seed: nextSeed, onProgress }).then((items) => items[0])
+                        : await requestGeneration({ ...generationConfig, count: "1" }, context.prompt, { signal: controller.signal, seed: nextSeed, onProgress }).then((items) => items[0]);
                     const uploaded = await uploadImage(image.dataUrl);
                     setNodes((prev) =>
-                        prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...imageMetadata(uploaded), prompt: scene, model: generationConfig.model, status: NODE_STATUS_SUCCESS, errorDetails: undefined, ...(image.seed !== undefined ? { seed: image.seed } : {}) } } : node)),
+                        prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...imageMetadata(uploaded), prompt: scene, model: generationConfig.model, status: NODE_STATUS_SUCCESS, errorDetails: undefined, seed: image.seed ?? nextSeed } } : node)),
                     );
                     setDialogNodeId(null);
                 } catch (error) {
@@ -2280,20 +2285,9 @@ function InfiniteCanvasPage() {
             const runController = startGenerationRequest(nodeId, nodeId, nodeId);
             let generationContext: NodeGenerationContext;
             try {
-                const savedContext = intent === "repeat" && sourceNode?.metadata ? await restoreGenerationContext(sourceNode.metadata) : null;
-                if (intent === "repeat" && !savedContext) {
-                    message.error(t("canvas.projectPage.generationSnapshotMissing"));
-                    finishGenerationRequest(nodeId, runController);
-                    return;
-                }
-                if (savedContext && submittedPrompt.trim()) {
-                    savedContext.prompt = submittedPrompt.trim();
-                }
-                generationContext =
-                    savedContext ||
-                    (await hydrateNodeGenerationContext(
-                        buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, prompt),
-                    ));
+                generationContext = await hydrateNodeGenerationContext(
+                    buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, prompt),
+                );
             } catch (error) {
                 message.error(error instanceof Error ? error.message : t("canvas.projectPage.referenceMissing"));
                 finishGenerationRequest(nodeId, runController);
@@ -2344,7 +2338,8 @@ function InfiniteCanvasPage() {
                             status: NODE_STATUS_LOADING,
                             jobId: undefined,
                             isTimeout: undefined,
-                            images: imageIds.map((id) => ({ id, status: NODE_STATUS_LOADING, content: "", storageKey: "", naturalWidth: 0, naturalHeight: 0, bytes: 0, mimeType: "" })),
+                            seed: nextSeed,
+                            images: imageIds.map((id, index) => ({ id, status: NODE_STATUS_LOADING, content: "", storageKey: "", naturalWidth: 0, naturalHeight: 0, bytes: 0, mimeType: "", seed: (nextSeed + index) % 9007199254740991 })),
                             ...generationMetadata,
                             generationMode: mode,
                             generationReferences,
@@ -2396,11 +2391,13 @@ function InfiniteCanvasPage() {
                     let hasFailure = false;
                     let firstError = "";
                     await Promise.all(
-                        imageIds.map(async (imageId) => {
+                        imageIds.map(async (imageId, index) => {
+                            const slotSeed = (nextSeed + index) % 9007199254740991;
                             try {
                                 const image = referenceImages.length
                                     ? await requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, undefined, {
                                           signal: controller.signal,
+                                          seed: slotSeed,
                                           onProgress: (status, detail) => {
                                               if (status === "submitted" && detail?.jobId) {
                                                   setNodes((prev) =>
@@ -2422,6 +2419,7 @@ function InfiniteCanvasPage() {
                                       }).then((items) => items[0])
                                     : await requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, {
                                           signal: controller.signal,
+                                          seed: slotSeed,
                                           onProgress: (status, detail) => {
                                               if (status === "submitted" && detail?.jobId) {
                                                   setNodes((prev) =>
@@ -2452,7 +2450,7 @@ function InfiniteCanvasPage() {
                                     naturalHeight: uploaded.height,
                                     bytes: uploaded.bytes,
                                     mimeType: uploaded.mimeType,
-                                    ...(image.seed !== undefined ? { seed: image.seed } : {}),
+                                    seed: image.seed ?? slotSeed,
                                 };
                                 setNodes((prev) =>
                                     prev.map((node) => {
@@ -2474,13 +2472,13 @@ function InfiniteCanvasPage() {
                                                 mimeType: item.mimeType,
                                                 images,
                                                 primaryImageId: imageId,
-                                                ...(image.seed !== undefined ? { seed: image.seed } : {}),
+                                                seed: image.seed ?? slotSeed,
                                             },
                                         };
                                     }),
                                 );
                                 hasSuccess = true;
-                                if (isConfigNode) setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS, errorDetails: undefined, ...(image.seed !== undefined ? { seed: image.seed } : {}) } } : node)));
+                                if (isConfigNode) setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS, errorDetails: undefined, seed: image.seed ?? slotSeed } } : node)));
                                 return true;
                             } catch (error) {
                                 if (isGenerationCanceled(error)) return false;
@@ -2556,6 +2554,7 @@ function InfiniteCanvasPage() {
                             generationMode: mode,
                             generationReferences: generationContext.generationReferences,
                             generationOriginNodeId: sourceNode?.metadata?.generationOriginNodeId || nodeId,
+                            seed: nextSeed,
                         },
                     };
                     pendingChildIds = [videoId];
@@ -2575,6 +2574,7 @@ function InfiniteCanvasPage() {
                                 lastFrame: generationContext.referenceImages[1],
                                 referenceVideos: generationContext.referenceVideos,
                                 referenceAudios: generationContext.referenceAudios,
+                                seed: nextSeed,
                                 onProgress: (status, detail) => {
                                     if (status === "submitted" && detail?.jobId) {
                                         setNodes((prev) => prev.map((node) => (node.id === videoId ? { ...node, metadata: { ...node.metadata, jobId: detail.jobId } } : node)));
@@ -2604,6 +2604,7 @@ function InfiniteCanvasPage() {
                                               generateAudio: generationConfig.videoGenerateAudio,
                                               watermark: generationConfig.videoWatermark,
                                               references: generationReferenceUrls(generationContext),
+                                              seed: nextSeed,
                                           },
                                       }
                                     : node,
@@ -2672,7 +2673,8 @@ function InfiniteCanvasPage() {
                         generationReferences: generationContext.generationReferences,
                         generationOriginNodeId: sourceNode?.metadata?.generationOriginNodeId || nodeId,
                         textCount,
-                        texts: textIds.map((id) => ({ id, status: NODE_STATUS_LOADING, content: "" })),
+                        seed: nextSeed,
+                        texts: textIds.map((id, index) => ({ id, status: NODE_STATUS_LOADING, content: "", seed: (nextSeed + index) % 9007199254740991 })),
                         primaryTextId: textIds[0],
                     },
                 };
@@ -2689,8 +2691,9 @@ function InfiniteCanvasPage() {
 
                 const controller = rootId === nodeId ? runController : startGenerationRequest(rootId, nodeId, nodeId, runController);
                 const results = await Promise.all(
-                    textIds.map(async (textId): Promise<CanvasNodeText | null> => {
+                    textIds.map(async (textId, index): Promise<CanvasNodeText | null> => {
                         let streamed = "";
+                        const slotSeed = (nextSeed + index) % 9007199254740991;
                         try {
                             const answer = await requestImageQuestion(
                                 generationConfig,
@@ -2714,6 +2717,7 @@ function InfiniteCanvasPage() {
                                 },
                                 {
                                     signal: controller.signal,
+                                    seed: slotSeed,
                                     onProgress: (status, detail) => {
                                         if (status === "submitted" && detail?.jobId) {
                                             setNodes((prev) =>
@@ -2743,7 +2747,8 @@ function InfiniteCanvasPage() {
                                               metadata: {
                                                   ...node.metadata,
                                                   ...(node.metadata?.primaryTextId === textId ? { content } : {}),
-                                                  texts: node.metadata?.texts?.map((item) => (item.id === textId ? { ...item, content, status: NODE_STATUS_SUCCESS, jobId: undefined, isTimeout: undefined } : item)),
+                                                  texts: node.metadata?.texts?.map((item) => (item.id === textId ? { ...item, content, status: NODE_STATUS_SUCCESS, jobId: undefined, isTimeout: undefined, seed: slotSeed } : item)),
+                                                  seed: nextSeed,
                                               },
                                           }
                                         : node,

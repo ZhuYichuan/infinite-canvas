@@ -14,6 +14,7 @@ type RequestOptions = {
     signal?: AbortSignal;
     jobId?: string;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
+    seed?: number;
 };
 
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
@@ -22,12 +23,13 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     if (n > 1) {
         const results = await Promise.all(
-            Array.from({ length: n }, () =>
+            Array.from({ length: n }, (_, index) =>
                 requestComfyuiImage({
                     config: requestConfig,
                     model: rawModel,
                     prompt,
                     size: requestConfig.size,
+                    seed: options?.seed !== undefined ? (options.seed + index) % 9007199254740991 : undefined,
                     signal: options?.signal,
                     jobId: options?.jobId,
                     onProgress: options?.onProgress,
@@ -42,6 +44,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
             model: rawModel,
             prompt,
             size: requestConfig.size,
+            seed: options?.seed,
             signal: options?.signal,
             jobId: options?.jobId,
             onProgress: options?.onProgress,
@@ -58,6 +61,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
             prompt,
             sourceDataUrl: references[0].dataUrl,
             maskDataUrl: mask.dataUrl,
+            seed: options?.seed,
             signal: options?.signal,
             jobId: options?.jobId,
             onProgress: options?.onProgress,
@@ -71,6 +75,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
             prompt,
             size: config.size,
             references,
+            seed: options?.seed,
             signal: options?.signal,
             jobId: options?.jobId,
             onProgress: options?.onProgress,
@@ -101,6 +106,7 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
         model: rawModel,
         prompt,
         imageDataUrl,
+        seed: options?.seed,
         signal: options?.signal,
         jobId: options?.jobId,
         onProgress: options?.onProgress,

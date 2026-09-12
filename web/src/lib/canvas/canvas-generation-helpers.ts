@@ -227,3 +227,15 @@ export function buildAngleLabel(params: CanvasImageAngleParams) {
 export function buildAnglePrompt(params: CanvasImageAngleParams) {
     return i18n.t("canvas.generation.anglePrompt", { angle: buildAngleLabel(params) });
 }
+
+/**
+ * Generate a new random seed distinct from the previous seed.
+ */
+export function generateNextSeed(previousSeed?: number, max = 9007199254740991): number {
+    let next = Math.floor(Math.random() * max);
+    if (previousSeed !== undefined && next === previousSeed) {
+        next = (next + 1) % max;
+    }
+    return next;
+}
+
