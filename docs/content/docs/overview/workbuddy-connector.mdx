@@ -1,0 +1,104 @@
+---
+title: WorkBuddy Connector
+description: Install and use the Infinite Canvas connector in WorkBuddy
+---
+
+# WorkBuddy Connector
+
+Infinite Canvas provides an official connector for WorkBuddy, built on the MCP (Model Context Protocol) open standard and powered by the companion `@zhuyichuan/canvas-agent` service.
+
+Once installed, you can use natural language inside WorkBuddy to launch canvases, inspect board state, create content nodes, and orchestrate multimodal generation pipelines (text-to-image, image-to-video, etc.).
+
+Connector source files are located in `plugins/workbuddy-connector/`.
+
+## Installation & Setup
+
+### Method 1: Install Package from Open Platform (Recommended)
+
+1. Build or locate the connector package in `plugins/workbuddy-connector/`:
+   ```bash
+   cd plugins/workbuddy-connector
+   zip -r infinite-canvas-connector.zip connector-meta.json mcp.json icon.svg skills/
+   ```
+2. Log in to the [WorkBuddy Open Platform](https://open.workbuddy.cn).
+3. Create or import a new connector, and upload `infinite-canvas-connector.zip`.
+
+### Method 2: Configure MCP Server in WorkBuddy
+
+Add the `infinite-canvas` service in your WorkBuddy MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "infinite-canvas": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@zhuyichuan/canvas-agent", "mcp"],
+      "runtime": {
+        "type": "node",
+        "version": "20"
+      },
+      "npmRegistry": "https://registry.npmmirror.com"
+    }
+  }
+}
+```
+
+> **Note**: Specifying the managed Node 20 runtime allows WorkBuddy to run `@zhuyichuan/canvas-agent` in an isolated sandbox without manual environment configuration.
+
+---
+
+## Example Interactions
+
+### 1. Launch & Connect Canvas
+```text
+Open Infinite Canvas
+```
+```text
+Open my most recent Infinite Canvas project
+```
+WorkBuddy calls `canvas_open` to open `https://canvas.imihoo.com/canvas` in your default browser with connection credentials injected automatically.
+
+### 2. Read & Understand Board State
+```text
+Read the current canvas nodes and connections, and give me a summary
+```
+```text
+Check the currently selected node and generate 3 brainstorming branches from it
+```
+
+### 3. Create Content Nodes
+```text
+Create a text card explaining short-video script frameworks in the center of the board
+```
+```text
+Generate 4 outline nodes horizontally spaced by 60px based on the current topic
+```
+
+### 4. Orchestrate Multimodal Workflows
+```text
+Create a text-to-image workflow for a cyberpunk rainy night scene
+```
+```text
+Connect the selected image to a video generation node for a 5-second camera motion clip
+```
+
+---
+
+## Exposed MCP Tools
+
+| Tool Name | Description |
+| :--- | :--- |
+| `canvas_open` | Opens Infinite Canvas in the default browser (supports `new`, `recent`, and `choose` modes) and injects credentials |
+| `canvas_get_state` | Retrieves nodes, connections, and viewport bounds from the canvas |
+| `canvas_get_selection` | Gets all currently selected nodes on the board |
+| `canvas_create_text_node` | Adds a single text node to the canvas |
+| `canvas_create_text_nodes` | Batch-creates structured text nodes with automatic layout |
+| `canvas_create_image_prompt_flow` | Generates prompt nodes connected to image generation configuration |
+| `canvas_create_generation_flow` | Assembles multimodal (text/image/video) generation pipelines |
+| `canvas_generate_text` | Triggers LLM text generation |
+| `canvas_generate_image` | Triggers ComfyUI image generation |
+| `canvas_generate_video` | Triggers ComfyUI video generation |
+| `canvas_apply_ops` | Applies atomic operations (create, update, delete, connect) |
+| `canvas_move_nodes` | Repositions nodes to prevent overlap |
+| `canvas_export_snapshot` | Exports the full canvas snapshot JSON |

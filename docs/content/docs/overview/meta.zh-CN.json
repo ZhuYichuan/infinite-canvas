@@ -4,7 +4,7 @@
   "defaultOpen": true,
   "pages": [
     "quick-start",
-    "codex-app-plugin",
+    "workbuddy-connector",
     "features",
     "render",
     "docker",

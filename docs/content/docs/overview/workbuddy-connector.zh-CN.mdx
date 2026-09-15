@@ -1,0 +1,106 @@
+---
+title: WorkBuddy 连接器
+description: 在 WorkBuddy 桌面端中安装并使用 Infinite Canvas 连接器
+---
+
+# WorkBuddy 连接器
+
+Infinite Canvas 提供了专属的 WorkBuddy 官方连接器（Connector），基于 MCP（Model Context Protocol）开放协议与本地 `@zhuyichuan/canvas-agent` 伴生服务协同工作。
+
+安装后，你可以直接在 WorkBuddy 聊天框中通过自然语言打开画布、检索画板内容、创建结构化节点，并一键编排多模态（文生图、图生视频等）生成流水线。
+
+连接器工程源码位于仓库的 `plugins/workbuddy-connector/` 目录。
+
+## 安装与配置方式
+
+### 方式一：开放平台扩展包安装（推荐）
+
+1. 在仓库的 `plugins/workbuddy-connector/` 目录下获取或打包扩展包：
+   ```bash
+   cd plugins/workbuddy-connector
+   zip -r infinite-canvas-connector.zip connector-meta.json mcp.json icon.svg skills/
+   ```
+2. 登录 [WorkBuddy 开放平台控制台](https://open.workbuddy.cn)。
+3. 在能力管理中选择创建或导入连接器，上传 `infinite-canvas-connector.zip` 即可完成安装。
+
+### 方式二：在 WorkBuddy 中配置 MCP 服务
+
+在 WorkBuddy 的 MCP 配置文件中添加 `infinite-canvas` 服务项：
+
+```json
+{
+  "mcpServers": {
+    "infinite-canvas": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@zhuyichuan/canvas-agent", "mcp"],
+      "runtime": {
+        "type": "node",
+        "version": "20"
+      },
+      "npmRegistry": "https://registry.npmmirror.com"
+    }
+  }
+}
+```
+
+> **提示**：声明托管的 Node 20 运行时后，WorkBuddy 会在隔离沙箱中按需运行 `@zhuyichuan/canvas-agent`，无需用户手动维护全局环境。
+
+---
+
+## 常用交互示例
+
+安装连接器后，在 WorkBuddy 对话中直接用自然语言发起任务即可：
+
+### 1. 打开与唤醒画布
+```text
+打开 Infinite Canvas 画布
+```
+```text
+进入我最近打开的 Infinite Canvas 工程
+```
+AI 将自动调用 `canvas_open` 唤醒系统默认浏览器访问 `https://canvas.imihoo.com/canvas`，并自动携带本地配对 Token 完成直连。
+
+### 2. 读取与理解画布结构
+```text
+读取当前画布上的节点和连线状态，帮我做个总结
+```
+```text
+看看我当前选中的是哪个节点，基于它扩写三个脑暴分支
+```
+
+### 3. 创建内容与脑暴卡片
+```text
+在画布中心创建一个关于短视频脚本框架的文本节点
+```
+```text
+基于当前主题批量创建 4 个内容大纲节点，保持 60px 间距水平排布
+```
+
+### 4. 编排多模态生成工作流
+```text
+帮我在画布上创建一个文生图工作流，提示词是赛博朋克城市雨夜
+```
+```text
+把当前选中的图片节点连接到一个视频生成节点，生成 5 秒运镜视频
+```
+
+---
+
+## 核心工具一览
+
+| 工具名称 | 功能说明 |
+| :--- | :--- |
+| `canvas_open` | 跨平台打开系统浏览器进入 Infinite Canvas 画布（支持 `new` / `recent` / `choose` 模式），并自动完成凭据注入与配对 |
+| `canvas_get_state` | 获取当前画布所有节点、连线关系及视口信息 |
+| `canvas_get_selection` | 获取当前画布中被用户鼠标选中的节点集合 |
+| `canvas_create_text_node` | 创建单个文本内容节点 |
+| `canvas_create_text_nodes` | 批量创建多个结构化文本节点并自动布局 |
+| `canvas_create_image_prompt_flow` | 自动创建提示词节点并连接到生图配置节点 |
+| `canvas_create_generation_flow` | 编排组织多模态（文案/生图/视频）连线流程 |
+| `canvas_generate_text` | 触发大模型文本生成任务 |
+| `canvas_generate_image` | 触发 ComfyUI 图片生成流水线 |
+| `canvas_generate_video` | 触发 ComfyUI 视频生成流水线 |
+| `canvas_apply_ops` | 批量原子操作（增删改节点属性、连线拓扑） |
+| `canvas_move_nodes` | 精确移动节点位置，避免卡片重叠 |
+| `canvas_export_snapshot` | 导出画布全量快照 JSON |

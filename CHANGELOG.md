@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [优化] 彻底下线历史 Codex 插件与相关文档：将文档站独立章节全面替换为 WorkBuddy 连接器（workbuddy-connector），清理 plugins/infinite-canvas 旧插件目录，移除 canvas-agent 启动时的 Codex 提示。
 + [优化] 将线上生产站点默认地址全面更新为 https://canvas.imihoo.com：更新 canvas-agent 浏览器唤起默认地址、Codex 插件与文档全站链接。
 + [优化] 画布侧边栏与 Agent 体验全面纯化为 WorkBuddy 模式：彻底移除残留的 Codex 插件安装提示、插件卸载指令与沙箱权限/模型选择菜单，画布顶栏状态、连接引导及助手气泡全面切换为 WorkBuddy 品牌与文案。
 + [新增] 支持接入 WorkBuddy 生态：创建 plugins/workbuddy-connector 连接器工程，支持一键打包上架至 WorkBuddy 能力市场；canvas-agent 升级包名为 @zhuyichuan/canvas-agent，新增 canvas_open 跨平台浏览器唤醒工具与自适应启动支持；侧边栏新增 WorkBuddy 本地桌面助理直连通信与状态检测。
