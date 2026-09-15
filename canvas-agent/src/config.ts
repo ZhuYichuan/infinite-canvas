@@ -11,7 +11,16 @@ export const AGENT_PROMPT = fs.readFileSync(new URL("../agent-instructions.md", 
 const initializedWorkspaces = new Set<string>();
 
 export type SiteWorkspaceConfig = { workspacePath: string; activeThreadId?: string; pinnedThreadIds?: string[] };
-export type CanvasAgentConfig = { url: string; token: string; origins?: string[]; workspace?: SiteWorkspaceConfig };
+export type WorkbuddyConfig = { accessToken?: string; baseUrl?: string };
+export type CanvasAgentConfig = { url: string; token: string; origins?: string[]; workspace?: SiteWorkspaceConfig; workbuddy?: WorkbuddyConfig };
+
+/** 读取 WorkBuddy 配置，支持环境变量优先覆盖。 */
+export function getWorkbuddyConfig(config: CanvasAgentConfig): Required<WorkbuddyConfig> {
+    return {
+        accessToken: process.env.WORKBUDDY_ACCESS_TOKEN || config.workbuddy?.accessToken || "",
+        baseUrl: (process.env.WORKBUDDY_BASE_URL || config.workbuddy?.baseUrl || "https://www.workbuddy.cn").replace(/\/+$/, ""),
+    };
+}
 
 /** 读取本地 Canvas Agent 配置，不存在时生成默认配置。 */
 export function loadConfig(create = false): CanvasAgentConfig {

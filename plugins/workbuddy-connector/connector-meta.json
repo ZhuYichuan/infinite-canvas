@@ -1,0 +1,24 @@
+{
+  "name": "无限画布",
+  "name_zh": "无限画布",
+  "name_en": "Infinite Canvas",
+  "description": "通过自然语言在 Infinite Canvas 上创建与组织灵感、编排多模态生成流程、读取画布状态与操作节点。",
+  "description_zh": "通过自然语言在 Infinite Canvas 上创建与组织灵感、编排多模态生成流程、读取画布状态与操作节点。",
+  "description_en": "Organize ideas, orchestrate generation flows, inspect canvas state, and edit nodes in Infinite Canvas using natural language.",
+  "source": "infinite-canvas",
+  "type": "mcp",
+  "version": "1.0.0",
+  "minWorkbuddyVersion": "5.0.0",
+  "examples_zh": [
+    "打开 Infinite Canvas 画布",
+    "读取当前画布上的节点和连线状态",
+    "在画布上帮我画一个文生图和视频生成的串联工作流",
+    "在当前选中的节点右侧创建一个总结文本节点"
+  ],
+  "examples_en": [
+    "Open Infinite Canvas in the browser",
+    "Get current canvas state, nodes, and connections",
+    "Create an image and video generation workflow on canvas",
+    "Add a text node to summarize the selected content"
+  ]
+}

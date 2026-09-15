@@ -21,7 +21,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useAgentStore, type AgentAttachment, type AgentBootstrapStatus, type AgentCanvasContext, type AgentCanvasReference, type AgentChatItem, type AgentConversationState, type AgentModel, type AgentPendingApproval, type AgentPendingToolCall, type AgentPermissionMode, type AgentReasoningEffort, type AgentThreadSummary } from "@/stores/use-agent-store";
 import { type CanvasAgentOp, type CanvasAgentSnapshot } from "@/lib/canvas/canvas-agent-ops";
 import { isSiteTool, runSiteTool } from "@/lib/agent/agent-site-tools";
-import { acknowledgeCodexHistory, activateAgentClient, AgentApiError, discoverAgentConfig, fetchAgentJson, interruptCodexTurn, postCodexApproval, postState, postToolResult } from "@/services/api/canvas-agent";
+import { acknowledgeCodexHistory, activateAgentClient, AgentApiError, discoverAgentConfig, fetchAgentJson, interruptCodexTurn, postCodexApproval, postState, postToolResult, runWorkbuddyTurn } from "@/services/api/canvas-agent";
 import { AgentChatTimeline, AgentTaskProgress, AgentUsageBar } from "./agent-chat";
 import { AgentChatComposer } from "./agent-chat-composer";
 import { AgentConnectView } from "./agent-connect-view";
@@ -134,7 +134,7 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
     // canvasContext is intentionally excluded because project updates it every frame during dragging and resizing.
     // The panel uses it only for ref synchronization and debounced postState calls, never during rendering.
     // Subscribing here would rerender the panel every frame and amplify the #185 crash, so it is observed imperatively below.
-    const { width, url, token, connected, enabled, prompt, attachments, sending, waiting, tokenUsage, eventLogs, threads, activeThreadId, workspacePath, loadingThreads, activeTab, confirmTools, permissionMode, models, model, reasoningEffort, activity, conversation, connectError, pendingTool, pendingApprovals } = useAgentStore(
+    const { width, url, token, connected, enabled, prompt, attachments, sending, waiting, tokenUsage, eventLogs, threads, activeThreadId, workspacePath, loadingThreads, activeTab, confirmTools, permissionMode, models, model, reasoningEffort, activity, conversation, connectError, pendingTool, pendingApprovals, agentProvider } = useAgentStore(
         useShallow((state) => ({
             width: state.width,
             url: state.url,
@@ -162,6 +162,7 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
             connectError: state.connectError,
             pendingTool: state.pendingTool,
             pendingApprovals: state.pendingApprovals,
+            agentProvider: state.agentProvider,
         })),
     );
     const setAgentState = useAgentStore((state) => state.setAgentState);
@@ -685,6 +686,19 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
             const modelName = models.find((item) => item.model === model)?.displayName || model || rt("defaultModel");
             const effortName = reasoningEffort ? i18n.t(`agent.composer.effort.${reasoningEffort}`) : rt("defaultEffort");
             addEventLog(rt("sendTask"), `${modelName} · ${effortName}${selectedSkill ? ` · Skill ${selectedSkill.name}` : ""}${files.length ? ` · ${rt("attachmentCount", { count: files.length })}` : ""}${canvasReferences.length ? ` · ${rt("canvasReferenceCount", { count: canvasReferences.length })}` : ""} · ${compactText(text) || rt(canvasReferences.length ? "canvasReferencesOnly" : "attachmentsOnly")}`);
+            if (currentBeforeSend.agentProvider === "workbuddy") {
+                await runWorkbuddyTurn(endpoint, token, {
+                    prompt: requestPrompt,
+                    threadId,
+                    clientId: clientIdRef.current,
+                });
+                setAgentState({ sending: false, waiting: true, activity: "等待 WorkBuddy 桌面助理回复..." });
+                files.forEach((item) => {
+                    URL.revokeObjectURL(item.url);
+                    attachmentUrlsRef.current.delete(item.url);
+                });
+                return;
+            }
             const accepted = await fetchAgentJson<AgentTurnResponse>(endpoint, token, "/agent/codex/turn", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
@@ -1325,7 +1339,9 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
                         <span className="grid size-8 place-items-center">
                             <Bot className="size-4" />
                         </span>
-                        <div className="hidden text-base font-semibold leading-5 @min-[560px]:block">Agent</div>
+                        <div className="hidden text-base font-semibold leading-5 @min-[560px]:block">
+                            {agentProvider === "workbuddy" ? "WorkBuddy" : "Codex"}
+                        </div>
                         <Tooltip title={t("agent.panel.connectionSettings", { status: connectionStatus })} placement="bottom">
                             <Button size="small" type="text" className="!h-8 !w-8 !min-w-8 !px-0 @min-[560px]:!w-auto @min-[560px]:!min-w-0 @min-[560px]:!px-[7px]" aria-label={t("agent.panel.connectionSettingsLabel", { status: connectionStatus })} icon={<PlugZap className="size-3.5" style={{ color: connectionStatusColor }} />} onClick={() => setAgentState({ activeTab: "setup" })}>
                                 <span className="hidden @min-[560px]:inline">{connectionStatus}</span>

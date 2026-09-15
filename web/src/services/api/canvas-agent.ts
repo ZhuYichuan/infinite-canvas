@@ -134,6 +134,29 @@ export async function discoverAgentConfig(endpoint: string) {
     }
 }
 
+export type WorkbuddyConfigResponse = { ok?: boolean; hasToken?: boolean; baseUrl?: string };
+export type WorkbuddyStatusResponse = { ok?: boolean; online?: boolean; error?: string };
+
+export function fetchWorkbuddyConfig(endpoint: string, token: string) {
+    return fetchAgentJson<WorkbuddyConfigResponse>(endpoint, token, "/agent/workbuddy/config");
+}
+
+export function saveWorkbuddyConfig(endpoint: string, token: string, config: { accessToken?: string; baseUrl?: string }) {
+    return fetchAgentJson<WorkbuddyConfigResponse>(endpoint, token, "/agent/workbuddy/config", jsonPost(config));
+}
+
+export function fetchWorkbuddyStatus(endpoint: string, token: string) {
+    return fetchAgentJson<WorkbuddyStatusResponse>(endpoint, token, "/agent/workbuddy/status");
+}
+
+export function runWorkbuddyTurn(endpoint: string, token: string, body: { prompt: string; threadId?: string; clientId?: string }) {
+    return fetchAgentJson<{ ok?: boolean }>(endpoint, token, "/agent/workbuddy/turn", jsonPost(body));
+}
+
+export function replyWorkbuddyPermission(endpoint: string, token: string, body: { requestId: string; answers: Record<string, unknown> }) {
+    return fetchAgentJson<{ ok?: boolean }>(endpoint, token, "/agent/workbuddy/permission", jsonPost(body));
+}
+
 function jsonPost(body: unknown): RequestInit {
     return { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
 }

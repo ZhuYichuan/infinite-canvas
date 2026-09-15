@@ -4,12 +4,13 @@ import path from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 
 import { runClaudeTurn } from "../agent/claude.js";
+import { checkWorkbuddyStatus, replyWorkbuddyPermission, runWorkbuddyTurn, updateWorkbuddyConfig } from "../agent/workbuddy.js";
 import { archiveCodexThread, CodexSkillLookupError, configureCodexSkill, generateCodexSkillDraft, interruptCodexTurn, isRecoverableThreadError, listCodexModels, listCodexSkills, listCodexThreads, readCodexThread, resolveCodexApproval, resolveCodexSkill, resumeCodexThread, runCodexTurn, startCodexThread, summarizeCodexThread } from "../agent/codex.js";
 import type { CodexReasoningEffort, CodexSkillSelector } from "../agent/codex-protocol.js";
 import { messageMetadataStore } from "../agent/message-metadata.js";
 import type { AgentAttachment, AgentPermissionMode } from "../agent/types.js";
 import { AGENT_PROTOCOL_VERSION, CanvasSession } from "../canvas/session.js";
-import { DEFAULT_PORT, ensureSiteWorkspace, loadConfig, saveConfig, updateSiteWorkspace, type CanvasAgentConfig } from "../config.js";
+import { DEFAULT_PORT, ensureSiteWorkspace, getWorkbuddyConfig, loadConfig, saveConfig, updateSiteWorkspace, type CanvasAgentConfig } from "../config.js";
 import { logger } from "../utils/logger.js";
 import { checkVersions } from "../version-check.js";
 import { SkillStore, SkillStoreError } from "../skills/store.js";
@@ -424,6 +425,43 @@ export function startHttpServer() {
         runClaudeTurn(String(req.body?.prompt || ""), emit);
         res.json({ ok: true });
     });
+    app.post("/agent/workbuddy/turn", route(async (req, res) => {
+        void runWorkbuddyTurn(String(req.body?.prompt || ""), emit, {
+            threadId: req.body?.threadId ? String(req.body.threadId) : undefined,
+            sourceClientId: req.body?.clientId ? String(req.body.clientId) : undefined,
+        });
+        res.json({ ok: true });
+    }));
+    app.get("/agent/workbuddy/status", route(async (_req, res) => {
+        const result = await checkWorkbuddyStatus(config);
+        res.json(result);
+    }));
+    app.get("/agent/workbuddy/config", route(async (_req, res) => {
+        const current = getWorkbuddyConfig(config);
+        res.json({
+            ok: true,
+            hasToken: Boolean(current.accessToken),
+            baseUrl: current.baseUrl,
+        });
+    }));
+    app.post("/agent/workbuddy/config", route(async (req, res) => {
+        const updated = updateWorkbuddyConfig({
+            accessToken: req.body?.accessToken !== undefined ? String(req.body.accessToken).trim() : undefined,
+            baseUrl: req.body?.baseUrl !== undefined ? String(req.body.baseUrl).trim() : undefined,
+        });
+        res.json({
+            ok: true,
+            hasToken: Boolean(updated.accessToken),
+            baseUrl: updated.baseUrl,
+        });
+    }));
+    app.post("/agent/workbuddy/permission", route(async (req, res) => {
+        const result = await replyWorkbuddyPermission(
+            String(req.body?.requestId || ""),
+            (req.body?.answers || {}) as Record<string, unknown>
+        );
+        res.json(result);
+    }));
     app.use((_req, res) => res.status(404).json({ ok: false, error: "not found" }));
     app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
         logger.error("HTTP request failed", { method: req.method, path: req.path, error });

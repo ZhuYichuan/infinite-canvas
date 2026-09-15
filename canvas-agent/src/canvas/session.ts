@@ -3,6 +3,7 @@ import type { ServerResponse } from "node:http";
 
 import type { AgentAttachment } from "../agent/types.js";
 import { logger } from "../utils/logger.js";
+import { openCanvasInBrowser } from "../utils/browser.js";
 import { buildCanvasToolRequest, fitAttachmentNodeSize } from "./operations.js";
 import type { ToolName } from "./schemas.js";
 import { compactCanvasState, compactNode, isToolName, nextCanvasX, parseToolInput } from "./tools.js";
@@ -441,6 +442,7 @@ export class CanvasSession {
         if (!isToolName(name)) throw new Error(`未知工具：${String(name)}`);
         logger.info("MCP tool called", { name, input: rawInput, targetClientId: this.targetClientId });
         const input = parseToolInput(name, rawInput) as Record<string, unknown>;
+        if (name === "canvas_open") return openCanvasInBrowser(input as { mode?: "new" | "recent" | "choose"; url?: string });
         if (SITE_TOOLS.has(name)) {
             if (!this.clients.size) throw new Error("当前没有已连接网页");
             return await this.requestCanvasTool(name, input);

@@ -9,6 +9,7 @@ const generationModeSchema = z.enum(["text", "image", "video"]);
 /** Canvas Agent 对外提供的工具名称。 */
 export const toolNames = [
     "site_navigate",
+    "canvas_open",
     "canvas_list_projects",
     "canvas_get_state",
     "canvas_get_selection",
@@ -89,7 +90,8 @@ const generationFlowSchema = z.object({
 });
 
 export const toolInputSchemas = {
-    site_navigate: z.object({ path: z.string() }),
+    site_navigate: z.object({ path: z.string().default("/") }),
+    canvas_open: z.object({ mode: z.enum(["new", "recent", "choose"]).optional().default("new"), url: z.string().optional() }),
     canvas_list_projects: z.object({ keyword: z.string().optional(), page: z.number().optional(), pageSize: z.number().optional() }),
     canvas_get_state: z.object({}).passthrough(),
     canvas_get_selection: z.object({}).passthrough(),
@@ -127,6 +129,7 @@ export const toolInputSchemas = {
 
 export const toolDescriptions: Record<ToolName, string> = {
     site_navigate: "跳转网站页面。path 可为 / (首页)、/canvas (我的画布)、/canvas/:id (指定画布)、/image (生图工作台)、/video (视频创作台)、/prompts (提示词库)、/assets (我的素材)、/config (配置)。操作画布前若不在画布页，先用本工具打开画布。",
+    canvas_open: "在系统默认浏览器中打开 Infinite Canvas 画布，并自动携带本地 Agent 连接凭据。mode 支持 new (新建画布)、recent (最近画布)、choose (项目选择)。若本地服务未启动，会自动唤醒启动本地服务。",
     canvas_list_projects: "列出用户全部画布（仅标题、创建/更新时间、节点数、连线数，不含完整数据），支持 keyword 搜索和 page/pageSize 分页。返回的 id 可配合 site_navigate 跳转到 /canvas/:id 打开对应画布。",
     canvas_get_state: "读取当前网页画布的节点、连线、选区和视口。",
     canvas_get_selection: "读取当前网页画布选中的节点。",

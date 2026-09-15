@@ -38,6 +38,7 @@ export type AgentConversationState = {
     error?: string;
 };
 export type AgentPanelTab = "chat" | "setup" | "history" | "skills" | "log";
+export type AgentProvider = "workbuddy" | "codex";
 
 const CONNECT_TIMEOUT_MS = 6000;
 let agentSource: EventSource | null = null;
@@ -81,6 +82,9 @@ type AgentStore = {
     connectError: string;
     pendingTool: AgentPendingToolCall | null;
     pendingApprovals: AgentPendingApproval[];
+    agentProvider: AgentProvider;
+    workbuddyOnline: boolean;
+    workbuddyConfigured: boolean;
     setAgentState: (patch: Partial<Omit<AgentStore, "setAgentState" | "connectAgent" | "disconnectAgent" | "addMessage" | "addEventLog" | "clearEventLogs" | "openPanel" | "closePanel" | "togglePanel" | "setCanvasContext">>) => void;
     openPanel: () => void;
     closePanel: () => void;
@@ -133,6 +137,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     connectError: "",
     pendingTool: null,
     pendingApprovals: [],
+    agentProvider: "workbuddy",
+    workbuddyOnline: false,
+    workbuddyConfigured: false,
     setAgentState: (patch) => set(patch),
     openPanel: () => set({ panelOpen: true, panelMounted: true, panelClosing: false }),
     closePanel: () => {

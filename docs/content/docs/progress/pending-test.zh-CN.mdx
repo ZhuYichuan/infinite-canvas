@@ -5,6 +5,11 @@ description: 当前版本已实现但仍需人工验证的变更项
 
 # 待测试
 
+- WorkBuddy 双向生态接入（连接器与画布侧边栏）：
+  - **连接器工程包与元信息**：创建 `plugins/workbuddy-connector/`，提供符合规范的 `connector-meta.json`、`mcp.json`、`icon.svg` 与 `skills/canvas/SKILL.md`，支持直接打包为 zip 并上架 WorkBuddy 开放平台；
+  - **包名与自适应启动支持**：`canvas-agent` 包名变更为 `@zhuyichuan/canvas-agent`，新增 `canvas_open` 跨平台浏览器唤起工具（自动追加 `#agentUrl=...&agentToken=...`），并在 MCP 运行模式下支持自动唤醒本地 HTTP 守护进程；
+  - **画布侧边栏直连 WorkBuddy 桌面端**：Node 端增加 `src/agent/workbuddy.ts` 适配器，支持根据 Access Token 直连 `https://www.workbuddy.cn/openapi/v2/localassistant`；侧边栏设置页支持填入 Token 与实时检测桌面端在线状态，对话任务统一转发并标准输出至 SSE 事件流。
+
 - 修复文本节点 LLM 生成提示词成功后新节点仍处于可操作「停止」状态：
   - **请求完成立即注销**：修复文本模式生成完成回调中遗漏调用 `finishGenerationRequest` 注销新节点 `rootId` 的缺陷，在 LLM 请求完成及中止判断处均执行注销，即时将新节点从 `runningNodeIds` 中移除；
   - **全局 finally 兜底注销**：在生成调度主函数的 `finally` 中遍历 `pendingChildIds`，兜底释放未退出的子任务 ID，消除生成文本已上屏但底部提示词栏依然常驻转圈「停止」按钮的问题。

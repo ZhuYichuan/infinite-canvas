@@ -18,7 +18,7 @@ export function checkVersions() {
     if (!localCodexVersion) {
         logger.warn("Local Codex was not found. Install the latest version with: npm install -g @openai/codex@latest");
     } else if (localCodexVersion !== CODEX_VERSION) {
-        logger.warn(`Bundled Codex ${CODEX_VERSION} does not match local Codex ${localCodexVersion}. Keep both current with: npm install -g @openai/codex@latest && npx -y @basketikun/canvas-agent@latest`);
+        logger.warn(`Bundled Codex ${CODEX_VERSION} does not match local Codex ${localCodexVersion}. Keep both current with: npm install -g @openai/codex@latest && npx -y @zhuyichuan/canvas-agent@latest`);
     }
     void checkLatestVersions(localCodexVersion);
 }
@@ -27,11 +27,11 @@ export function checkVersions() {
 async function checkLatestVersions(localCodexVersion: string) {
     try {
         const [latestAgent, latestCodex] = await Promise.all([
-            npmVersion("@basketikun/canvas-agent"),
+            npmVersion("@zhuyichuan/canvas-agent"),
             npmVersion("@openai/codex"),
         ]);
-        if (isOlder(VERSION, latestAgent)) logger.warn(`Update available: Canvas Agent ${VERSION} -> ${latestAgent}. Run: npx -y @basketikun/canvas-agent@latest`);
-        if (isOlder(CODEX_VERSION, latestCodex)) logger.warn(`Update available: bundled Codex ${CODEX_VERSION} -> ${latestCodex}. Upgrade Canvas Agent with: npx -y @basketikun/canvas-agent@latest`);
+        if (isOlder(VERSION, latestAgent)) logger.warn(`Update available: Canvas Agent ${VERSION} -> ${latestAgent}. Run: npx -y @zhuyichuan/canvas-agent@latest`);
+        if (isOlder(CODEX_VERSION, latestCodex)) logger.warn(`Update available: bundled Codex ${CODEX_VERSION} -> ${latestCodex}. Upgrade Canvas Agent with: npx -y @zhuyichuan/canvas-agent@latest`);
         if (localCodexVersion && isOlder(localCodexVersion, latestCodex)) logger.warn(`Update available: local Codex ${localCodexVersion} -> ${latestCodex}. Run: npm install -g @openai/codex@latest`);
     } catch {
         logger.warn("Unable to check the latest npm versions; startup will continue.");

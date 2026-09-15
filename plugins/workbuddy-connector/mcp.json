@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "infinite-canvas": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@zhuyichuan/canvas-agent", "mcp"],
+      "runtime": {
+        "type": "node",
+        "version": "20"
+      },
+      "npmRegistry": "https://registry.npmmirror.com"
+    }
+  }
+}

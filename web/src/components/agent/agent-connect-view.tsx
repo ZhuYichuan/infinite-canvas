@@ -1,10 +1,11 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { App, Button, Input, Tooltip } from "antd";
 import copyToClipboard from "copy-to-clipboard";
-import { Copy, KeyRound, Link2, PlugZap } from "lucide-react";
+import { Bot, Copy, KeyRound, Link2, PlugZap, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { fetchWorkbuddyConfig, fetchWorkbuddyStatus, saveWorkbuddyConfig } from "@/services/api/canvas-agent";
 
 const AGENT_PLUGIN_REMOVE_COMMAND = "codex plugin remove infinite-canvas";
 const AGENT_MCP_REMOVE_COMMAND = "codex mcp remove infinite-canvas";
@@ -34,7 +35,59 @@ export function AgentConnectView({
 }) {
     const { t } = useTranslation();
     const { message } = App.useApp();
-    const steps = [{ title: t("agent.connect.pluginTitle"), text: t("agent.connect.pluginText") }, { title: t("agent.connect.directTitle"), text: t("agent.connect.directText"), command: "npx -y @basketikun/canvas-agent" }];
+    const [wbToken, setWbToken] = useState("");
+    const [wbOnline, setWbOnline] = useState<boolean | null>(null);
+    const [wbChecking, setWbChecking] = useState(false);
+    const [wbSaving, setWbSaving] = useState(false);
+
+    useEffect(() => {
+        if (!connected || !url || !token) return;
+        let active = true;
+        void fetchWorkbuddyConfig(url, token).then((res) => {
+            if (!active) return;
+            if (res.hasToken) {
+                void fetchWorkbuddyStatus(url, token).then((status) => {
+                    if (active) setWbOnline(Boolean(status.online));
+                });
+            }
+        });
+        return () => { active = false; };
+    }, [connected, url, token]);
+
+    const handleCheckWbStatus = async () => {
+        if (!connected) return;
+        setWbChecking(true);
+        try {
+            const res = await fetchWorkbuddyStatus(url, token);
+            setWbOnline(Boolean(res.online));
+            if (res.online) message.success("WorkBuddy 桌面端助理在线");
+            else message.warning(res.error || "未检测到 WorkBuddy 桌面端运行");
+        } catch {
+            setWbOnline(false);
+            message.error("检测失败，请确保本地 Agent 已连接");
+        } finally {
+            setWbChecking(false);
+        }
+    };
+
+    const handleSaveWbToken = async () => {
+        if (!connected) {
+            message.warning("请先连接本地 Canvas Agent");
+            return;
+        }
+        setWbSaving(true);
+        try {
+            await saveWorkbuddyConfig(url, token, { accessToken: wbToken.trim() });
+            message.success("WorkBuddy 配置已保存");
+            void handleCheckWbStatus();
+        } catch (err) {
+            message.error(err instanceof Error ? err.message : "保存配置失败");
+        } finally {
+            setWbSaving(false);
+        }
+    };
+
+    const steps = [{ title: t("agent.connect.pluginTitle"), text: t("agent.connect.pluginText") }, { title: t("agent.connect.directTitle"), text: t("agent.connect.directText"), command: "npx -y @zhuyichuan/canvas-agent" }];
     const statusText = connectError ? t("agent.status.failed") : connected ? activity : enabled ? t("agent.status.connecting") : t("agent.status.disconnected");
     const statusColor = connectError ? "#dc2626" : connected ? "#16a34a" : enabled ? "#d97706" : theme.node.muted;
     const copyCommand = (command: string) => {
@@ -147,6 +200,59 @@ export function AgentConnectView({
                                 {connectError}
                             </div>
                         ) : null}
+                    </div>
+                </div>
+
+                <div className="rounded-lg border p-3" style={{ borderColor: theme.node.stroke }}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-2">
+                                <span className="shrink-0 text-sm font-medium leading-5">WorkBuddy 桌面助理</span>
+                                <span
+                                    className="inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] leading-4"
+                                    style={{
+                                        borderColor: wbOnline ? "#16a34a" : wbOnline === false ? "#d97706" : theme.node.stroke,
+                                        color: wbOnline ? "#16a34a" : wbOnline === false ? "#d97706" : theme.node.muted,
+                                    }}
+                                >
+                                    <span
+                                        className="size-1.5 shrink-0 rounded-full"
+                                        style={{ background: wbOnline ? "#16a34a" : wbOnline === false ? "#d97706" : theme.node.muted }}
+                                    />
+                                    <span className="truncate">{wbChecking ? "检测中..." : wbOnline ? "桌面助理在线" : wbOnline === false ? "未检测到运行" : "待配置"}</span>
+                                </span>
+                            </div>
+                            <div className="mt-1 text-xs leading-5" style={{ color: theme.node.muted }}>
+                                配置 WorkBuddy Access Token 即可直连本机正在运行的 WorkBuddy 桌面端助理，享受双向智能协同。
+                            </div>
+                        </div>
+                        <Button className="!h-8 !px-3" icon={<RefreshCw className={`size-3.5 ${wbChecking ? "animate-spin" : ""}`} />} onClick={() => void handleCheckWbStatus()} disabled={!connected}>
+                            刷新状态
+                        </Button>
+                    </div>
+                    <div className="mt-3 grid gap-2.5">
+                        <label className="grid gap-1.5">
+                            <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: theme.node.muted }}>
+                                <KeyRound className="size-3.5" />
+                                WorkBuddy Access Token
+                                <span className="font-normal opacity-70">open.workbuddy.cn</span>
+                            </span>
+                            <Input.Password
+                                size="large"
+                                prefix={<KeyRound className="mr-1 size-4" style={{ color: theme.node.faint }} />}
+                                value={wbToken}
+                                onChange={(event) => setWbToken(event.target.value)}
+                                placeholder="填入在 WorkBuddy 开放平台生成的 Access Token"
+                            />
+                        </label>
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <span className="text-[11px]" style={{ color: theme.node.muted }}>
+                                权限需求：user.localassistant.readable, user.localassistant.invokable
+                            </span>
+                            <Button type="primary" className="!h-8 !px-3" loading={wbSaving} onClick={() => void handleSaveWbToken()} disabled={!connected}>
+                                保存配置
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
