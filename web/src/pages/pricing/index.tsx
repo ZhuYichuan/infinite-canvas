@@ -28,7 +28,7 @@ export const CONTACT_INFO = {
         wechatId: "openlts", // 真实微信号
         title: "微信扫码咨询与购买",
         qrPath: "/images/contact/wechat-qr.png",
-        tip: "添加时请备注：【免费镜像】/【伴学更新】/【1对1专家部署】，极速优先通过！",
+        tip: "添加时请备注：【9.9体验包】/【伴学更新】/【1对1专家部署】，极速优先通过！",
     },
     douyin: {
         name: "@同学你好",
@@ -96,7 +96,7 @@ export default function PricingPage() {
 
                 {/* 2. 三大主力方案卡片 (展现交付效果、优势与明确服务边界) */}
                 <div className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-3">
-                    {/* 方案 A: 极速自助体验包 (¥0 永久免费 / 破冰获客) */}
+                    {/* 方案 A: 极速自助体验包 (¥9.9 一次性 / 纯文档自助) */}
                     <div className="relative flex flex-col justify-between rounded-3xl border border-stone-200 bg-background p-6 shadow-sm sm:p-8 dark:border-stone-800">
                         <div>
                             <div className="flex items-center justify-between">
@@ -106,19 +106,19 @@ export default function PricingPage() {
                                     </div>
                                     <h3 className="text-xl font-bold">极速自助体验包</h3>
                                 </div>
-                                <Tag>开源免费</Tag>
+                                <Tag>纯文档自助</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-                                AutoDL 云端镜像与本地便携包双模式，告别从零繁琐配置。适合有一定动手能力的个人探索体验。
+                                AutoDL 云端镜像与本地便携包双模式，告别从零繁琐配置。提供保姆级图文与视频部署排错文档，纯文档自查。
                             </p>
 
                             <div className="mt-5 flex items-baseline gap-1">
-                                <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥0</span>
-                                <span className="text-xs text-stone-500">/ 永久开源免费</span>
+                                <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥9.9</span>
+                                <span className="text-xs text-stone-500">/ 一次性买断镜像与脚本</span>
                             </div>
                             <div className="mt-1 text-xs text-stone-400">
-                                云端算力实报实销（约 1~2 元/时，用多少充多少）
+                                仅提供部署与排错文档，不提供任何人工技术支持
                             </div>
 
                             <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
@@ -130,15 +130,15 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
-                                        <span>2 分钟保姆级视频教程（从开机到出图实录演示）</span>
+                                        <span>保姆级图文与视频部署演示（从开机到出图实录）</span>
+                                    </li>
+                                    <li className="flex items-start gap-1.5">
+                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
+                                        <span>常见报错排查自救指南（网络/端口/显存自查）</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
                                         <span>预装 5 大核心插件与主流精选模型工作流</span>
-                                    </li>
-                                    <li className="flex items-start gap-1.5">
-                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
-                                        <span>进入官方用户交流互助群</span>
                                     </li>
                                 </ul>
                             </div>
@@ -148,7 +148,7 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>零资金门槛，轻薄本/Mac 亦可通过云端秒级上手</span>
+                                        <span>一杯奶茶钱极低门槛，轻薄本/Mac 秒级上手</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
@@ -166,11 +166,11 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span className="font-medium text-amber-700 dark:text-amber-400">100% 个人自助，不提供 1 对 1 人工排错与远程支持</span>
+                                        <span className="font-medium text-amber-700 dark:text-amber-400">纯文档自查模式：不提供任何 1 对 1 人工技术支持与答疑</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>遇脚本网络报错请先查阅视频与排错自查表</span>
+                                        <span>遇脚本或网络报错请完全对照文档自行排查</span>
                                     </li>
                                 </ul>
                             </div>
@@ -180,9 +180,9 @@ export default function PricingPage() {
                             <Button
                                 size="large"
                                 className="w-full !h-11 !font-medium"
-                                onClick={() => openContactModal("极速自助体验包（¥0免费）")}
+                                onClick={() => openContactModal("极速自助体验包（¥9.9）")}
                             >
-                                免费获取镜像与脚本
+                                获取极速体验包（¥9.9）
                             </Button>
                         </div>
                     </div>
@@ -387,7 +387,7 @@ export default function PricingPage() {
                             <thead className="border-b border-stone-100 bg-stone-50/40 text-xs font-semibold text-stone-500 dark:border-stone-800 dark:bg-stone-900/20 dark:text-stone-400">
                                 <tr>
                                     <th className="py-3.5 pl-6 pr-3">对比维度</th>
-                                    <th className="px-3 py-3.5">极速自助版</th>
+                                    <th className="px-3 py-3.5">极速体验包</th>
                                     <th className="px-3 py-3.5 text-blue-600 dark:text-blue-400">创作者年度伴学 (推荐)</th>
                                     <th className="px-3 py-3.5 text-purple-600 dark:text-purple-400">1对1 专家全包</th>
                                 </tr>
@@ -395,7 +395,7 @@ export default function PricingPage() {
                             <tbody className="divide-y divide-stone-100 text-stone-600 dark:divide-stone-800/60 dark:text-stone-300">
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">方案费用</td>
-                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">¥0 永久免费</td>
+                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">¥9.9 一次性买断</td>
                                     <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">¥79 / 全年更新</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">¥299 / 次（赠全年伴学）</td>
                                 </tr>
@@ -407,25 +407,25 @@ export default function PricingPage() {
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">核心交付内容</td>
-                                    <td className="px-3 py-3.5">镜像码 + 拉取脚本 + 保姆视频</td>
+                                    <td className="px-3 py-3.5">镜像码 + 拉取脚本 + 部署排错文档</td>
                                     <td className="px-3 py-3.5 font-semibold text-stone-900 dark:text-stone-100">镜像/脚本 + 1年版本持续更新 + 独家预设库</td>
                                     <td className="px-3 py-3.5">远程端到端调通 + 显存调优 + 赠全年权益</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">技术支持服务</td>
-                                    <td className="px-3 py-3.5 text-stone-400">纯自助（自查文档+群聊交流）</td>
+                                    <td className="px-3 py-3.5 text-stone-400">仅限文档自查（不提供人工技术支持）</td>
                                     <td className="px-3 py-3.5 text-blue-600 dark:text-blue-400">官方群优先答疑，截图协助定位排错</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">1对1 远程代劳协助 + 7天专属技术售后</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">版本更新跟进</td>
-                                    <td className="px-3 py-3.5">自行手动摸索升级</td>
+                                    <td className="px-3 py-3.5">自行对照文档手动升级</td>
                                     <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">团队持续回归测试，推送最新稳定版本</td>
                                     <td className="px-3 py-3.5">同步享有方案 2 全套全年更新权益</td>
                                 </tr>
                                 <tr>
-                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">售后与退款保障</td>
-                                    <td className="px-3 py-3.5">开源免费，无资金风险</td>
+                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">售后与保障</td>
+                                    <td className="px-3 py-3.5">虚拟数字资源，附带完整文档</td>
                                     <td className="px-3 py-3.5">社群持续维护，问题优先响应</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">承诺包跑通包出图，跑不通全额退款</td>
                                 </tr>
@@ -434,19 +434,18 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {/* 4. 为什么基础免费还要提供付费服务？（坦诚告知：关于持续维护与项目生态） */}
+                {/* 4. 为什么极速体验包仅需 9.9 元且不提供人工支持？（坦诚告知：关于人力成本与持续维护） */}
                 <div className="mt-16 rounded-3xl border border-stone-200 bg-stone-50/70 p-6 sm:p-10 dark:border-stone-800 dark:bg-stone-900/50">
                     <div className="mx-auto max-w-3xl text-center">
                         <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-background px-3 py-1 text-xs font-medium text-stone-600 dark:border-stone-700 dark:text-stone-300">
                             <Heart className="size-3.5 text-rose-500 fill-rose-500" />
-                            <span>坦诚告知 · 关于开源免费与增值服务的真心话</span>
+                            <span>坦诚告知 · 关于极低体验价与服务边界的真心话</span>
                         </div>
                         <h2 className="mt-3 text-2xl font-bold tracking-tight text-stone-950 dark:text-stone-100 sm:text-3xl">
-                            既然基础方案免费，为什么还要推出伴学与远程服务？
+                            为什么极速体验包仅需 9.9 元且不提供人工支持？
                         </h2>
                         <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-400">
-                            《无限画布》坚持开源初心，基础镜像与脚本零门槛向所有人开放。但<strong>维护百 G 级全模态镜像有持续的云端存储与流量账单；ComfyUI 生态每周高频更新带来大量破坏性断连，需要持续投入工程师进行真机回归测试；专家的一对一远程更需要付出大量精力与时间。</strong>
-                            通过伴学计划与专业远程服务，让时间宝贵或追求稳定的朋友得到最好保障，收益全额用于支撑开源项目长久迭代，拒绝任何商业牛皮癣广告。
+                            《无限画布》前端代码与文档 100% 保持开源免费。极速体验包以 <strong>9.9 元（一杯奶茶钱）</strong> 的极低门槛提供经过优化的镜像码与脚本，并附带详尽的部署排查文档。<strong>但由于 9.9 元完全无法覆盖工程师一对一排障的人力时间成本，因此该方案严格仅限文档自查、不提供人工答疑支持</strong>；若您需要社群答疑优先响应可选择 ¥79 伴学包，需要专家全程代劳可选择 ¥299 远程服务。
                         </p>
                     </div>
 
@@ -490,30 +489,30 @@ export default function PricingPage() {
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                免费自助版真的不要钱吗？包含哪些内容？
+                                9.9 元极速体验包提供人工技术支持吗？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                完全免费！包含专属 AutoDL 云端镜像分享码、本地便携包一键拉取脚本与 2 分钟保姆级视频教程。我们希望让每一位创作者都能零门槛体验到 ComfyUI 与无限画布的魅力。
+                                <strong>不提供任何人工技术支持</strong>。9.9 元方案为您提供经过严格调优的 AutoDL 镜像分享码、本地一键拉取脚本以及详尽的图文/视频部署排错文档。因价格极低无法覆盖人工答疑排错的人力成本，请您严格对照文档自行处理。若需要群内工程师优先指导请选 ¥79 伴学包，需要远程代劳请选 ¥299 专家部署。
                             </p>
                         </Card>
 
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                既然基础镜像免费，为什么强烈推荐选 ¥79 伴学包？
+                                既然有 9.9 元体验包，为什么强烈推荐选 ¥79 伴学包？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。伴学包由工程师团队持续真机回归测试并更新镜像，同时提供无限画布专属预设库与群内优先答疑，相当于花不到一顿火锅钱，买下一整年的省心和稳定。
+                                开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。9.9 元版本仅包含当前静态镜像与文档，不含后续持续维护；而 ¥79 伴学包由工程师团队持续整年回归测试并推送稳定镜像，同时享有独家预设库与官方群优先答疑指导，更加省心长久。
                             </p>
                         </Card>
 
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                如果我选了免费版，遇到运行报错怎么处理？
+                                如果我买了 9.9 元体验包，遇到部署报错怎么处理？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                随镜像附带了详尽的保姆级视频与《常见报错排查手册》（涵盖 90% 的网络超时、端口占用、显存问题）。因开发者精力有限，免费版无法提供 1 对 1 私聊排错；若您在尝试后希望节省时间或解决疑难环境冲突，可随时升级为 ¥79 伴学群优先答疑 或 ¥299 专家远程服务。
+                                随包附带了保姆级视频与《常见报错排查手册》（涵盖 90% 的网络超时、端口占用、显存爆满等问题）。请先严格对照文档自查排错；若尝试后希望彻底省心，可随时升级为 ¥79 伴学群优先答疑 或 ¥299 专家远程服务。
                             </p>
                         </Card>
 
