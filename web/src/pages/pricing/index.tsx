@@ -16,6 +16,8 @@ import {
     RefreshCw,
     Server,
     Video,
+    Zap,
+    Terminal,
 } from "lucide-react";
 
 import { useCopyText } from "@/hooks/use-copy-text";
@@ -26,7 +28,7 @@ export const CONTACT_INFO = {
         wechatId: "openlts", // 真实微信号
         title: "微信扫码咨询与购买",
         qrPath: "/images/contact/wechat-qr.png",
-        tip: "添加时请备注：【云端镜像】/【本地部署】/【1对1咨询】，极速优先通过！",
+        tip: "添加时请备注：【免费镜像】/【伴学更新】/【1对1专家部署】，极速优先通过！",
     },
     douyin: {
         name: "@同学你好",
@@ -40,7 +42,7 @@ export const CONTACT_INFO = {
 export default function PricingPage() {
     const copyText = useCopyText();
     const [qrModalOpen, setQrModalOpen] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<string>("云端算力镜像包");
+    const [selectedPlan, setSelectedPlan] = useState<string>("创作者伴学与年度更新包（¥79）");
     const [activeContactTab, setActiveContactTab] = useState<"wechat" | "douyin">("wechat");
 
     const openContactModal = (planName: string) => {
@@ -92,51 +94,51 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {/* 2. 三大主力方案卡片 (展现交付效果、优势与缺点) */}
+                {/* 2. 三大主力方案卡片 (展现交付效果、优势与明确服务边界) */}
                 <div className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-3">
-                    {/* 方案 A: 云端算力一键镜像 (主推 / 走量款) */}
-                    <div className="relative flex flex-col justify-between rounded-3xl border-2 border-blue-500 bg-background p-6 shadow-xl ring-1 ring-blue-500/20 sm:p-8 dark:border-blue-400">
-                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-1 text-xs font-semibold text-white shadow-md">
-                            🔥 主力热销 · 80% 创作者首选
-                        </div>
-
+                    {/* 方案 A: 极速自助体验包 (¥0 永久免费 / 破冰获客) */}
+                    <div className="relative flex flex-col justify-between rounded-3xl border border-stone-200 bg-background p-6 shadow-sm sm:p-8 dark:border-stone-800">
                         <div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                                        <Cloud className="size-5" />
+                                    <div className="flex size-9 items-center justify-center rounded-lg bg-stone-500/10 text-stone-700 dark:bg-stone-500/20 dark:text-stone-300">
+                                        <Terminal className="size-5" />
                                     </div>
-                                    <h3 className="text-xl font-bold">云端一键即用镜像</h3>
+                                    <h3 className="text-xl font-bold">极速自助体验包</h3>
                                 </div>
-                                <Tag color="blue">零硬件门槛</Tag>
+                                <Tag>开源免费</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-                                摆脱电脑配置束缚。AutoDL / 算力云一键启动，内置全部插件与大模型，网页直连 5 分钟开跑。
+                                AutoDL 云端镜像与本地便携包双模式，告别从零繁琐配置。适合有一定动手能力的个人探索体验。
                             </p>
 
                             <div className="mt-5 flex items-baseline gap-1">
-                                <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥49</span>
-                                <span className="text-xs text-stone-500">/ 终身镜像与升级</span>
+                                <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥0</span>
+                                <span className="text-xs text-stone-500">/ 永久开源免费</span>
                             </div>
                             <div className="mt-1 text-xs text-stone-400">
-                                算力租金实报实销（便宜卡仅 1~2 元/时，用多少花多少）
+                                云端算力实报实销（约 1~2 元/时，用多少充多少）
                             </div>
 
                             <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
                                 <div className="text-xs font-semibold uppercase tracking-wider text-stone-400">📦 交付效果</div>
                                 <ul className="mt-2 space-y-2 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-start gap-1.5">
-                                        <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
-                                        <span>专属算力云镜像分享码 + 1分钟快速启动指南</span>
+                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
+                                        <span>专属 AutoDL 镜像分享码 + 本地免配包拉取脚本</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
-                                        <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
-                                        <span>预装好 5 大必备插件（kktools、KJNodes、Literals 等）</span>
+                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
+                                        <span>2 分钟保姆级视频教程（从开机到出图实录演示）</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
-                                        <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
-                                        <span>预下好 MiniMax H3、Flux2、Qwen3.5 全套模型与工作流</span>
+                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
+                                        <span>预装 5 大核心插件与主流精选模型工作流</span>
+                                    </li>
+                                    <li className="flex items-start gap-1.5">
+                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
+                                        <span>进入官方用户交流互助群</span>
                                     </li>
                                 </ul>
                             </div>
@@ -146,29 +148,124 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>轻薄本、Mac、iPad 都能流畅出图出视频</span>
+                                        <span>零资金门槛，轻薄本/Mac 亦可通过云端秒级上手</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>无需繁琐配置 Python/CUDA，彻底告别红字报错</span>
+                                        <span>一套代码打通云端与本地，按需随时切换</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>不占用本地硬盘（省下 100GB+ 存储空间）</span>
+                                        <span>内置国内高速源，省去数十小时手动下载折磨</span>
                                     </li>
                                 </ul>
                             </div>
 
                             <div className="mt-4 border-t border-stone-100 pt-4 dark:border-stone-800">
-                                <div className="text-xs font-semibold uppercase tracking-wider text-rose-500">⚠️ 缺点与注意</div>
+                                <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">⚠️ 服务边界与注意</div>
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>需联网使用，无法在无网断网环境下运行</span>
+                                        <span className="font-medium text-amber-700 dark:text-amber-400">100% 个人自助，不提供 1 对 1 人工排错与远程支持</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>需自备算力平台账号（按使用分钟扣除 1~2元/时）</span>
+                                        <span>遇脚本网络报错请先查阅视频与排错自查表</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="mt-8">
+                            <Button
+                                size="large"
+                                className="w-full !h-11 !font-medium"
+                                onClick={() => openContactModal("极速自助体验包（¥0免费）")}
+                            >
+                                免费获取镜像与脚本
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* 方案 B: 创作者伴学与年度更新包 (主推 / 最具性价比款) */}
+                    <div className="relative flex flex-col justify-between rounded-3xl border-2 border-blue-500 bg-background p-6 shadow-xl ring-1 ring-blue-500/20 sm:p-8 dark:border-blue-400">
+                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-1 text-xs font-semibold text-white shadow-md">
+                            🔥 最具性价比 · 80% 创作者首选
+                        </div>
+
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                                        <Sparkles className="size-5" />
+                                    </div>
+                                    <h3 className="text-xl font-bold">创作者年度伴学包</h3>
+                                </div>
+                                <Tag color="blue">省心持续更新</Tag>
+                            </div>
+
+                            <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
+                                专为高频创作与设计师打造。彻底告别 ComfyUI 每周升级导致的红字断连，享一整年环境稳定与新工作流。
+                            </p>
+
+                            <div className="mt-5 flex items-baseline gap-1">
+                                <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥79</span>
+                                <span className="text-xs text-stone-500">/ 全年持续更新与答疑</span>
+                            </div>
+                            <div className="mt-1 text-xs text-stone-400">
+                                不到一顿火锅钱，买下一整年稳定省心的创作环境
+                            </div>
+
+                            <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
+                                <div className="text-xs font-semibold uppercase tracking-wider text-stone-400">📦 交付效果</div>
+                                <ul className="mt-2 space-y-2 text-xs text-stone-600 dark:text-stone-300">
+                                    <li className="flex items-start gap-1.5">
+                                        <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
+                                        <span>包含【极速自助体验包】全部云端镜像与本地包脚本</span>
+                                    </li>
+                                    <li className="flex items-start gap-1.5">
+                                        <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
+                                        <span><strong>未来 1 年 ComfyUI 核心插件及镜像版本持续维护更新</strong></span>
+                                    </li>
+                                    <li className="flex items-start gap-1.5">
+                                        <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
+                                        <span><strong>无限画布独家预设工作流与高品质 Prompt 模板库</strong></span>
+                                    </li>
+                                    <li className="flex items-start gap-1.5">
+                                        <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
+                                        <span><strong>官方优先微信群答疑（脚本执行与报错协助定位）</strong></span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="mt-4 border-t border-stone-100 pt-4 dark:border-stone-800">
+                                <div className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">✅ 核心优势</div>
+                                <ul className="mt-2 space-y-1.5 text-xs text-stone-600 dark:text-stone-300">
+                                    <li className="flex items-center gap-1.5">
+                                        <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+                                        <span>彻底免除“开源节点每周升级就红字报错”的折磨</span>
+                                    </li>
+                                    <li className="flex items-center gap-1.5">
+                                        <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+                                        <span>第一时间体验无限画布最新功能与前沿模型</span>
+                                    </li>
+                                    <li className="flex items-center gap-1.5">
+                                        <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+                                        <span>社群内工程师优先指导，解决脚本与网络异常</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="mt-4 border-t border-stone-100 pt-4 dark:border-stone-800">
+                                <div className="text-xs font-semibold uppercase tracking-wider text-rose-500">⚠️ 服务边界与注意</div>
+                                <ul className="mt-2 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
+                                    <li className="flex items-center gap-1.5">
+                                        <XCircle className="size-3.5 text-stone-400 shrink-0" />
+                                        <span>仅限群内文字与截图协助诊断，不含远程代连操作</span>
+                                    </li>
+                                    <li className="flex items-center gap-1.5">
+                                        <XCircle className="size-3.5 text-stone-400 shrink-0" />
+                                        <span>云端算力平台租金仍按使用实报实销（1~2元/时）</span>
                                     </li>
                                 </ul>
                             </div>
@@ -179,96 +276,9 @@ export default function PricingPage() {
                                 type="primary"
                                 size="large"
                                 className="w-full !h-11 !font-medium"
-                                onClick={() => openContactModal("云端一键即用镜像包")}
+                                onClick={() => openContactModal("创作者伴学与年度更新包（¥79）")}
                             >
-                                立即获取云端镜像
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* 方案 B: 本地免安装整合包 (进阶本地款) */}
-                    <div className="relative flex flex-col justify-between rounded-3xl border border-stone-200 bg-background p-6 shadow-sm sm:p-8 dark:border-stone-800">
-                        <div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex size-9 items-center justify-center rounded-lg bg-stone-500/10 text-stone-700 dark:bg-stone-500/20 dark:text-stone-300">
-                                        <HardDrive className="size-5" />
-                                    </div>
-                                    <h3 className="text-xl font-bold">本地免配置整合包</h3>
-                                </div>
-                                <Tag>离线隐私</Tag>
-                            </div>
-
-                            <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-                                适合电脑硬件高配的玩家。解压即用免安装绿色版，数据 100% 留在本地，无租赁费用。
-                            </p>
-
-                            <div className="mt-5 flex items-baseline gap-1">
-                                <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥99</span>
-                                <span className="text-xs text-stone-500">/ 完整整合包下载</span>
-                            </div>
-                            <div className="mt-1 text-xs text-stone-400">
-                                后续零额外费用，一次解压永久离线使用
-                            </div>
-
-                            <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
-                                <div className="text-xs font-semibold uppercase tracking-wider text-stone-400">📦 交付效果</div>
-                                <ul className="mt-2 space-y-2 text-xs text-stone-600 dark:text-stone-300">
-                                    <li className="flex items-start gap-1.5">
-                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
-                                        <span>百度网盘 / 夸克网盘高速直链下载</span>
-                                    </li>
-                                    <li className="flex items-start gap-1.5">
-                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
-                                        <span>内置独立 Python 3.11、Git 及专属依赖运行库</span>
-                                    </li>
-                                    <li className="flex items-start gap-1.5">
-                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
-                                        <span>一键启动批处理脚本（内置跨域与外部监听参数）</span>
-                                    </li>
-                                </ul>
-                            </div>
-
-                            <div className="mt-4 border-t border-stone-100 pt-4 dark:border-stone-800">
-                                <div className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">✅ 核心优势</div>
-                                <ul className="mt-2 space-y-1.5 text-xs text-stone-600 dark:text-stone-300">
-                                    <li className="flex items-center gap-1.5">
-                                        <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>100% 离线运行，原创商用素材与隐私绝对保密</span>
-                                    </li>
-                                    <li className="flex items-center gap-1.5">
-                                        <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>无每小时算力账单，高频大批量出图最划算</span>
-                                    </li>
-                                    <li className="flex items-center gap-1.5">
-                                        <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>与无限画布本地完全打通，即启即用</span>
-                                    </li>
-                                </ul>
-                            </div>
-
-                            <div className="mt-4 border-t border-stone-100 pt-4 dark:border-stone-800">
-                                <div className="text-xs font-semibold uppercase tracking-wider text-rose-500">⚠️ 缺点与注意</div>
-                                <ul className="mt-2 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
-                                    <li className="flex items-center gap-1.5">
-                                        <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>强依赖本地硬件：需 Windows + Nvidia 独显（建议12G+）</span>
-                                    </li>
-                                    <li className="flex items-center gap-1.5">
-                                        <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>模型包体大（需 80GB~150GB 硬盘空间，下载耗时）</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div className="mt-8">
-                            <Button
-                                size="large"
-                                className="w-full !h-11 !font-medium"
-                                onClick={() => openContactModal("本地免配置整合包")}
-                            >
-                                获取本地整合包
+                                加入创作者伴学计划
                             </Button>
                         </div>
                     </div>
@@ -283,7 +293,7 @@ export default function PricingPage() {
                                     </div>
                                     <h3 className="text-xl font-bold">1对1 专家全包部署</h3>
                                 </div>
-                                <Tag color="purple">省心全包</Tag>
+                                <Tag color="purple">省心全包 · 跑不通退款</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
@@ -295,7 +305,7 @@ export default function PricingPage() {
                                 <span className="text-xs text-stone-500">/ 次（含7天专属技术售后）</span>
                             </div>
                             <div className="mt-1 text-xs text-stone-400">
-                                包本地/局域网调优，跑不通全额退款
+                                承诺包跑通、包测试出图，跑不通 100% 全额退款
                             </div>
 
                             <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
@@ -313,6 +323,10 @@ export default function PricingPage() {
                                         <span className="font-semibold text-purple-600 dark:text-purple-400">•</span>
                                         <span>根据您的实际显存针对性优化参数（防止爆显存 OOM）</span>
                                     </li>
+                                    <li className="flex items-start gap-1.5">
+                                        <span className="font-semibold text-purple-600 dark:text-purple-400">•</span>
+                                        <span><strong>免费赠送方案 2 全套价值 ¥79 的全年更新与独家预设</strong></span>
+                                    </li>
                                 </ul>
                             </div>
 
@@ -329,7 +343,7 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>支持定制多机器局域网共享部署</span>
+                                        <span>支持定制多机器局域网共享部署与私有化咨询</span>
                                     </li>
                                 </ul>
                             </div>
@@ -353,7 +367,7 @@ export default function PricingPage() {
                             <Button
                                 size="large"
                                 className="w-full !h-11 !font-medium"
-                                onClick={() => openContactModal("1对1 专家全包部署")}
+                                onClick={() => openContactModal("1对1 专家全包部署（¥299）")}
                             >
                                 预约专家远程服务
                             </Button>
@@ -373,66 +387,66 @@ export default function PricingPage() {
                             <thead className="border-b border-stone-100 bg-stone-50/40 text-xs font-semibold text-stone-500 dark:border-stone-800 dark:bg-stone-900/20 dark:text-stone-400">
                                 <tr>
                                     <th className="py-3.5 pl-6 pr-3">对比维度</th>
-                                    <th className="px-3 py-3.5 text-blue-600 dark:text-blue-400">云端一键镜像 (推荐)</th>
-                                    <th className="px-3 py-3.5">本地免配整合包</th>
+                                    <th className="px-3 py-3.5">极速自助版</th>
+                                    <th className="px-3 py-3.5 text-blue-600 dark:text-blue-400">创作者年度伴学 (推荐)</th>
                                     <th className="px-3 py-3.5 text-purple-600 dark:text-purple-400">1对1 专家全包</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-stone-100 text-stone-600 dark:divide-stone-800/60 dark:text-stone-300">
                                 <tr>
-                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">电脑硬件要求</td>
-                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">零要求（轻薄本/Mac均可）</td>
-                                    <td className="px-3 py-3.5">高（需 N 卡 12G+ 显存）</td>
-                                    <td className="px-3 py-3.5">视需求（工程师协助评估）</td>
+                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">方案费用</td>
+                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">¥0 永久免费</td>
+                                    <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">¥79 / 全年更新</td>
+                                    <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">¥299 / 次（赠全年伴学）</td>
                                 </tr>
                                 <tr>
-                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">上线速度</td>
-                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">约 3~5 分钟</td>
-                                    <td className="px-3 py-3.5">视网盘下载速度（约1~3小时）</td>
-                                    <td className="px-3 py-3.5">预约时间远程（约1小时）</td>
+                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">运行环境支持</td>
+                                    <td className="px-3 py-3.5">AutoDL 云端 + 本地便携双模式</td>
+                                    <td className="px-3 py-3.5">AutoDL 云端 + 本地便携双模式</td>
+                                    <td className="px-3 py-3.5">工程师按需调优（云端或本地）</td>
                                 </tr>
                                 <tr>
-                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">后续算力开销</td>
-                                    <td className="px-3 py-3.5">实报实销（1~2元/小时）</td>
-                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">¥0（仅消耗电费）</td>
-                                    <td className="px-3 py-3.5">无或实报实销</td>
+                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">核心交付内容</td>
+                                    <td className="px-3 py-3.5">镜像码 + 拉取脚本 + 保姆视频</td>
+                                    <td className="px-3 py-3.5 font-semibold text-stone-900 dark:text-stone-100">镜像/脚本 + 1年版本持续更新 + 独家预设库</td>
+                                    <td className="px-3 py-3.5">远程端到端调通 + 显存调优 + 赠全年权益</td>
                                 </tr>
                                 <tr>
-                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">内置模型与插件</td>
-                                    <td className="px-3 py-3.5">全部预装已配齐</td>
-                                    <td className="px-3 py-3.5">已预置打包好</td>
-                                    <td className="px-3 py-3.5">按需定制下载与优化</td>
+                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">技术支持服务</td>
+                                    <td className="px-3 py-3.5 text-stone-400">纯自助（自查文档+群聊交流）</td>
+                                    <td className="px-3 py-3.5 text-blue-600 dark:text-blue-400">官方群优先答疑，截图协助定位排错</td>
+                                    <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">1对1 远程代劳协助 + 7天专属技术售后</td>
                                 </tr>
                                 <tr>
-                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">数据隐私性</td>
-                                    <td className="px-3 py-3.5">专属云端实例隔离</td>
-                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">100% 离线单机保密</td>
-                                    <td className="px-3 py-3.5">完全留存用户本机</td>
+                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">版本更新跟进</td>
+                                    <td className="px-3 py-3.5">自行手动摸索升级</td>
+                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">团队持续回归测试，推送最新稳定版本</td>
+                                    <td className="px-3 py-3.5">同步享有方案 2 全套全年更新权益</td>
                                 </tr>
                                 <tr>
-                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">技术售后保障</td>
-                                    <td className="px-3 py-3.5">视频教程 + 常见 FAQ</td>
-                                    <td className="px-3 py-3.5">解压文档 + 排错指南</td>
-                                    <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">7 天 1 对 1 专家答疑</td>
+                                    <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">售后与退款保障</td>
+                                    <td className="px-3 py-3.5">开源免费，无资金风险</td>
+                                    <td className="px-3 py-3.5">社群持续维护，问题优先响应</td>
+                                    <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">承诺包跑通包出图，跑不通全额退款</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                {/* 4. 为什么需要适量收费？（坦诚告知：关于镜像存储成本与项目持续运营） */}
+                {/* 4. 为什么基础免费还要提供付费服务？（坦诚告知：关于持续维护与项目生态） */}
                 <div className="mt-16 rounded-3xl border border-stone-200 bg-stone-50/70 p-6 sm:p-10 dark:border-stone-800 dark:bg-stone-900/50">
                     <div className="mx-auto max-w-3xl text-center">
                         <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-background px-3 py-1 text-xs font-medium text-stone-600 dark:border-stone-700 dark:text-stone-300">
                             <Heart className="size-3.5 text-rose-500 fill-rose-500" />
-                            <span>坦诚告知 · 关于收费与项目维护的真心话</span>
+                            <span>坦诚告知 · 关于开源免费与增值服务的真心话</span>
                         </div>
                         <h2 className="mt-3 text-2xl font-bold tracking-tight text-stone-950 dark:text-stone-100 sm:text-3xl">
-                            为什么我们提供镜像和部署需要收取适量费用？
+                            既然基础方案免费，为什么还要推出伴学与远程服务？
                         </h2>
                         <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-400">
-                            《无限画布》前端代码与文档 100% 保持开源免费。但<strong>维护开箱即用的云端镜像与百 G 大模型并非零成本</strong>。
-                            没有持续的费用支持，云端镜像随时会因欠费被存储厂商清理，项目也无法得到持续的精力投入与维护迭代。
+                            《无限画布》坚持开源初心，基础镜像与脚本零门槛向所有人开放。但<strong>维护百 G 级全模态镜像有持续的云端存储与流量账单；ComfyUI 生态每周高频更新带来大量破坏性断连，需要持续投入工程师进行真机回归测试；专家的一对一远程更需要付出大量精力与时间。</strong>
+                            通过伴学计划与专业远程服务，让时间宝贵或追求稳定的朋友得到最好保障，收益全额用于支撑开源项目长久迭代，拒绝任何商业牛皮癣广告。
                         </p>
                     </div>
 
@@ -451,7 +465,7 @@ export default function PricingPage() {
                             <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
                                 <RefreshCw className="size-5" />
                             </div>
-                            <h3 className="mt-3 text-sm font-bold text-stone-900 dark:text-stone-100">2. ComfyUI 频繁更新与破坏性断连</h3>
+                            <h3 className="mt-3 text-sm font-bold text-stone-900 dark:text-stone-100">2. ComfyUI 频繁破坏性更新</h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
                                 开源 AI 社区日新月异，ComfyUI 官方、底层 PyTorch 与第三方插件每周都在升级，极易造成旧工作流红字报错。我们需要持续投入真机环境进行回归测试、修补兼容性，并重制稳定镜像。
                             </p>
@@ -476,10 +490,30 @@ export default function PricingPage() {
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                为什么云端 GPU 只要 1~2 块钱一小时？
+                                免费自助版真的不要钱吗？包含哪些内容？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                我们对接的是国内主流的弹性 GPU 算力平台（如 AutoDL 等）。平台采用按使用分钟计费模式，不用时随时关机停止计费。跑几百张图通常只需几十分钟，折合下来成本极其低廉，相比自己花 1.5 万元买高端显卡更划算。
+                                完全免费！包含专属 AutoDL 云端镜像分享码、本地便携包一键拉取脚本与 2 分钟保姆级视频教程。我们希望让每一位创作者都能零门槛体验到 ComfyUI 与无限画布的魅力。
+                            </p>
+                        </Card>
+
+                        <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
+                            <h3 className="flex items-center gap-2 text-base font-semibold">
+                                <HelpCircle className="size-4 text-blue-500" />
+                                既然基础镜像免费，为什么强烈推荐选 ¥79 伴学包？
+                            </h3>
+                            <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                                开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。伴学包由工程师团队持续真机回归测试并更新镜像，同时提供无限画布专属预设库与群内优先答疑，相当于花不到一顿火锅钱，买下一整年的省心和稳定。
+                            </p>
+                        </Card>
+
+                        <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
+                            <h3 className="flex items-center gap-2 text-base font-semibold">
+                                <HelpCircle className="size-4 text-blue-500" />
+                                如果我选了免费版，遇到运行报错怎么处理？
+                            </h3>
+                            <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                                随镜像附带了详尽的保姆级视频与《常见报错排查手册》（涵盖 90% 的网络超时、端口占用、显存问题）。因开发者精力有限，免费版无法提供 1 对 1 私聊排错；若您在尝试后希望节省时间或解决疑难环境冲突，可随时升级为 ¥79 伴学群优先答疑 或 ¥299 专家远程服务。
                             </p>
                         </Card>
 
@@ -489,17 +523,7 @@ export default function PricingPage() {
                                 我是苹果 Mac 电脑（M1/M2/M3），能不能用？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                强烈推荐选<strong>【云端一键镜像】</strong>方案！Mac 电脑本地跑 ComfyUI 大模型速度较慢且不支持诸多 CUDA 加速节点；通过云端镜像，Mac 只需要打开浏览器即可远程享用满血 Nvidia 显卡算力，体验丝滑流畅。
-                            </p>
-                        </Card>
-
-                        <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
-                            <h3 className="flex items-center gap-2 text-base font-semibold">
-                                <HelpCircle className="size-4 text-blue-500" />
-                                购买了云端镜像后，如果不会操作怎么办？
-                            </h3>
-                            <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                随镜像附带保姆级图文与视频指引，流程仅需 3 步：复制代码 ➔ 创建算力实例 ➔ 网页填入连接地址。若遇到任何网络或连接阻碍，微信客服均会提供排查支持。
+                                强烈推荐！Mac 电脑本地跑 ComfyUI 大模型速度较慢且不支持诸多 CUDA 加速节点；通过我们的 AutoDL 云端镜像，Mac 只需要打开浏览器即可远程享用 24G 顶级 Nvidia 显卡算力，体验丝滑流畅。
                             </p>
                         </Card>
 
@@ -513,13 +537,13 @@ export default function PricingPage() {
                             </p>
                         </Card>
 
-                        <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40 md:col-span-2">
+                        <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                这个项目是开源的，为什么还要收取镜像和部署费用？
+                                为什么云端 GPU 只要 1~2 块钱一小时？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                《无限画布》的前端代码、架构文档和使用手册完全开源免费开放给所有人。我们收费的唯一原因在于：<strong>云端存储一个包含 MiniMax、Flux、Qwen 等全套百 G 模型的预装镜像，每个月都需要持续向云平台缴纳昂贵的存储费与分发账单</strong>。若完全没有任何收入支撑，镜像会因欠费随时被平台清理删除，开发者也无法持续跟进 ComfyUI 的新版本适配与 BUG 修复。适度收费是“以服务养项目”，让这个好用的工具能够长久活下去、持续为大家提供稳定的创作体验。
+                                我们对接的是国内主流的弹性 GPU 算力平台（如 AutoDL 等）。平台采用按使用分钟计费模式，不用时随时关机停止计费。跑几百张图通常只需几十分钟，折合下来成本极其低廉，相比自己花 1.5 万元买高端显卡更划算。
                             </p>
                         </Card>
                     </div>
