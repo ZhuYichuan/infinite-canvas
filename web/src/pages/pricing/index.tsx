@@ -115,10 +115,14 @@ export default function PricingPage() {
 
                             <div className="mt-5 flex items-baseline gap-1">
                                 <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥9.9</span>
-                                <span className="text-xs text-stone-500">/ 一次性买断镜像与脚本</span>
+                                <span className="text-xs text-stone-500">/ 象征性分摊镜像存储费</span>
                             </div>
                             <div className="mt-1 text-xs text-stone-400">
                                 仅提供部署与排错文档，不提供任何人工技术支持
+                            </div>
+
+                            <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                                💡 <strong>为什么收 9.9 元？</strong> 包含百 G 大模型的云镜像每天都在产生存储租金。若不收费用，镜像会因欠费被平台直接清理删除，因此必须象征性收取一点费用分摊存储成本，保障镜像长期存活。
                             </div>
 
                             <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
@@ -442,10 +446,10 @@ export default function PricingPage() {
                             <span>坦诚告知 · 关于极低体验价与服务边界的真心话</span>
                         </div>
                         <h2 className="mt-3 text-2xl font-bold tracking-tight text-stone-950 dark:text-stone-100 sm:text-3xl">
-                            为什么极速体验包仅需 9.9 元且不提供人工支持？
+                            为什么极速体验包要收 9.9 元？为什么不提供人工支持？
                         </h2>
                         <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-400">
-                            《无限画布》前端代码与文档 100% 保持开源免费。极速体验包以 <strong>9.9 元（一杯奶茶钱）</strong> 的极低门槛提供经过优化的镜像码与脚本，并附带详尽的部署排查文档。<strong>但由于 9.9 元完全无法覆盖工程师一对一排障的人力时间成本，因此该方案严格仅限文档自查、不提供人工答疑支持</strong>；若您需要社群答疑优先响应可选择 ¥79 伴学包，需要专家全程代劳可选择 ¥299 远程服务。
+                            《无限画布》前端代码与文档 100% 保持开源免费。极速体验包之所以收取 9.9 元，是因为<strong>云端一个包含 MiniMax、Flux 等百 G 模型的预装镜像，平台每天都在扣除高昂的存储租金；如果不收费用，镜像就会因欠费被平台直接清理销毁，大家也将无法使用。因此必须象征性收取一点费用分摊存储成本，以维持镜像长期存活。</strong>同时，由于 9.9 元纯属象征性成本分摊、完全无法覆盖工程师一对一排障的人力时间成本，因此该方案严格仅限文档自查、不提供人工答疑支持；若您需要社群优先答疑请选 ¥79 伴学包，需要专家全程代劳请选 ¥299 远程服务。
                         </p>
                     </div>
 
@@ -489,10 +493,10 @@ export default function PricingPage() {
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                9.9 元极速体验包提供人工技术支持吗？
+                                为什么极速体验包要收取 9.9 元？提供人工支持吗？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                <strong>不提供任何人工技术支持</strong>。9.9 元方案为您提供经过严格调优的 AutoDL 镜像分享码、本地一键拉取脚本以及详尽的图文/视频部署排错文档。因价格极低无法覆盖人工答疑排错的人力成本，请您严格对照文档自行处理。若需要群内工程师优先指导请选 ¥79 伴学包，需要远程代劳请选 ¥299 专家部署。
+                                <strong>核心是为了维持镜像存活，不提供人工技术支持</strong>。云端存储一个包含全套百 G 模型与插件的预装镜像，平台每天都在扣除固定的存储费用；如果不收费用，镜像会因欠费被平台直接清理删除。9.9 元纯属象征性分摊长期存储租金，让大家随时有一键可用的镜像。同时因价格极低无法覆盖人工排查时间成本，仅附带全套详尽文档供自查，不提供 1 对 1 人工排障。若需人工指导请选 ¥79 伴学包，需远程代劳请选 ¥299 专家部署。
                             </p>
                         </Card>
 
