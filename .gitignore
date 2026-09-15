@@ -12,6 +12,7 @@ web/dist
 
 **/dist
 web/public/plugins
+*.zip
 plugins/canvas/*/dist
 plugins/canvas/*/node_modules
 web/public/plugins
