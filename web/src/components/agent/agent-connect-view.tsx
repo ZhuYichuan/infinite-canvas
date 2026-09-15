@@ -1,14 +1,13 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { App, Button, Input, Tooltip } from "antd";
 import copyToClipboard from "copy-to-clipboard";
-import { Bot, Copy, KeyRound, Link2, PlugZap, RefreshCw } from "lucide-react";
+import { Bot, Copy, KeyRound, Link2, PlugZap, RefreshCw, Terminal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { fetchWorkbuddyConfig, fetchWorkbuddyStatus, saveWorkbuddyConfig } from "@/services/api/canvas-agent";
 
-const AGENT_PLUGIN_REMOVE_COMMAND = "codex plugin remove infinite-canvas";
-const AGENT_MCP_REMOVE_COMMAND = "codex mcp remove infinite-canvas";
+const LOCAL_AGENT_COMMAND = "npx -y @zhuyichuan/canvas-agent";
 
 export function AgentConnectView({
     theme,
@@ -87,37 +86,14 @@ export function AgentConnectView({
         }
     };
 
-    const steps = [{ title: t("agent.connect.pluginTitle"), text: t("agent.connect.pluginText") }, { title: t("agent.connect.directTitle"), text: t("agent.connect.directText"), command: "npx -y @zhuyichuan/canvas-agent" }];
     const statusText = connectError ? t("agent.status.failed") : connected ? activity : enabled ? t("agent.status.connecting") : t("agent.status.disconnected");
     const statusColor = connectError ? "#dc2626" : connected ? "#16a34a" : enabled ? "#d97706" : theme.node.muted;
+
     const copyCommand = (command: string) => {
         copyToClipboard(command);
         message.success(t("agent.connect.commandCopied"));
     };
-    const codexPluginReminder = (
-        <div className="rounded-lg border px-3 py-2.5 text-xs leading-5" style={{ borderColor: theme.node.stroke, color: theme.node.muted }}>
-            <div className="font-medium" style={{ color: theme.node.text }}>
-                {t("agent.connect.pluginReminder")}
-            </div>
-            <div className="mt-1">{t("agent.connect.pluginReminderText")}</div>
-            <div className="mt-2 grid gap-1.5">
-                {[
-                    [t("agent.connect.removePlugin"), AGENT_PLUGIN_REMOVE_COMMAND],
-                    [t("agent.connect.removeMcp"), AGENT_MCP_REMOVE_COMMAND],
-                ].map(([label, command]) => (
-                    <div key={command} className="flex items-center gap-2 rounded-md border bg-transparent px-2 py-1.5" style={{ borderColor: theme.node.stroke, color: theme.node.text }}>
-                        <span className="shrink-0 text-[11px]" style={{ color: theme.node.muted }}>
-                            {label}
-                        </span>
-                        <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-[11px] leading-5">{command}</code>
-                        <Tooltip title={t("agent.connect.copyCommand")}>
-                            <Button size="small" type="text" className="!h-6 !w-6 !min-w-6" icon={<Copy className="size-3.5" />} onClick={() => copyCommand(command)} />
-                        </Tooltip>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
+
     return (
         <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
             <div className="space-y-4">
@@ -127,31 +103,64 @@ export function AgentConnectView({
                         {t("agent.connect.description")}
                     </div>
                 </div>
-                <div className="space-y-2">
-                    {steps.map((step, index) => {
-                        const command = "command" in step ? step.command : "";
-                        return (
-                            <Fragment key={step.title}>
-                                <div className="rounded-lg px-3 py-2.5">
-                                    <div className="text-sm font-medium leading-5">{step.title}</div>
-                                    <div className="mt-1 text-xs leading-5" style={{ color: theme.node.muted }}>
-                                        {step.text}
-                                    </div>
-                                    {command ? (
-                                        <div className="mt-2 flex items-center gap-2 rounded-md border bg-transparent px-2 py-1.5" style={{ borderColor: theme.node.stroke, color: theme.node.text }}>
-                                            <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-[11px] leading-5">{command}</code>
-                                            <Tooltip title={t("agent.connect.copyCommand")}>
-                                                <Button size="small" type="text" className="!h-6 !w-6 !min-w-6" icon={<Copy className="size-3.5" />} onClick={() => copyCommand(command)} />
-                                            </Tooltip>
-                                        </div>
-                                    ) : null}
-                                </div>
-                                {index === 0 ? codexPluginReminder : null}
-                            </Fragment>
-                        );
-                    })}
+
+                {/* 1. WorkBuddy 桌面助理配置卡片 */}
+                <div className="rounded-lg border p-3.5" style={{ borderColor: theme.node.stroke }}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-2">
+                                <Bot className="size-4 shrink-0" />
+                                <span className="shrink-0 text-sm font-medium leading-5">WorkBuddy 桌面助理</span>
+                                <span
+                                    className="inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] leading-4"
+                                    style={{
+                                        borderColor: wbOnline ? "#16a34a" : wbOnline === false ? "#d97706" : theme.node.stroke,
+                                        color: wbOnline ? "#16a34a" : wbOnline === false ? "#d97706" : theme.node.muted,
+                                    }}
+                                >
+                                    <span
+                                        className="size-1.5 shrink-0 rounded-full"
+                                        style={{ background: wbOnline ? "#16a34a" : wbOnline === false ? "#d97706" : theme.node.muted }}
+                                    />
+                                    <span className="truncate">{wbChecking ? "检测中..." : wbOnline ? "桌面助理在线" : wbOnline === false ? "未检测到运行" : "待配置"}</span>
+                                </span>
+                            </div>
+                            <div className="mt-1 text-xs leading-5" style={{ color: theme.node.muted }}>
+                                配置 WorkBuddy Access Token 即可直连本机正在运行的 WorkBuddy 桌面端助理，享受双向智能协同。
+                            </div>
+                        </div>
+                        <Button className="!h-8 !px-3" icon={<RefreshCw className={`size-3.5 ${wbChecking ? "animate-spin" : ""}`} />} onClick={() => void handleCheckWbStatus()} disabled={!connected}>
+                            刷新状态
+                        </Button>
+                    </div>
+                    <div className="mt-3 grid gap-2.5">
+                        <label className="grid gap-1.5">
+                            <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: theme.node.muted }}>
+                                <KeyRound className="size-3.5" />
+                                WorkBuddy Access Token
+                                <span className="font-normal opacity-70">open.workbuddy.cn</span>
+                            </span>
+                            <Input.Password
+                                size="large"
+                                prefix={<KeyRound className="mr-1 size-4" style={{ color: theme.node.faint }} />}
+                                value={wbToken}
+                                onChange={(event) => setWbToken(event.target.value)}
+                                placeholder="填入在 WorkBuddy 开放平台生成的 Access Token"
+                            />
+                        </label>
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <span className="text-[11px]" style={{ color: theme.node.muted }}>
+                                权限需求：user.localassistant.readable, user.localassistant.invokable
+                            </span>
+                            <Button type="primary" className="!h-8 !px-3" loading={wbSaving} onClick={() => void handleSaveWbToken()} disabled={!connected}>
+                                保存配置
+                            </Button>
+                        </div>
+                    </div>
                 </div>
-                <div className="rounded-lg border p-3" style={{ borderColor: theme.node.stroke }}>
+
+                {/* 2. 本地 Canvas Agent 桥接服务连接卡片 */}
+                <div className="rounded-lg border p-3.5" style={{ borderColor: theme.node.stroke }}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 items-center gap-2">
@@ -203,56 +212,23 @@ export function AgentConnectView({
                     </div>
                 </div>
 
-                <div className="rounded-lg border p-3" style={{ borderColor: theme.node.stroke }}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                            <div className="flex min-w-0 items-center gap-2">
-                                <span className="shrink-0 text-sm font-medium leading-5">WorkBuddy 桌面助理</span>
-                                <span
-                                    className="inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] leading-4"
-                                    style={{
-                                        borderColor: wbOnline ? "#16a34a" : wbOnline === false ? "#d97706" : theme.node.stroke,
-                                        color: wbOnline ? "#16a34a" : wbOnline === false ? "#d97706" : theme.node.muted,
-                                    }}
-                                >
-                                    <span
-                                        className="size-1.5 shrink-0 rounded-full"
-                                        style={{ background: wbOnline ? "#16a34a" : wbOnline === false ? "#d97706" : theme.node.muted }}
-                                    />
-                                    <span className="truncate">{wbChecking ? "检测中..." : wbOnline ? "桌面助理在线" : wbOnline === false ? "未检测到运行" : "待配置"}</span>
-                                </span>
-                            </div>
-                            <div className="mt-1 text-xs leading-5" style={{ color: theme.node.muted }}>
-                                配置 WorkBuddy Access Token 即可直连本机正在运行的 WorkBuddy 桌面端助理，享受双向智能协同。
-                            </div>
-                        </div>
-                        <Button className="!h-8 !px-3" icon={<RefreshCw className={`size-3.5 ${wbChecking ? "animate-spin" : ""}`} />} onClick={() => void handleCheckWbStatus()} disabled={!connected}>
-                            刷新状态
-                        </Button>
+                {/* 3. 启动本地服务引导 */}
+                <div className="rounded-lg border p-3.5" style={{ borderColor: theme.node.stroke }}>
+                    <div className="flex items-center gap-2">
+                        <Terminal className="size-4 shrink-0" />
+                        <div className="text-sm font-medium leading-5">{t("agent.connect.directTitle")}</div>
                     </div>
-                    <div className="mt-3 grid gap-2.5">
-                        <label className="grid gap-1.5">
-                            <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: theme.node.muted }}>
-                                <KeyRound className="size-3.5" />
-                                WorkBuddy Access Token
-                                <span className="font-normal opacity-70">open.workbuddy.cn</span>
-                            </span>
-                            <Input.Password
-                                size="large"
-                                prefix={<KeyRound className="mr-1 size-4" style={{ color: theme.node.faint }} />}
-                                value={wbToken}
-                                onChange={(event) => setWbToken(event.target.value)}
-                                placeholder="填入在 WorkBuddy 开放平台生成的 Access Token"
-                            />
-                        </label>
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                            <span className="text-[11px]" style={{ color: theme.node.muted }}>
-                                权限需求：user.localassistant.readable, user.localassistant.invokable
-                            </span>
-                            <Button type="primary" className="!h-8 !px-3" loading={wbSaving} onClick={() => void handleSaveWbToken()} disabled={!connected}>
-                                保存配置
-                            </Button>
-                        </div>
+                    <div className="mt-1 text-xs leading-5" style={{ color: theme.node.muted }}>
+                        {t("agent.connect.directText")}
+                    </div>
+                    <div className="mt-2.5 flex items-center gap-2 rounded-md border bg-transparent px-2 py-1.5" style={{ borderColor: theme.node.stroke, color: theme.node.text }}>
+                        <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-[11px] leading-5">{LOCAL_AGENT_COMMAND}</code>
+                        <Tooltip title={t("agent.connect.copyCommand")}>
+                            <Button size="small" type="text" className="!h-6 !w-6 !min-w-6" icon={<Copy className="size-3.5" />} onClick={() => copyCommand(LOCAL_AGENT_COMMAND)} />
+                        </Tooltip>
+                    </div>
+                    <div className="mt-2 text-[11px] leading-4" style={{ color: theme.node.muted }}>
+                        提示：在 WorkBuddy 连接器中心安装 Infinite Canvas 连接器后，亦可自动按需启动。
                     </div>
                 </div>
             </div>

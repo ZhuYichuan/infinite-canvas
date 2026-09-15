@@ -335,7 +335,7 @@ function logTitle(fallback: string, value: unknown) {
     if (target.includes("mcp") || target.includes("rmcp")) return "MCP";
     if (target.includes("shell")) return i18n.t("agent.logs.terminal");
     if (target.includes("state_db")) return i18n.t("agent.logs.conversationStorage");
-    return "Codex";
+    return "WorkBuddy";
 }
 
 function logTime(fallback: string, value: unknown) {
