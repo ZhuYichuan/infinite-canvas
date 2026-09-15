@@ -5,6 +5,10 @@ description: 当前版本已实现但仍需人工验证的变更项
 
 # 待测试
 
+- 更新线上站点默认地址为 `https://canvas.imihoo.com`：
+  - **默认浏览器唤起地址**：`canvas-agent` 的 `canvas_open` 工具在未传入自定义 URL 或环境变量时，默认线上站点地址由 `https://canvas.best` 更新为 `https://canvas.imihoo.com`；
+  - **文档与插件配置同步**：文档（Demo 链接、导航配置）、Codex 插件说明与技能描述中的官方站点链接全面切换为 `https://canvas.imihoo.com`。
+
 - WorkBuddy 双向生态接入（连接器与画布侧边栏）：
   - **连接器工程包与元信息**：创建 `plugins/workbuddy-connector/`，提供符合规范的 `connector-meta.json`、`mcp.json`、`icon.svg` 与 `skills/canvas/SKILL.md`，支持直接打包为 zip 并上架 WorkBuddy 开放平台；
   - **包名与自适应启动支持**：`canvas-agent` 包名变更为 `@zhuyichuan/canvas-agent`，新增 `canvas_open` 跨平台浏览器唤起工具（自动追加 `#agentUrl=...&agentToken=...`），并在 MCP 运行模式下支持自动唤醒本地 HTTP 守护进程；
