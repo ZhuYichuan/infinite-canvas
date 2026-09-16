@@ -95,3 +95,129 @@ export function normalizeConnection(
             : [first.id, second.id];
     return validateInputConnection(fromNodeId, toNodeId, nodes, connections);
 }
+
+/**
+ * 检查节点是否与指定的组相交或被其包含（判定标准：节点中心落在组内）
+ */
+export function isNodeEnclosedInGroup(node: CanvasNodeData, group: CanvasNodeData): boolean {
+    if (node.id === group.id || node.type === CanvasNodeType.Group) return false;
+    const centerX = node.position.x + node.width / 2;
+    const centerY = node.position.y + node.height / 2;
+    return (
+        centerX >= group.position.x &&
+        centerX <= group.position.x + group.width &&
+        centerY >= group.position.y &&
+        centerY <= group.position.y + group.height
+    );
+}
+
+/**
+ * 根据一组目标节点计算包围该组节点的 Group 容器参数（带 padding）
+ */
+export function calculateGroupBoundsForNodes(
+    nodes: CanvasNodeData[],
+    padX = 36,
+    padTop = 44,
+    padBottom = 36,
+): { x: number; y: number; width: number; height: number } {
+    const bounds = nodeBounds(nodes);
+    return {
+        x: bounds.left - padX,
+        y: bounds.top - padTop,
+        width: Math.max(bounds.right - bounds.left + padX * 2, 280),
+        height: Math.max(bounds.bottom - bounds.top + padTop + padBottom, 200),
+    };
+}
+
+/**
+ * 调整指定组节点的尺寸与位置，使其紧密自适应包裹组内所有子节点
+ */
+export function fitGroupToEnclosedChildren(
+    groupId: string,
+    nodes: CanvasNodeData[],
+    padX = 36,
+    padTop = 44,
+    padBottom = 36,
+): CanvasNodeData[] {
+    const group = nodes.find((n) => n.id === groupId && n.type === CanvasNodeType.Group);
+    if (!group) return nodes;
+    const children = nodes.filter((n) => n.metadata?.groupId === groupId);
+    if (!children.length) return nodes;
+
+    const newBounds = calculateGroupBoundsForNodes(children, padX, padTop, padBottom);
+    return nodes.map((node) => {
+        if (node.id !== groupId) return node;
+        return {
+            ...node,
+            position: { x: newBounds.x, y: newBounds.y },
+            width: newBounds.width,
+            height: newBounds.height,
+        };
+    });
+}
+
+/**
+ * 一键吸附：将几何位置落在指定组内的所有非组节点归入该组
+ */
+export function captureEnclosedNodesIntoGroup(
+    groupId: string,
+    nodes: CanvasNodeData[],
+): { nextNodes: CanvasNodeData[]; capturedCount: number } {
+    const group = nodes.find((n) => n.id === groupId && n.type === CanvasNodeType.Group);
+    if (!group) return { nextNodes: nodes, capturedCount: 0 };
+
+    let capturedCount = 0;
+    const nextNodes = nodes.map((node) => {
+        if (node.type === CanvasNodeType.Group || node.id === groupId) return node;
+        if (isNodeEnclosedInGroup(node, group)) {
+            if (node.metadata?.groupId !== groupId) {
+                capturedCount++;
+                return { ...node, metadata: { ...node.metadata, groupId } };
+            }
+        }
+        return node;
+    });
+
+    return { nextNodes, capturedCount };
+}
+
+/**
+ * 解散组：删除指定组节点，并将该组内所有子节点的 groupId 清除
+ */
+export function ungroupCanvasGroup(groupId: string, nodes: CanvasNodeData[]): CanvasNodeData[] {
+    return nodes
+        .filter((node) => node.id !== groupId)
+        .map((node) => {
+            if (node.metadata?.groupId === groupId) {
+                return { ...node, metadata: { ...node.metadata, groupId: undefined } };
+            }
+            return node;
+        });
+}
+
+/**
+ * 组发生移动或缩放后，自动同步节点所属组关系
+ */
+export function syncGroupMembershipAfterTransform(
+    groupNodeId: string,
+    nodes: CanvasNodeData[],
+): CanvasNodeData[] {
+    const group = nodes.find((n) => n.id === groupNodeId && n.type === CanvasNodeType.Group);
+    if (!group) return nodes;
+
+    return nodes.map((node) => {
+        if (node.type === CanvasNodeType.Group) return node;
+        const isInside = isNodeEnclosedInGroup(node, group);
+        if (isInside) {
+            if (node.metadata?.groupId !== group.id) {
+                return { ...node, metadata: { ...node.metadata, groupId: group.id } };
+            }
+        } else if (node.metadata?.groupId === group.id) {
+            // 原先属于该组但缩放或移动后脱离了该组
+            const containingGroupId = findContainingGroupId(node, nodes);
+            return { ...node, metadata: { ...node.metadata, groupId: containingGroupId } };
+        }
+        return node;
+    });
+}
+

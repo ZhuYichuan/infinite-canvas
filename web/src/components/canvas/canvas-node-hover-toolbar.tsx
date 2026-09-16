@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { App, Modal, Segmented, Tooltip } from "antd";
-import { Download, Ellipsis, Eye, FolderPlus, Image as ImageIcon, Info, MessageSquare, Minus, Music2, Plus, RefreshCw, Settings2, Trash2, Upload, Video } from "lucide-react";
+import { CheckSquare, Download, Ellipsis, Eye, FolderPlus, Image as ImageIcon, Info, Maximize2, MessageSquare, Minus, Music2, Plus, RefreshCw, Settings2, Trash2, Ungroup, Upload, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -37,6 +37,10 @@ type CanvasNodeHoverToolbarProps = {
     onRetry: (node: CanvasNodeData) => void;
     onToggleFreeResize: (node: CanvasNodeData) => void;
     onDelete: (node: CanvasNodeData) => void;
+    onSelectGroupChildren?: (node: CanvasNodeData) => void;
+    onCaptureGroupNodes?: (node: CanvasNodeData) => void;
+    onFitGroup?: (node: CanvasNodeData) => void;
+    onUngroup?: (node: CanvasNodeData) => void;
     extraTools?: CanvasNodeToolbarItem[];
 };
 
@@ -74,6 +78,10 @@ export function CanvasNodeHoverToolbar({
     onRetry,
     onToggleFreeResize,
     onDelete,
+    onSelectGroupChildren,
+    onCaptureGroupNodes,
+    onFitGroup,
+    onUngroup,
     extraTools = [],
 }: CanvasNodeHoverToolbarProps) {
     const [quickImageToolIds, setQuickImageToolIds] = useState<ImageQuickToolId[]>(defaultImageQuickToolIds);
@@ -115,6 +123,7 @@ export function CanvasNodeHoverToolbar({
     const hasAudio = isAudio && Boolean(node.metadata?.content);
     const isText = node.type === CanvasNodeType.Text;
     const isConfig = node.type === CanvasNodeType.Config;
+    const isGroup = node.type === CanvasNodeType.Group;
     const canRetry = node.metadata?.status === "error";
     const quickImageToolIdSet = new Set(quickImageToolIds);
     const copyImagePrompt = (target: CanvasNodeData) => {
@@ -140,6 +149,38 @@ export function CanvasNodeHoverToolbar({
     ];
     const canResume = Boolean(node.metadata?.jobId);
     const nodeToolbarTools: ToolbarTool[] = [
+        ...(isGroup
+            ? [
+                  {
+                      id: "selectChildren",
+                      title: t("canvas.node.selectGroupChildren"),
+                      label: t("canvas.node.selectGroupChildren"),
+                      icon: <CheckSquare className="size-4" />,
+                      onClick: () => onSelectGroupChildren?.(node),
+                  },
+                  {
+                      id: "captureNodes",
+                      title: t("canvas.node.captureGroupNodes"),
+                      label: t("canvas.node.captureGroupNodes"),
+                      icon: <FolderPlus className="size-4" />,
+                      onClick: () => onCaptureGroupNodes?.(node),
+                  },
+                  {
+                      id: "fitContent",
+                      title: t("canvas.node.fitGroupContent"),
+                      label: t("canvas.node.fitGroupContent"),
+                      icon: <Maximize2 className="size-4" />,
+                      onClick: () => onFitGroup?.(node),
+                  },
+                  {
+                      id: "ungroup",
+                      title: t("canvas.node.ungroup"),
+                      label: t("canvas.node.ungroup"),
+                      icon: <Ungroup className="size-4" />,
+                      onClick: () => onUngroup?.(node),
+                  },
+              ]
+            : []),
         ...(canRetry
             ? [
                   {

@@ -55,6 +55,7 @@ type CanvasNodeProps = {
     onRetry?: (node: CanvasNodeData) => void;
     onViewImage?: (node: CanvasNodeData, imageId?: string) => void;
     onSelectReference?: (nodeId: string) => void;
+    onSelectGroupChildren?: (nodeId: string) => void;
     onContextMenu: (event: React.MouseEvent, nodeId: string) => void;
 };
 
@@ -120,6 +121,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     onRetry,
     onViewImage,
     onSelectReference,
+    onSelectGroupChildren,
     onContextMenu,
 }: CanvasNodeProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
@@ -384,6 +386,11 @@ export const CanvasNode = React.memo(function CanvasNode({
                     if ((data.type === CanvasNodeType.Image && hasImageContent) || (data.type === CanvasNodeType.Video && hasVideoContent)) {
                         event.stopPropagation();
                         onViewImage?.(data);
+                        return;
+                    }
+                    if (data.type === CanvasNodeType.Group) {
+                        event.stopPropagation();
+                        onSelectGroupChildren?.(data.id);
                         return;
                     }
                     if (data.type !== CanvasNodeType.Text) return;

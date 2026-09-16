@@ -47,7 +47,19 @@ import { usePluginHost } from "@/pages/canvas/hooks/use-plugin-host";
 import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNode, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
 import { applyNodeConfigPatch, audioMetadata, buildAudioGenerationMetadata, buildImageGenerationMetadata, cloneNodeMetadata, createCanvasNode, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-node-factory";
-import { findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, normalizeConnection, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
+import {
+    calculateGroupBoundsForNodes,
+    captureEnclosedNodesIntoGroup,
+    findContainingGroupId,
+    findGroupDropTarget,
+    fitGroupToEnclosedChildren,
+    getConnectionTargetAnchor,
+    isNodeEnclosedInGroup,
+    normalizeConnection,
+    snapNodesIntoGroup,
+    syncGroupMembershipAfterTransform,
+    ungroupCanvasGroup,
+} from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
     buildAngleLabel,
@@ -811,6 +823,118 @@ function InfiniteCanvasPage() {
         [effectiveConfig.canvasImageCount, effectiveConfig.count, effectiveConfig.imageModel, effectiveConfig.model, effectiveConfig.size, getCanvasCenter],
     );
 
+    const groupSelectedNodes = useCallback(() => {
+        const currentNodes = nodesRef.current;
+        const selectedIds = selectedNodeIdsRef.current;
+        const selectedNonGroup = currentNodes.filter((n) => selectedIds.has(n.id) && n.type !== CanvasNodeType.Group);
+
+        if (selectedNonGroup.length > 0) {
+            const bounds = calculateGroupBoundsForNodes(selectedNonGroup);
+            const newGroup = createCanvasNode(CanvasNodeType.Group, { x: bounds.x, y: bounds.y });
+            newGroup.width = bounds.width;
+            newGroup.height = bounds.height;
+
+            setNodes((prev) => {
+                const nextNodes = prev.map((node) => {
+                    if (selectedIds.has(node.id) && node.type !== CanvasNodeType.Group) {
+                        return { ...node, metadata: { ...node.metadata, groupId: newGroup.id } };
+                    }
+                    return node;
+                });
+                return [...nextNodes, newGroup];
+            });
+            setSelectedNodeIds(new Set([newGroup.id]));
+            setSelectedConnectionId(null);
+            message.success(t("canvas.node.groupedSuccess", { count: selectedNonGroup.length }));
+            return newGroup.id;
+        }
+
+        const center = getCanvasCenter();
+        const defaultSize = NODE_DEFAULT_SIZE[CanvasNodeType.Group] || { width: 760, height: 480 };
+        const position = { x: center.x - defaultSize.width / 2, y: center.y - defaultSize.height / 2 };
+        const newGroup = createCanvasNode(CanvasNodeType.Group, position);
+        newGroup.width = defaultSize.width;
+        newGroup.height = defaultSize.height;
+
+        setNodes((prev) => {
+            let captured = 0;
+            const nextNodes = prev.map((node) => {
+                if (node.type === CanvasNodeType.Group) return node;
+                if (isNodeEnclosedInGroup(node, newGroup)) {
+                    captured++;
+                    return { ...node, metadata: { ...node.metadata, groupId: newGroup.id } };
+                }
+                return node;
+            });
+            if (captured > 0) {
+                message.success(t("canvas.node.capturedNodesSuccess", { count: captured }));
+            }
+            return [...nextNodes, newGroup];
+        });
+        setSelectedNodeIds(new Set([newGroup.id]));
+        setSelectedConnectionId(null);
+        return newGroup.id;
+    }, [getCanvasCenter, message, t]);
+
+    const ungroupSelected = useCallback(
+        (targetGroupId?: string) => {
+            const currentNodes = nodesRef.current;
+            const selectedIds = selectedNodeIdsRef.current;
+            const targetIds = targetGroupId
+                ? [targetGroupId]
+                : currentNodes.filter((n) => selectedIds.has(n.id) && n.type === CanvasNodeType.Group).map((n) => n.id);
+
+            if (!targetIds.length) return;
+
+            setNodes((prev) => {
+                let next = prev;
+                for (const gid of targetIds) {
+                    next = ungroupCanvasGroup(gid, next);
+                }
+                return next;
+            });
+            setSelectedNodeIds(new Set());
+            message.success(t("canvas.node.ungroupedSuccess"));
+        },
+        [message, t],
+    );
+
+    const handleCaptureGroupNodes = useCallback(
+        (groupId: string) => {
+            setNodes((prev) => {
+                const { nextNodes, capturedCount } = captureEnclosedNodesIntoGroup(groupId, prev);
+                if (capturedCount > 0) {
+                    message.success(t("canvas.node.capturedNodesSuccess", { count: capturedCount }));
+                } else {
+                    message.info(t("canvas.node.noNewNodesCaptured"));
+                }
+                return nextNodes;
+            });
+        },
+        [message, t],
+    );
+
+    const handleFitGroup = useCallback(
+        (groupId: string) => {
+            setNodes((prev) => fitGroupToEnclosedChildren(groupId, prev));
+            message.success(t("canvas.node.fitGroupSuccess"));
+        },
+        [message, t],
+    );
+
+    const handleSelectGroupChildren = useCallback(
+        (groupId: string) => {
+            const childIds = nodesRef.current.filter((n) => n.metadata?.groupId === groupId).map((n) => n.id);
+            if (childIds.length) {
+                setSelectedNodeIds(new Set(childIds));
+                setSelectedConnectionId(null);
+            } else {
+                message.info(t("canvas.node.noGroupChildren"));
+            }
+        },
+        [message, t],
+    );
+
     const deleteNodes = useCallback(
         (ids: Set<string>) => {
             if (!ids.size) return;
@@ -1306,12 +1430,22 @@ function InfiniteCanvasPage() {
         if (dragRef.current.hasMoved && clientX != null && clientY != null) {
             const movedIds = new Set(initialPositions.map((item) => item.id));
             setNodes((prev) => {
-                const moved = prev.map((node) => {
+                let moved = prev.map((node) => {
                     const initial = initialPositions.find((item) => item.id === node.id);
                     return initial ? { ...node, position: { x: initial.x + dx, y: initial.y + dy } } : node;
                 });
                 const targetGroup = findGroupDropTarget(movedIds, moved);
                 if (targetGroup) return snapNodesIntoGroup(movedIds, moved, targetGroup);
+
+                // 若移动的节点中包含组节点，自动同步该组对画布上其他节点的包含关系
+                const movedGroupIds = moved.filter((n) => movedIds.has(n.id) && n.type === CanvasNodeType.Group).map((n) => n.id);
+                if (movedGroupIds.length > 0) {
+                    for (const gid of movedGroupIds) {
+                        moved = syncGroupMembershipAfterTransform(gid, moved);
+                    }
+                    return moved;
+                }
+
                 return moved.map((node) => {
                     if (!movedIds.has(node.id) || node.type === CanvasNodeType.Group) return node;
                     const groupId = findContainingGroupId(node, moved);
@@ -1588,6 +1722,16 @@ function InfiniteCanvasPage() {
                 return;
             }
 
+            if (isModifierShortcut && !event.altKey && key === "g") {
+                event.preventDefault();
+                if (event.shiftKey) {
+                    ungroupSelected();
+                } else {
+                    groupSelectedNodes();
+                }
+                return;
+            }
+
             if (isModifierShortcut && !event.altKey && key === "c") {
                 event.preventDefault();
                 copySelectedNodes();
@@ -1641,14 +1785,27 @@ function InfiniteCanvasPage() {
         [screenToCanvas, setConnecting],
     );
 
+    const resizingNodeIdRef = useRef<string | null>(null);
+
     const handleNodeResize = useCallback((nodeId: string, width: number, height: number, position?: Position) => {
+        resizingNodeIdRef.current = nodeId;
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, width, height, position: position || node.position } : node)));
     }, []);
 
     const handleNodeResizeStart = useCallback(() => {
         setIsNodeResizing(true);
     }, []);
-    const handleNodeResizeEnd = useCallback(() => setIsNodeResizing(false), []);
+    const handleNodeResizeEnd = useCallback(() => {
+        setIsNodeResizing(false);
+        const resizedId = resizingNodeIdRef.current;
+        resizingNodeIdRef.current = null;
+        if (resizedId) {
+            const resizedNode = nodesRef.current.find((n) => n.id === resizedId);
+            if (resizedNode?.type === CanvasNodeType.Group) {
+                setNodes((prev) => syncGroupMembershipAfterTransform(resizedId, prev));
+            }
+        }
+    }, []);
 
     const toggleNodeFreeResize = useCallback((nodeId: string) => {
         setNodes((prev) =>
@@ -3694,6 +3851,7 @@ function InfiniteCanvasPage() {
                             onRetry={handleNodeRetry}
                             onViewImage={handleNodeViewImage}
                             onSelectReference={selectNodeReference}
+                            onSelectGroupChildren={handleSelectGroupChildren}
                             onContextMenu={handleNodeContextMenu}
                         />
                     ))}
@@ -3751,6 +3909,10 @@ function InfiniteCanvasPage() {
                     onRetry={handleNodeRetry}
                     onToggleFreeResize={(node) => toggleNodeFreeResize(node.id)}
                     onDelete={(node) => deleteNodes(new Set([node.id]))}
+                    onSelectGroupChildren={(node) => handleSelectGroupChildren(node.id)}
+                    onCaptureGroupNodes={(node) => handleCaptureGroupNodes(node.id)}
+                    onFitGroup={(node) => handleFitGroup(node.id)}
+                    onUngroup={(node) => ungroupSelected(node.id)}
                 />
 
                 <CanvasToolbar
@@ -3765,7 +3927,7 @@ function InfiniteCanvasPage() {
                     onAddAudio={() => createNode(CanvasNodeType.Audio)}
                     onAddText={() => createNode(CanvasNodeType.Text)}
                     onAddConfig={() => createNode(CanvasNodeType.Config)}
-                    onAddGroup={() => createNode(CanvasNodeType.Group)}
+                    onAddGroup={groupSelectedNodes}
                     onAddExtensionNode={(type) => createNode(type)}
                     onUndo={undoCanvas}
                     onRedo={redoCanvas}
@@ -3785,6 +3947,8 @@ function InfiniteCanvasPage() {
                     <CanvasNodeContextMenu
                         menu={contextMenu}
                         canCaptureVideoFrame={contextMenuNode?.type === CanvasNodeType.Video && Boolean(contextMenuNode.metadata?.content)}
+                        isGroupNode={contextMenuNode?.type === CanvasNodeType.Group}
+                        canGroupSelection={selectedNodeIds.size > 1 || (selectedNodeIds.size === 1 && contextMenuNode?.type !== CanvasNodeType.Group)}
                         onClose={() => setContextMenu(null)}
                         onCaptureVideoFrame={(position) => {
                             if (contextMenu.type !== "node") return;
@@ -3793,6 +3957,26 @@ function InfiniteCanvasPage() {
                         onDuplicate={() => {
                             if (contextMenu.type !== "node") return;
                             duplicateNode(contextMenu.nodeId);
+                            setContextMenu(null);
+                        }}
+                        onGroup={() => {
+                            groupSelectedNodes();
+                            setContextMenu(null);
+                        }}
+                        onUngroup={() => {
+                            if (contextMenuNode) ungroupSelected(contextMenuNode.id);
+                            setContextMenu(null);
+                        }}
+                        onSelectGroupChildren={() => {
+                            if (contextMenuNode) handleSelectGroupChildren(contextMenuNode.id);
+                            setContextMenu(null);
+                        }}
+                        onCaptureGroupNodes={() => {
+                            if (contextMenuNode) handleCaptureGroupNodes(contextMenuNode.id);
+                            setContextMenu(null);
+                        }}
+                        onFitGroup={() => {
+                            if (contextMenuNode) handleFitGroup(contextMenuNode.id);
                             setContextMenu(null);
                         }}
                         onDelete={() => {

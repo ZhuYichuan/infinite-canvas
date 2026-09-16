@@ -25,7 +25,7 @@ export function openUrlInBrowser(targetUrl: string) {
 export function openCanvasInBrowser(options: { mode?: "new" | "recent" | "choose"; url?: string } = {}) {
     const config = loadConfig(true);
     const mode = options.mode || "new";
-    const base = options.url || process.env.CANVAS_WEB_URL || "https://canvas.imihoo.com";
+    const base = options.url || process.env.CANVAS_WEB_URL || process.env.CANVAS_URL || "https://canvas.imihoo.com";
     const cleanBase = base.replace(/\/+$/, "");
     const targetUrl = `${cleanBase}/canvas?mode=${encodeURIComponent(mode)}#agentUrl=${encodeURIComponent(config.url)}&agentToken=${encodeURIComponent(config.token)}`;
     const opened = openUrlInBrowser(targetUrl);
