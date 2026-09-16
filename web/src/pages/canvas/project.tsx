@@ -149,16 +149,21 @@ function CanvasPreviewVideo({ src }: { src: string }) {
 
     useEffect(() => {
         const video = videoRef.current;
-        return () => {
-            if (video) {
-                video.pause();
-                video.removeAttribute("src");
-                video.load();
-            }
-        };
-    }, []);
+        if (!video) return;
 
-    return <video ref={videoRef} src={src} controls autoPlay loop className="max-h-[80vh] max-w-full rounded-xl bg-black object-contain shadow-2xl" />;
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(() => {
+                // Autoplay with sound may be blocked by browser policy until user interacts
+            });
+        }
+
+        return () => {
+            video.pause();
+        };
+    }, [src]);
+
+    return <video ref={videoRef} src={src} controls autoPlay playsInline loop className="max-h-[80vh] max-w-full rounded-xl bg-black object-contain shadow-2xl" />;
 }
 
 function InfiniteCanvasPage() {

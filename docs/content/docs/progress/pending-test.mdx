@@ -7,9 +7,11 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
-- Video Preview Modal Close Playback Termination Fix:
-  - **Explicit Cleanup & Resource Release**: Implemented `CanvasPreviewVideo` with `useEffect` unmount cleanup that explicitly invokes `video.pause()`, removes the `src` attribute, and calls `load()` to prevent background audio looping after modal close;
-  - **Auto-pause on Preview Open & Close**: Pauses canvas node videos when opening preview to prevent simultaneous playback, and cleanly terminates all media playback on canvas when closing the preview modal with `destroyOnClose`.
+- Video Preview Modal and Canvas Playback Stability Fix:
+  - **Retain Source Attribute Across Renders**: Removed DOM `removeAttribute("src")` cleanup which was stripping the video source during React StrictMode mount/cleanup cycles;
+  - **Safe Autoplay with Browser Policy Fallback**: Gracefully catches browser autoplay policy restrictions in `CanvasPreviewVideo` so controls remain fully operational without video load crashes;
+  - **Gesture Continuity in Canvas Play Button**: Changed center play button from conditional unmounting to CSS visibility transition so double-click gestures maintain DOM continuity to reliably open preview modals;
+  - **Explicit muted Property Synchronization**: Added DOM-level synchronization for `video.muted = isMuted` to guarantee compliance with browser autoplay restrictions.
 
 - Default Canvas Image Generation Count Adjustment:
   - **Default Value Updated to 1**: Adjusted `defaultConfig.canvasImageCount` in `useConfigStore` and its rehydration fallback from `3` to `1`, aligning with the single-image baseline for newly created canvas image and configuration nodes.

@@ -31,12 +31,20 @@ export function CanvasVideoPlayer({ nodeId, src, onPreview }: CanvasVideoPlayerP
         setIsPlaying(!video.paused);
     }, []);
 
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.muted = isMuted;
+        }
+    }, [isMuted]);
+
     const handleTogglePlay = useCallback((event: React.MouseEvent) => {
         event.stopPropagation();
         const video = videoRef.current;
         if (!video) return;
         if (video.paused) {
-            void video.play();
+            void video.play().catch((err) => {
+                console.warn("Canvas video play failed:", err);
+            });
         } else {
             video.pause();
         }
@@ -103,20 +111,20 @@ export function CanvasVideoPlayer({ nodeId, src, onPreview }: CanvasVideoPlayerP
                 onEnded={() => setIsPlaying(false)}
             />
 
-            {/* Center play button when paused */}
-            {!isPlaying && (
-                <button
-                    type="button"
-                    className="absolute z-10 flex size-12 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white shadow-xl backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-black/80 active:scale-95"
-                    onClick={handleTogglePlay}
-                    onDoubleClick={handlePreview}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    aria-label={t("canvas.videoPlayer.play")}
-                >
-                    <Play className="size-5 translate-x-0.5 fill-white" />
-                </button>
-            )}
+            {/* Center play button */}
+            <button
+                type="button"
+                className={`absolute z-10 flex size-12 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white shadow-xl backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-black/80 active:scale-95 ${
+                    isPlaying ? "pointer-events-none opacity-0" : "pointer-events-auto opacity-100"
+                }`}
+                onClick={handleTogglePlay}
+                onDoubleClick={handlePreview}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label={t("canvas.videoPlayer.play")}
+            >
+                <Play className="size-5 translate-x-0.5 fill-white" />
+            </button>
 
             {/* Bottom floating control bar */}
             <div
