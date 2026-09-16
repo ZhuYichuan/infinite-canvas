@@ -7,6 +7,10 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Video Preview Modal Close Playback Termination Fix:
+  - **Explicit Cleanup & Resource Release**: Implemented `CanvasPreviewVideo` with `useEffect` unmount cleanup that explicitly invokes `video.pause()`, removes the `src` attribute, and calls `load()` to prevent background audio looping after modal close;
+  - **Auto-pause on Preview Open & Close**: Pauses canvas node videos when opening preview to prevent simultaneous playback, and cleanly terminates all media playback on canvas when closing the preview modal with `destroyOnClose`.
+
 - Default Canvas Image Generation Count Adjustment:
   - **Default Value Updated to 1**: Adjusted `defaultConfig.canvasImageCount` in `useConfigStore` and its rehydration fallback from `3` to `1`, aligning with the single-image baseline for newly created canvas image and configuration nodes.
 

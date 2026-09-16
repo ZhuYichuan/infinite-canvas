@@ -59,6 +59,17 @@ export function CanvasVideoPlayer({ nodeId, src, onPreview }: CanvasVideoPlayerP
         }
     }, []);
 
+    const handlePreview = useCallback(
+        (event?: React.MouseEvent) => {
+            event?.stopPropagation();
+            if (videoRef.current && !videoRef.current.paused) {
+                videoRef.current.pause();
+            }
+            onPreview?.();
+        },
+        [onPreview],
+    );
+
     const showControls = !isPlaying || isHovered || isScrubbing;
 
     return (
@@ -98,6 +109,7 @@ export function CanvasVideoPlayer({ nodeId, src, onPreview }: CanvasVideoPlayerP
                     type="button"
                     className="absolute z-10 flex size-12 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white shadow-xl backdrop-blur-md transition-all duration-200 hover:scale-110 hover:bg-black/80 active:scale-95"
                     onClick={handleTogglePlay}
+                    onDoubleClick={handlePreview}
                     onMouseDown={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
                     aria-label={t("canvas.videoPlayer.play")}
@@ -164,10 +176,7 @@ export function CanvasVideoPlayer({ nodeId, src, onPreview }: CanvasVideoPlayerP
                             <button
                                 type="button"
                                 className="flex size-6 cursor-pointer items-center justify-center rounded-md transition hover:bg-white/20 active:scale-90"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onPreview();
-                                }}
+                                onClick={handlePreview}
                                 title={t("canvas.videoPlayer.preview")}
                             >
                                 <Maximize2 className="size-3.5" />

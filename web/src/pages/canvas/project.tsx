@@ -144,6 +144,23 @@ export default function CanvasPage() {
     return <InfiniteCanvasPage />;
 }
 
+function CanvasPreviewVideo({ src }: { src: string }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        return () => {
+            if (video) {
+                video.pause();
+                video.removeAttribute("src");
+                video.load();
+            }
+        };
+    }, []);
+
+    return <video ref={videoRef} src={src} controls autoPlay loop className="max-h-[80vh] max-w-full rounded-xl bg-black object-contain shadow-2xl" />;
+}
+
 function InfiniteCanvasPage() {
     const { message, modal } = App.useApp();
     const { t } = useTranslation();
@@ -3466,8 +3483,20 @@ function InfiniteCanvasPage() {
         setHoveredNodeId((current) => (current === nodeId ? null : current));
     }, []);
     const handleNodeViewImage = useCallback((node: CanvasNodeData, imageId?: string) => {
+        const canvasVideos = containerRef.current?.querySelectorAll<HTMLVideoElement>("video[data-canvas-video]");
+        canvasVideos?.forEach((v) => {
+            if (!v.paused) v.pause();
+        });
         setPreviewNodeId(node.id);
         setPreviewImageId(imageId || null);
+    }, []);
+    const handleClosePreview = useCallback(() => {
+        const canvasVideos = containerRef.current?.querySelectorAll<HTMLVideoElement>("video[data-canvas-video]");
+        canvasVideos?.forEach((v) => {
+            if (!v.paused) v.pause();
+        });
+        setPreviewNodeId(null);
+        setPreviewImageId(null);
     }, []);
     const handleNodeRetry = useCallback(
         (node: CanvasNodeData) => {
@@ -3796,17 +3825,18 @@ function InfiniteCanvasPage() {
                 {angleNode?.metadata?.content ? <CanvasNodeAngleDialog dataUrl={angleNode.metadata.content} open={Boolean(angleNode)} onClose={() => setAngleNodeId(null)} onConfirm={(params) => void generateAngleNode(angleNode!, params)} /> : null}
 
                 <Modal
-                    title={t("canvas.projectPage.imageDetails")}
+                    title={previewNode?.type === CanvasNodeType.Video ? t("canvas.projectPage.videoDetails") : t("canvas.projectPage.imageDetails")}
                     open={Boolean(previewContent)}
                     centered
-                    onCancel={() => setPreviewNodeId(null)}
+                    destroyOnClose
+                    onCancel={handleClosePreview}
                     footer={null}
                     width="auto"
                     styles={{ body: { padding: 0, display: "flex", justifyContent: "center", alignItems: "center", maxHeight: "80vh" } }}
                 >
                     {previewContent ? (
                         previewNode?.type === CanvasNodeType.Video ? (
-                            <video src={previewContent} controls autoPlay loop className="max-h-[80vh] max-w-full rounded-xl bg-black object-contain shadow-2xl" />
+                            <CanvasPreviewVideo src={previewContent} />
                         ) : (
                             <img src={previewContent} alt={previewNode?.title || t("assets.kinds.image")} style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain" }} />
                         )
