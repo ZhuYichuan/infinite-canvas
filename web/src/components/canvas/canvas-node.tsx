@@ -11,6 +11,7 @@ import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textare
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeText, type Position } from "@/types/canvas";
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { CanvasVideoPlayer } from "./canvas-video-player";
 import { useTranslation } from "react-i18next";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -78,6 +79,7 @@ type NodeContentRendererProps = {
     onRetryBatchImage?: (imageId: string) => void;
     onDeleteBatchImage?: (imageId: string) => void;
     onViewBatchImage?: (imageId: string) => void;
+    onViewMedia?: () => void;
     groupChildCount: number;
 };
 
@@ -379,7 +381,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         if (definition.onDoubleClick(pluginContext)) event.stopPropagation();
                         return;
                     }
-                    if (data.type === CanvasNodeType.Image && hasImageContent) {
+                    if ((data.type === CanvasNodeType.Image && hasImageContent) || (data.type === CanvasNodeType.Video && hasVideoContent)) {
                         event.stopPropagation();
                         onViewImage?.(data);
                         return;
@@ -419,6 +421,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onRetryBatchImage={(imageId) => onRetryBatchImage?.(data, imageId)}
                         onDeleteBatchImage={(imageId) => onDeleteBatchImage?.(data.id, imageId)}
                         onViewBatchImage={(imageId) => onViewImage?.(data, imageId)}
+                        onViewMedia={() => onViewImage?.(data)}
                         groupChildCount={groupChildCount}
                     />
                 </div>
@@ -699,7 +702,7 @@ function EmptyImageContent({ theme }: NodeContentRendererProps) {
     );
 }
 
-function VideoNodeContent({ node, theme }: NodeContentRendererProps) {
+function VideoNodeContent({ node, theme, onViewMedia }: NodeContentRendererProps) {
     const { t } = useTranslation();
     if (!node.metadata?.content)
         return (
@@ -708,7 +711,7 @@ function VideoNodeContent({ node, theme }: NodeContentRendererProps) {
                 <span className="text-sm">{t("canvas.node.emptyVideo")}</span>
             </div>
         );
-    return <video src={node.metadata.content} controls className="h-full w-full rounded-[18px] bg-black object-contain" data-canvas-video={node.id} data-canvas-no-zoom />;
+    return <CanvasVideoPlayer nodeId={node.id} src={node.metadata.content} onPreview={onViewMedia} />;
 }
 
 function AudioNodeContent({ node, theme }: NodeContentRendererProps) {

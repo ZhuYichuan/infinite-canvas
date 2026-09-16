@@ -2,6 +2,8 @@
 
 ## Unreleased
 
++ [优化] 优化画布视频节点交互体验：剥离原生 video controls 控件，避免单击与拖动视频节点时误触发自动播放；引入 CanvasVideoPlayer 定制轻量播放层，提供居中播放按钮、可拖拽进度滑条、时间戳、静音切换与大屏预览功能；播放时控制栏在鼠标悬停时显现并在移出后自动淡出；支持双击视频节点与悬停工具栏「查看视频」调起大屏预览弹窗并完整兼容视频截帧。
+
 + [优化] 彻底下线历史 Codex 插件与相关文档：将文档站独立章节全面替换为 WorkBuddy 连接器（workbuddy-connector），清理 plugins/infinite-canvas 旧插件目录，移除 canvas-agent 启动时的 Codex 提示。
 + [优化] 将线上生产站点默认地址全面更新为 https://canvas.imihoo.com：更新 canvas-agent 浏览器唤起默认地址、Codex 插件与文档全站链接。
 + [优化] 画布侧边栏与 Agent 体验全面纯化为 WorkBuddy 模式：彻底移除残留的 Codex 插件安装提示、插件卸载指令与沙箱权限/模型选择菜单，画布顶栏状态、连接引导及助手气泡全面切换为 WorkBuddy 品牌与文案。

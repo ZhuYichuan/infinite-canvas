@@ -3804,7 +3804,13 @@ function InfiniteCanvasPage() {
                     width="auto"
                     styles={{ body: { padding: 0, display: "flex", justifyContent: "center", alignItems: "center", maxHeight: "80vh" } }}
                 >
-                    {previewContent ? <img src={previewContent} alt={previewNode?.title || t("assets.kinds.image")} style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain" }} /> : null}
+                    {previewContent ? (
+                        previewNode?.type === CanvasNodeType.Video ? (
+                            <video src={previewContent} controls autoPlay loop className="max-h-[80vh] max-w-full rounded-xl bg-black object-contain shadow-2xl" />
+                        ) : (
+                            <img src={previewContent} alt={previewNode?.title || t("assets.kinds.image")} style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain" }} />
+                        )
+                    ) : null}
                 </Modal>
 
                 <Modal

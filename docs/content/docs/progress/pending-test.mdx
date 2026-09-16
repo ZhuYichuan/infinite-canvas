@@ -7,6 +7,13 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Canvas Video Node Playback Interaction and Control Optimization:
+  - **Decouple Node Drag/Select from Video Playback**: Replaced native `<video controls>` with a dedicated `CanvasVideoPlayer` component, preventing unintentional playback when clicking or dragging video nodes across the canvas;
+  - **Lightweight Floating Controls**: Added a semi-transparent center play button (when paused) and a floating bottom control bar with scrubbable progress range slider, play/pause toggle, timestamp display (`00:03 / 00:05`), mute/unmute toggle (muted by default on canvas with loop enabled), and modal preview trigger;
+  - **Smooth Controls Auto-hide**: When playing, the floating control bar smoothly fades in upon mouse hover and automatically fades out when the mouse leaves;
+  - **Double-Click & Toolbar Modal Preview**: Double-clicking a video node or clicking the new "View video" (Eye icon) button in the hover toolbar opens a high-definition media preview modal with native controls, looping, and full audio;
+  - **Frame Capture Compatibility**: Preserved the `data-canvas-video` contract and synchronized `currentTime`, allowing accurate frame scrubbing and right-click context menu extraction of the "current frame".
+
 - Text Node LLM Generation Completion Stop Status Fix:
   - **Immediate Deregistration on Completion**: Fixed an omission in the text generation callback where `finishGenerationRequest` was not called for `rootId`, leaving the new text node in `runningNodeIds`; now deregistrations run immediately upon LLM job completion and abort handling;
   - **Global finally Cleanup Fallback**: Added iteration over `pendingChildIds` in `handleGenerateNode`'s `finally` block to deregister any child request IDs that were not already cleaned up, eliminating the persistent spinning "Stop" button after generated text has successfully rendered on screen.
