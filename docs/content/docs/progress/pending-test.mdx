@@ -7,6 +7,9 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Default Canvas Image Generation Count Adjustment:
+  - **Default Value Updated to 1**: Adjusted `defaultConfig.canvasImageCount` in `useConfigStore` and its rehydration fallback from `3` to `1`, aligning with the single-image baseline for newly created canvas image and configuration nodes.
+
 - Canvas Video Node Playback Interaction and Control Optimization:
   - **Decouple Node Drag/Select from Video Playback**: Replaced native `<video controls>` with a dedicated `CanvasVideoPlayer` component, preventing unintentional playback when clicking or dragging video nodes across the canvas;
   - **Lightweight Floating Controls**: Added a semi-transparent center play button (when paused) and a floating bottom control bar with scrubbable progress range slider, play/pause toggle, timestamp display (`00:03 / 00:05`), mute/unmute toggle (muted by default on canvas with loop enabled), and modal preview trigger;
