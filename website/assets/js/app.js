@@ -1,15 +1,16 @@
 /**
- * infinite-canvas Official Website - Core Interactivity
+ * infinite-canvas Official Website - High-Fidelity TinyKPI Interactivity
  */
 
 document.addEventListener("DOMContentLoaded", () => {
   initI18n();
-  initMascot();
-  initCanvasPlayground();
-  initCapabilityMatrix();
-  initQuickStartTabs();
+  initTinyMascot();
+  initLivingNotchStage();
+  initEcosystemDashboard();
+  initInteractiveLayoutGrid();
+  initCountdownTimer();
   initVideoPlayer();
-  initFooterEasterEgg();
+  initFooterCheckAgain();
 });
 
 /* ==========================================================================
@@ -31,452 +32,386 @@ function initI18n() {
 
 function applyTranslations() {
   const dict = window.I18N_DATA[currentLang] || window.I18N_DATA["zh-CN"];
-  
-  // Text nodes
+
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
-    if (dict[key]) {
-      el.textContent = dict[key];
-    }
+    if (dict[key]) el.textContent = dict[key];
   });
 
-  // HTML nodes
   document.querySelectorAll("[data-i18n-html]").forEach((el) => {
     const key = el.getAttribute("data-i18n-html");
-    if (dict[key]) {
-      el.innerHTML = dict[key];
-    }
+    if (dict[key]) el.innerHTML = dict[key];
   });
 
-  // Update toggle button text
   const langBtnText = document.getElementById("lang-btn-text");
   if (langBtnText) {
     langBtnText.textContent = currentLang === "zh-CN" ? "EN" : "中";
   }
-
-  // Update dynamic wires after translation render (in case heights shift)
-  setTimeout(updateCanvasWires, 50);
 }
 
 /* ==========================================================================
-   2. Interactive Mascot (Eyes Follow Cursor)
+   2. Interactive Mascot (Cursor Eye Tracking + Natural Blinking)
    ========================================================================== */
-function initMascot() {
-  const mascot = document.getElementById("hero-mascot");
-  if (!mascot) return;
-
+function initTinyMascot() {
+  const mascot = document.getElementById("tiny-mascot");
+  const leftSocket = document.getElementById("mascot-socket-left");
+  const rightSocket = document.getElementById("mascot-socket-right");
   const leftPupil = document.getElementById("mascot-pupil-left");
   const rightPupil = document.getElementById("mascot-pupil-right");
 
+  if (!mascot || !leftPupil || !rightPupil) return;
+
+  // Eye tracking cursor
   window.addEventListener("mousemove", (e) => {
-    if (!leftPupil || !rightPupil) return;
     const rect = mascot.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
 
-    const deltaX = e.clientX - centerX;
-    const deltaY = e.clientY - centerY;
-    const angle = Math.atan2(deltaY, deltaX);
-    const distance = Math.min(4, Math.hypot(deltaX, deltaY) / 40);
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const angle = Math.atan2(dy, dx);
+    const dist = Math.min(3.5, Math.hypot(dx, dy) / 35);
 
-    const pupilX = Math.cos(angle) * distance;
-    const pupilY = Math.sin(angle) * distance;
+    const px = Math.cos(angle) * dist;
+    const py = Math.sin(angle) * dist;
 
-    leftPupil.style.transform = `translate(${pupilX}px, ${pupilY}px)`;
-    rightPupil.style.transform = `translate(${pupilX}px, ${pupilY}px)`;
+    leftPupil.style.transform = `translate(${px}px, ${py}px)`;
+    rightPupil.style.transform = `translate(${px}px, ${py}px)`;
   });
 
+  // Natural blinking
+  setInterval(() => {
+    if (leftSocket && rightSocket) {
+      leftSocket.classList.add("blink");
+      rightSocket.classList.add("blink");
+      setTimeout(() => {
+        leftSocket.classList.remove("blink");
+        rightSocket.classList.remove("blink");
+      }, 150);
+    }
+  }, 4000 + Math.random() * 2000);
+
+  // Click mascot
   mascot.addEventListener("click", () => {
-    showToast(currentLang === "zh-CN" ? "✨ 无限画布已就绪！" : "✨ Canvas ready for ComfyUI!");
-    mascot.classList.add("scale-125");
-    setTimeout(() => mascot.classList.remove("scale-125"), 200);
+    showToast(currentLang === "zh-CN" ? "✨ 无限画布 8188 实时在线！" : "✨ ComfyUI 8188 online & ready!");
+    mascot.classList.add("scale-110");
+    setTimeout(() => mascot.classList.remove("scale-110"), 200);
   });
 }
 
 /* ==========================================================================
-   3. Interactive Canvas Playground (Draggable nodes & live cables)
+   3. Living Notch Device Stage (01 Glance / 02 Inspect / 03 Explore)
    ========================================================================== */
-let activeDrag = null;
-let dragOffset = { x: 0, y: 0 };
+function initLivingNotchStage() {
+  const stepBtns = document.querySelectorAll("[data-feature-step]");
+  const sliderBar = document.getElementById("step-slider-track");
+  const notchPill = document.getElementById("living-notch-pill");
+  const glanceView = document.getElementById("stage-glance-view");
+  const inspectView = document.getElementById("stage-inspect-view");
+  const exploreView = document.getElementById("stage-explore-view");
 
-function initCanvasPlayground() {
-  const container = document.getElementById("canvas-viewport");
-  const nodes = document.querySelectorAll(".canvas-node");
-  if (!container || !nodes.length) return;
-
-  nodes.forEach((node) => {
-    const handle = node.querySelector(".node-drag-handle") || node;
-    handle.style.cursor = "grab";
-
-    handle.addEventListener("mousedown", (e) => {
-      if (e.target.closest("button") || e.target.closest("input") || e.target.closest("textarea")) return;
-      activeDrag = node;
-      node.classList.add("dragging", "selected");
-      nodes.forEach((n) => n !== node && n.classList.remove("selected"));
-
-      const containerRect = container.getBoundingClientRect();
-      const nodeRect = node.getBoundingClientRect();
-
-      dragOffset.x = e.clientX - nodeRect.left;
-      dragOffset.y = e.clientY - nodeRect.top;
-
-      e.preventDefault();
-    });
-  });
-
-  window.addEventListener("mousemove", (e) => {
-    if (!activeDrag) return;
-    const containerRect = container.getBoundingClientRect();
-
-    let newLeft = e.clientX - containerRect.left - dragOffset.x;
-    let newTop = e.clientY - containerRect.top - dragOffset.y;
-
-    // Boundary constraints
-    newLeft = Math.max(10, Math.min(containerRect.width - activeDrag.offsetWidth - 10, newLeft));
-    newTop = Math.max(10, Math.min(containerRect.height - activeDrag.offsetHeight - 10, newTop));
-
-    activeDrag.style.left = `${newLeft}px`;
-    activeDrag.style.top = `${newTop}px`;
-
-    updateCanvasWires();
-  });
-
-  window.addEventListener("mouseup", () => {
-    if (activeDrag) {
-      activeDrag.classList.remove("dragging");
-      activeDrag = null;
-    }
-  });
-
-  // Wire updates on resize
-  window.addEventListener("resize", updateCanvasWires);
-  setTimeout(updateCanvasWires, 100);
-
-  // Run Flow Button
-  const runBtn = document.getElementById("canvas-run-btn");
-  if (runBtn) {
-    runBtn.addEventListener("click", executeCanvasFlow);
-  }
-
-  // View Step Tabs (Glance / Inspect / Explore)
-  const stepButtons = document.querySelectorAll("[data-step-view]");
-  stepButtons.forEach((btn) => {
+  stepBtns.forEach((btn, idx) => {
     btn.addEventListener("click", () => {
-      stepButtons.forEach((b) => {
-        b.classList.remove("bg-white/10", "text-white", "border-sky-400/40");
-        b.classList.add("text-zinc-400", "border-transparent");
+      stepBtns.forEach((b) => {
+        b.classList.remove("text-white");
+        b.classList.add("text-zinc-400");
       });
-      btn.classList.add("bg-white/10", "text-white", "border-sky-400/40");
-      btn.classList.remove("text-zinc-400", "border-transparent");
+      btn.classList.remove("text-zinc-400");
+      btn.classList.add("text-white");
 
-      const viewMode = btn.getAttribute("data-step-view");
-      applyCanvasViewMode(viewMode);
-    });
-  });
-}
+      if (sliderBar) {
+        sliderBar.style.transform = `translateX(${idx * 100}%)`;
+      }
 
-function updateCanvasWires() {
-  const container = document.getElementById("canvas-viewport");
-  const svg = document.getElementById("canvas-wires-svg");
-  if (!container || !svg) return;
-
-  const wire1 = document.getElementById("wire-1"); // Prompt -> Workflow
-  const wire2 = document.getElementById("wire-2"); // Workflow -> Output
-
-  const portPOut = document.getElementById("port-prompt-out");
-  const portWIn = document.getElementById("port-workflow-in");
-  const portWOut = document.getElementById("port-workflow-out");
-  const portOIn = document.getElementById("port-output-in");
-
-  if (wire1 && portPOut && portWIn) {
-    wire1.setAttribute("d", calculateBezier(container, portPOut, portWIn));
-  }
-  if (wire2 && portWOut && portOIn) {
-    wire2.setAttribute("d", calculateBezier(container, portWOut, portOIn));
-  }
-}
-
-function calculateBezier(container, portStart, portEnd) {
-  const cRect = container.getBoundingClientRect();
-  const sRect = portStart.getBoundingClientRect();
-  const eRect = portEnd.getBoundingClientRect();
-
-  const x1 = sRect.left + sRect.width / 2 - cRect.left;
-  const y1 = sRect.top + sRect.height / 2 - cRect.top;
-  const x2 = eRect.left + eRect.width / 2 - cRect.left;
-  const y2 = eRect.top + eRect.height / 2 - cRect.top;
-
-  const dx = Math.abs(x2 - x1) * 0.55;
-  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-}
-
-function applyCanvasViewMode(mode) {
-  const inspectPanel = document.getElementById("node-workflow-inspect");
-  const nodeOutput = document.getElementById("node-output");
-  const nodeExtra = document.getElementById("node-extra");
-
-  if (mode === "glance") {
-    if (inspectPanel) inspectPanel.classList.add("hidden");
-    if (nodeExtra) nodeExtra.classList.add("hidden");
-  } else if (mode === "inspect") {
-    if (inspectPanel) inspectPanel.classList.remove("hidden");
-    if (nodeExtra) nodeExtra.classList.add("hidden");
-  } else if (mode === "explore") {
-    if (inspectPanel) inspectPanel.classList.remove("hidden");
-    if (nodeExtra) nodeExtra.classList.remove("hidden");
-  }
-  setTimeout(updateCanvasWires, 60);
-}
-
-function executeCanvasFlow() {
-  const statusEl = document.getElementById("canvas-status");
-  const runBtn = document.getElementById("canvas-run-btn");
-  const wires = document.querySelectorAll(".canvas-wire");
-  const outputImg = document.getElementById("output-result-img");
-  const outputSpinner = document.getElementById("output-spinner");
-
-  if (runBtn) runBtn.disabled = true;
-  wires.forEach((w) => w.classList.add("wire-pulse", "stroke-sky-400"));
-
-  const dict = window.I18N_DATA[currentLang] || window.I18N_DATA["zh-CN"];
-  if (statusEl) {
-    statusEl.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping mr-2"></span>${dict.canvas_status_running}`;
-    statusEl.className = "text-amber-400 text-xs font-mono flex items-center";
-  }
-
-  if (outputSpinner) outputSpinner.classList.remove("hidden");
-  if (outputImg) outputImg.classList.add("opacity-25");
-
-  setTimeout(() => {
-    wires.forEach((w) => w.classList.remove("wire-pulse", "stroke-sky-400"));
-    if (outputSpinner) outputSpinner.classList.add("hidden");
-    if (outputImg) {
-      outputImg.classList.remove("opacity-25");
-      outputImg.classList.add("scale-105");
-      setTimeout(() => outputImg.classList.remove("scale-105"), 300);
-    }
-    if (statusEl) {
-      statusEl.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-2"></span>${dict.canvas_status_done}`;
-      statusEl.className = "text-emerald-400 text-xs font-mono flex items-center";
-    }
-    if (runBtn) runBtn.disabled = false;
-    showToast("🎉 ComfyUI 8188 任务渲染完毕！");
-  }, 1200);
-}
-
-/* ==========================================================================
-   4. Capability Matrix Interactive Switcher
-   ========================================================================== */
-const MATRIX_DATA = {
-  t2i: {
-    titleZh: "文生图 (Flux.1 / SDXL Turbo)",
-    titleEn: "Text to Image (Flux.1 / SDXL Turbo)",
-    slots: ["prompt", "seed", "width", "height", "steps", "cfg"],
-    descZh: "极致画质与极速采样并存。节点自动根据模型特征挂载 LoRA 调节端口，UI 严格对齐硬件比例。",
-    descEn: "Hyper-realistic image synthesis with rapid sampling. Dynamically mounts LoRA ports according to workflow definition.",
-    badge: "Native ComfyUI"
-  },
-  i2i: {
-    titleZh: "图生图 & 局部重绘 (Inpaint / Mask)",
-    titleEn: "Image to Image & Inpaint (Mask)",
-    slots: ["prompt", "denoise", "ref_image_01", "ref_mask", "grow_mask_by"],
-    descZh: "画布内直接涂抹局部重绘遮罩，支持画中画合成与无缝扩图，反向传递给 ComfyUI KSampler 进行精准局部重构。",
-    descEn: "Draw inpaint masks directly on canvas. Supports layered blending and seamless outpainting with KSampler precision.",
-    badge: "LayerStyle"
-  },
-  video: {
-    titleZh: "全能参考视频 (MiniMax H3 / Wan2.1)",
-    titleEn: "Multimodal Video (MiniMax H3 / Wan2.1)",
-    slots: ["prompt", "ref_image_01..09", "first_frame", "last_frame", "duration", "fps"],
-    descZh: "严苛硬件尺寸对齐（0.2M~0.98M 9档预设）。最多支持 9 图 + 3 视频 + 3 音频多模态 FIFO 路由注入，未连满端口自动抹除防溢出。",
-    descEn: "Strict hardware resolution alignment (0.2M~0.98M). Up to 9 images + 3 videos + 3 audio streams with dynamic pruning.",
-    badge: "Multimodal Video Spec"
-  },
-  prompt: {
-    titleZh: "提示词反推 & LLM 润色 (Qwen / kktools)",
-    titleEn: "Prompt Interrogator & LLM (Qwen / kktools)",
-    slots: ["input_image", "mode", "system_prompt", "output_text"],
-    descZh: "本地视觉多模态大模型快速解析输入图像氛围感、光影构图与主体特征，一键生成结构化提示词流转至下游生图节点。",
-    descEn: "Local vision models analyze aesthetics and composition, generating structured prompts seamlessly to downstream generators.",
-    badge: "Comfyui-kktools"
-  },
-  custom: {
-    titleZh: "自定义工作流 (Upload Any API JSON)",
-    titleEn: "Custom Workflows (Upload Any API JSON)",
-    slots: ["_meta.title 自由标记槽位", "自定义输入输出", "参数锁死模式"],
-    descZh: "把你在 ComfyUI 原生连好的工作流导出为 API 格式并一键上传。只需在节点标题加标准词（如 prompt），画布秒级动态生成专属工具卡！",
-    descEn: "Export your ComfyUI workflow as API JSON and upload instantly. Mark titles with keywords like 'prompt' to generate tailored UI cards.",
-    badge: "Fail-loud Engine"
-  }
-};
-
-function initCapabilityMatrix() {
-  const buttons = document.querySelectorAll("[data-matrix-cat]");
-  const titleEl = document.getElementById("matrix-card-title");
-  const descEl = document.getElementById("matrix-card-desc");
-  const badgeEl = document.getElementById("matrix-card-badge");
-  const slotsContainer = document.getElementById("matrix-card-slots");
-
-  if (!buttons.length || !titleEl) return;
-
-  buttons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      buttons.forEach((b) => {
-        b.classList.remove("bg-sky-500/20", "text-sky-300", "border-sky-500/50");
-        b.classList.add("text-zinc-400", "border-white/10");
-      });
-      btn.classList.add("bg-sky-500/20", "text-sky-300", "border-sky-500/50");
-      btn.classList.remove("text-zinc-400", "border-white/10");
-
-      const key = btn.getAttribute("data-matrix-cat");
-      const item = MATRIX_DATA[key];
-      if (!item) return;
-
-      titleEl.textContent = currentLang === "zh-CN" ? item.titleZh : item.titleEn;
-      descEl.textContent = currentLang === "zh-CN" ? item.descZh : item.descEn;
-      badgeEl.textContent = item.badge;
-
-      if (slotsContainer) {
-        slotsContainer.innerHTML = item.slots
-          .map(
-            (slot) =>
-              `<span class="px-2.5 py-1 text-xs font-mono rounded bg-white/5 border border-white/10 text-sky-300 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>${slot}</span>`
-          )
-          .join("");
+      const step = btn.getAttribute("data-feature-step");
+      if (step === "glance") {
+        if (glanceView) glanceView.classList.remove("hidden");
+        if (inspectView) inspectView.classList.add("hidden");
+        if (exploreView) exploreView.classList.add("hidden");
+        if (notchPill) notchPill.style.maxWidth = "360px";
+      } else if (step === "inspect") {
+        if (glanceView) glanceView.classList.add("hidden");
+        if (inspectView) inspectView.classList.remove("hidden");
+        if (exploreView) exploreView.classList.add("hidden");
+        if (notchPill) notchPill.style.maxWidth = "480px";
+      } else if (step === "explore") {
+        if (glanceView) glanceView.classList.add("hidden");
+        if (inspectView) inspectView.classList.add("hidden");
+        if (exploreView) exploreView.classList.remove("hidden");
+        if (notchPill) notchPill.style.maxWidth = "640px";
       }
     });
   });
 }
 
 /* ==========================================================================
-   5. Quick Start Tabs & Code Copy
+   4. Ecosystem & Model Explorer ("Your tools. One view.")
    ========================================================================== */
-const QUICKSTART_CODES = {
-  bun: `# 克隆仓库并进入 web 目录
-git clone git@github.com:ZhuYichuan/infinite-canvas.git
-cd infinite-canvas/web
-
-# 安装依赖并启动本地开发服务 (支持 HMR)
-bun install
-bun run dev
-
-# 浏览器访问 http://localhost:3000`,
-
-  docker: `# 克隆仓库并直接通过 Docker 启动
-git clone git@github.com:ZhuYichuan/infinite-canvas.git
-cd infinite-canvas
-
-# 一键启动前端静态容器 (默认端口 3000)
-docker compose up -d
-
-# 浏览器访问 http://localhost:3000`,
-
-  prereq: `# 1. 本机确保已安装并启动原生 ComfyUI (默认 8188 端口)
-python main.py --listen 127.0.0.1 --port 8188 --enable-cors-header
-
-# 2. 安装 5 大核心依赖插件到 ComfyUI/custom_nodes:
-# - Comfyui-kktools (文本生成/反推)
-# - ComfyUI-KJNodes (全能视频组件处理)
-# - ComfyLiterals (常数字面量)
-# - ComfyUI-UniversalToolkit (通用工具解析)
-# - ComfyUI_LayerStyle (图层与遮罩)`
+const ECOSYSTEM_METRICS = {
+  flux: {
+    name: "Flux.1 Dev Turbo",
+    category: "图像生成",
+    speed: "1.8s",
+    speedDiff: "+14.2%",
+    images: "1,420",
+    imagesDiff: "+9.8%",
+    steps: "20",
+    vram: "8.2 GB",
+    alignment: "96.4%",
+    activeFlows: "18",
+    fps: "N/A",
+    successRate: "99.4%"
+  },
+  minimax: {
+    name: "MiniMax H3 / Wan2.1",
+    category: "全能多模态视频",
+    speed: "14.2s",
+    speedDiff: "+22.5%",
+    images: "386",
+    imagesDiff: "+15.0%",
+    steps: "35",
+    vram: "15.4 GB",
+    alignment: "98.1%",
+    activeFlows: "6",
+    fps: "24 fps",
+    successRate: "98.8%"
+  },
+  sdxl: {
+    name: "SDXL Lightning",
+    category: "超快速出图",
+    speed: "0.9s",
+    speedDiff: "+35.1%",
+    images: "4,820",
+    imagesDiff: "+28.4%",
+    steps: "8",
+    vram: "5.8 GB",
+    alignment: "91.2%",
+    activeFlows: "24",
+    fps: "N/A",
+    successRate: "99.9%"
+  },
+  qwen: {
+    name: "Qwen2.5-VL Interrogator",
+    category: "视觉反推与提示词",
+    speed: "1.2s",
+    speedDiff: "+8.4%",
+    images: "890",
+    imagesDiff: "+12.1%",
+    steps: "1",
+    vram: "7.1 GB",
+    alignment: "99.0%",
+    activeFlows: "9",
+    fps: "N/A",
+    successRate: "99.6%"
+  }
 };
 
-function initQuickStartTabs() {
-  const tabs = document.querySelectorAll("[data-code-tab]");
-  const codeBlock = document.getElementById("quickstart-code-block");
-  const copyBtn = document.getElementById("copy-code-btn");
+function initEcosystemDashboard() {
+  const chips = document.querySelectorAll("[data-model-chip]");
+  const titleEl = document.getElementById("eco-model-title");
+  const speedEl = document.getElementById("metric-val-speed");
+  const countEl = document.getElementById("metric-val-count");
+  const vramEl = document.getElementById("metric-val-vram");
+  const alignEl = document.getElementById("metric-val-align");
 
-  if (!tabs.length || !codeBlock) return;
-
-  let activeTab = "bun";
-
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      tabs.forEach((t) => {
-        t.classList.remove("bg-white/10", "text-white", "border-sky-400/40");
-        t.classList.add("text-zinc-400", "border-transparent");
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      chips.forEach((c) => {
+        c.classList.remove("bg-white/10", "border-sky-400/50", "text-sky-300");
+        c.classList.add("text-zinc-400", "border-white/5");
       });
-      tab.classList.add("bg-white/10", "text-white", "border-sky-400/40");
-      tab.classList.remove("text-zinc-400", "border-transparent");
+      chip.classList.add("bg-white/10", "border-sky-400/50", "text-sky-300");
+      chip.classList.remove("text-zinc-400", "border-white/5");
 
-      activeTab = tab.getAttribute("data-code-tab");
-      codeBlock.textContent = QUICKSTART_CODES[activeTab] || "";
+      const key = chip.getAttribute("data-model-chip");
+      const data = ECOSYSTEM_METRICS[key];
+      if (!data) return;
+
+      if (titleEl) titleEl.textContent = data.name;
+      if (speedEl) speedEl.textContent = data.speed;
+      if (countEl) countEl.textContent = data.images;
+      if (vramEl) vramEl.textContent = data.vram;
+      if (alignEl) alignEl.textContent = data.alignment;
     });
   });
+}
 
-  if (copyBtn) {
-    copyBtn.addEventListener("click", () => {
-      const code = codeBlock.textContent || "";
-      navigator.clipboard.writeText(code).then(() => {
-        const dict = window.I18N_DATA[currentLang] || window.I18N_DATA["zh-CN"];
-        showToast(dict.copy_success);
-      });
+/* ==========================================================================
+   5. Interactive Layout Grid (TinyKPI Move / Resize Arrows)
+   ========================================================================== */
+function initInteractiveLayoutGrid() {
+  const grid = document.getElementById("interactive-layout-grid");
+  const resetBtn = document.getElementById("layout-reset-btn");
+  const addCardBtn = document.getElementById("layout-add-btn");
+
+  if (!grid) return;
+
+  // Delegate clicks for Wider/Narrower and Taller/Shorter buttons
+  grid.addEventListener("click", (e) => {
+    const tile = e.target.closest(".layout-tile");
+    if (!tile) return;
+
+    // Remove button
+    if (e.target.closest(".btn-remove-tile")) {
+      tile.remove();
+      return;
+    }
+
+    // Toggle width (span 1 <-> span 2)
+    if (e.target.closest(".btn-toggle-width")) {
+      if (tile.classList.contains("col-span-2")) {
+        tile.classList.remove("col-span-2");
+        tile.classList.add("col-span-1");
+      } else {
+        tile.classList.remove("col-span-1");
+        tile.classList.add("col-span-2");
+      }
+      updateTileSizeLabel(tile);
+    }
+
+    // Toggle height (row span 1 <-> row span 2)
+    if (e.target.closest(".btn-toggle-height")) {
+      if (tile.classList.contains("row-span-2")) {
+        tile.classList.remove("row-span-2");
+        tile.classList.add("row-span-1");
+      } else {
+        tile.classList.remove("row-span-1");
+        tile.classList.add("row-span-2");
+      }
+      updateTileSizeLabel(tile);
+    }
+  });
+
+  // Reset button
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      showToast(currentLang === "zh-CN" ? "画布网格已重置" : "Layout grid reset");
+      location.reload();
+    });
+  }
+
+  // Add card button
+  if (addCardBtn) {
+    addCardBtn.addEventListener("click", () => {
+      const newCard = document.createElement("div");
+      newCard.className = "layout-tile col-span-1 row-span-1";
+      newCard.innerHTML = `
+        <div class="flex items-center justify-between text-xs text-zinc-300 font-semibold">
+          <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>自定义参数节点</span>
+        </div>
+        <p class="text-[11px] text-zinc-400 my-2">动态挂载至 ComfyUI 8188 槽位</p>
+        <div class="tile-toolbar">
+          <button class="tile-btn btn-remove-tile" title="删除"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          <button class="tile-btn btn-toggle-width" title="改变宽度"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3m8-18h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/></svg></button>
+          <span class="tile-size-tag text-[10px] font-mono text-zinc-500">1 × 1</span>
+          <button class="tile-btn btn-toggle-height" title="改变高度"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3m-18 8v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/></svg></button>
+        </div>
+      `;
+      grid.appendChild(newCard);
     });
   }
 }
 
+function updateTileSizeLabel(tile) {
+  const isCol2 = tile.classList.contains("col-span-2");
+  const isRow2 = tile.classList.contains("row-span-2");
+  const tag = tile.querySelector(".tile-size-tag");
+  if (tag) {
+    tag.textContent = `${isCol2 ? 2 : 1} × ${isRow2 ? 2 : 1}`;
+  }
+}
+
 /* ==========================================================================
-   6. Video Player / Placeholder Handling
+   6. Countdown Timer (TinyKPI Launch Offer Timer)
+   ========================================================================== */
+function initCountdownTimer() {
+  const timerEl = document.getElementById("offer-countdown");
+  if (!timerEl) return;
+
+  // 6 days, 11 hours, 45 minutes target
+  const targetDate = new Date();
+  targetDate.setDate(targetDate.getDate() + 6);
+  targetDate.setHours(targetDate.getHours() + 11);
+
+  function update() {
+    const now = new Date();
+    const diff = targetDate - now;
+    if (diff <= 0) {
+      timerEl.textContent = "00:00:00";
+      return;
+    }
+
+    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const m = Math.floor((diff / 1000 / 60) % 60);
+    const s = Math.floor((diff / 1000) % 60);
+
+    timerEl.textContent = currentLang === "zh-CN"
+      ? `${d} 天 ${h} 小时 ${m} 分 ${s} 秒`
+      : `${d}d ${h}h ${m}m ${s}s`;
+  }
+
+  update();
+  setInterval(update, 1000);
+}
+
+/* ==========================================================================
+   7. Video Player & Graceful Placeholder
    ========================================================================== */
 function initVideoPlayer() {
-  const playBtn = document.getElementById("hero-play-btn");
-  const videoEl = document.getElementById("hero-video");
-  const placeholderEl = document.getElementById("video-placeholder-modal");
-  const closeModalBtn = document.getElementById("close-placeholder-modal");
+  const playBtn = document.getElementById("hero-video-play");
+  const modal = document.getElementById("video-modal");
+  const closeBtn = document.getElementById("video-modal-close");
 
-  if (playBtn) {
+  if (playBtn && modal) {
     playBtn.addEventListener("click", () => {
-      // Test if local video exists
-      if (videoEl && videoEl.src && !videoEl.src.endsWith("undefined")) {
-        videoEl.play().catch(() => {
-          // If video fails or does not exist yet, show placeholder guidance modal
-          if (placeholderEl) placeholderEl.classList.remove("hidden");
-        });
-      } else {
-        if (placeholderEl) placeholderEl.classList.remove("hidden");
-      }
+      modal.classList.remove("hidden");
     });
   }
 
-  if (closeModalBtn && placeholderEl) {
-    closeModalBtn.addEventListener("click", () => {
-      placeholderEl.classList.add("hidden");
+  if (closeBtn && modal) {
+    closeBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
     });
   }
 }
 
 /* ==========================================================================
-   7. Footer Easter Egg & Toast Notifications
+   8. Footer "Check Again" Button (TinyKPI Humorous Easter Egg)
    ========================================================================== */
-function initFooterEasterEgg() {
-  const eggBtn = document.getElementById("footer-egg-btn");
-  if (eggBtn) {
-    eggBtn.addEventListener("click", () => {
-      const dict = window.I18N_DATA[currentLang] || window.I18N_DATA["zh-CN"];
-      showToast(dict.footer_quote_bubble);
-      eggBtn.classList.add("rotate-180");
-      setTimeout(() => eggBtn.classList.remove("rotate-180"), 400);
+function initFooterCheckAgain() {
+  const checkBtn = document.getElementById("footer-recheck-btn");
+  const replyEl = document.getElementById("footer-recheck-reply");
+
+  if (checkBtn && replyEl) {
+    checkBtn.addEventListener("click", () => {
+      checkBtn.querySelector("svg")?.classList.add("rotate-180");
+      replyEl.textContent = currentLang === "zh-CN" ? "纯粹为了激发艺术灵感。" : "Strictly for artistic inspiration.";
+      showToast(currentLang === "zh-CN" ? "正在检查 127.0.0.1:8188 队列..." : "Checking 127.0.0.1:8188 queue...");
+      setTimeout(() => {
+        checkBtn.querySelector("svg")?.classList.remove("rotate-180");
+      }, 400);
     });
   }
 }
 
-function showToast(message) {
-  let container = document.getElementById("toast-container");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "toast-container";
-    document.body.appendChild(container);
+/* Helper Toast Notification */
+function showToast(msg) {
+  let box = document.getElementById("toast-box");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "toast-box";
+    document.body.appendChild(box);
   }
 
   const toast = document.createElement("div");
-  toast.className = "toast-msg";
-  toast.textContent = message;
-  container.appendChild(toast);
+  toast.className = "px-4 py-2.5 rounded-xl bg-zinc-900 border border-white/15 text-white text-xs shadow-2xl backdrop-blur-md mb-2 flex items-center gap-2";
+  toast.innerHTML = `<span class="w-2 h-2 rounded-full bg-sky-400"></span>${msg}`;
+  box.appendChild(toast);
 
   setTimeout(() => {
     toast.style.opacity = "0";
-    toast.style.transform = "translateY(8px)";
-    setTimeout(() => toast.remove(), 250);
-  }, 2600);
+    toast.style.transition = "opacity 0.3s";
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
 }

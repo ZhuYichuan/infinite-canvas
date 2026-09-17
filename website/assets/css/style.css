@@ -1,54 +1,81 @@
 /* ==========================================================================
-   infinite-canvas Website - High-tech Aesthetic & Interactive Styles
+   infinite-canvas Website - High-Fidelity TinyKPI Clone & Adaptation
    ========================================================================== */
 
 :root {
-  --bg-main: #09090b;
-  --bg-card: #121215;
-  --bg-card-hover: #18181d;
+  --bg-page: #09090b;
+  --bg-surface: #121215;
+  --bg-surface-elevated: #18181d;
+  --bg-surface-muted: #1e1e24;
   --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.15);
   --border-active: rgba(56, 189, 248, 0.5);
-  --brand-primary: #38bdf8;
-  --brand-secondary: #818cf8;
-  --text-main: #f4f4f5;
-  --text-muted: #a1a1aa;
+  --accent-blue: #38bdf8;
+  --accent-indigo: #818cf8;
+  --accent-emerald: #34d399;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
 }
 
-/* Base Body Styles */
 html {
   scroll-behavior: smooth;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 body {
-  background-color: var(--bg-main);
-  color: var(--text-main);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
   overflow-x: hidden;
+  letter-spacing: -0.01em;
 }
 
-/* Canvas Dot Grid Background */
-.canvas-grid-bg {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-  background-size: 24px 24px;
+/* --------------------------------------------------------------------------
+   Floating Notch Navigation (TinyKPI Style)
+   -------------------------------------------------------------------------- */
+.notch-nav-container {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  width: calc(100% - 32px);
+  max-width: 980px;
 }
 
-.glow-mesh {
-  background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.12) 0%, rgba(129, 140, 248, 0.06) 35%, transparent 70%);
+.notch-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 8px 18px;
+  border-radius: 9999px;
+  background: rgba(18, 18, 22, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-/* Glassmorphism Header */
-.glass-nav {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  background: rgba(9, 9, 11, 0.75);
-  border-bottom: 1px solid var(--border-subtle);
+.nav-links a {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: 9999px;
+  transition: all 0.15s ease;
 }
 
-/* Interactive Mascot */
-.mascot-container {
+.nav-links a:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* --------------------------------------------------------------------------
+   Mascot Character (Interactive Blinking Eyes Tracking Cursor)
+   -------------------------------------------------------------------------- */
+.mascot-box {
+  width: 54px;
+  height: 54px;
   position: relative;
-  width: 52px;
-  height: 52px;
   cursor: pointer;
   user-select: none;
   display: inline-flex;
@@ -56,176 +83,263 @@ body {
   justify-content: center;
 }
 
-.mascot-body {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #27272a, #18181b);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+.mascot-frame {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(145deg, #27272f, #141418);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  animation: mascot-float 4s ease-in-out infinite;
+  animation: mascot-float 3.5s ease-in-out infinite;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.mascot-body:hover {
-  transform: scale(1.08);
+.mascot-frame:hover {
+  transform: scale(1.1);
 }
 
-.mascot-eyes {
+.mascot-eyes-wrap {
   display: flex;
   gap: 8px;
   align-items: center;
-  justify-content: center;
 }
 
-.mascot-eye {
-  width: 10px;
-  height: 14px;
+.mascot-eye-socket {
+  width: 11px;
+  height: 16px;
   background: #ffffff;
   border-radius: 6px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+  transition: height 0.1s ease;
 }
 
-.mascot-pupil {
+.mascot-eye-socket.blink {
+  height: 2px !important;
+}
+
+.mascot-eye-pupil {
   width: 6px;
-  height: 6px;
+  height: 7px;
   background: #0284c7;
   border-radius: 50%;
   position: absolute;
   top: 4px;
   left: 2px;
-  transition: transform 0.05s ease-out;
+  transition: transform 0.04s ease-out;
 }
 
 @keyframes mascot-float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
 }
 
-/* Pulse signal along ComfyUI wires */
-.wire-pulse {
-  stroke-dasharray: 8, 8;
-  animation: wire-flow 1s linear infinite;
+/* --------------------------------------------------------------------------
+   Hero Video Showcase Frame (TinyKPI Style with corner brackets)
+   -------------------------------------------------------------------------- */
+.video-stage-frame {
+  position: relative;
+  border-radius: 28px;
+  padding: 1px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.02) 100%);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.85);
 }
 
-@keyframes wire-flow {
-  from {
-    stroke-dashoffset: 32;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
+.video-stage-inner {
+  border-radius: 27px;
+  background: #0a0a0d;
+  overflow: hidden;
+  position: relative;
 }
 
-/* Interactive Canvas Playground Node */
-.canvas-node {
-  background: #141418;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+.video-corner-bracket {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  color: rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+  z-index: 20;
+}
+.bracket-tl { top: 8px; left: 8px; }
+.bracket-tr { top: 8px; right: 8px; transform: scaleX(-1); }
+.bracket-bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
+.bracket-br { bottom: 8px; right: 8px; transform: scale(-1); }
+
+/* --------------------------------------------------------------------------
+   Product Feature: Living Notch Simulator
+   -------------------------------------------------------------------------- */
+.mac-stage {
+  border-radius: 24px;
+  background: #0d0d11;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75);
+}
+
+.mac-menubar {
+  height: 30px;
+  padding: 0 18px;
+  background: rgba(20, 20, 26, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+.physical-notch-cutout {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 170px;
+  height: 28px;
+  background: #000;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.living-notch-pill {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 8px 16px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --------------------------------------------------------------------------
+   Layout Story: Grid Cards with Real Move & Resize Controls
+   -------------------------------------------------------------------------- */
+.layout-grid-stage {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 130px;
+  gap: 16px;
+  padding: 24px;
+  background: #0a0a0e;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.layout-tile {
+  background: #14141a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 14px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   user-select: none;
 }
 
-.canvas-node:hover {
+.layout-tile:hover {
   border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
-.canvas-node.selected {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25), 0 12px 32px rgba(0, 0, 0, 0.7);
+.layout-tile.col-span-1 { grid-column: span 1; }
+.layout-tile.col-span-2 { grid-column: span 2; }
+.layout-tile.row-span-1 { grid-row: span 1; }
+.layout-tile.row-span-2 { grid-row: span 2; }
+
+.tile-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 8px;
+  margin-top: 8px;
 }
 
-.canvas-node.dragging {
-  cursor: grabbing !important;
-  opacity: 0.92;
-  z-index: 50;
-}
-
-/* Ports */
-.node-port {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #27272a;
-  border: 2px solid #38bdf8;
-  transition: transform 0.15s, background-color 0.15s;
-}
-
-.node-port:hover {
-  transform: scale(1.3);
-  background: #38bdf8;
-}
-
-/* Video Frame Corners like TinyKPI */
-.video-corner {
-  position: absolute;
+.tile-btn {
   width: 24px;
   height: 24px;
-  color: rgba(255, 255, 255, 0.35);
-  pointer-events: none;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #a1a1aa;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.15s;
 }
 
-.video-corner-tl { top: -1px; left: -1px; }
-.video-corner-tr { top: -1px; right: -1px; transform: scaleX(-1); }
-.video-corner-bl { bottom: -1px; left: -1px; transform: scaleY(-1); }
-.video-corner-br { bottom: -1px; right: -1px; transform: scale(-1); }
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+.tile-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Toast Message */
-#toast-container {
+/* --------------------------------------------------------------------------
+   Trend Sparklines & Metric Cards
+   -------------------------------------------------------------------------- */
+.sparkline-svg {
+  width: 100%;
+  height: 48px;
+  overflow: visible;
+}
+
+.metric-tile {
+  background: #141419;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+  transition: border-color 0.2s;
+}
+
+.metric-tile:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+/* --------------------------------------------------------------------------
+   Step Tab Slider Indicator (TinyKPI 01, 02, 03)
+   -------------------------------------------------------------------------- */
+.step-track-bar {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: #38bdf8;
+  border-radius: 1px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --------------------------------------------------------------------------
+   Animations & Toast
+   -------------------------------------------------------------------------- */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.5; }
+}
+
+.pulse-subtle {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
+
+#toast-box {
   position: fixed;
   bottom: 24px;
   right: 24px;
   z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   pointer-events: none;
-}
-
-.toast-msg {
-  background: rgba(24, 24, 27, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #fff;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  opacity: 0;
-  transform: translateY(12px);
-  animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes toast-in {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
