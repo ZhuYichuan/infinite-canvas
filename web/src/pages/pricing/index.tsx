@@ -239,9 +239,9 @@ export default function PricingPage() {
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
                                         <div>
-                                            <span>包含 AutoDL 云端镜像 + <strong>本地部署服务</strong>（要求 Windows 11 环境，显存 &gt; 12G 最佳）</span>
+                                            <span>包含 AutoDL 云端镜像 + <strong>本地部署服务</strong>（要求 最低 Win10 / 显存 &gt; 12G 最佳）</span>
                                             <div className="mt-1.5 rounded-lg border border-stone-200 bg-stone-50/90 p-2 text-[11px] leading-relaxed text-stone-600 dark:border-stone-800 dark:bg-stone-900/80 dark:text-stone-400">
-                                                💡 <strong>本地环境说明：</strong>本地能否跑通大模型完全由个人硬件环境决定。若电脑显卡配置不足（如显存低于 12G 或非 Win11），将无法支持部分高显存大模型运行；此时可直接无缝切换使用附赠的 AutoDL 云端镜像，兼顾体验。
+                                                💡 <strong>本地环境说明：</strong>本地能否跑通大模型完全由个人硬件环境决定。若电脑显卡配置不足（如显存低于 12G 或系统低于 Win10），将无法支持部分高显存大模型运行；此时可直接无缝切换使用附赠的 AutoDL 云端镜像，兼顾体验。
                                             </div>
                                         </div>
                                     </li>
@@ -381,7 +381,7 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>本地部署同样要求 Win11、显存 &gt; 12G 最佳</span>
+                                        <span>本地部署同样要求 最低 Win10 / 显存 &gt; 12G 最佳</span>
                                     </li>
                                 </ul>
                             </div>
@@ -529,7 +529,7 @@ export default function PricingPage() {
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">运行环境支持</td>
                                     <td className="px-3 py-3.5 text-stone-600 dark:text-stone-400">仅限 AutoDL 云端镜像（不含本地）</td>
-                                    <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">AutoDL 云端 + 本地部署（要求 Win11 / 显存&gt;12G 最佳）</td>
+                                    <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">AutoDL 云端 + 本地部署（要求 最低Win10 / 显存&gt;12G 最佳）</td>
                                     <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">AutoDL 云端 + 本地部署（含 Workbuddy 接入）</td>
                                     <td className="px-3 py-3.5">工程师按需调优（云端或本地）</td>
                                 </tr>
