@@ -1,58 +1,99 @@
 @import "tailwindcss";
 
 :root {
-  --bg-page: #09090b;
-  --bg-surface: #121215;
-  --bg-surface-elevated: #18181d;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.15);
-  --accent-blue: #38bdf8;
-  --accent-indigo: #818cf8;
-  --text-primary: #f4f4f5;
-  --text-secondary: #a1a1aa;
+  --bg-page: #fbfbfd;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f5f5f7;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-medium: rgba(0, 0, 0, 0.14);
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-muted: #86868b;
+  --accent-apple-blue: #0071e3;
+  --accent-cyan: #38bdf8;
 }
 
 html {
   scroll-behavior: smooth;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
 }
 
 body {
   background-color: var(--bg-page);
   color: var(--text-primary);
   overflow-x: hidden;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Floating Notch Navigation */
-.notch-nav-container {
+/* --------------------------------------------------------------------------
+   Top Hanging Notch Navigation (Exact TinyKPI Header)
+   -------------------------------------------------------------------------- */
+.top-notch-header {
   position: fixed;
-  top: 18px;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  width: calc(100% - 32px);
-  max-width: 960px;
-}
-
-.notch-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px 8px 18px;
-  border-radius: 9999px;
-  background: rgba(18, 18, 22, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: #000000;
+  color: #ffffff;
+  padding: 8px 18px 10px 22px;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  width: min(920px, calc(100vw - 32px));
+  box-shadow: 0 12px 30px -6px rgba(0, 0, 0, 0.25);
 }
 
-/* Mascot Box & Eyes */
-.mascot-box {
-  width: 54px;
-  height: 54px;
+/* Concave Shoulders connecting top edge to notch */
+.top-notch-header::before,
+.top-notch-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.top-notch-header::before {
+  left: -16px;
+  border-top-right-radius: 16px;
+  box-shadow: 6px -6px 0 6px #000000;
+}
+
+.top-notch-header::after {
+  right: -16px;
+  border-top-left-radius: 16px;
+  box-shadow: -6px -6px 0 6px #000000;
+}
+
+.nav-link-item {
+  color: #a1a1a6;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  transition: all 0.15s ease;
+}
+
+.nav-link-item:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   Mascot Character (Exact Velvet Blue-Black Notch Form with Glowing Eyes)
+   -------------------------------------------------------------------------- */
+.mascot-hero-wrap {
   position: relative;
+  width: 72px;
+  height: 52px;
   cursor: pointer;
   user-select: none;
   display: inline-flex;
@@ -60,163 +101,159 @@ body {
   justify-content: center;
 }
 
-.mascot-frame {
-  width: 50px;
+.mascot-hero-body {
+  width: 72px;
   height: 50px;
-  background: linear-gradient(145deg, #27272f, #141418);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 16px;
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  background: linear-gradient(180deg, #181a32 0%, #0c0d18 100%);
+  border-radius: 22px 22px 18px 18px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: mascot-float 3.5s ease-in-out infinite;
+  box-shadow: 0 16px 36px -4px rgba(12, 13, 24, 0.4), 
+              0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+              0 0 20px rgba(56, 189, 248, 0.25);
+  animation: mascot-float 3.8s ease-in-out infinite;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.mascot-frame:hover {
-  transform: scale(1.1);
+/* Notch dip on top of mascot */
+.mascot-hero-body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 6px;
+  background: var(--bg-page);
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
 }
 
-.mascot-eyes-wrap {
+.mascot-hero-body:hover {
+  transform: scale(1.08);
+}
+
+.mascot-hero-eyes {
   display: flex;
-  gap: 8px;
+  gap: 14px;
   align-items: center;
+  margin-top: 4px;
 }
 
-.mascot-eye-socket {
-  width: 11px;
-  height: 16px;
+.mascot-hero-socket {
+  width: 13px;
+  height: 14px;
   background: #ffffff;
-  border-radius: 6px;
+  border-radius: 50%;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 12px #ffffff;
   transition: height 0.1s ease;
 }
 
-.mascot-eye-socket.blink {
+.mascot-hero-socket.blink {
   height: 2px !important;
 }
 
-.mascot-eye-pupil {
-  width: 6px;
+.mascot-hero-pupil {
+  width: 7px;
   height: 7px;
-  background: #0284c7;
+  background: #090a14;
   border-radius: 50%;
   position: absolute;
-  top: 4px;
-  left: 2px;
+  top: 3.5px;
+  left: 3px;
   transition: transform 0.04s ease-out;
 }
 
 @keyframes mascot-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-4px); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
 
-/* Video Frame Corners */
-.video-corner-bracket {
-  position: absolute;
-  width: 32px;
-  height: 32px;
-  color: rgba(255, 255, 255, 0.3);
-  pointer-events: none;
-  z-index: 20;
-}
-.bracket-tl { top: 8px; left: 8px; }
-.bracket-tr { top: 8px; right: 8px; transform: scaleX(-1); }
-.bracket-bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
-.bracket-br { bottom: 8px; right: 8px; transform: scale(-1); }
-
-/* Mac Stage */
-.mac-stage {
-  border-radius: 24px;
-  background: #0d0d11;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
+/* --------------------------------------------------------------------------
+   Showcase Mac Screen with Electric Blue Brackets
+   -------------------------------------------------------------------------- */
+.mac-showcase-container {
   position: relative;
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75);
+  max-width: 1040px;
+  margin: 0 auto;
 }
 
-.living-notch-pill {
+.blue-corner-bracket {
   position: absolute;
-  top: 36px;
+  width: 44px;
+  height: 44px;
+  color: #0071e3;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.bracket-tl-corner { top: -14px; left: -14px; }
+.bracket-tr-corner { top: -14px; right: -14px; transform: scaleX(-1); }
+.bracket-bl-corner { bottom: -14px; left: -14px; transform: scaleY(-1); }
+.bracket-br-corner { bottom: -14px; right: -14px; transform: scale(-1); }
+
+.mac-screen-frame {
+  background: #000000;
+  border-radius: 26px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.35),
+              0 0 0 1px rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+/* Mac Wallpaper Inside Screen */
+.mac-screen-content {
+  position: relative;
+  aspect-ratio: 16 / 9.5;
+  width: 100%;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+/* Physical Screen Notch Cutout */
+.screen-notch-cutout {
+  position: absolute;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
-  background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
-  padding: 8px 16px;
-  z-index: 25;
+  width: 180px;
+  height: 28px;
+  background: #000000;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  z-index: 40;
   display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Layout Grid Stage */
-.layout-grid-stage {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 130px;
-  gap: 16px;
-  padding: 24px;
-  background: #0a0a0e;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.layout-tile {
-  background: #14141a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 14px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
-  user-select: none;
-}
-
-.layout-tile:hover {
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-}
-
-.tile-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 8px;
-  margin-top: 8px;
-}
-
-.tile-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #a1a1aa;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.15s;
 }
 
-.tile-btn:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+/* The Active Living Notch Widget (Centered in Notch) */
+.active-notch-bar {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 50;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
 }
 
+/* Pulse animation */
 @keyframes pulse-subtle {
   0%, 100% { opacity: 0.9; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.4; }
 }
 
 .pulse-subtle {

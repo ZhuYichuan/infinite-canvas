@@ -56,22 +56,22 @@ export const Mascot: React.FC<MascotProps> = ({ onInteract, lang }) => {
     <div
       ref={mascotRef}
       onClick={handleClick}
-      className={`mascot-box transition-transform ${scale ? 'scale-110' : ''}`}
-      title="我是画布助手！点击与我互动"
+      className={`mascot-hero-wrap ${scale ? 'scale-110' : ''}`}
+      title="我是画布小助手！点击与我互动"
     >
-      <div className="mascot-frame">
-        <div className="mascot-eyes-wrap">
-          <div className={`mascot-eye-socket ${blinking ? 'blink' : ''}`}>
+      <div className="mascot-hero-body">
+        <div className="mascot-hero-eyes">
+          <div className={`mascot-hero-socket ${blinking ? 'blink' : ''}`}>
             <div
-              className="mascot-eye-pupil"
+              className="mascot-hero-pupil"
               style={{
                 transform: `translate(${pupilOffset.x}px, ${pupilOffset.y}px)`,
               }}
             />
           </div>
-          <div className={`mascot-eye-socket ${blinking ? 'blink' : ''}`}>
+          <div className={`mascot-hero-socket ${blinking ? 'blink' : ''}`}>
             <div
-              className="mascot-eye-pupil"
+              className="mascot-hero-pupil"
               style={{
                 transform: `translate(${pupilOffset.x}px, ${pupilOffset.y}px)`,
               }}
