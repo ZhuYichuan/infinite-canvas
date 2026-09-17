@@ -18,27 +18,27 @@ export const Footer: React.FC<FooterProps> = ({ t, onToast, lang }) => {
   };
 
   return (
-    <footer className="py-20 border-t border-white/10 bg-[#07070a] text-zinc-400 text-xs">
+    <footer className="py-20 border-t border-black/[0.08] bg-[#fbfbfd] text-[#6e6e73] text-xs">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Quote Section */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-12 mb-12 border-b border-white/5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-12 mb-12 border-b border-black/[0.06]">
           <div>
-            <h2 className="text-xl font-bold text-white mb-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#111113] mb-1">
               {t('footer_quote_line1')}
               <br />
-              <span className="text-zinc-500 font-normal">{t('footer_quote_line2')}</span>
+              <span className="text-[#6e6e73] font-normal">{t('footer_quote_line2')}</span>
             </h2>
-            <p className="text-zinc-500">{t('footer_quote_sub')}</p>
+            <p className="text-[#86868b]">{t('footer_quote_sub')}</p>
           </div>
 
           <div className="flex flex-col sm:items-end gap-2">
             <button
               type="button"
               onClick={handleCheckAgain}
-              className="px-4 py-2 rounded-full bg-zinc-900 border border-white/10 hover:border-white/20 text-white font-medium flex items-center gap-2 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-full bg-white border border-black/[0.12] hover:border-black/[0.22] text-[#1d1d1f] font-medium shadow-sm hover:shadow flex items-center gap-2 transition-all cursor-pointer"
             >
               <svg
-                className={`w-3.5 h-3.5 text-sky-400 transition-transform ${rotated ? 'rotate-180' : ''}`}
+                className={`w-3.5 h-3.5 text-[#0071e3] transition-transform ${rotated ? 'rotate-180' : ''}`}
                 viewBox="0 0 20 20"
                 fill="none"
                 stroke="currentColor"
@@ -48,7 +48,7 @@ export const Footer: React.FC<FooterProps> = ({ t, onToast, lang }) => {
               </svg>
               <span>{t('footer_check_btn')}</span>
             </button>
-            <span className="text-zinc-500 text-[11px]">{reply || t('footer_reply')}</span>
+            <span className="text-[#86868b] text-[11px] font-mono">{reply || t('footer_reply')}</span>
           </div>
         </div>
 
@@ -56,17 +56,23 @@ export const Footer: React.FC<FooterProps> = ({ t, onToast, lang }) => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <img src="/favicon.svg" alt="logo" className="w-5 h-5" />
-            <span className="text-white font-semibold">无限画布</span>
-            <span className="text-zinc-600">© 2026 Open Source Project</span>
+            <span className="text-[#111113] font-semibold text-sm">无限画布</span>
+            <span className="text-[#86868b]">© 2026 开源项目 · MIT License</span>
           </div>
 
-          <nav className="flex items-center gap-6">
-            <a href="#features" className="hover:text-white transition-colors">{t('nav_features')}</a>
-            <a href="#ecosystem" className="hover:text-white transition-colors">{t('nav_workflows')}</a>
-            <a href="#privacy" className="hover:text-white transition-colors">{t('nav_security')}</a>
-            <a href="#launch-offer" className="hover:text-white transition-colors">{t('nav_quickstart')}</a>
-            <a href="#faq" className="hover:text-white transition-colors">{t('nav_faq')}</a>
+          <nav className="flex items-center flex-wrap justify-center gap-5 sm:gap-6 text-xs font-medium">
+            <a href="#features" className="text-[#6e6e73] hover:text-[#111113] transition-colors">{t('nav_features')}</a>
+            <a href="#ecosystem" className="text-[#6e6e73] hover:text-[#111113] transition-colors">{t('nav_workflows')}</a>
+            <a href="#layout-demo" className="text-[#6e6e73] hover:text-[#111113] transition-colors">{t('nav_demo')}</a>
+            <a href="#privacy" className="text-[#6e6e73] hover:text-[#111113] transition-colors">{t('nav_security')}</a>
+            <a href="#launch-offer" className="text-[#6e6e73] hover:text-[#111113] transition-colors">{t('nav_quickstart')}</a>
+            <a href="#faq" className="text-[#6e6e73] hover:text-[#111113] transition-colors">{t('nav_faq')}</a>
           </nav>
+
+          <a href="#overview" className="text-xs text-[#6e6e73] hover:text-[#111113] transition-colors flex items-center gap-1 font-medium">
+            <span>回到顶部</span>
+            <span>↑</span>
+          </a>
         </div>
       </div>
     </footer>

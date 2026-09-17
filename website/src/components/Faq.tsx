@@ -31,31 +31,38 @@ export const Faq: React.FC<FaqProps> = ({ t }) => {
   return (
     <section id="faq" className="py-20 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-10">
-        <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider block mb-1">
+        <span className="text-xs font-mono text-[#86868b] uppercase tracking-wider block mb-2">
           {t('faq_eyebrow')}
         </span>
-        <h2 className="text-3xl font-extrabold text-white">{t('faq_title')}</h2>
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-[#111113] tracking-tight">{t('faq_title')}</h2>
       </div>
 
-      <div className="space-y-4 text-xs sm:text-sm">
+      <div className="space-y-3.5 text-xs sm:text-sm">
         {FAQS.map((item, index) => (
           <details
             key={index}
-            className="group rounded-2xl bg-zinc-900/60 border border-white/10 p-5 [&_svg]:open:-rotate-180 transition-colors"
+            className="group rounded-2xl bg-white border border-black/[0.08] hover:border-black/[0.16] shadow-sm p-5 transition-all [&_svg]:open:rotate-45"
           >
-            <summary className="flex cursor-pointer items-center justify-between gap-2 font-semibold text-white list-none">
+            <summary className="flex cursor-pointer items-center justify-between gap-3 font-semibold text-sm sm:text-base text-[#1d1d1f] list-none select-none">
               <span>{item.q}</span>
-              <svg
-                className="h-4 w-4 shrink-0 transition duration-300 text-zinc-400"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+              <span className="w-6 h-6 rounded-full bg-zinc-100 group-hover:bg-zinc-200 flex items-center justify-center shrink-0 text-[#6e6e73] transition-colors">
+                <svg
+                  className="h-3.5 w-3.5 transition-transform duration-200"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </span>
             </summary>
-            <p className="mt-3 text-zinc-400 leading-relaxed">{item.a}</p>
+            <p className="mt-3 text-xs sm:text-sm text-[#6e6e73] leading-relaxed pt-3 border-t border-black/[0.05]">
+              {item.a}
+            </p>
           </details>
         ))}
       </div>

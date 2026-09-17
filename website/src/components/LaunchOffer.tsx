@@ -72,16 +72,16 @@ export const LaunchOffer: React.FC<LaunchOfferProps> = ({ t, onToast, lang }) =>
   return (
     <section id="launch-offer" className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-10">
-        <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider block mb-2">
+        <span className="text-xs font-mono text-[#86868b] uppercase tracking-wider block mb-2">
           {t('launch_eyebrow')}
         </span>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-2">
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-[#111113] mb-2">
           {t('launch_title_line1')}
           <br />
-          <span>{t('launch_title_line2')}</span>
+          <span className="text-[#6e6e73] font-normal">{t('launch_title_line2')}</span>
         </h2>
-        <p className="text-sm text-zinc-400">{t('launch_desc')}</p>
-        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-zinc-500 font-mono">
+        <p className="text-sm text-[#6e6e73]">{t('launch_desc')}</p>
+        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-[#86868b] font-mono">
           <span>{t('launch_platform')}</span>
         </div>
       </div>

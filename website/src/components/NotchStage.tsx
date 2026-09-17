@@ -18,15 +18,15 @@ export const NotchStage: React.FC<NotchStageProps> = ({ t }) => {
     <section id="features" className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
-          <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider block mb-2">
+          <span className="text-xs font-mono text-[#86868b] uppercase tracking-wider block mb-2">
             {t('features_eyebrow')}
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#111113] leading-tight">
             {t('features_title_line1')}
             <br />
-            <span className="text-zinc-400">{t('features_title_line2')}</span>
+            <span className="text-[#6e6e73] font-normal">{t('features_title_line2')}</span>
           </h2>
-          <p className="text-sm text-zinc-400 mt-2">{t('features_desc')}</p>
+          <p className="text-sm text-[#6e6e73] mt-2">{t('features_desc')}</p>
         </div>
 
         {/* 3-Step Slider Switcher (Glance / Inspect / Explore) */}

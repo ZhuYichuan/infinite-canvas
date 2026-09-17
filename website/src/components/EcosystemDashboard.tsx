@@ -12,11 +12,11 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
   return (
     <section id="ecosystem" className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-10">
-        <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider block mb-2">
+        <span className="text-xs font-mono text-[#86868b] uppercase tracking-wider block mb-2">
           {t('eco_eyebrow')}
         </span>
-        <h3 className="text-3xl font-extrabold text-white">{t('eco_title')}</h3>
-        <p className="text-sm text-zinc-400 mt-2">{t('eco_desc')}</p>
+        <h3 className="text-3xl font-extrabold text-[#111113]">{t('eco_title')}</h3>
+        <p className="text-sm text-[#6e6e73] mt-2">{t('eco_desc')}</p>
       </div>
 
       {/* Model Chips */}
@@ -26,8 +26,8 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
           onClick={() => setSelectedModel('flux')}
           className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
             selectedModel === 'flux'
-              ? 'border-sky-400/50 bg-white/10 text-sky-300'
-              : 'border-white/5 text-zinc-400 hover:text-white'
+              ? 'border-[#0071e3] bg-[#0071e3]/10 text-[#0071e3] font-semibold'
+              : 'border-black/[0.08] bg-white text-[#6e6e73] hover:text-[#111113] hover:border-black/[0.16]'
           }`}
         >
           Flux.1 Turbo
@@ -37,8 +37,8 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
           onClick={() => setSelectedModel('minimax')}
           className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
             selectedModel === 'minimax'
-              ? 'border-sky-400/50 bg-white/10 text-sky-300'
-              : 'border-white/5 text-zinc-400 hover:text-white'
+              ? 'border-[#0071e3] bg-[#0071e3]/10 text-[#0071e3] font-semibold'
+              : 'border-black/[0.08] bg-white text-[#6e6e73] hover:text-[#111113] hover:border-black/[0.16]'
           }`}
         >
           MiniMax H3 Video
@@ -48,8 +48,8 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
           onClick={() => setSelectedModel('sdxl')}
           className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
             selectedModel === 'sdxl'
-              ? 'border-sky-400/50 bg-white/10 text-sky-300'
-              : 'border-white/5 text-zinc-400 hover:text-white'
+              ? 'border-[#0071e3] bg-[#0071e3]/10 text-[#0071e3] font-semibold'
+              : 'border-black/[0.08] bg-white text-[#6e6e73] hover:text-[#111113] hover:border-black/[0.16]'
           }`}
         >
           SDXL Lightning
@@ -59,8 +59,8 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
           onClick={() => setSelectedModel('qwen')}
           className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
             selectedModel === 'qwen'
-              ? 'border-sky-400/50 bg-white/10 text-sky-300'
-              : 'border-white/5 text-zinc-400 hover:text-white'
+              ? 'border-[#0071e3] bg-[#0071e3]/10 text-[#0071e3] font-semibold'
+              : 'border-black/[0.08] bg-white text-[#6e6e73] hover:text-[#111113] hover:border-black/[0.16]'
           }`}
         >
           Qwen2.5-VL

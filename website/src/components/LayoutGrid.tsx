@@ -56,13 +56,13 @@ export const LayoutGrid: React.FC<LayoutGridProps> = ({ t, onToast }) => {
     <section id="layout-demo" className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
-          <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider block mb-2">
+          <span className="text-xs font-mono text-[#86868b] uppercase tracking-wider block mb-2">
             {t('layout_eyebrow')}
           </span>
-          <h3 className="text-3xl font-extrabold text-white">{t('layout_title')}</h3>
-          <p className="text-sm text-zinc-400 mt-2">{t('layout_desc')}</p>
+          <h3 className="text-3xl font-extrabold text-[#111113]">{t('layout_title')}</h3>
+          <p className="text-sm text-[#6e6e73] mt-2">{t('layout_desc')}</p>
         </div>
-        <span className="text-xs text-sky-400 font-mono flex items-center gap-1.5">
+        <span className="text-xs text-[#0071e3] font-mono flex items-center gap-1.5 font-medium">
           <span>{t('layout_hint')}</span>
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M5 12h14M12 5l7 7-7 7" />
