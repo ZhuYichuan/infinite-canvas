@@ -259,3 +259,9 @@ body {
 .pulse-subtle {
   animation: pulse-subtle 2s infinite ease-in-out;
 }
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
