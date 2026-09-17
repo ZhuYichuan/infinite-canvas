@@ -7,6 +7,11 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Canvas Left Sidebar Node List Double-Click Inline Renaming:
+  - **Double-Click Title to Rename**: In the left sidebar "Canvas" tab elements list, double-clicking any node's title activates an inline text input with text auto-selected, accompanied by a tooltip "Double-click to rename the node";
+  - **Keyboard & Blur Interaction Consistency**: Pressing `Enter` commits the new title, `Escape` cancels and reverts the draft, and blurring outside automatically saves the change; blank inputs safely fall back to the previous title or default untitled fallback;
+  - **Conflict Prevention in Multi-Select Mode**: Inline renaming is disabled while in batch selection mode (`selectMode`) to avoid conflicting with row click checkbox selection.
+
 - Canvas Group Node Enclosure, Auto-Capture, and Organization Enhancement:
   - **Selection to Group (⌘G / Ctrl+G) & Exact Coordinates**: When one or more non-group nodes are selected, clicking the "Group" button in the canvas bottom toolbar or pressing `⌘G` / `Ctrl+G` instantly creates a bounding group box around the selection and captures all selected nodes into the group. Fixed the coordinate offset bug caused by factory half-dimension subtraction, ensuring the group frame precisely encloses all selected nodes with padding;
   - **Dynamic Drag & Resize Capture**: When no nodes are selected, a group is created centered at the canvas center. Moving a group over existing stationary nodes or resizing a group's boundaries to encompass nodes automatically captures enclosed nodes into the group upon pointer release; nodes moved outside the group boundaries are automatically released;

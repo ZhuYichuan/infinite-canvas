@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { App, Empty, Input, Popconfirm, Select, Spin, Tag } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Check, ChevronRight, Download, Eye, FileText, Image as ImageIcon, ListChecks, Music2, Plus, Search, Settings2, Square, Trash2, Type, Video } from "lucide-react";
@@ -32,6 +32,7 @@ type Props = {
     onFocusNode: (nodeId: string) => void;
     onPreviewNode: (nodeId: string) => void;
     onInsertAsset: (payload: InsertAssetPayload) => void;
+    onTitleChange?: (nodeId: string, title: string) => void;
 };
 
 const NODE_TYPE_ICON: Record<string, typeof Square> = {
@@ -50,7 +51,7 @@ const STATUS_COLOR: Record<string, string> = {
     idle: "transparent",
 };
 
-export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, onInsertAsset }: Props) {
+export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, onInsertAsset, onTitleChange }: Props) {
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [tab, setTab] = useState<PanelTab>("canvas");
@@ -106,7 +107,7 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
                 </div>
                 <div className="mt-2 min-h-0 flex-1 overflow-hidden">
                     {tab === "canvas" ? (
-                        <CanvasNodesTab nodes={nodes} selectedNodeIds={selectedNodeIds} onFocusNode={onFocusNode} onPreviewNode={onPreviewNode} theme={theme} />
+                        <CanvasNodesTab nodes={nodes} selectedNodeIds={selectedNodeIds} onFocusNode={onFocusNode} onPreviewNode={onPreviewNode} onTitleChange={onTitleChange} theme={theme} />
                     ) : tab === "assets" ? (
                         <CanvasAssetsTab onInsert={onInsertAsset} theme={theme} />
                     ) : (
@@ -139,7 +140,21 @@ function nodePreviewText(node: CanvasNodeData) {
     return getNodeDefinition(node.type)?.title || node.type;
 }
 
-function CanvasNodesTab({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, theme }: { nodes: CanvasNodeData[]; selectedNodeIds: Set<string>; onFocusNode: (nodeId: string) => void; onPreviewNode: (nodeId: string) => void; theme: CanvasTheme }) {
+function CanvasNodesTab({
+    nodes,
+    selectedNodeIds,
+    onFocusNode,
+    onPreviewNode,
+    onTitleChange,
+    theme,
+}: {
+    nodes: CanvasNodeData[];
+    selectedNodeIds: Set<string>;
+    onFocusNode: (nodeId: string) => void;
+    onPreviewNode: (nodeId: string) => void;
+    onTitleChange?: (nodeId: string, title: string) => void;
+    theme: CanvasTheme;
+}) {
     const { message } = App.useApp();
     const { t } = useTranslation();
     const [keyword, setKeyword] = useState("");
@@ -148,6 +163,32 @@ function CanvasNodesTab({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, th
     const [checked, setChecked] = useState<Set<string>>(new Set());
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
     const [exporting, setExporting] = useState(false);
+    const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+    const [titleDraft, setTitleDraft] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
+    const isCancelingRef = useRef(false);
+
+    useEffect(() => {
+        if (editingNodeId) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [editingNodeId]);
+
+    const finishRename = (node: CanvasNodeData) => {
+        if (editingNodeId !== node.id) return;
+        const fallback = node.title || getNodeDefinition(node.type)?.title || t("canvas.node.untitled");
+        const nextTitle = titleDraft.trim() || fallback;
+        setEditingNodeId(null);
+        if (nextTitle !== node.title) {
+            onTitleChange?.(node.id, nextTitle);
+        }
+    };
+
+    const cancelRename = () => {
+        isCancelingRef.current = true;
+        setEditingNodeId(null);
+    };
 
     const filtered = useMemo(() => {
         const query = keyword.trim().toLowerCase();
@@ -173,6 +214,7 @@ function CanvasNodesTab({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, th
     const exitSelect = () => {
         setSelectMode(false);
         setChecked(new Set());
+        setEditingNodeId(null);
     };
     const toggleChecked = (id: string) =>
         setChecked((prev) => {
@@ -208,7 +250,14 @@ function CanvasNodesTab({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, th
                 {filtered.length ? <span className="text-xs opacity-35">{filtered.length}</span> : null}
                 <button
                     type="button"
-                    onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+                    onClick={() => {
+                        if (selectMode) {
+                            exitSelect();
+                        } else {
+                            setEditingNodeId(null);
+                            setSelectMode(true);
+                        }
+                    }}
                     className="ml-auto flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium opacity-70 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
                     style={selectMode ? { color: theme.toolbar.activeText, opacity: 1 } : undefined}
                 >
@@ -228,6 +277,7 @@ function CanvasNodesTab({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, th
                             const isImage = node.type === CanvasNodeType.Image && node.metadata?.content;
                             const isChecked = checked.has(node.id);
                             const active = selectMode ? isChecked : selectedNodeIds.has(node.id);
+                            const isEditing = editingNodeId === node.id && !selectMode;
                             return (
                                 <div key={node.id} className={cn("group relative flex items-center rounded-lg transition", depth && "ml-5", active ? "" : "hover:bg-black/5 dark:hover:bg-white/5")} style={active ? { background: theme.toolbar.activeBg } : undefined}>
                                     {depth ? <span className="pointer-events-none absolute -left-3 top-[calc(-50%-0.4rem)] h-[calc(100%+0.4rem)] w-3 rounded-bl-md border-b border-l opacity-45" style={{ borderColor: theme.node.stroke }} /> : null}
@@ -236,17 +286,80 @@ function CanvasNodesTab({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, th
                                             <ChevronRight className={cn("size-3.5 transition-transform", !collapsedGroups.has(node.id) && "rotate-90")} />
                                         </button>
                                     ) : null}
-                                    <button type="button" onClick={() => (selectMode ? toggleChecked(node.id) : onFocusNode(node.id))} className={cn("flex min-w-0 flex-1 items-center gap-3 py-2 pr-2 text-left", node.type === CanvasNodeType.Group && hasChildren ? "pl-0" : "pl-2")} title={selectMode ? undefined : t("canvas.sidePanel.focusNode")}>
+                                    <div
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => {
+                                            if (isEditing) return;
+                                            selectMode ? toggleChecked(node.id) : onFocusNode(node.id);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (isEditing) return;
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                selectMode ? toggleChecked(node.id) : onFocusNode(node.id);
+                                            }
+                                        }}
+                                        className={cn("flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-2 pr-2 text-left outline-none", node.type === CanvasNodeType.Group && hasChildren ? "pl-0" : "pl-2")}
+                                        title={selectMode || isEditing ? undefined : t("canvas.sidePanel.focusNode")}
+                                    >
                                         {selectMode ? <CheckMark checked={isChecked} theme={theme} /> : null}
                                         <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md">
                                             {isImage ? <img src={node.metadata!.content} alt={node.title} className="size-full object-cover" /> : <Icon className="size-5 opacity-60" />}
                                         </span>
                                         <span className="min-w-0 flex-1 space-y-0.5">
-                                            <span className="block truncate text-sm font-medium leading-snug">{node.title || getNodeDefinition(node.type)?.title || t("canvas.node.untitled")}</span>
+                                            {isEditing ? (
+                                                <input
+                                                    ref={inputRef}
+                                                    value={titleDraft}
+                                                    maxLength={64}
+                                                    className="w-full rounded border bg-transparent px-1.5 py-0.5 text-sm font-medium leading-snug outline-none shadow-sm transition"
+                                                    style={{
+                                                        borderColor: theme.toolbar.border,
+                                                        color: theme.node.text,
+                                                        backgroundColor: theme.node.panel,
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onDoubleClick={(e) => e.stopPropagation()}
+                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                    onChange={(e) => setTitleDraft(e.target.value)}
+                                                    onBlur={() => {
+                                                        if (isCancelingRef.current) {
+                                                            isCancelingRef.current = false;
+                                                            return;
+                                                        }
+                                                        finishRename(node);
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        e.stopPropagation();
+                                                        if (e.key === "Enter") {
+                                                            e.preventDefault();
+                                                            finishRename(node);
+                                                        } else if (e.key === "Escape") {
+                                                            e.preventDefault();
+                                                            cancelRename();
+                                                        }
+                                                    }}
+                                                />
+                                            ) : (
+                                                <span
+                                                    className="block truncate text-sm font-medium leading-snug transition hover:opacity-80"
+                                                    title={selectMode ? undefined : t("canvas.node.renameHint")}
+                                                    onDoubleClick={(e) => {
+                                                        if (selectMode) return;
+                                                        e.stopPropagation();
+                                                        setEditingNodeId(node.id);
+                                                        setTitleDraft(node.title || getNodeDefinition(node.type)?.title || t("canvas.node.untitled"));
+                                                    }}
+                                                >
+                                                    {node.title || getNodeDefinition(node.type)?.title || t("canvas.node.untitled")}
+                                                </span>
+                                            )}
                                             <span className="block truncate text-xs leading-snug opacity-50">{nodePreviewText(node)}</span>
                                         </span>
                                         {node.metadata?.status && node.metadata.status !== "idle" ? <span className="size-1.5 shrink-0 rounded-full" style={{ background: STATUS_COLOR[node.metadata.status] || "transparent" }} /> : null}
-                                    </button>
+                                    </div>
                                     {selectMode || !isImage ? null : (
                                         <div className="flex shrink-0 flex-col items-center gap-0.5 pr-1.5">
                                             <button type="button" onClick={() => onPreviewNode(node.id)} className="grid size-7 place-items-center rounded-md opacity-55 transition hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/10" aria-label={t("canvas.sidePanel.preview")} title={t("canvas.sidePanel.preview")}>
