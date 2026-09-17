@@ -3,7 +3,7 @@ out/
 node_modules/
 .env*
 !.env.example
-data/
+/data/
 *.log
 *.tsbuildinfo
 .DS_Store
