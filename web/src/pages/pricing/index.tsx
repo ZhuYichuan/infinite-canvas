@@ -177,7 +177,7 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>内置国内高速源，省去数十小时手动下载折磨</span>
+                                        <span>内置国内高速源，速度视网络情况而定</span>
                                     </li>
                                 </ul>
                             </div>
