@@ -104,8 +104,8 @@ export function AgentConnectView({
                     </div>
                 </div>
 
-                {/* 1. WorkBuddy 桌面助理配置卡片 */}
-                <div className="rounded-lg border p-3.5" style={{ borderColor: theme.node.stroke }}>
+                {/* 1. WorkBuddy 桌面助理配置卡片（暂时隐藏） */}
+                {/* <div className="rounded-lg border p-3.5" style={{ borderColor: theme.node.stroke }}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 items-center gap-2">
@@ -157,7 +157,7 @@ export function AgentConnectView({
                             </Button>
                         </div>
                     </div>
-                </div>
+                </div> */}
 
                 {/* 2. 本地 Canvas Agent 桥接服务连接卡片 */}
                 <div className="rounded-lg border p-3.5" style={{ borderColor: theme.node.stroke }}>
