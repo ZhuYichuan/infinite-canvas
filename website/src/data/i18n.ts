@@ -13,7 +13,7 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
     hero_title_line1: '把时间留给灵感与创作',
     hero_title_line2: '别把精力浪费在折腾工具上',
     hero_desc: '连接你的 ComfyUI。挑选你关心的生图与视频工作流。在专为视觉探索打造的无限画布中，让灵感实时迸发。',
-    hero_cta_start: 'Download for macOS',
+    hero_cta_start: '立即体验',
     hero_cta_doc: 'GitHub 仓库 ↗',
     hero_badge_privacy: 'Nothing leaves your  Mac.',
 
@@ -93,7 +93,7 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
     hero_title_line1: 'Focus on creation,',
     hero_title_line2: 'not wrestling with tools.',
     hero_desc: 'Connect your models. Pick the workflows you care about. Keep them live in an infinite, responsive canvas built around your local ComfyUI.',
-    hero_cta_start: 'Download for macOS',
+    hero_cta_start: 'Try Online Now',
     hero_cta_doc: 'GitHub Repo ↗',
     hero_badge_privacy: 'Nothing leaves your  Mac.',
 
