@@ -68,10 +68,16 @@ export default function PricingPage() {
                         选择最适合您的 <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">AI 生产力部署方案</span>
                     </h1>
 
-                    <p className="mx-auto mt-4 max-w-2xl text-balance text-base leading-7 text-stone-600 dark:text-stone-400 sm:text-lg">
-                        告别环境报错红字与漫长下载。轻薄本/Mac 亦可享受 24G 顶级显卡算力，
-                        为个人创作者、设计团队与工作室量身打造的开箱即用方案。
-                    </p>
+                    <div className="mx-auto mt-5 max-w-2xl text-balance">
+                        <p className="text-lg font-bold tracking-tight text-stone-900 sm:text-xl dark:text-stone-100">
+                            你是来创作的，不是来折腾工具的
+                        </p>
+                        <div className="mt-2.5 space-y-1 text-sm text-stone-600 sm:text-base dark:text-stone-400">
+                            <p>告别环境报错红字与漫长配置</p>
+                            <p>轻薄本 / Mac 亦可享受 24G 顶级显卡算力</p>
+                            <p>为个人创作者、设计团队与工作室量身打造的开箱即用方案</p>
+                        </div>
+                    </div>
 
                     {/* GPU 算力透明成本条 */}
                     <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-stone-200 bg-stone-50/90 p-4 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/90">
