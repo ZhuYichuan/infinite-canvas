@@ -183,15 +183,15 @@ export default function PricingPage() {
                             </div>
 
                             <div className="mt-4 border-t border-stone-100 pt-4 dark:border-stone-800">
-                                <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">⚠️ 服务边界与注意</div>
+                                <div className="text-xs font-semibold uppercase tracking-wider text-rose-500">⚠️ 服务边界与注意</div>
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span className="font-medium text-amber-700 dark:text-amber-400">仅限 AutoDL 云端镜像：本方案不包含本地便携包部署</span>
+                                        <span>仅限 AutoDL 云端镜像：本方案不包含本地便携包部署</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span className="font-medium text-amber-700 dark:text-amber-400">纯文档自查模式：不提供任何 1 对 1 人工技术支持与答疑</span>
+                                        <span>纯文档自查模式：不提供任何 1 对 1 人工技术支持与答疑</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
@@ -483,7 +483,7 @@ export default function PricingPage() {
                             </div>
 
                             <div className="mt-4 border-t border-stone-100 pt-4 dark:border-stone-800">
-                                <div className="text-xs font-semibold uppercase tracking-wider text-rose-500">⚠️ 缺点与注意</div>
+                                <div className="text-xs font-semibold uppercase tracking-wider text-rose-500">⚠️ 服务边界与注意</div>
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
