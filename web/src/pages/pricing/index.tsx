@@ -29,7 +29,7 @@ export const CONTACT_INFO = {
         wechatId: "openlts", // 真实微信号
         title: "微信扫码咨询与购买",
         qrPath: "/images/contact/wechat-qr.png",
-        tip: "添加时请备注：【19.9体验包】/【伴学更新】/【119服务包】/【1对1专家部署】，极速优先通过！",
+        tip: "添加时请备注：【19.9体验包】/【伴学更新】/【119服务包】/【1对1作者部署】，极速优先通过！",
     },
     douyin: {
         name: "@同学你好",
@@ -404,16 +404,18 @@ export default function PricingPage() {
                         <div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex size-9 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
                                         <Wrench className="size-5" />
                                     </div>
-                                    <h3 className="text-xl font-bold">1对1 专家全包部署</h3>
+                                    <h3 className="text-xl font-bold leading-tight">
+                                        1对1<br />作者全包部署
+                                    </h3>
                                 </div>
                                 <Tag color="purple">省心全包 · 跑不通退款</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-                                追求极致省心的团队与老板首选。资深工程师远程全程代劳，定制调优，包跑通包教会。<strong className="font-semibold text-purple-600 dark:text-purple-400">支持本地部署数据更安全。</strong>
+                                追求极致省心的团队与老板首选。作者远程全程代劳，定制调优，包跑通包教会。<strong className="font-semibold text-purple-600 dark:text-purple-400">支持本地部署数据更安全。</strong>
                             </p>
 
                             <div className="mt-5 flex items-baseline gap-1">
@@ -483,9 +485,9 @@ export default function PricingPage() {
                             <Button
                                 size="large"
                                 className="w-full !h-11 !font-medium"
-                                onClick={() => openContactModal("1对1 专家全包部署（¥299）")}
+                                onClick={() => openContactModal("1对1 作者全包部署（¥299）")}
                             >
-                                预约专家远程服务
+                                预约作者远程服务
                             </Button>
                         </div>
                     </div>
@@ -504,9 +506,9 @@ export default function PricingPage() {
                                 <tr>
                                     <th className="py-3.5 pl-6 pr-3">对比维度</th>
                                     <th className="px-3 py-3.5">极速体验包</th>
-                                    <th className="px-3 py-3.5 text-blue-600 dark:text-blue-400">创作者年度伴学 (推荐)</th>
+                                    <th className="px-3 py-3.5 text-blue-600 dark:text-blue-400">创作者伴学 (推荐)</th>
                                     <th className="px-3 py-3.5 text-indigo-600 dark:text-indigo-400">创作者服务包 (进阶)</th>
-                                    <th className="px-3 py-3.5 text-purple-600 dark:text-purple-400">1对1 专家全包</th>
+                                    <th className="px-3 py-3.5 text-purple-600 dark:text-purple-400">1对1 作者全包</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-stone-100 text-stone-600 dark:divide-stone-800/60 dark:text-stone-300">
