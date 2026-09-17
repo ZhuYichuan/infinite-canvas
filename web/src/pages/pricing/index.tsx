@@ -110,7 +110,7 @@ export default function PricingPage() {
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-                                AutoDL 云端镜像与本地便携包双模式，告别从零繁琐配置。提供保姆级图文与视频部署排错文档，纯文档自查。
+                                仅提供 AutoDL 官方云端预装镜像，告别本地显卡限制与繁琐配置。提供保姆级图文与视频部署文档，纯文档自查。
                             </p>
 
                             <div className="mt-5 flex items-baseline gap-1">
@@ -130,7 +130,7 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-2 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
-                                        <span>专属 AutoDL 镜像分享码 + 本地免配包拉取脚本</span>
+                                        <span>专属 AutoDL 官方镜像分享码与一键开机配置脚本</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
@@ -156,7 +156,7 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>一套代码打通云端与本地，按需随时切换</span>
+                                        <span>纯云端开箱即用，免本地配环境与装显卡，随用随停</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
@@ -168,6 +168,10 @@ export default function PricingPage() {
                             <div className="mt-4 border-t border-stone-100 pt-4 dark:border-stone-800">
                                 <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">⚠️ 服务边界与注意</div>
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
+                                    <li className="flex items-center gap-1.5">
+                                        <XCircle className="size-3.5 text-stone-400 shrink-0" />
+                                        <span className="font-medium text-amber-700 dark:text-amber-400">仅限 AutoDL 云端镜像：本方案不包含本地便携包部署</span>
+                                    </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
                                         <span className="font-medium text-amber-700 dark:text-amber-400">纯文档自查模式：不提供任何 1 对 1 人工技术支持与答疑</span>
@@ -225,7 +229,7 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-2 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
-                                        <span>包含【极速自助体验包】全部云端镜像与本地包脚本</span>
+                                        <span>包含 AutoDL 云端镜像 + 本地电脑 ComfyUI 便携包双环境</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
@@ -405,14 +409,14 @@ export default function PricingPage() {
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">运行环境支持</td>
-                                    <td className="px-3 py-3.5">AutoDL 云端 + 本地便携双模式</td>
-                                    <td className="px-3 py-3.5">AutoDL 云端 + 本地便携双模式</td>
+                                    <td className="px-3 py-3.5 text-stone-600 dark:text-stone-400">仅限 AutoDL 云端镜像（不含本地）</td>
+                                    <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">AutoDL 云端 + 本地便携双环境</td>
                                     <td className="px-3 py-3.5">工程师按需调优（云端或本地）</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">核心交付内容</td>
-                                    <td className="px-3 py-3.5">镜像码 + 拉取脚本 + 部署排错文档</td>
-                                    <td className="px-3 py-3.5 font-semibold text-stone-900 dark:text-stone-100">镜像/脚本 + 1年版本持续更新 + 独家预设库</td>
+                                    <td className="px-3 py-3.5">AutoDL 镜像码 + 启动脚本 + 部署排错文档</td>
+                                    <td className="px-3 py-3.5 font-semibold text-stone-900 dark:text-stone-100">云端+本地双环境 + 1年版本持续更新 + 独家预设库</td>
                                     <td className="px-3 py-3.5">远程端到端调通 + 显存调优 + 赠全年权益</td>
                                 </tr>
                                 <tr>
@@ -496,7 +500,7 @@ export default function PricingPage() {
                                 为什么极速体验包要收取 19.9 元？提供人工支持吗？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                <strong>核心是为了维持镜像存活，不提供人工技术支持</strong>。云端存储一个包含全套百 G 模型与插件的预装镜像，平台每天都在扣除固定的存储费用；如果不收费用，镜像会因欠费被平台直接清理删除。19.9 元纯属象征性分摊长期存储租金，让大家随时有一键可用的镜像。同时因价格极低无法覆盖人工排查时间成本，仅附带全套详尽文档供自查，不提供 1 对 1 人工排障。若需人工指导请选 ¥79 伴学包，需远程代劳请选 ¥299 专家部署。
+                                <strong>核心是为了维持镜像存活，仅提供 AutoDL 云端镜像，不提供人工技术支持</strong>。云端存储一个包含全套百 G 模型与插件的预装镜像，平台每天都在扣除固定的存储费用；如果不收费用，镜像会因欠费被平台直接清理删除。19.9 元纯属象征性分摊长期存储租金，让大家随时有一键可用的镜像。该方案仅限 AutoDL 云端使用（不含本地便携包），且因价格极低无法覆盖人工排查时间成本，仅附带全套详尽文档供自查。若需本地环境支持与答疑请选 ¥79 伴学包，需远程代劳请选 ¥299 专家部署。
                             </p>
                         </Card>
 
@@ -506,7 +510,7 @@ export default function PricingPage() {
                                 既然有 19.9 元体验包，为什么强烈推荐选 ¥79 伴学包？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。19.9 元版本仅包含当前静态镜像与文档，不含后续持续维护；而 ¥79 伴学包由工程师团队持续整年回归测试并推送稳定镜像，同时享有独家预设库与官方群优先答疑指导，更加省心长久。
+                                19.9 元体验包仅包含 AutoDL 云端静态镜像与基础文档，不含本地便携包与后续维护。而开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。¥79 伴学包同时提供云端与本地双环境支持，由工程师团队持续整年回归测试并推送稳定镜像，同时享有独家预设库与官方群优先答疑指导，更加省心长久。
                             </p>
                         </Card>
 
