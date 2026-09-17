@@ -28,7 +28,7 @@ export const CONTACT_INFO = {
         wechatId: "openlts", // 真实微信号
         title: "微信扫码咨询与购买",
         qrPath: "/images/contact/wechat-qr.png",
-        tip: "添加时请备注：【9.9体验包】/【伴学更新】/【1对1专家部署】，极速优先通过！",
+        tip: "添加时请备注：【19.9体验包】/【伴学更新】/【1对1专家部署】，极速优先通过！",
     },
     douyin: {
         name: "@同学你好",
@@ -96,7 +96,7 @@ export default function PricingPage() {
 
                 {/* 2. 三大主力方案卡片 (展现交付效果、优势与明确服务边界) */}
                 <div className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-3">
-                    {/* 方案 A: 极速自助体验包 (¥9.9 一次性 / 纯文档自助) */}
+                    {/* 方案 A: 极速自助体验包 (¥19.9 一次性 / 纯文档自助) */}
                     <div className="relative flex flex-col justify-between rounded-3xl border border-stone-200 bg-background p-6 shadow-sm sm:p-8 dark:border-stone-800">
                         <div>
                             <div className="flex items-center justify-between">
@@ -114,7 +114,7 @@ export default function PricingPage() {
                             </p>
 
                             <div className="mt-5 flex items-baseline gap-1">
-                                <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥9.9</span>
+                                <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥19.9</span>
                                 <span className="text-xs text-stone-500">/ 象征性分摊镜像存储费</span>
                             </div>
                             <div className="mt-1 text-xs text-stone-400">
@@ -122,7 +122,7 @@ export default function PricingPage() {
                             </div>
 
                             <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-                                💡 <strong>为什么收 9.9 元？</strong> 包含百 G 大模型的云镜像每天都在产生存储租金。若不收费用，镜像会因欠费被平台直接清理删除，因此必须象征性收取一点费用分摊存储成本，保障镜像长期存活。
+                                💡 <strong>为什么收 19.9 元？</strong> 包含百 G 大模型的云镜像每天都在产生存储租金。若不收费用，镜像会因欠费被平台直接清理删除，因此必须象征性收取一点费用分摊存储成本，保障镜像长期存活。
                             </div>
 
                             <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
@@ -152,7 +152,7 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>一杯奶茶钱极低门槛，轻薄本/Mac 秒级上手</span>
+                                        <span>一杯咖啡钱极低门槛，轻薄本/Mac 秒级上手</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
@@ -174,7 +174,7 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>遇脚本或网络报错请完全对照文档自行排查</span>
+                                        <span>遇脚本或网络报错请完全自行排查</span>
                                     </li>
                                 </ul>
                             </div>
@@ -184,9 +184,9 @@ export default function PricingPage() {
                             <Button
                                 size="large"
                                 className="w-full !h-11 !font-medium"
-                                onClick={() => openContactModal("极速自助体验包（¥9.9）")}
+                                onClick={() => openContactModal("极速自助体验包（¥19.9）")}
                             >
-                                获取极速体验包（¥9.9）
+                                获取极速体验包（¥19.9）
                             </Button>
                         </div>
                     </div>
@@ -399,7 +399,7 @@ export default function PricingPage() {
                             <tbody className="divide-y divide-stone-100 text-stone-600 dark:divide-stone-800/60 dark:text-stone-300">
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">方案费用</td>
-                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">¥9.9 一次性买断</td>
+                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">¥19.9 一次性买断</td>
                                     <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">¥79 / 全年更新</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">¥299 / 次（赠全年伴学）</td>
                                 </tr>
@@ -438,7 +438,7 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {/* 4. 为什么极速体验包仅需 9.9 元且不提供人工支持？（坦诚告知：关于人力成本与持续维护） */}
+                {/* 4. 为什么极速体验包仅需 19.9 元且不提供人工支持？（坦诚告知：关于人力成本与持续维护） */}
                 <div className="mt-16 rounded-3xl border border-stone-200 bg-stone-50/70 p-6 sm:p-10 dark:border-stone-800 dark:bg-stone-900/50">
                     <div className="mx-auto max-w-3xl text-center">
                         <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-background px-3 py-1 text-xs font-medium text-stone-600 dark:border-stone-700 dark:text-stone-300">
@@ -446,10 +446,10 @@ export default function PricingPage() {
                             <span>坦诚告知 · 关于极低体验价与服务边界的真心话</span>
                         </div>
                         <h2 className="mt-3 text-2xl font-bold tracking-tight text-stone-950 dark:text-stone-100 sm:text-3xl">
-                            为什么极速体验包要收 9.9 元？为什么不提供人工支持？
+                            为什么极速体验包要收 19.9 元？为什么不提供人工支持？
                         </h2>
                         <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-400">
-                            《无限画布》前端代码与文档 100% 保持开源免费。极速体验包之所以收取 9.9 元，是因为<strong>云端一个包含 MiniMax、Flux 等百 G 模型的预装镜像，平台每天都在扣除高昂的存储租金；如果不收费用，镜像就会因欠费被平台直接清理销毁，大家也将无法使用。因此必须象征性收取一点费用分摊存储成本，以维持镜像长期存活。</strong>同时，由于 9.9 元纯属象征性成本分摊、完全无法覆盖工程师一对一排障的人力时间成本，因此该方案严格仅限文档自查、不提供人工答疑支持；若您需要社群优先答疑请选 ¥79 伴学包，需要专家全程代劳请选 ¥299 远程服务。
+                            《无限画布》前端代码与文档 100% 保持开源免费。极速体验包之所以收取 19.9 元，是因为<strong>云端一个包含 MiniMax、Flux 等百 G 模型的预装镜像，平台每天都在扣除高昂的存储租金；如果不收费用，镜像就会因欠费被平台直接清理销毁，大家也将无法使用。因此必须象征性收取一点费用分摊存储成本，以维持镜像长期存活。</strong>同时，由于 19.9 元纯属象征性成本分摊、完全无法覆盖工程师一对一排障的人力时间成本，因此该方案严格仅限文档自查、不提供人工答疑支持；若您需要社群优先答疑请选 ¥79 伴学包，需要专家全程代劳请选 ¥299 远程服务。
                         </p>
                     </div>
 
@@ -493,27 +493,27 @@ export default function PricingPage() {
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                为什么极速体验包要收取 9.9 元？提供人工支持吗？
+                                为什么极速体验包要收取 19.9 元？提供人工支持吗？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                <strong>核心是为了维持镜像存活，不提供人工技术支持</strong>。云端存储一个包含全套百 G 模型与插件的预装镜像，平台每天都在扣除固定的存储费用；如果不收费用，镜像会因欠费被平台直接清理删除。9.9 元纯属象征性分摊长期存储租金，让大家随时有一键可用的镜像。同时因价格极低无法覆盖人工排查时间成本，仅附带全套详尽文档供自查，不提供 1 对 1 人工排障。若需人工指导请选 ¥79 伴学包，需远程代劳请选 ¥299 专家部署。
+                                <strong>核心是为了维持镜像存活，不提供人工技术支持</strong>。云端存储一个包含全套百 G 模型与插件的预装镜像，平台每天都在扣除固定的存储费用；如果不收费用，镜像会因欠费被平台直接清理删除。19.9 元纯属象征性分摊长期存储租金，让大家随时有一键可用的镜像。同时因价格极低无法覆盖人工排查时间成本，仅附带全套详尽文档供自查，不提供 1 对 1 人工排障。若需人工指导请选 ¥79 伴学包，需远程代劳请选 ¥299 专家部署。
                             </p>
                         </Card>
 
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                既然有 9.9 元体验包，为什么强烈推荐选 ¥79 伴学包？
+                                既然有 19.9 元体验包，为什么强烈推荐选 ¥79 伴学包？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。9.9 元版本仅包含当前静态镜像与文档，不含后续持续维护；而 ¥79 伴学包由工程师团队持续整年回归测试并推送稳定镜像，同时享有独家预设库与官方群优先答疑指导，更加省心长久。
+                                开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。19.9 元版本仅包含当前静态镜像与文档，不含后续持续维护；而 ¥79 伴学包由工程师团队持续整年回归测试并推送稳定镜像，同时享有独家预设库与官方群优先答疑指导，更加省心长久。
                             </p>
                         </Card>
 
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                如果我买了 9.9 元体验包，遇到部署报错怎么处理？
+                                如果我买了 19.9 元体验包，遇到部署报错怎么处理？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
                                 随包附带了保姆级视频与《常见报错排查手册》（涵盖 90% 的网络超时、端口占用、显存爆满等问题）。请先严格对照文档自查排错；若尝试后希望彻底省心，可随时升级为 ¥79 伴学群优先答疑 或 ¥299 专家远程服务。

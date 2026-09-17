@@ -7,6 +7,10 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Deployment Schemes and Pricing Tier Verification:
+  - **Tier 1: 极速自助体验包 (¥19.9 一次性)**: Verify price displays as ¥19.9, explanation card shows "💡 为什么收 19.9 元？" (cloud image storage cost sharing), disclaimer clearly states "遇脚本或网络报错请完全自行排查" and "纯文档自查模式：不提供任何 1 对 1 人工技术支持与答疑", click-to-contact modal title & intent note are accurate;
+  - **Comparison Matrix & FAQ**: Verify comparison table column displays ¥19.9, and the candid explanation section & FAQ cards correctly reflect the 19.9 pricing and clear self-service boundaries.
+
 - Canvas Left Sidebar Node List Double-Click Inline Renaming:
   - **Double-Click Title to Rename**: In the left sidebar "Canvas" tab elements list, double-clicking any node's title activates an inline text input with text auto-selected, accompanied by a tooltip "Double-click to rename the node";
   - **Keyboard & Blur Interaction Consistency**: Pressing `Enter` commits the new title, `Escape` cancels and reverts the draft, and blurring outside automatically saves the change; blank inputs safely fall back to the previous title or default untitled fallback;
