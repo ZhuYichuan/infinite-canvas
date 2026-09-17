@@ -154,7 +154,7 @@ export default function PricingPage() {
                                         </button>
                                     </Tooltip>
                                 </div>
-                                <span className="text-xs text-stone-500">/ 象征性分摊镜像存储费</span>
+                                <span className="text-xs text-stone-500">/ 分摊镜像存储费</span>
                             </div>
                             <div className="mt-1 text-xs text-stone-400">
                                 仅提供部署与排错文档，不提供任何人工技术支持
