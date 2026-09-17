@@ -56,7 +56,7 @@ export const Footer: React.FC<FooterProps> = ({ t, onToast, lang }) => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <img src="/favicon.svg" alt="logo" className="w-5 h-5" />
-            <span className="text-white font-semibold">infinite-canvas</span>
+            <span className="text-white font-semibold">comfyui 画布</span>
             <span className="text-zinc-600">© 2026 Open Source Project</span>
           </div>
 
