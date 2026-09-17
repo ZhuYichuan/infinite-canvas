@@ -68,14 +68,18 @@ export default function PricingPage() {
                         选择最适合您的 <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">AI 生产力部署方案</span>
                     </h1>
 
-                    <div className="mx-auto mt-5 max-w-2xl text-balance">
-                        <p className="text-lg font-bold tracking-tight text-stone-900 sm:text-xl dark:text-stone-100">
-                            你是来创作的，不是来折腾工具的
-                        </p>
-                        <div className="mt-2.5 space-y-1 text-sm text-stone-600 sm:text-base dark:text-stone-400">
+                    <div className="mx-auto mt-6 max-w-3xl text-balance text-center">
+                        <div className="inline-block rounded-2xl border border-indigo-200/90 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 px-6 py-2.5 shadow-sm backdrop-blur dark:border-indigo-800/60 dark:bg-indigo-950/40 sm:px-8 sm:py-3">
+                            <p className="text-xl font-black tracking-tight sm:text-2xl md:text-3xl">
+                                🎨 <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">你是来创作的</span>
+                                <span className="text-stone-900 dark:text-stone-100">，不是来折腾工具的</span>
+                            </p>
+                        </div>
+
+                        <div className="mt-4 space-y-1.5 text-sm text-stone-600 sm:text-base dark:text-stone-400">
                             <p>告别环境报错红字与漫长配置</p>
                             <p>轻薄本 / Mac 亦可享受 24G 顶级显卡算力</p>
-                            <p>为个人创作者、设计团队与工作室量身打造的开箱即用方案</p>
+                            <p className="text-stone-500 dark:text-stone-400">为个人创作者、设计团队与工作室量身打造的开箱即用方案</p>
                         </div>
                     </div>
 
