@@ -68,15 +68,15 @@ export default function PricingPage() {
                         选择最适合您的 <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">AI 生产力部署方案</span>
                     </h1>
 
-                    <div className="mx-auto mt-6 max-w-3xl text-balance text-center">
-                        <div className="inline-block rounded-2xl border border-indigo-200/90 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 px-6 py-2.5 shadow-sm backdrop-blur dark:border-indigo-800/60 dark:bg-indigo-950/40 sm:px-8 sm:py-3">
-                            <p className="text-lg font-black tracking-tight sm:text-2xl md:text-3xl">
+                    <div className="mx-auto mt-6 flex max-w-3xl flex-col items-center text-center">
+                        <div className="inline-flex items-center justify-center rounded-2xl border border-indigo-200/90 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 px-6 py-2.5 text-center shadow-sm backdrop-blur dark:border-indigo-800/60 dark:bg-indigo-950/40 sm:px-8 sm:py-3">
+                            <p className="text-center text-lg font-black tracking-tight sm:text-2xl md:text-3xl">
                                 💡 <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">把时间留给灵感与创作</span>
                                 <span className="text-stone-900 dark:text-stone-100">，别把精力浪费在折腾工具上</span>
                             </p>
                         </div>
 
-                        <div className="mt-4 space-y-1.5 text-sm text-stone-600 sm:text-base dark:text-stone-400">
+                        <div className="mt-4 space-y-1.5 text-center text-sm text-stone-600 sm:text-base dark:text-stone-400">
                             <p>告别环境报错红字与漫长配置</p>
                             <p>轻薄本 / Mac 亦可享受 24G 顶级显卡算力</p>
                             <p className="text-stone-500 dark:text-stone-400">为个人创作者、设计团队与工作室量身打造的开箱即用方案</p>
