@@ -120,12 +120,20 @@ export function calculateGroupBoundsForNodes(
     padTop = 44,
     padBottom = 36,
 ): { x: number; y: number; width: number; height: number } {
+    if (!nodes.length) {
+        return { x: 0, y: 0, width: 760, height: 480 };
+    }
     const bounds = nodeBounds(nodes);
+    const contentW = bounds.right - bounds.left + padX * 2;
+    const contentH = bounds.bottom - bounds.top + padTop + padBottom;
+    const extraW = Math.max(0, 280 - contentW);
+    const extraH = Math.max(0, 200 - contentH);
+
     return {
-        x: bounds.left - padX,
-        y: bounds.top - padTop,
-        width: Math.max(bounds.right - bounds.left + padX * 2, 280),
-        height: Math.max(bounds.bottom - bounds.top + padTop + padBottom, 200),
+        x: bounds.left - padX - extraW / 2,
+        y: bounds.top - padTop - extraH / 2,
+        width: contentW + extraW,
+        height: contentH + extraH,
     };
 }
 

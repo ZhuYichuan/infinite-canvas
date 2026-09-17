@@ -804,7 +804,18 @@ function InfiniteCanvasPage() {
                     : undefined;
             const newNode = createCanvasNode(type, targetPosition, configMetadata);
 
-            setNodes((prev) => [...prev, newNode]);
+            setNodes((prev) => {
+                if (type === CanvasNodeType.Group) {
+                    return prev.map((node) => {
+                        if (node.type === CanvasNodeType.Group) return node;
+                        if (isNodeEnclosedInGroup(node, newNode)) {
+                            return { ...node, metadata: { ...node.metadata, groupId: newNode.id } };
+                        }
+                        return node;
+                    }).concat(newNode);
+                }
+                return [...prev, newNode];
+            });
             setSelectedNodeIds(new Set([newNode.id]));
             setSelectedConnectionId(null);
             const definition = getNodeDefinition(type);
@@ -826,17 +837,22 @@ function InfiniteCanvasPage() {
     const groupSelectedNodes = useCallback(() => {
         const currentNodes = nodesRef.current;
         const selectedIds = selectedNodeIdsRef.current;
-        const selectedNonGroup = currentNodes.filter((n) => selectedIds.has(n.id) && n.type !== CanvasNodeType.Group);
+        const selected = currentNodes.filter((n) => selectedIds.has(n.id));
 
-        if (selectedNonGroup.length > 0) {
-            const bounds = calculateGroupBoundsForNodes(selectedNonGroup);
-            const newGroup = createCanvasNode(CanvasNodeType.Group, { x: bounds.x, y: bounds.y });
+        if (selected.length > 0) {
+            const selectedNonGroup = selected.filter((n) => n.type !== CanvasNodeType.Group);
+            const targetNodes = selectedNonGroup.length > 0 ? selectedNonGroup : selected;
+            const targetIds = new Set(targetNodes.map((n) => n.id));
+
+            const bounds = calculateGroupBoundsForNodes(targetNodes);
+            const newGroup = createCanvasNode(CanvasNodeType.Group, { x: 0, y: 0 });
+            newGroup.position = { x: bounds.x, y: bounds.y };
             newGroup.width = bounds.width;
             newGroup.height = bounds.height;
 
             setNodes((prev) => {
                 const nextNodes = prev.map((node) => {
-                    if (selectedIds.has(node.id) && node.type !== CanvasNodeType.Group) {
+                    if (targetIds.has(node.id)) {
                         return { ...node, metadata: { ...node.metadata, groupId: newGroup.id } };
                     }
                     return node;
@@ -845,16 +861,12 @@ function InfiniteCanvasPage() {
             });
             setSelectedNodeIds(new Set([newGroup.id]));
             setSelectedConnectionId(null);
-            message.success(t("canvas.node.groupedSuccess", { count: selectedNonGroup.length }));
+            message.success(t("canvas.node.groupedSuccess", { count: targetNodes.length }));
             return newGroup.id;
         }
 
         const center = getCanvasCenter();
-        const defaultSize = NODE_DEFAULT_SIZE[CanvasNodeType.Group] || { width: 760, height: 480 };
-        const position = { x: center.x - defaultSize.width / 2, y: center.y - defaultSize.height / 2 };
-        const newGroup = createCanvasNode(CanvasNodeType.Group, position);
-        newGroup.width = defaultSize.width;
-        newGroup.height = defaultSize.height;
+        const newGroup = createCanvasNode(CanvasNodeType.Group, center);
 
         setNodes((prev) => {
             let captured = 0;

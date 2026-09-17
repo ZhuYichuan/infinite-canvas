@@ -55,6 +55,22 @@ describe("canvas-group-geometry", () => {
         expect(bounds.y).toBe(100 - 44);
         expect(bounds.width).toBe(600 - 100 + 72);
         expect(bounds.height).toBe(500 - 100 + 80);
+
+        // 节点空数组时返回默认安全宽高
+        const emptyBounds = calculateGroupBoundsForNodes([]);
+        expect(emptyBounds.width).toBe(760);
+        expect(emptyBounds.height).toBe(480);
+
+        // 单个小节点时自动满足最小宽高约束并居中
+        const smallNode = makeNode("small", CanvasNodeType.Text, 200, 200, 80, 40);
+        const smallBounds = calculateGroupBoundsForNodes([smallNode], 36, 44, 36);
+        expect(smallBounds.width).toBe(280);
+        expect(smallBounds.height).toBe(200);
+        // 节点依然完全被包含在计算出的矩形框内
+        expect(smallBounds.x).toBeLessThanOrEqual(200);
+        expect(smallBounds.x + smallBounds.width).toBeGreaterThanOrEqual(280);
+        expect(smallBounds.y).toBeLessThanOrEqual(200);
+        expect(smallBounds.y + smallBounds.height).toBeGreaterThanOrEqual(240);
     });
 
     it("captureEnclosedNodesIntoGroup 一键吸附框内节点", () => {
