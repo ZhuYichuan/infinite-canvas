@@ -13,11 +13,11 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
 
     hero_title_line1: '把时间留给灵感与创作',
     hero_title_line2: '别把精力浪费在折腾工具上',
-    hero_desc: '连接你的本地 ComfyUI。随心挑选生图与视频工作流。在专为视觉探索打造的无限画布中，让灵感实时迸发。',
+    hero_desc: '连接你的本地或云端 ComfyUI。随心挑选生图与视频工作流。在专为视觉探索打造的无限画布中，让灵感实时迸发。',
     hero_cta_start: '立即体验',
     hero_cta_doc: 'GitHub 仓库 ↗',
-    hero_badge_local: '100% 纯本地运行',
-    hero_badge_privacy: '数据不出本机 · 零云端依赖',
+    hero_badge_local: '云端本地随心部署',
+    hero_badge_privacy: '自由支持本地与云端算力 · 灵活直连',
 
     video_caption: '无限画布 · 自由探索',
     video_hint: '0:34 · 开启原声',
@@ -72,8 +72,8 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
     privacy_eyebrow: '安全与隐私',
     privacy_title_line1: '创作资产不出设备',
     privacy_title_line2: '百分之百纯本地私密',
-    privacy_badge: '100% 纯本地运行 · 零云端依赖',
-    privacy_desc: '所有参数与流图保存在浏览器本地，请求直连本机 127.0.0.1:8188。你的提示词、输入资源与生成结果绝不上传至任何第三方云服务器。',
+    privacy_badge: '云端本地随心部署 · 资产由您掌控',
+    privacy_desc: '所有参数与流图保存在浏览器本地，直连您配置的 ComfyUI 实例（无论是本机 127.0.0.1 还是私有云端服务器）。你的提示词、输入资源与生成结果绝不经过任何第三方平台。',
 
     launch_eyebrow: '开源与获取',
     launch_title_line1: '全功能开放',
@@ -149,11 +149,11 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
 
     hero_title_line1: 'Focus on creation,',
     hero_title_line2: 'not wrestling with tools.',
-    hero_desc: 'Connect your models. Pick the workflows you care about. Keep them live in an infinite, responsive canvas built around your local ComfyUI.',
+    hero_desc: 'Connect your local or cloud ComfyUI. Pick the workflows you care about. Keep them live in an infinite, responsive canvas built for visual exploration.',
     hero_cta_start: 'Try Online Now',
     hero_cta_doc: 'GitHub Repo ↗',
-    hero_badge_local: '100% local.',
-    hero_badge_privacy: 'Nothing leaves your  Mac.',
+    hero_badge_local: 'Flexible Cloud & Local Deployment',
+    hero_badge_privacy: 'Freely support local & cloud compute · Direct connection',
 
     video_caption: 'Big canvas. Zero constraints.',
     video_hint: '0:34 · Sound on',
@@ -208,8 +208,8 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
     privacy_eyebrow: 'PRIVACY',
     privacy_title_line1: 'Your creations stay',
     privacy_title_line2: 'on your machine.',
-    privacy_badge: '100% local. By design.',
-    privacy_desc: 'Your credentials stay on-device. ComfyUI queries run directly on your localhost. Your prompts, inputs, and generations are never uploaded to any cloud server.',
+    privacy_badge: 'Flexible Cloud & Local Deployment · Your Data, Your Control',
+    privacy_desc: 'All parameters and workflow graphs are stored in your local browser, directly connecting to your ComfyUI instance (local or private cloud). Your prompts, inputs, and generations never pass through third-party platforms.',
 
     launch_eyebrow: 'PRICING & LAUNCH',
     launch_title_line1: 'Big picture.',

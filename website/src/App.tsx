@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Cloud } from 'lucide-react';
 import type { Language } from './types';
 import { DICTIONARY } from './data/i18n';
 import { Navbar } from './components/Navbar';
@@ -78,13 +78,10 @@ export const App: React.FC = () => {
             </a>
           </div>
 
-          {/* 100% Local Badge */}
+          {/* Flexible Cloud & Local Deployment Badge */}
           <div className="flex flex-col items-center justify-center text-xs text-[#6e6e73] gap-1 mb-8">
             <div className="flex items-center gap-1.5 font-bold text-[#1d1d1f]">
-              <svg className="w-3.5 h-3.5 text-[#0071e3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
+              <Cloud className="w-3.5 h-3.5 text-[#0071e3]" />
               <span>{t('hero_badge_local')}</span>
             </div>
             <span>{t('hero_badge_privacy')}</span>
