@@ -136,8 +136,6 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
     footer_quote_line1: '反复刷新 ComfyUI 进度',
     footer_quote_line2: '可不算是在搞创作。',
     footer_quote_sub: '不过……再刷新确认一次也无妨。',
-    footer_check_btn: '再刷一次',
-    footer_reply: '纯粹为了激发艺术灵感。',
   },
   'en': {
     nav_features: 'Features',
@@ -274,7 +272,5 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
     footer_quote_line1: 'Refreshing ComfyUI',
     footer_quote_line2: 'doesn’t count as work.',
     footer_quote_sub: 'Check again though.',
-    footer_check_btn: 'Check again',
-    footer_reply: 'Strictly for research.',
   }
 };

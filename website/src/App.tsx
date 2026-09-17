@@ -117,7 +117,7 @@ export const App: React.FC = () => {
       </main>
 
       {/* 10. Footer */}
-      <Footer t={t} onToast={showToast} lang={lang} />
+      <Footer t={t} />
 
       {/* Video Placeholder Modal */}
       <VideoModal
