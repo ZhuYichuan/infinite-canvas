@@ -43,7 +43,7 @@ export const CONTACT_INFO = {
 export default function PricingPage() {
     const copyText = useCopyText();
     const [qrModalOpen, setQrModalOpen] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<string>("创作者伴学与年度更新包（¥79）");
+    const [selectedPlan, setSelectedPlan] = useState<string>("创作者伴学包（¥79）");
     const [activeContactTab, setActiveContactTab] = useState<"wechat" | "douyin">("wechat");
 
     const openContactModal = (planName: string) => {
@@ -209,10 +209,12 @@ export default function PricingPage() {
                         <div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
                                         <Sparkles className="size-5" />
                                     </div>
-                                    <h3 className="text-xl font-bold">创作者年度伴学包</h3>
+                                    <h3 className="text-xl font-bold leading-tight">
+                                        创作者<br />伴学包
+                                    </h3>
                                 </div>
                                 <Tag color="blue">省心持续更新</Tag>
                             </div>
@@ -290,7 +292,7 @@ export default function PricingPage() {
                                 type="primary"
                                 size="large"
                                 className="w-full !h-11 !font-medium"
-                                onClick={() => openContactModal("创作者年度伴学包（¥79）")}
+                                onClick={() => openContactModal("创作者伴学包（¥79）")}
                             >
                                 加入创作者伴学计划
                             </Button>
@@ -331,7 +333,7 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-2 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-indigo-600 dark:text-indigo-400">•</span>
-                                        <span><strong>包含【创作者年度伴学包】全部权益</strong>（云端镜像 + 本地部署 + 持续升级 + 优先微信答疑）</span>
+                                        <span><strong>包含【创作者伴学包】全部权益</strong>（云端镜像 + 本地部署 + 持续升级 + 优先微信答疑）</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-indigo-600 dark:text-indigo-400">•</span>
