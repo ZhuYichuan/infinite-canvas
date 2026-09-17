@@ -330,12 +330,12 @@ export default function PricingPage() {
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-                                对比「伴学包」增加 Workbuddy 智能体接入配置与 7 次远程排错。AI 自主接管画布，顽疾随时连线解决。
+                                对比「伴学包」增加 Workbuddy 智能体接入配置与 3 次远程排错。AI 自主接管画布，顽疾随时连线解决。
                             </p>
 
                             <div className="mt-5 flex items-baseline gap-1">
                                 <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥119</span>
-                                <span className="text-xs text-stone-500">/ 年（含 7 次远程排障）</span>
+                                <span className="text-xs text-stone-500">/ 年（含 3 次远程排障）</span>
                             </div>
                             <div className="mt-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                                 官方重点推荐 · 智能体协同与远程排障双重保障
@@ -354,7 +354,7 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-indigo-600 dark:text-indigo-400">•</span>
-                                        <span><strong>增加远程解决问题 7 次</strong>（遇到脚本断连/环境冲突/网络顽疾，远程连线排查至解决）</span>
+                                        <span><strong>增加远程解决问题 3 次</strong>（遇到脚本断连/环境冲突/网络顽疾，远程连线排查至解决）</span>
                                     </li>
                                 </ul>
                             </div>
@@ -368,7 +368,7 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>关键时刻专家远程代连排查，7 次额度告别自查折磨</span>
+                                        <span>关键时刻专家远程代连排查，3 次额度告别自查折磨</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
@@ -386,7 +386,7 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>远程解决问题共 7 次额度，有效期 1 年</span>
+                                        <span>远程解决问题共 3 次额度，有效期 1 年</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
@@ -532,7 +532,7 @@ export default function PricingPage() {
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">方案费用</td>
                                     <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">¥19.9 一次性买断</td>
                                     <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">¥79 / 全年更新</td>
-                                    <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">¥119 / 年（含7次远程）</td>
+                                    <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">¥119 / 年（含3次远程）</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">¥299 / 次（赠全年伴学）</td>
                                 </tr>
                                 <tr>
@@ -546,14 +546,14 @@ export default function PricingPage() {
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">核心交付内容</td>
                                     <td className="px-3 py-3.5">AutoDL 镜像码 + 启动脚本 + 部署排错文档</td>
                                     <td className="px-3 py-3.5 font-semibold text-stone-900 dark:text-stone-100">AutoDL 云端 + 本地部署 + 持续升级服务</td>
-                                    <td className="px-3 py-3.5 font-semibold text-indigo-700 dark:text-indigo-300">伴学包全套 + Workbuddy 智能体配置 + 7 次远程解决问题</td>
+                                    <td className="px-3 py-3.5 font-semibold text-indigo-700 dark:text-indigo-300">伴学包全套 + Workbuddy 智能体配置 + 3 次远程解决问题</td>
                                     <td className="px-3 py-3.5">远程端到端调通 + 显存调优 + 赠全年权益</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">技术支持服务</td>
                                     <td className="px-3 py-3.5 text-stone-400">仅限文档自查（不提供人工技术支持）</td>
                                     <td className="px-3 py-3.5 text-blue-600 dark:text-blue-400">作者亲自优先微信答疑，协助报错定位</td>
-                                    <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">作者微信答疑 + 7 次专家远程连线解决问题</td>
+                                    <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">作者微信答疑 + 3 次专家远程连线解决问题</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">1对1 远程代劳协助 + 7天专属技术售后</td>
                                 </tr>
                                 <tr>
@@ -574,7 +574,7 @@ export default function PricingPage() {
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">售后与保障</td>
                                     <td className="px-3 py-3.5">虚拟数字资源，附带完整文档</td>
                                     <td className="px-3 py-3.5">社群持续维护，问题优先响应</td>
-                                    <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">7 次远程问题解决，额度有效期 1 年</td>
+                                    <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">3 次远程问题解决，额度有效期 1 年</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">承诺包跑通包出图，跑不通全额退款</td>
                                 </tr>
                             </tbody>
@@ -593,7 +593,7 @@ export default function PricingPage() {
                             为什么极速体验包要收 19.9 元？为什么不提供人工支持？
                         </h2>
                         <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-400">
-                            《无限画布》前端代码与文档 100% 保持开源免费。极速体验包之所以收取 19.9 元，是因为<strong>云端一个包含 MiniMax、Flux 等百 G 模型的预装镜像，平台每天都在扣除高昂的存储租金；如果不收费用，镜像就会因欠费被平台直接清理销毁，大家也将无法使用。因此必须象征性收取一点费用分摊存储成本，以维持镜像长期存活。</strong>同时，由于 19.9 元纯属象征性成本分摊、完全无法覆盖工程师一对一排障的人力时间成本，因此该方案严格仅限文档自查、不提供人工答疑支持；若您需要作者微信优先答疑请选 ¥79 伴学包，需要 Workbuddy 智能体接入与 7 次远程排障请选 ¥119 服务包，需要专家全程代劳请选 ¥299 远程服务。
+                            《无限画布》前端代码与文档 100% 保持开源免费。极速体验包之所以收取 19.9 元，是因为<strong>云端一个包含 MiniMax、Flux 等百 G 模型的预装镜像，平台每天都在扣除高昂的存储租金；如果不收费用，镜像就会因欠费被平台直接清理销毁，大家也将无法使用。因此必须象征性收取一点费用分摊存储成本，以维持镜像长期存活。</strong>同时，由于 19.9 元纯属象征性成本分摊、完全无法覆盖工程师一对一排障的人力时间成本，因此该方案严格仅限文档自查、不提供人工答疑支持；若您需要作者微信优先答疑请选 ¥79 伴学包，需要 Workbuddy 智能体接入与 3 次远程排障请选 ¥119 服务包，需要专家全程代劳请选 ¥299 远程服务。
                         </p>
                     </div>
 
@@ -650,7 +650,7 @@ export default function PricingPage() {
                                 方案众多，为什么官方重点推荐「创作者服务包（¥119）」？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                体验包仅限文档自查，基础伴学包遇到深层硬件或依赖冲突时仅限文字指导。<strong>¥119 创作者服务包</strong>在伴学包全套权益基础上，独家配通 <strong>Workbuddy 桌面智能体接管画布</strong>，更赠送 <strong>7 次专家远程代连排障兜底</strong>。仅比基础伴学包多 40 元，即可彻底买下前沿智能体生产力与远程排障双重兜底，是 80% 创作者与工作室的重点推荐款。
+                                体验包仅限文档自查，基础伴学包遇到深层硬件或依赖冲突时仅限文字指导。<strong>¥119 创作者服务包</strong>在伴学包全套权益基础上，独家配通 <strong>Workbuddy 桌面智能体接管画布</strong>，更赠送 <strong>3 次专家远程代连排障兜底</strong>。仅比基础伴学包多 40 元，即可彻底买下前沿智能体生产力与远程排障双重兜底，是 80% 创作者与工作室的重点推荐款。
                             </p>
                         </Card>
 
@@ -660,7 +660,7 @@ export default function PricingPage() {
                                 ¥79 伴学包 和 ¥119 服务包 有什么区别？该如何选？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                <strong>¥79 伴学包</strong>专注云端+本地环境部署、持续升级与作者微信优先答疑指导（文字/截图协助定位）；<strong>¥119 服务包</strong>在伴学包全部权益基础上，增加了 <strong>Workbuddy 桌面智能体接入配置</strong>（实现 AI 智能体端到端调度画布）以及 <strong>7 次专家远程排障服务</strong>（远程代连彻底解决顽固环境故障）。若您希望体验智能体协同创作，或需要关键时刻专家远程代连排错兜底，强烈建议直接选 ¥119 服务包。
+                                <strong>¥79 伴学包</strong>专注云端+本地环境部署、持续升级与作者微信优先答疑指导（文字/截图协助定位）；<strong>¥119 服务包</strong>在伴学包全部权益基础上，增加了 <strong>Workbuddy 桌面智能体接入配置</strong>（实现 AI 智能体端到端调度画布）以及 <strong>3 次专家远程排障服务</strong>（远程代连彻底解决顽固环境故障）。若您希望体验智能体协同创作，或需要关键时刻专家远程代连排错兜底，强烈建议直接选 ¥119 服务包。
                             </p>
                         </Card>
 
