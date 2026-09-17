@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>无限画布 (infinite-canvas) — 直连本地 ComfyUI 的开源 AI 创作工作台</title>
+  <meta name="description" content="专为 ComfyUI 深度定制的开源可视化 AI 创作工作台。原生 8188 端口直连、工作流槽位驱动 UI、全能参考视频、本地 Agent MCP 调度，100% 纯前端本地安全运行。" />
+  
+  <!-- OpenGraph -->
+  <meta property="og:title" content="无限画布 (infinite-canvas) — 直连本地 ComfyUI 的开源 AI 创作工作台" />
+  <meta property="og:description" content="基于原生 ComfyUI 8188 端口直连，工作流槽位驱动参数面板，多图参考与本地 Agent 智能体自由编排。" />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom High-Tech Styles -->
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body class="bg-[#09090b] text-zinc-100 selection:bg-sky-500/30 selection:text-sky-200">
+
+  <!-- =========================================================================
+       Top Navigation Bar
+       ========================================================================= -->
+  <header class="fixed top-0 left-0 right-0 z-50 glass-nav">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <!-- Brand Logo -->
+      <a href="#overview" class="flex items-center gap-3 group">
+        <div class="w-9 h-9 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center p-1.5 shadow-lg group-hover:border-sky-500/50 transition-colors">
+          <img src="favicon.svg" alt="infinite-canvas logo" class="w-full h-full" />
+        </div>
+        <div class="flex flex-col">
+          <span class="font-semibold text-sm tracking-tight text-white flex items-center gap-1.5">
+            无限画布 <span class="text-xs px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 font-mono border border-sky-500/20">infinite-canvas</span>
+          </span>
+        </div>
+      </a>
+
+      <!-- Desktop Nav Links -->
+      <nav class="hidden md:flex items-center gap-7 text-sm text-zinc-400">
+        <a href="#features" class="hover:text-white transition-colors" data-i18n="nav_features">核心特性</a>
+        <a href="#matrix" class="hover:text-white transition-colors" data-i18n="nav_workflows">工作流生态</a>
+        <a href="#demo" class="hover:text-white transition-colors" data-i18n="nav_demo">交互演示</a>
+        <a href="#privacy" class="hover:text-white transition-colors" data-i18n="nav_security">架构与隐私</a>
+        <a href="#quickstart" class="hover:text-white transition-colors" data-i18n="nav_quickstart">快速上手</a>
+        <a href="#faq" class="hover:text-white transition-colors" data-i18n="nav_faq">常见问题</a>
+      </nav>
+
+      <!-- Right Actions (Language, GitHub & Launch) -->
+      <div class="flex items-center gap-3">
+        <!-- Language Switcher -->
+        <button id="lang-toggle" type="button" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-zinc-900/80 border border-white/10 hover:border-white/20 text-zinc-300 hover:text-white transition-colors flex items-center gap-1.5" title="Switch Language / 切换语言">
+          <svg class="w-3.5 h-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span id="lang-btn-text">EN</span>
+        </button>
+
+        <!-- GitHub Repo Link -->
+        <a href="https://github.com/ZhuYichuan/infinite-canvas" target="_blank" rel="noopener noreferrer" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 border border-white/10 hover:border-white/20 text-zinc-200 hover:text-white transition-colors">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 14.42 22 12A10 10 0 0 0 12 2Z"/></svg>
+          <span data-i18n="nav_github">GitHub 开源</span>
+        </a>
+
+        <!-- Launch App Link -->
+        <a href="http://localhost:3000" target="_blank" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-sky-500 hover:bg-sky-400 text-zinc-950 transition-colors shadow-sm shadow-sky-500/30 flex items-center gap-1.5">
+          <span data-i18n="nav_launch">立即体验</span>
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       Hero Section
+       ========================================================================= -->
+  <section id="overview" class="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden glow-mesh">
+    <div class="text-center max-w-3xl mx-auto mb-12">
+      <!-- Eyebrow & Mascot -->
+      <div class="flex items-center justify-center gap-3 mb-6">
+        <div id="hero-mascot" class="mascot-container" title="点击打招呼！">
+          <div class="mascot-body">
+            <div class="mascot-eyes">
+              <div class="mascot-eye"><div id="mascot-pupil-left" class="mascot-pupil"></div></div>
+              <div class="mascot-eye"><div id="mascot-pupil-right" class="mascot-pupil"></div></div>
+            </div>
+          </div>
+        </div>
+        <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-white/5 border border-white/10 text-sky-300 font-mono tracking-wider" data-i18n="hero_eyebrow">
+          专为 COMFYUI 深度定制的开源可视化创作台
+        </span>
+      </div>
+
+      <!-- Main Headline -->
+      <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight" data-i18n-html="hero_title">
+        无限画卷，<span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-400 to-cyan-300">直连你的本地 ComfyUI</span>
+      </h1>
+
+      <!-- Description -->
+      <p class="text-base sm:text-lg text-zinc-400 mb-8 leading-relaxed" data-i18n="hero_desc">
+        告别散乱的节点网络与复杂的商用中转代理。基于原生 8188 端口直连，工作流槽位驱动参数面板，多图参考、全能视频生成与本地 Agent 智能体，全在一块无垠画布中自由编排。
+      </p>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap items-center justify-center gap-4 mb-6">
+        <a href="#quickstart" class="px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 text-zinc-950 font-semibold text-sm hover:from-sky-400 hover:to-cyan-300 transition-all shadow-lg shadow-sky-500/20 flex items-center gap-2">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span data-i18n="hero_cta_start">极速启动 (Dev / Docker)</span>
+        </a>
+        <a href="https://github.com/ZhuYichuan/infinite-canvas" target="_blank" class="px-6 py-3 rounded-xl bg-zinc-900/90 border border-white/10 text-zinc-200 hover:text-white hover:border-white/25 text-sm font-semibold transition-colors flex items-center gap-2">
+          <span data-i18n="hero_cta_doc">查看完整文档 ↗</span>
+        </a>
+      </div>
+
+      <!-- Privacy & Local-first Callout -->
+      <p class="text-xs text-zinc-500 flex items-center justify-center gap-2">
+        <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span data-i18n="hero_badge_privacy">100% 本地直连 · 零中转服务 · 数据不出本机</span>
+      </p>
+    </div>
+
+    <!-- Video Player / High-Tech Frame Showcase -->
+    <div class="relative max-w-5xl mx-auto mt-4 group">
+      <!-- Outer Glow -->
+      <div class="absolute -inset-1 rounded-2xl bg-gradient-to-r from-sky-500/20 via-indigo-500/15 to-purple-500/20 blur-xl opacity-60 group-hover:opacity-100 transition duration-1000"></div>
+
+      <!-- Video Card Viewport -->
+      <div class="relative rounded-2xl bg-[#0f0f13] border border-white/10 overflow-hidden shadow-2xl">
+        <!-- 4 Corner Markers (TinyKPI Style) -->
+        <svg class="video-corner video-corner-tl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 2H2v20"/></svg>
+        <svg class="video-corner video-corner-tr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 2H2v20"/></svg>
+        <svg class="video-corner video-corner-bl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 2H2v20"/></svg>
+        <svg class="video-corner video-corner-br" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 2H2v20"/></svg>
+
+        <!-- Video Player / Simulated Poster -->
+        <div class="relative aspect-video w-full bg-zinc-950 flex items-center justify-center overflow-hidden canvas-grid-bg">
+          <!-- Actual HTML5 Video Tag with graceful placeholder logic -->
+          <video id="hero-video" class="w-full h-full object-cover hidden" src="assets/videos/demo.mp4" playsinline controls preload="none"></video>
+
+          <!-- Simulated High-fidelity Interactive Canvas Poster -->
+          <div id="hero-simulated-poster" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+            <!-- Central Play Button -->
+            <button id="hero-play-btn" type="button" class="w-16 h-16 rounded-full bg-sky-500/90 hover:bg-sky-400 text-zinc-950 flex items-center justify-center shadow-lg shadow-sky-500/30 transition-transform transform hover:scale-110 active:scale-95 z-20" aria-label="Play Demo Video">
+              <svg class="w-6 h-6 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+            <p class="mt-4 text-xs font-mono text-zinc-400 z-10 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+              <span data-i18n="video_caption">大作灵感，在无边画布流转。</span>
+            </p>
+          </div>
+
+          <!-- Video Controls / Caption Strip -->
+          <div class="absolute bottom-4 right-4 z-20 flex items-center gap-2 px-3 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-xs text-zinc-300">
+            <svg class="w-3.5 h-3.5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <span data-i18n="video_hint">0:34 · 演示视频</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       3 Core Value Props (Quiet / Local / Native ComfyUI)
+       ========================================================================= -->
+  <section class="py-16 border-y border-white/5 bg-zinc-950/40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Prop 1 -->
+        <div class="p-6 rounded-2xl bg-zinc-900/40 border border-white/5 hover:border-sky-500/30 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <h3 class="text-base font-bold text-white mb-2" data-i18n="prop1_title">原生 8188 直连</h3>
+          <p class="text-sm text-zinc-400 leading-relaxed" data-i18n="prop1_desc">
+            浏览器前端直通本地 ComfyUI REST/WebSocket 端点，彻底剔除中间代理层。
+          </p>
+        </div>
+
+        <!-- Prop 2 -->
+        <div class="p-6 rounded-2xl bg-zinc-900/40 border border-white/5 hover:border-indigo-500/30 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          </div>
+          <h3 class="text-base font-bold text-white mb-2" data-i18n="prop2_title">工作流驱动 UI</h3>
+          <p class="text-sm text-zinc-400 leading-relaxed" data-i18n="prop2_desc">
+            基于 _meta.title 动态自适应表单，未标记槽位绝不冗余展示，告别模板束缚。
+          </p>
+        </div>
+
+        <!-- Prop 3 -->
+        <div class="p-6 rounded-2xl bg-zinc-900/40 border border-white/5 hover:border-emerald-500/30 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h3 class="text-base font-bold text-white mb-2" data-i18n="prop3_title">纯本地安全架构</h3>
+          <p class="text-sm text-zinc-400 leading-relaxed" data-i18n="prop3_desc">
+            工程配置、海量素材、历史生图与凭证全量持久化在本地 IndexedDB，绝不上云。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       Interactive Canvas Playground (Core TinyKPI-Style Interactive Experience)
+       ========================================================================= -->
+  <section id="demo" class="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-8">
+      <div>
+        <span class="text-xs font-mono text-sky-400 tracking-wider uppercase mb-2 block" data-i18n="features_eyebrow">UNCONSTRAINED VISUAL PLAYGROUND</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white leading-tight" data-i18n-html="features_title">
+          为创作者而生。<br/><span class="text-zinc-400">由你的本地 ComfyUI 驱动。</span>
+        </h2>
+      </div>
+
+      <!-- 3-Step View Mode Switcher (Glance / Inspect / Explore) -->
+      <div class="flex items-center p-1 rounded-xl bg-zinc-900/80 border border-white/10" role="group">
+        <button type="button" data-step-view="glance" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors bg-white/10 text-white border border-sky-400/40 flex items-center gap-1.5">
+          <span class="font-mono text-[10px] text-sky-400" data-i18n="step_glance_num">01</span>
+          <span data-i18n="step_glance_title">轻量速览</span>
+        </button>
+        <button type="button" data-step-view="inspect" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-zinc-400 hover:text-white flex items-center gap-1.5">
+          <span class="font-mono text-[10px] text-sky-400" data-i18n="step_inspect_num">02</span>
+          <span data-i18n="step_inspect_title">槽位检查</span>
+        </button>
+        <button type="button" data-step-view="explore" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-zinc-400 hover:text-white flex items-center gap-1.5">
+          <span class="font-mono text-[10px] text-sky-400" data-i18n="step_explore_num">03</span>
+          <span data-i18n="step_explore_title">全景拓扑</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Playground Interactive Viewport -->
+    <div class="relative rounded-2xl bg-[#0e0e12] border border-white/10 overflow-hidden shadow-2xl">
+      <!-- Toolbar Strip -->
+      <div class="h-11 px-4 border-b border-white/10 bg-zinc-900/60 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <div class="flex gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500/60"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-yellow-500/60"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/60"></span>
+          </div>
+          <span class="text-zinc-500 font-mono ml-2">infinite-canvas://workspace/flux-turbo-demo</span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span id="canvas-status" class="text-xs font-mono text-zinc-400 flex items-center">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-2"></span>
+            <span data-i18n="canvas_status_idle">就绪 (127.0.0.1:8188 监听中)</span>
+          </span>
+          <button id="canvas-run-btn" type="button" class="px-3 py-1 rounded-lg bg-sky-500 hover:bg-sky-400 text-zinc-950 font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm">
+            <span data-i18n="canvas_run_btn">⚡ 触发执行 ComfyUI</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas Area with Dot Grid and Draggable Nodes -->
+      <div id="canvas-viewport" class="relative w-full h-[520px] canvas-grid-bg overflow-hidden cursor-crosshair">
+        <!-- SVG Cables Layer -->
+        <svg id="canvas-wires-svg" class="absolute inset-0 w-full h-full pointer-events-none z-10">
+          <path id="wire-1" class="canvas-wire" d="M 0 0" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
+          <path id="wire-2" class="canvas-wire" d="M 0 0" fill="none" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round" />
+        </svg>
+
+        <!-- Node 1: Prompt Text Input -->
+        <div id="node-prompt" class="canvas-node absolute w-64 top-16 left-8 z-20">
+          <div class="node-drag-handle px-3.5 py-2.5 border-b border-white/10 bg-zinc-900/70 rounded-t-xl flex items-center justify-between">
+            <span class="text-xs font-semibold text-sky-400 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              提示词 (Prompt)
+            </span>
+            <span class="text-[10px] font-mono text-zinc-500">_meta.title</span>
+          </div>
+          <div class="p-3.5 text-xs">
+            <div class="p-2 rounded bg-black/40 border border-white/5 text-zinc-300 font-mono text-[11px] leading-relaxed">
+              cyberpunk cinematic city, neon rain reflections, hyper-detailed, 8k wallpaper
+            </div>
+            <div class="mt-3 flex items-center justify-between text-[11px] text-zinc-500">
+              <span>Token Count: 14</span>
+              <span class="text-sky-400 font-mono">Slot #1</span>
+            </div>
+          </div>
+          <!-- Output Port -->
+          <div id="port-prompt-out" class="node-port absolute -right-1.5 top-1/2 -translate-y-1/2" title="text output"></div>
+        </div>
+
+        <!-- Node 2: ComfyUI Generator Node -->
+        <div id="node-workflow" class="canvas-node absolute w-72 top-14 left-[340px] z-20">
+          <!-- Input Port -->
+          <div id="port-workflow-in" class="node-port absolute -left-1.5 top-1/2 -translate-y-1/2" title="prompt input"></div>
+
+          <div class="node-drag-handle px-3.5 py-2.5 border-b border-white/10 bg-zinc-900/70 rounded-t-xl flex items-center justify-between">
+            <span class="text-xs font-semibold text-indigo-400 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Flux.1 Dev Turbo
+            </span>
+            <span class="text-[10px] font-mono text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10">KSampler</span>
+          </div>
+          <div class="p-3.5 space-y-2.5 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-zinc-400">Steps</span>
+              <span class="font-mono text-zinc-200 px-2 py-0.5 rounded bg-black/40">20</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-zinc-400">CFG Scale</span>
+              <span class="font-mono text-zinc-200 px-2 py-0.5 rounded bg-black/40">3.5</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-zinc-400">Resolution</span>
+              <span class="font-mono text-zinc-200 px-2 py-0.5 rounded bg-black/40">1024 × 1024</span>
+            </div>
+
+            <!-- Inspect Expandable Slots -->
+            <div id="node-workflow-inspect" class="pt-2 border-t border-white/10 space-y-2 hidden">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="text-zinc-500">Seed</span>
+                <span class="font-mono text-sky-300">8392104829</span>
+              </div>
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="text-zinc-500">Sampler</span>
+                <span class="font-mono text-zinc-300">euler / simple</span>
+              </div>
+            </div>
+          </div>
+          <!-- Output Port -->
+          <div id="port-workflow-out" class="node-port absolute -right-1.5 top-1/2 -translate-y-1/2" title="latent/image output"></div>
+        </div>
+
+        <!-- Node 3: Result Output Display -->
+        <div id="node-output" class="canvas-node absolute w-60 top-16 left-[680px] z-20">
+          <!-- Input Port -->
+          <div id="port-output-in" class="node-port absolute -left-1.5 top-1/2 -translate-y-1/2" title="image input"></div>
+
+          <div class="node-drag-handle px-3.5 py-2.5 border-b border-white/10 bg-zinc-900/70 rounded-t-xl flex items-center justify-between">
+            <span class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              生成结果 (Output)
+            </span>
+            <span class="text-[10px] font-mono text-zinc-400">SaveImage</span>
+          </div>
+          <div class="p-3 text-xs relative">
+            <div class="w-full aspect-square rounded-lg bg-zinc-900 overflow-hidden relative border border-white/10 flex items-center justify-center">
+              <img id="output-result-img" src="https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80" alt="Generated Artwork" class="w-full h-full object-cover transition-all duration-300" />
+              <!-- Spinner Overlay during execution -->
+              <div id="output-spinner" class="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-2 hidden">
+                <div class="w-6 h-6 border-2 border-sky-400 border-t-transparent rounded-full animate-spin"></div>
+                <span class="text-[10px] font-mono text-sky-300">Rendering 8188...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Node 4: Extra Multimodal Node (Visible in Explore Mode) -->
+        <div id="node-extra" class="canvas-node absolute w-60 top-80 left-8 z-20 hidden">
+          <div class="node-drag-handle px-3.5 py-2.5 border-b border-white/10 bg-zinc-900/70 rounded-t-xl flex items-center justify-between">
+            <span class="text-xs font-semibold text-purple-400 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              多模态参考 (Ref Image)
+            </span>
+            <span class="text-[10px] font-mono text-zinc-400">FIFO Router</span>
+          </div>
+          <div class="p-3 text-xs">
+            <p class="text-[11px] text-zinc-400">MiniMax H3 / Wan2.1 首尾帧与参考资源级联挂载 (最多 9 图 + 3 视 + 3 音)。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playground Bottom Hint -->
+      <div class="h-10 px-4 border-t border-white/10 bg-zinc-900/40 flex items-center justify-between text-xs text-zinc-400">
+        <span data-i18n="canvas_demo_hint">💡 试一试：直接用鼠标在上方拖拽节点卡片，点击「⚡ 触发执行」体验信号流动！</span>
+        <span class="hidden sm:inline font-mono text-zinc-500">60 FPS Native Web State</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       Capability Matrix (Workflows Ecosystem, matching TinyKPI Integrations)
+       ========================================================================= -->
+  <section id="matrix" class="py-20 border-t border-white/5 bg-zinc-950/60">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-xs font-mono text-sky-400 tracking-wider uppercase mb-2 block" data-i18n="matrix_eyebrow">COMFYUI CAPABILITY MATRIX</span>
+        <h2 class="text-3xl font-extrabold text-white mb-4" data-i18n="matrix_title">原生工作流，开箱即用</h2>
+        <p class="text-zinc-400 text-sm leading-relaxed" data-i18n="matrix_desc">
+          覆盖从高精度图像合成到下一代多模态视频生成的完整链路。
+        </p>
+      </div>
+
+      <!-- Category Filter Tabs -->
+      <div class="flex flex-wrap items-center justify-center gap-2 mb-10">
+        <button type="button" data-matrix-cat="t2i" class="px-4 py-2 rounded-xl text-xs font-semibold border transition-all bg-sky-500/20 text-sky-300 border-sky-500/50" data-i18n="cat_t2i">
+          文生图 (Flux / SDXL)
+        </button>
+        <button type="button" data-matrix-cat="i2i" class="px-4 py-2 rounded-xl text-xs font-semibold border transition-all text-zinc-400 border-white/10 hover:text-white" data-i18n="cat_i2i">
+          图生图 & 局部重绘
+        </button>
+        <button type="button" data-matrix-cat="video" class="px-4 py-2 rounded-xl text-xs font-semibold border transition-all text-zinc-400 border-white/10 hover:text-white" data-i18n="cat_video">
+          全能参考视频 (MiniMax H3)
+        </button>
+        <button type="button" data-matrix-cat="prompt" class="px-4 py-2 rounded-xl text-xs font-semibold border transition-all text-zinc-400 border-white/10 hover:text-white" data-i18n="cat_prompt">
+          提示词反推 & LLM
+        </button>
+        <button type="button" data-matrix-cat="custom" class="px-4 py-2 rounded-xl text-xs font-semibold border transition-all text-zinc-400 border-white/10 hover:text-white" data-i18n="cat_custom">
+          自定义工作流
+        </button>
+      </div>
+
+      <!-- Dynamic Matrix Detail Card -->
+      <div class="max-w-4xl mx-auto rounded-2xl bg-zinc-900/70 border border-white/10 p-8 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+          <div>
+            <div class="flex items-center gap-3 mb-1">
+              <h3 id="matrix-card-title" class="text-xl font-bold text-white">文生图 (Flux.1 / SDXL Turbo)</h3>
+              <span id="matrix-card-badge" class="px-2 py-0.5 rounded text-[10px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30">Native ComfyUI</span>
+            </div>
+            <p id="matrix-card-desc" class="text-sm text-zinc-400">极致画质与极速采样并存。节点自动根据模型特征挂载 LoRA 调节端口，UI 严格对齐硬件比例。</p>
+          </div>
+        </div>
+
+        <div class="pt-6">
+          <span class="text-xs font-mono text-zinc-400 block mb-3">支持的自适应槽位 (_meta.title Slots):</span>
+          <div id="matrix-card-slots" class="flex flex-wrap gap-2">
+            <span class="px-2.5 py-1 text-xs font-mono rounded bg-white/5 border border-white/10 text-sky-300 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>prompt</span>
+            <span class="px-2.5 py-1 text-xs font-mono rounded bg-white/5 border border-white/10 text-sky-300 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>seed</span>
+            <span class="px-2.5 py-1 text-xs font-mono rounded bg-white/5 border border-white/10 text-sky-300 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>width</span>
+            <span class="px-2.5 py-1 text-xs font-mono rounded bg-white/5 border border-white/10 text-sky-300 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>height</span>
+            <span class="px-2.5 py-1 text-xs font-mono rounded bg-white/5 border border-white/10 text-sky-300 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>steps</span>
+            <span class="px-2.5 py-1 text-xs font-mono rounded bg-white/5 border border-white/10 text-sky-300 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>cfg</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       Advanced Features / Extensibility (Matching TinyKPI Layout Story)
+       ========================================================================= -->
+  <section id="features" class="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="max-w-3xl mb-16">
+      <span class="text-xs font-mono text-sky-400 tracking-wider uppercase mb-2 block" data-i18n="layout_eyebrow">EXTENSIBLE & POWERFUL</span>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white leading-tight" data-i18n-html="layout_title">
+        不仅仅是画布，<br/><span class="text-zinc-400">更是你的 AI 工作流超级中枢。</span>
+      </h2>
+      <p class="text-zinc-400 text-sm mt-4 leading-relaxed" data-i18n="layout_desc">
+        从虚拟组节点打包到本地 Agent MCP 调度，让 AI 创作成倍提速。
+      </p>
+    </div>
+
+    <!-- 4 Feature Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Card 1: Virtual Group -->
+      <div class="p-8 rounded-2xl bg-zinc-900/50 border border-white/10 hover:border-sky-500/40 transition-colors">
+        <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-5">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h6m0 0v6m0-6L3 21m17-7h-6m0 0v6m0-6l7 7M4 10h6m0 0V4m0 6L3 3m17 7h-6m0 0V4m0 6l7-7"/></svg>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-2" data-i18n="feature_card1_title">虚拟组节点 (Group Container)</h3>
+        <p class="text-sm text-zinc-400 leading-relaxed" data-i18n="feature_card1_desc">
+          不破坏纯数据结构，自由框选成组；向外连线时动态解包为批量资源包，实现多图多资产协同流转。
+        </p>
+      </div>
+
+      <!-- Card 2: Canvas Agent & MCP -->
+      <div class="p-8 rounded-2xl bg-zinc-900/50 border border-white/10 hover:border-indigo-500/40 transition-colors">
+        <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-5">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-2" data-i18n="feature_card2_title">本地 Canvas Agent & MCP</h3>
+        <p class="text-sm text-zinc-400 leading-relaxed" data-i18n="feature_card2_desc">
+          支持通过 MCP 协议连接 Codex、Claude Code。让 Agent 读懂当前画布，自动排版节点、生成指令并插回画布。
+        </p>
+      </div>
+
+      <!-- Card 3: Plugin System -->
+      <div class="p-8 rounded-2xl bg-zinc-900/50 border border-white/10 hover:border-purple-500/40 transition-colors">
+        <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-5">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-2" data-i18n="feature_card3_title">独立插件体系 (TypeScript SDK)</h3>
+        <p class="text-sm text-zinc-400 leading-relaxed" data-i18n="feature_card3_desc">
+          无需侵入核心代码，支持通过 URL 动态加载第三方插件节点，拥有完整的类型定义与生命周期钩子。
+        </p>
+      </div>
+
+      <!-- Card 4: Prompt Hub -->
+      <div class="p-8 rounded-2xl bg-zinc-900/50 border border-white/10 hover:border-amber-500/40 transition-colors">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-5">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-2" data-i18n="feature_card4_title">提示词库与素材管理</h3>
+        <p class="text-sm text-zinc-400 leading-relaxed" data-i18n="feature_card4_desc">
+          前端直连 GitHub 开源提示词集并本地缓存，素材库支持拖拽即用，告别到处复制粘贴。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       Privacy Section (100% Local First)
+       ========================================================================= -->
+  <section id="privacy" class="py-20 border-y border-white/5 bg-zinc-950">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10">
+        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <span class="text-xs font-mono text-emerald-400 tracking-wider uppercase mb-2 block" data-i18n="privacy_eyebrow">PRIVACY & LOCAL FIRST</span>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white mb-4" data-i18n-html="privacy_title">
+        数据与创意，<br/><span>100% 留在你的设备上。</span>
+      </h2>
+      <p class="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 inline-block mb-6 border border-emerald-500/20" data-i18n="privacy_badge">
+        本地优先 · 零云端依赖
+      </p>
+      <p class="text-zinc-400 text-sm leading-relaxed max-w-2xl mx-auto" data-i18n="privacy_desc">
+        没有远程数据库，没有第三方埋点，没有中间代理服务。你的 API Key、生成的私密画面、自建工作流全部保存在本地浏览器与 ComfyUI 服务端。
+      </p>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       Quick Start & Deployment (Replacing TinyKPI Pricing)
+       ========================================================================= -->
+  <section id="quickstart" class="py-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+    <div class="text-center mb-12">
+      <span class="text-xs font-mono text-sky-400 tracking-wider uppercase mb-2 block" data-i18n="deploy_eyebrow">GET STARTED IN SECONDS</span>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white mb-4" data-i18n-html="deploy_title">
+        极速开始，<br/><span class="text-zinc-400">一行命令唤醒无限画布。</span>
+      </h2>
+      <p class="text-zinc-400 text-sm" data-i18n="deploy_desc">
+        支持本地源码极速开发、Docker 一键启动或直连你现有的 ComfyUI。
+      </p>
+    </div>
+
+    <!-- Quick Start Card -->
+    <div class="rounded-2xl bg-zinc-900 border border-white/10 overflow-hidden shadow-2xl">
+      <!-- Tabs -->
+      <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-zinc-950/60 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <button type="button" data-code-tab="bun" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-white/10 text-white border border-sky-400/40" data-i18n="tab_bun">
+            Bun 源码启动 (推荐)
+          </button>
+          <button type="button" data-code-tab="docker" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-zinc-400 hover:text-white" data-i18n="tab_docker">
+            Docker Compose 部署
+          </button>
+          <button type="button" data-code-tab="prereq" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-zinc-400 hover:text-white" data-i18n="tab_prereq">
+            运行前置条件
+          </button>
+        </div>
+
+        <button id="copy-code-btn" type="button" class="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition-colors flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span data-i18n="copy_btn">复制代码</span>
+        </button>
+      </div>
+
+      <!-- Code Terminal Window -->
+      <div class="p-6 bg-black/80 font-mono text-xs sm:text-sm text-sky-200 leading-relaxed overflow-x-auto">
+        <pre><code id="quickstart-code-block"># 克隆仓库并进入 web 目录
+git clone git@github.com:ZhuYichuan/infinite-canvas.git
+cd infinite-canvas/web
+
+# 安装依赖并启动本地开发服务 (支持 HMR)
+bun install
+bun run dev
+
+# 浏览器访问 http://localhost:3000</code></pre>
+      </div>
+
+      <!-- System Requirements Bar -->
+      <div class="px-6 py-4 border-t border-white/10 bg-zinc-950/40 flex flex-wrap items-center justify-between text-xs text-zinc-400 gap-4">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>环境要求：Node 18+ 或 Bun 1.1+ · ComfyUI 8188 · Chrome / Safari 最新版</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-[10px]">MIT License</span>
+          <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30 font-mono text-[10px]">v0.0.5</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       FAQ Section
+       ========================================================================= -->
+  <section id="faq" class="py-20 border-t border-white/5 bg-zinc-950/40">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <span class="text-xs font-mono text-sky-400 tracking-wider uppercase mb-2 block" data-i18n="faq_eyebrow">FAQ</span>
+        <h2 class="text-3xl font-extrabold text-white" data-i18n="faq_title">常见疑问与解答</h2>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Q1 -->
+        <details class="group rounded-xl bg-zinc-900/60 border border-white/10 p-5 [&_svg]:open:-rotate-180">
+          <summary class="flex cursor-pointer items-center justify-between gap-1.5 font-semibold text-white list-none">
+            <span data-i18n="faq_q1">我需要启动本地 ComfyUI 才能使用吗？</span>
+            <svg class="h-4 w-4 shrink-0 transition duration-300 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-sm text-zinc-400 leading-relaxed" data-i18n="faq_a1">
+            是的。本项目是一个专注于 ComfyUI 的可视化创作前端，前端通过 WebSocket 和 REST API 直连 ComfyUI（默认 127.0.0.1:8188）。启动项目前请确保本地或局域网内的 ComfyUI 已经正常运行。
+          </p>
+        </details>
+
+        <!-- Q2 -->
+        <details class="group rounded-xl bg-zinc-900/60 border border-white/10 p-5 [&_svg]:open:-rotate-180">
+          <summary class="flex cursor-pointer items-center justify-between gap-1.5 font-semibold text-white list-none">
+            <span data-i18n="faq_q2">为什么不需要后端服务？我的图片存放在哪里？</span>
+            <svg class="h-4 w-4 shrink-0 transition duration-300 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-sm text-zinc-400 leading-relaxed" data-i18n="faq_a2">
+            本项目采用纯前端架构，所有画布拓扑、历史记录、凭据配置均存储在当前浏览器的 localforage (IndexedDB) 中。生成的图片直接保存在本地 ComfyUI 的 output 目录并通过直连加载，没有任何云端第三方服务介入。
+          </p>
+        </details>
+
+        <!-- Q3 -->
+        <details class="group rounded-xl bg-zinc-900/60 border border-white/10 p-5 [&_svg]:open:-rotate-180">
+          <summary class="flex cursor-pointer items-center justify-between gap-1.5 font-semibold text-white list-none">
+            <span data-i18n="faq_q3">直连报错 CORS (跨域拦截) 怎么办？</span>
+            <svg class="h-4 w-4 shrink-0 transition duration-300 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-sm text-zinc-400 leading-relaxed" data-i18n="faq_a3">
+            启动 ComfyUI 时请加入 --enable-cors-header 启动参数（如 python main.py --listen 127.0.0.1 --port 8188 --enable-cors-header），或在反向代理（如 Nginx）中放通 Access-Control-Allow-Origin 请求头即可。
+          </p>
+        </details>
+
+        <!-- Q4 -->
+        <details class="group rounded-xl bg-zinc-900/60 border border-white/10 p-5 [&_svg]:open:-rotate-180">
+          <summary class="flex cursor-pointer items-center justify-between gap-1.5 font-semibold text-white list-none">
+            <span data-i18n="faq_q4">全能参考视频 (MiniMax H3) 支持连多少张图？</span>
+            <svg class="h-4 w-4 shrink-0 transition duration-300 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-sm text-zinc-400 leading-relaxed" data-i18n="faq_a4">
+            根据项目多模态视频规格，支持最多 9 张参考图 + 3 段视频 + 3 段音频。系统在提交前会自动校验并剔除未连满的插槽，且视频分辨率硬件锁死在 0.2M~0.98M 之间，防止显存爆炸。
+          </p>
+        </details>
+
+        <!-- Q5 -->
+        <details class="group rounded-xl bg-zinc-900/60 border border-white/10 p-5 [&_svg]:open:-rotate-180">
+          <summary class="flex cursor-pointer items-center justify-between gap-1.5 font-semibold text-white list-none">
+            <span data-i18n="faq_q5">需要安装哪些 ComfyUI 核心插件？</span>
+            <svg class="h-4 w-4 shrink-0 transition duration-300 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <p class="mt-3 text-sm text-zinc-400 leading-relaxed" data-i18n="faq_a5">
+            推荐安装 5 大核心插件：Comfyui-kktools（文本反推）、ComfyUI-KJNodes（全能组件处理）、ComfyLiterals（基础字面量）、ComfyUI-UniversalToolkit（通用参数解析）与 ComfyUI_LayerStyle（图层与遮罩）。
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       Footer
+       ========================================================================= -->
+  <footer class="py-16 border-t border-white/10 bg-[#070709] text-zinc-400 text-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Playful Easter Egg (TinyKPI Style Quote) -->
+      <div class="pb-12 mb-12 border-b border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div>
+          <p class="text-base text-zinc-300 font-medium" data-i18n-html="footer_quote">
+            在 ComfyUI 里连一整天线不算在摸鱼。<br/><span class="text-zinc-500">不过…再连一条也行。</span>
+          </p>
+        </div>
+        <button id="footer-egg-btn" type="button" class="px-3.5 py-2 rounded-xl bg-zinc-900 border border-white/10 hover:border-sky-400/40 text-zinc-300 hover:text-white transition-all flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          <span data-i18n="footer_quote_btn">再连一条</span>
+        </button>
+      </div>
+
+      <!-- Footer Bottom Links -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-3">
+          <img src="favicon.svg" alt="logo" class="w-6 h-6" />
+          <span class="text-zinc-300 font-semibold">无限画布 (infinite-canvas)</span>
+          <span class="text-zinc-600">© 2026 Open Source Project.</span>
+        </div>
+
+        <div class="flex items-center gap-6">
+          <a href="../docs/content/docs/overview/features.zh-CN.mdx" class="hover:text-white transition-colors" data-i18n="footer_docs">文档中心</a>
+          <a href="../docs/COMFYUI_WORKFLOW_GUIDE.md" class="hover:text-white transition-colors" data-i18n="footer_workflows">工作流指南</a>
+          <a href="../DEPLOY.md" class="hover:text-white transition-colors" data-i18n="footer_deploy">部署与发布</a>
+          <a href="https://github.com/ZhuYichuan/infinite-canvas" target="_blank" class="hover:text-white transition-colors" data-i18n="footer_github">GitHub 源码</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- =========================================================================
+       Video Placeholder Modal (Graceful fallback when demo.mp4 is pending)
+       ========================================================================= -->
+  <div id="video-placeholder-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="max-w-md w-full rounded-2xl bg-zinc-900 border border-white/15 p-6 shadow-2xl">
+      <div class="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+      </div>
+      <h3 class="text-lg font-bold text-white mb-2" data-i18n="video_placeholder_title">🎬 演示视频预留位</h3>
+      <p class="text-xs text-zinc-300 leading-relaxed mb-4" data-i18n="video_placeholder_desc">
+        将您的 30 秒演示视频命名为 demo.mp4 并放置于 assets/videos/ 目录，即可自动切换为高清实录播放。
+      </p>
+      <div class="p-3 rounded-lg bg-black/60 border border-white/10 font-mono text-[11px] text-sky-300 mb-5">
+        website/assets/videos/demo.mp4
+      </div>
+      <button id="close-placeholder-modal" type="button" class="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-zinc-950 font-semibold text-xs transition-colors">
+        我知道了
+      </button>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

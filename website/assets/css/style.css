@@ -1,0 +1,231 @@
+/* ==========================================================================
+   infinite-canvas Website - High-tech Aesthetic & Interactive Styles
+   ========================================================================== */
+
+:root {
+  --bg-main: #09090b;
+  --bg-card: #121215;
+  --bg-card-hover: #18181d;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-active: rgba(56, 189, 248, 0.5);
+  --brand-primary: #38bdf8;
+  --brand-secondary: #818cf8;
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+}
+
+/* Base Body Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Canvas Dot Grid Background */
+.canvas-grid-bg {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.glow-mesh {
+  background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.12) 0%, rgba(129, 140, 248, 0.06) 35%, transparent 70%);
+}
+
+/* Glassmorphism Header */
+.glass-nav {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(9, 9, 11, 0.75);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Interactive Mascot */
+.mascot-container {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  cursor: pointer;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mascot-body {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #27272a, #18181b);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: mascot-float 4s ease-in-out infinite;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mascot-body:hover {
+  transform: scale(1.08);
+}
+
+.mascot-eyes {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.mascot-eye {
+  width: 10px;
+  height: 14px;
+  background: #ffffff;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+.mascot-pupil {
+  width: 6px;
+  height: 6px;
+  background: #0284c7;
+  border-radius: 50%;
+  position: absolute;
+  top: 4px;
+  left: 2px;
+  transition: transform 0.05s ease-out;
+}
+
+@keyframes mascot-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Pulse signal along ComfyUI wires */
+.wire-pulse {
+  stroke-dasharray: 8, 8;
+  animation: wire-flow 1s linear infinite;
+}
+
+@keyframes wire-flow {
+  from {
+    stroke-dashoffset: 32;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Interactive Canvas Playground Node */
+.canvas-node {
+  background: #141418;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  user-select: none;
+}
+
+.canvas-node:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.canvas-node.selected {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25), 0 12px 32px rgba(0, 0, 0, 0.7);
+}
+
+.canvas-node.dragging {
+  cursor: grabbing !important;
+  opacity: 0.92;
+  z-index: 50;
+}
+
+/* Ports */
+.node-port {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #27272a;
+  border: 2px solid #38bdf8;
+  transition: transform 0.15s, background-color 0.15s;
+}
+
+.node-port:hover {
+  transform: scale(1.3);
+  background: #38bdf8;
+}
+
+/* Video Frame Corners like TinyKPI */
+.video-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.video-corner-tl { top: -1px; left: -1px; }
+.video-corner-tr { top: -1px; right: -1px; transform: scaleX(-1); }
+.video-corner-bl { bottom: -1px; left: -1px; transform: scaleY(-1); }
+.video-corner-br { bottom: -1px; right: -1px; transform: scale(-1); }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Toast Message */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-msg {
+  background: rgba(24, 24, 27, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  transform: translateY(12px);
+  animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toast-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -7,6 +7,14 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Official Landing Website (`website/`) Architecture & Interactivity Verification:
+  - **Zero-Dependency Static Launch**: Open `website/index.html` directly in browser or via any local static server; verify styles, high-tech dark theme, SVG icons, and typography render cleanly without errors;
+  - **Bilingual Switcher**: Click the top-nav `EN` / `中` toggle; verify all hero copies, value props, demo hints, matrix items, and FAQ accordions instantly switch between Chinese and English;
+  - **Interactive Mascot (Cursor Tracking)**: Move mouse across the hero area; verify the mascot pupils track the cursor position with physics constraints and click triggers happy animation and toast;
+  - **Interactive Canvas Playground**: Drag the Prompt, Workflow, and Output nodes; verify SVG bezier curves dynamically recalculate and follow node ports smoothly; click "⚡ Execute Flow / 触发执行" to verify pulse animation, simulated 8188 rendering spinner, and result update;
+  - **Video Placeholder Graceful Fallback**: Click the hero play button; verify placeholder modal pops up indicating where to drop `website/assets/videos/demo.mp4` when video file is pending;
+  - **Quick Start Code Copy**: Click through Bun, Docker, and Prerequisite tabs; click "复制代码 / Copy Code" to verify clipboard copy and toast notification.
+
 - Canvas Multi-Selection Batch Connection Dragging Enhancement:
   - **Batch Connect Selected Nodes**: When multiple nodes are selected (via `Ctrl`, `⌘ Command`, `Shift`, or marquee box selection), dragging a connection handle from any selected node to a target node connects all selected nodes to the target node simultaneously;
   - **Synchronized New Node Creation on Empty Canvas**: Dragging a connection from a selected node into blank canvas space and picking a new node type from the creation menu connects the newly created node to all selected nodes;
