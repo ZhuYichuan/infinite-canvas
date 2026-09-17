@@ -102,10 +102,12 @@ export default function PricingPage() {
                         <div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex size-9 items-center justify-center rounded-lg bg-stone-500/10 text-stone-700 dark:bg-stone-500/20 dark:text-stone-300">
+                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-stone-500/10 text-stone-700 dark:bg-stone-500/20 dark:text-stone-300">
                                         <Terminal className="size-5" />
                                     </div>
-                                    <h3 className="text-xl font-bold">极速自助体验包</h3>
+                                    <h3 className="text-xl font-bold leading-tight">
+                                        极速自助<br />体验包
+                                    </h3>
                                 </div>
                                 <Tag>纯文档自助</Tag>
                             </div>
