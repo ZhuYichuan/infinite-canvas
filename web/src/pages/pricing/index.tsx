@@ -310,10 +310,12 @@ export default function PricingPage() {
                         <div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
                                         <Bot className="size-5" />
                                     </div>
-                                    <h3 className="text-xl font-bold">创作者服务包</h3>
+                                    <h3 className="text-xl font-bold leading-tight">
+                                        创作者<br />服务包
+                                    </h3>
                                 </div>
                                 <Tag color="purple">智能体+远程</Tag>
                             </div>
