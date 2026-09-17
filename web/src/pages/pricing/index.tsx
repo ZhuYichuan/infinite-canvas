@@ -180,6 +180,10 @@ export default function PricingPage() {
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
                                         <span>遇脚本或网络报错请完全自行排查</span>
                                     </li>
+                                    <li className="flex items-center gap-1.5">
+                                        <XCircle className="size-3.5 text-stone-400 shrink-0" />
+                                        <span>云端算力平台租金自行支付（1~N元/时）</span>
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -229,19 +233,20 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-2 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
-                                        <span>包含 AutoDL 云端镜像 + 本地电脑 ComfyUI 便携包双环境</span>
+                                        <div>
+                                            <span>包含 AutoDL 云端镜像 + <strong>本地部署服务</strong>（要求 Windows 11 环境，显存 &gt; 12G 最佳）</span>
+                                            <div className="mt-1.5 rounded-lg border border-stone-200 bg-stone-50/90 p-2 text-[11px] leading-relaxed text-stone-600 dark:border-stone-800 dark:bg-stone-900/80 dark:text-stone-400">
+                                                💡 <strong>本地环境说明：</strong>本地能否跑通大模型完全由个人硬件环境决定。若电脑显卡配置不足（如显存低于 12G 或非 Win11），将无法支持部分高显存大模型运行；此时可直接无缝切换使用附赠的 AutoDL 云端镜像，兼顾体验。
+                                            </div>
+                                        </div>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
-                                        <span><strong>未来 1 年 ComfyUI 核心插件及镜像版本持续维护更新</strong></span>
+                                        <span><strong>持续升级服务</strong></span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
-                                        <span><strong>无限画布独家预设工作流与高品质 Prompt 模板库</strong></span>
-                                    </li>
-                                    <li className="flex items-start gap-1.5">
-                                        <span className="font-semibold text-blue-600 dark:text-blue-400">•</span>
-                                        <span><strong>官方优先微信群答疑（脚本执行与报错协助定位）</strong></span>
+                                        <span><strong>优先微信答疑(脚本执行与报错协助定位）</strong></span>
                                     </li>
                                 </ul>
                             </div>
@@ -259,7 +264,7 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>社群内工程师优先指导，解决脚本与网络异常</span>
+                                        <span>作者亲自优先指导，解决脚本与网络异常</span>
                                     </li>
                                 </ul>
                             </div>
@@ -269,11 +274,11 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>仅限群内文字与截图协助诊断，不含远程代连操作</span>
+                                        <span>云端算力平台租金自行支付（1~N元/时）</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>云端算力平台租金仍按使用实报实销（1~2元/时）</span>
+                                        <span>仅限群内文字与截图协助诊断，不含远程代连操作</span>
                                     </li>
                                 </ul>
                             </div>
@@ -410,25 +415,25 @@ export default function PricingPage() {
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">运行环境支持</td>
                                     <td className="px-3 py-3.5 text-stone-600 dark:text-stone-400">仅限 AutoDL 云端镜像（不含本地）</td>
-                                    <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">AutoDL 云端 + 本地便携双环境</td>
+                                    <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">AutoDL 云端 + 本地部署（要求 Win11 / 显存&gt;12G 最佳）</td>
                                     <td className="px-3 py-3.5">工程师按需调优（云端或本地）</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">核心交付内容</td>
                                     <td className="px-3 py-3.5">AutoDL 镜像码 + 启动脚本 + 部署排错文档</td>
-                                    <td className="px-3 py-3.5 font-semibold text-stone-900 dark:text-stone-100">云端+本地双环境 + 1年版本持续更新 + 独家预设库</td>
+                                    <td className="px-3 py-3.5 font-semibold text-stone-900 dark:text-stone-100">AutoDL 云端 + 本地部署 + 持续升级服务</td>
                                     <td className="px-3 py-3.5">远程端到端调通 + 显存调优 + 赠全年权益</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">技术支持服务</td>
                                     <td className="px-3 py-3.5 text-stone-400">仅限文档自查（不提供人工技术支持）</td>
-                                    <td className="px-3 py-3.5 text-blue-600 dark:text-blue-400">官方群优先答疑，截图协助定位排错</td>
+                                    <td className="px-3 py-3.5 text-blue-600 dark:text-blue-400">作者亲自优先微信答疑，协助报错定位</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">1对1 远程代劳协助 + 7天专属技术售后</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">版本更新跟进</td>
                                     <td className="px-3 py-3.5">自行对照文档手动升级</td>
-                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">团队持续回归测试，推送最新稳定版本</td>
+                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">持续升级服务，提供环境版本维护更新</td>
                                     <td className="px-3 py-3.5">同步享有方案 2 全套全年更新权益</td>
                                 </tr>
                                 <tr>
@@ -510,7 +515,7 @@ export default function PricingPage() {
                                 既然有 19.9 元体验包，为什么强烈推荐选 ¥79 伴学包？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                19.9 元体验包仅包含 AutoDL 云端静态镜像与基础文档，不含本地便携包与后续维护。而开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。¥79 伴学包同时提供云端与本地双环境支持，由工程师团队持续整年回归测试并推送稳定镜像，同时享有独家预设库与官方群优先答疑指导，更加省心长久。
+                                19.9 元体验包仅包含 AutoDL 云端静态镜像与基础文档，不含本地部署与后续维护。而开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。¥79 伴学包同时提供云端与本地部署支持，享有持续升级服务以及作者亲自优先微信答疑，更加省心长久。
                             </p>
                         </Card>
 
