@@ -109,7 +109,7 @@ export default function PricingPage() {
                                         极速自助<br />体验包
                                     </h3>
                                 </div>
-                                <Tag>纯文档自助</Tag>
+                                <Tag className="!mr-0 shrink-0">纯文档自助</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
@@ -218,7 +218,7 @@ export default function PricingPage() {
                                         创作者<br />伴学包
                                     </h3>
                                 </div>
-                                <Tag color="blue">省心持续更新</Tag>
+                                <Tag color="blue" className="!mr-0 shrink-0">省心持续更新</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
@@ -317,7 +317,7 @@ export default function PricingPage() {
                                         创作者<br />服务包
                                     </h3>
                                 </div>
-                                <Tag color="purple">智能体+远程</Tag>
+                                <Tag color="purple" className="!mr-0 shrink-0">智能体+远程</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
@@ -402,16 +402,23 @@ export default function PricingPage() {
                     {/* 方案 D: 1 对 1 专家远程部署 (VIP 尊享款) */}
                     <div className="relative flex flex-col justify-between rounded-3xl border border-purple-200 bg-background p-6 shadow-sm sm:p-7 dark:border-purple-900/60">
                         <div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
-                                        <Wrench className="size-5" />
+                            <div className="flex items-center gap-2.5">
+                                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+                                    <Wrench className="size-5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-1.5">
+                                        <span className="text-xl font-bold leading-tight text-stone-950 dark:text-stone-100">
+                                            1对1
+                                        </span>
+                                        <Tag color="purple" className="!mr-0 shrink-0">
+                                            包跑通退款
+                                        </Tag>
                                     </div>
-                                    <h3 className="text-xl font-bold leading-tight">
-                                        1对1<br />作者全包部署
+                                    <h3 className="text-xl font-bold leading-tight text-stone-950 dark:text-stone-100">
+                                        作者全包部署
                                     </h3>
                                 </div>
-                                <Tag color="purple">省心全包 · 跑不通退款</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
