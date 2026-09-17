@@ -51,8 +51,12 @@ export const App: React.FC = () => {
           {/* Big Bold Headline */}
           <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-[#111113] mb-6 leading-[1.06]">
             {t('hero_title_line1')}
-            <br />
-            <span>{t('hero_title_line2')}</span>
+            {t('hero_title_line2') ? (
+              <>
+                <br />
+                <span>{t('hero_title_line2')}</span>
+              </>
+            ) : null}
           </h1>
 
           {/* Subtitle */}
