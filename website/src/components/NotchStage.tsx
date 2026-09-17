@@ -94,10 +94,10 @@ export const NotchStage: React.FC<NotchStageProps> = ({ t }) => {
           }}
         >
           <div className="flex flex-col items-start">
-            <span className="text-sm font-bold text-white">1.8s</span>
+            <span className="text-sm font-bold text-white">0.8s</span>
             <span className="text-[10px] text-zinc-400 flex items-center gap-0.5">
-              <span>Flux.1</span>
-              <span className="text-emerald-400">↓ 12%</span>
+              <span>Z-Image</span>
+              <span className="text-emerald-400">↓ 28%</span>
             </span>
           </div>
 
@@ -106,7 +106,7 @@ export const NotchStage: React.FC<NotchStageProps> = ({ t }) => {
           </div>
 
           <div className="flex flex-col items-end">
-            <span className="text-sm font-bold text-white">8.2G</span>
+            <span className="text-sm font-bold text-white">6.4G</span>
             <span className="text-[10px] text-zinc-400 flex items-center gap-0.5">
               <span>{t('stage_vram_label')}</span>
               <span className="text-sky-400">↑ 5%</span>
@@ -152,11 +152,11 @@ export const NotchStage: React.FC<NotchStageProps> = ({ t }) => {
             <div className="w-full max-w-xl grid grid-cols-3 gap-3 text-xs transition-all">
               <div className="p-3.5 rounded-xl bg-black/60 border border-white/10">
                 <span className="text-sky-400 font-mono block text-[10px]">{t('stage_node_txt2img')}</span>
-                <p className="text-zinc-300 text-[11px] mt-1">Flux.1 Dev</p>
+                <p className="text-zinc-300 text-[11px] mt-1">Z-Image Turbo</p>
               </div>
               <div className="p-3.5 rounded-xl bg-black/60 border border-white/10">
                 <span className="text-indigo-400 font-mono block text-[10px]">{t('stage_node_inpaint')}</span>
-                <p className="text-zinc-300 text-[11px] mt-1">LayerStyle 遮罩</p>
+                <p className="text-zinc-300 text-[11px] mt-1">Qwen ControlNet</p>
               </div>
               <div className="p-3.5 rounded-xl bg-black/60 border border-white/10">
                 <span className="text-purple-400 font-mono block text-[10px]">{t('stage_node_video')}</span>

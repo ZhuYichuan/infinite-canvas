@@ -68,8 +68,8 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ onOpenModal, t }) => {
         {/* Active Living Notch Widget (Centered in Screen Notch) */}
         <div className="active-notch-bar">
           <div className="flex items-baseline gap-1.5 text-xs text-white">
-            <strong className="font-bold">1.8s</strong>
-            <span className="text-[10px] text-emerald-400 font-mono">Flux.1 ↑ 14%</span>
+            <strong className="font-bold">0.8s</strong>
+            <span className="text-[10px] text-emerald-400 font-mono">Z-Image ↑ 28%</span>
           </div>
 
           {/* Mini Mascot in Notch */}

@@ -6,8 +6,8 @@ interface EcosystemDashboardProps {
 }
 
 export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => {
-  const [selectedModel, setSelectedModel] = useState('flux');
-  const data = ECOSYSTEM_MODELS[selectedModel] || ECOSYSTEM_MODELS.flux;
+  const [selectedModel, setSelectedModel] = useState('z_image');
+  const data = ECOSYSTEM_MODELS[selectedModel] || ECOSYSTEM_MODELS.z_image;
 
   return (
     <section id="ecosystem" className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -23,14 +23,25 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
       <div className="flex flex-wrap gap-2 mb-8">
         <button
           type="button"
-          onClick={() => setSelectedModel('flux')}
+          onClick={() => setSelectedModel('z_image')}
           className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-            selectedModel === 'flux'
+            selectedModel === 'z_image'
               ? 'border-[#0071e3] bg-[#0071e3]/10 text-[#0071e3] font-semibold'
               : 'border-black/[0.08] bg-white text-[#6e6e73] hover:text-[#111113] hover:border-black/[0.16]'
           }`}
         >
-          Flux.1 Turbo
+          Z-Image Turbo
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedModel('flux2')}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+            selectedModel === 'flux2'
+              ? 'border-[#0071e3] bg-[#0071e3]/10 text-[#0071e3] font-semibold'
+              : 'border-black/[0.08] bg-white text-[#6e6e73] hover:text-[#111113] hover:border-black/[0.16]'
+          }`}
+        >
+          Flux2.Dev
         </button>
         <button
           type="button"
@@ -45,25 +56,25 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
         </button>
         <button
           type="button"
-          onClick={() => setSelectedModel('sdxl')}
+          onClick={() => setSelectedModel('qwen_inpaint')}
           className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-            selectedModel === 'sdxl'
+            selectedModel === 'qwen_inpaint'
               ? 'border-[#0071e3] bg-[#0071e3]/10 text-[#0071e3] font-semibold'
               : 'border-black/[0.08] bg-white text-[#6e6e73] hover:text-[#111113] hover:border-black/[0.16]'
           }`}
         >
-          SDXL Lightning
+          Qwen 局部重绘
         </button>
         <button
           type="button"
-          onClick={() => setSelectedModel('qwen')}
+          onClick={() => setSelectedModel('qwen_text')}
           className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-            selectedModel === 'qwen'
+            selectedModel === 'qwen_text'
               ? 'border-[#0071e3] bg-[#0071e3]/10 text-[#0071e3] font-semibold'
               : 'border-black/[0.08] bg-white text-[#6e6e73] hover:text-[#111113] hover:border-black/[0.16]'
           }`}
         >
-          Qwen2.5-VL
+          Qwen3.5 文本/反推
         </button>
       </div>
 

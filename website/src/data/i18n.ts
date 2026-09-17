@@ -59,7 +59,7 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
 
     eco_eyebrow: '汇聚你的工作流全景',
     eco_title: '所有工具，统一画布',
-    eco_desc: '涵盖 Flux、SDXL、MiniMax H3、局部重绘以及自定义 API 流程。在一张无限画布上统筹所有创作。',
+    eco_desc: '涵盖 Z-Image-Turbo、Flux2.Dev、MiniMax H3、Qwen 局部重绘与 Qwen3.5 提示词反推。在一张无限画布上统筹所有创作。',
 
     layout_eyebrow: '为重要内容留出空间',
     layout_title: '自由排布，随心所欲',
@@ -195,7 +195,7 @@ export const DICTIONARY: Record<Language, Record<string, string>> = {
 
     eco_eyebrow: 'BRING YOUR BUSINESS TOGETHER',
     eco_title: 'Your tools. One view.',
-    eco_desc: 'Flux, SDXL, MiniMax H3, Inpainting, and your own API flows. One canvas for all your creations.',
+    eco_desc: 'Covering Z-Image-Turbo, Flux2.Dev, MiniMax H3, Qwen Inpainting, and Qwen3.5 prompt inversion. One canvas for all your creations.',
 
     layout_eyebrow: 'MAKE ROOM FOR WHAT MATTERS',
     layout_title: 'Your nodes. Your layout.',
