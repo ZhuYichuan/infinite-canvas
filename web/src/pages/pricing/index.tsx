@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Card, Modal, Segmented, Tag } from "antd";
+import { Button, Card, Modal, Segmented, Tag, Tooltip } from "antd";
 import {
     CheckCircle2,
     XCircle,
@@ -131,15 +131,33 @@ export default function PricingPage() {
                             </p>
 
                             <div className="mt-5 flex items-baseline gap-1">
-                                <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥19.9</span>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥19.9</span>
+                                    <Tooltip
+                                        title={
+                                            <div className="p-1 text-xs leading-relaxed">
+                                                <div className="font-semibold text-amber-300">💡 为什么收 19.9 元？</div>
+                                                <div className="mt-1 text-stone-200">
+                                                    包含百 G 大模型的云镜像每天都在产生存储租金。若不收费用，镜像会因欠费被平台直接清理删除，因此必须象征性收取一点费用分摊存储成本，保障镜像长期存活。
+                                                </div>
+                                            </div>
+                                        }
+                                        trigger={["hover", "click"]}
+                                        overlayClassName="max-w-xs"
+                                    >
+                                        <button
+                                            type="button"
+                                            className="inline-flex cursor-pointer items-center text-stone-400 hover:text-amber-500 transition-colors focus:outline-none"
+                                            aria-label="为什么收 19.9 元说明"
+                                        >
+                                            <HelpCircle className="size-4" />
+                                        </button>
+                                    </Tooltip>
+                                </div>
                                 <span className="text-xs text-stone-500">/ 象征性分摊镜像存储费</span>
                             </div>
                             <div className="mt-1 text-xs text-stone-400">
                                 仅提供部署与排错文档，不提供任何人工技术支持
-                            </div>
-
-                            <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-                                💡 <strong>为什么收 19.9 元？</strong> 包含百 G 大模型的云镜像每天都在产生存储租金。若不收费用，镜像会因欠费被平台直接清理删除，因此必须象征性收取一点费用分摊存储成本，保障镜像长期存活。
                             </div>
 
                             <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
