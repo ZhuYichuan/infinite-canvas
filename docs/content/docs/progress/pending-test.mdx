@@ -12,7 +12,10 @@ The current release needs manual verification in these areas:
   - **Static Production Build**: Run `bun run build` inside `website/`; verify Vite cleanly bundles static production assets to `dist/index.html` without errors;
   - **Bilingual React State**: Click the top-nav `EN` / `中` toggle; verify React state seamlessly re-renders all text tokens without page refresh;
   - **Interactive Mascot Hook**: Move cursor in hero area; verify `useEffect` window listener calculates pupil vector angles smoothly; click mascot to trigger scale animation and toast;
-  - **Living Notch 3-Step Slider**: Click `01 Glance`, `02 Inspect`, `03 Explore`; verify track indicator slides and corresponding view components toggle smoothly;
+  - **ComfyUI Deeply-Optimized 3-Step Demo (`NotchStage`)**:
+    - **01 Glance (概览模式)**: Switch preset prompts (Cyberpunk, Ink Wash, Dark Gold Mecha); click "极速生成 (0.8s)" to watch the dynamic progress bar (0% -> 100%) and verify the HD rendered card updates upon completion;
+    - **02 Inspect (检查模式)**: Click ComfyUI slot contract chips (`prompt`, `seed`, `ref_image_01`, `ref_mask`, `width/height`); verify the corresponding input fields highlight with glowing outlines and slot rules reflect the Fail-Loud / "Unmarked = Unavailable" specifications;
+    - **03 Explore (拓扑模式)**: Click "▶ 模拟多模态调度" to observe the animated pulse flow and step-by-step pipeline execution logs through the Group virtual container, FIFO mapper, and 0.98 MP MiniMax H3 video core;
   - **Ecosystem Model Sparklines**: Click model chips (Flux.1, MiniMax, SDXL, Qwen); verify 8 metric cards dynamically re-render SVG sparkline trend polylines;
   - **Grid Canvas Resizing & Mutation**: In the Layout section, click arrow buttons to toggle width/height spans (`col-span-1` vs `col-span-2`, `row-span-1` vs `row-span-2`); click delete to remove tile; click "Add node card" and "Reset" to verify immutable React array operations;
   - **Live Countdown Hook**: Observe the Launch Offer countdown timer ticking seconds in real time;
