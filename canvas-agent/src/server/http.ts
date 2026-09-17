@@ -263,7 +263,11 @@ export function startHttpServer() {
     app.get("/agent/codex/threads/:threadId", route(async (req, res) => {
         const workspace = ensureSiteWorkspace(config);
         const threadId = routeParam(req.params.threadId);
-        res.json({ ok: true, workspace, conversation: session.conversationStateSnapshot, ...(await readCodexThread(emit, threadId, workspace.workspacePath)) });
+        const threadData = await readCodexThread(emit, threadId, workspace.workspacePath);
+        if (!threadData.thread && workspace.activeThreadId === threadId) {
+            updateSiteWorkspace(config, { activeThreadId: undefined });
+        }
+        res.json({ ok: true, workspace: ensureSiteWorkspace(config), conversation: session.conversationStateSnapshot, ...threadData });
     }));
     app.post("/agent/codex/history/ack", (req, res) => {
         const threadId = String(req.body?.threadId || "");

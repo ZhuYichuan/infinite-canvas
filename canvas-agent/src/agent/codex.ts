@@ -150,10 +150,18 @@ export async function configureCodexSkill(emit: AgentEmit, cwd: string, selector
 /** 读取指定 Codex 线程及其聊天历史。 */
 export async function readCodexThread(emit: AgentEmit, threadId: string, cwd?: string) {
     const app = await getCodexApp(emit);
-    const history = await loadCodexHistory(emit, threadId, cwd);
-    const supplementalItems = await codexEventHistory.readThread(threadId);
-    const messages = await mergeMessageMetadata(threadId, threadMessages(history.thread, app.planUpdates(threadId), supplementalItems));
-    return { thread: summarizeCodexThread(history.thread), messages, settledTurnIds: settledTurnIds(history.thread, supplementalItems), historyReady: history.historyReady };
+    try {
+        const history = await loadCodexHistory(emit, threadId, cwd);
+        const supplementalItems = await codexEventHistory.readThread(threadId);
+        const messages = await mergeMessageMetadata(threadId, threadMessages(history.thread, app.planUpdates(threadId), supplementalItems));
+        return { thread: summarizeCodexThread(history.thread), messages, settledTurnIds: settledTurnIds(history.thread, supplementalItems), historyReady: history.historyReady };
+    } catch (error) {
+        if (/no rollout found/i.test(errorMessage(error))) {
+            logger.warn("Codex thread rollout not found, treating as expired thread", { threadId, error: errorMessage(error) });
+            return { thread: null, messages: [], settledTurnIds: [], historyReady: true };
+        }
+        throw error;
+    }
 }
 
 /** 归档指定 Codex 线程。 */
