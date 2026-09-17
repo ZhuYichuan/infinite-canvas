@@ -407,7 +407,7 @@ export default function PricingPage() {
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-                                追求极致省心的团队与老板首选。资深工程师远程全程代劳，定制调优，包跑通包教会。
+                                追求极致省心的团队与老板首选。资深工程师远程全程代劳，定制调优，包跑通包教会。支持本地部署数据更安全。
                             </p>
 
                             <div className="mt-5 flex items-baseline gap-1">
