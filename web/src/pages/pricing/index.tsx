@@ -216,12 +216,8 @@ export default function PricingPage() {
                         </div>
                     </div>
 
-                    {/* 方案 B: 创作者伴学与年度更新包 (主推 / 最具性价比款) */}
-                    <div className="relative flex flex-col justify-between rounded-3xl border-2 border-blue-500 bg-background p-6 shadow-xl ring-1 ring-blue-500/20 sm:p-8 dark:border-blue-400">
-                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-1 text-xs font-semibold text-white shadow-md">
-                            🔥 最具性价比 · 80% 创作者首选
-                        </div>
-
+                    {/* 方案 B: 创作者伴学与年度更新包 (基础实用款) */}
+                    <div className="relative flex flex-col justify-between rounded-3xl border border-blue-200 bg-background p-6 shadow-sm sm:p-7 dark:border-blue-900/60">
                         <div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -232,7 +228,7 @@ export default function PricingPage() {
                                         创作者<br />伴学包
                                     </h3>
                                 </div>
-                                <Tag color="blue" className="!mr-0 shrink-0">省心持续更新</Tag>
+                                <Tag color="blue" className="!mr-0 shrink-0">年度伴学</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
@@ -305,7 +301,6 @@ export default function PricingPage() {
 
                         <div className="mt-8">
                             <Button
-                                type="primary"
                                 size="large"
                                 className="w-full !h-11 !font-medium"
                                 onClick={() => openContactModal("创作者伴学包（¥79）")}
@@ -315,10 +310,10 @@ export default function PricingPage() {
                         </div>
                     </div>
 
-                    {/* 方案 C: 创作者服务包 (¥119 / 智能体协同 + 7次远程排障) */}
-                    <div className="relative flex flex-col justify-between rounded-3xl border-2 border-indigo-500 bg-background p-6 shadow-xl ring-1 ring-indigo-500/20 sm:p-7 dark:border-indigo-400">
-                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-3.5 py-0.5 text-[11px] font-semibold text-white shadow-md whitespace-nowrap">
-                            ⚡ 智能体进阶 · 7次远程
+                    {/* 方案 C: 创作者服务包 (¥119 / 官方重点推荐款) */}
+                    <div className="relative flex flex-col justify-between rounded-3xl border-2 border-indigo-600 bg-background p-6 shadow-2xl ring-2 ring-indigo-500/30 sm:p-7 dark:border-indigo-400 dark:ring-indigo-400/30 xl:-translate-y-2">
+                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-4 py-1 text-xs font-bold text-white shadow-lg whitespace-nowrap">
+                            🔥 官方重点推荐 · 80% 创作者首选
                         </div>
 
                         <div>
@@ -331,7 +326,7 @@ export default function PricingPage() {
                                         创作者<br />服务包
                                     </h3>
                                 </div>
-                                <Tag color="purple" className="!mr-0 shrink-0">智能体+远程</Tag>
+                                <Tag color="magenta" className="!mr-0 shrink-0 font-semibold">🔥 重点推荐</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
@@ -342,8 +337,8 @@ export default function PricingPage() {
                                 <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥119</span>
                                 <span className="text-xs text-stone-500">/ 年（含 7 次远程排障）</span>
                             </div>
-                            <div className="mt-1 text-xs text-stone-400">
-                                伴学包进阶款，智能体协同与远程排障双重保障
+                            <div className="mt-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                                官方重点推荐 · 智能体协同与远程排障双重保障
                             </div>
 
                             <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
@@ -405,10 +400,10 @@ export default function PricingPage() {
                             <Button
                                 type="primary"
                                 size="large"
-                                className="w-full !h-11 !font-medium !bg-indigo-600 hover:!bg-indigo-500"
+                                className="w-full !h-11 !font-semibold !bg-gradient-to-r !from-indigo-600 !via-purple-600 !to-indigo-600 hover:!from-indigo-500 hover:!to-purple-500 shadow-md shadow-indigo-500/25"
                                 onClick={() => openContactModal("创作者服务包（¥119）")}
                             >
-                                获取创作者服务包（¥119）
+                                立即获取创作者服务包（¥119）
                             </Button>
                         </div>
                     </div>
@@ -527,8 +522,8 @@ export default function PricingPage() {
                                 <tr>
                                     <th className="py-3.5 pl-6 pr-3">对比维度</th>
                                     <th className="px-3 py-3.5">极速体验包</th>
-                                    <th className="px-3 py-3.5 text-blue-600 dark:text-blue-400">创作者伴学 (推荐)</th>
-                                    <th className="px-3 py-3.5 text-indigo-600 dark:text-indigo-400">创作者服务包 (进阶)</th>
+                                    <th className="px-3 py-3.5 text-blue-600 dark:text-blue-400">创作者伴学包</th>
+                                    <th className="px-3 py-3.5 font-bold text-indigo-700 bg-indigo-500/10 dark:text-indigo-300 dark:bg-indigo-500/20">创作者服务包 (重点推荐) 🔥</th>
                                     <th className="px-3 py-3.5 text-purple-600 dark:text-purple-400">1对1 作者全包</th>
                                 </tr>
                             </thead>
@@ -651,11 +646,11 @@ export default function PricingPage() {
 
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
-                                <HelpCircle className="size-4 text-blue-500" />
-                                既然有 19.9 元体验包，为什么强烈推荐选 ¥79 伴学包？
+                                <HelpCircle className="size-4 text-indigo-500" />
+                                方案众多，为什么官方重点推荐「创作者服务包（¥119）」？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                19.9 元体验包仅包含 AutoDL 云端静态镜像与基础文档，不含本地部署与后续维护。而开源 AI 社区迭代极快，底层 PyTorch、ComfyUI 和第三方插件几乎每周都在更新，极易导致旧工作流爆红断连。¥79 伴学包同时提供云端与本地部署支持，享有持续升级服务以及作者亲自优先微信答疑，更加省心长久。
+                                体验包仅限文档自查，基础伴学包遇到深层硬件或依赖冲突时仅限文字指导。<strong>¥119 创作者服务包</strong>在伴学包全套权益基础上，独家配通 <strong>Workbuddy 桌面智能体接管画布</strong>，更赠送 <strong>7 次专家远程代连排障兜底</strong>。仅比基础伴学包多 40 元，即可彻底买下前沿智能体生产力与远程排障双重兜底，是 80% 创作者与工作室的重点推荐款。
                             </p>
                         </Card>
 
