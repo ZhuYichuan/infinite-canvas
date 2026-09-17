@@ -7,7 +7,7 @@ interface FaqProps {
 const FAQS = [
   {
     q: '我需要启动本地 ComfyUI 才能使用吗？',
-    a: '是的。comfyui 画布是专为 ComfyUI 设计的现代化可视化前端，通过 WebSocket 与 REST API 直连本地 127.0.0.1:8188 端口。运行前请先启动本地或局域网 ComfyUI。',
+    a: '是的。无限画布是专为 ComfyUI 设计的现代化可视化前端，通过 WebSocket 与 REST API 直连本地 127.0.0.1:8188 端口。运行前请先启动本地或局域网 ComfyUI。',
   },
   {
     q: '为什么不需要后端服务？生成图片与工程存放在哪里？',

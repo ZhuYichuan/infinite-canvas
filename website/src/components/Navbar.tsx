@@ -20,7 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({ lang, onToggleLang, t }) => {
           </svg>
         </div>
         <span className="font-semibold text-sm tracking-tight text-white flex items-center gap-1.5">
-          comfyui 画布
+          无限画布
         </span>
       </a>
 
