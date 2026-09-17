@@ -10,6 +10,7 @@ import { CanvasNodeType, type ConnectionHandle, type Position } from "@/types/ca
 export type PendingConnectionCreate = {
     connection: ConnectionHandle;
     position: Position;
+    sourceNodeIds?: string[];
 };
 
 export function ConnectionCreateMenu({

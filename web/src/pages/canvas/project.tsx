@@ -602,13 +602,33 @@ function InfiniteCanvasPage() {
         (current: ConnectionHandle, targetNodeId: string) => {
             if (current.nodeId === targetNodeId) return;
 
-            const connection = normalizeConnection(current.nodeId, targetNodeId, nodesRef.current, current.handleType, connectionsRef.current);
-            if (!connection) {
-                message.warning(t("canvas.projectPage.configConnection"));
-                return;
+            const selected = selectedNodeIdsRef.current;
+            const isBatch = selected.has(current.nodeId) && selected.size > 1;
+            const sourceIds = isBatch ? Array.from(selected) : [current.nodeId];
+
+            const newConnections: CanvasConnection[] = [];
+            let currentConnections = connectionsRef.current;
+
+            for (const sourceId of sourceIds) {
+                if (sourceId === targetNodeId) continue;
+                const connection = normalizeConnection(sourceId, targetNodeId, nodesRef.current, current.handleType, currentConnections);
+                if (connection) {
+                    const newConn: CanvasConnection = {
+                        id: nanoid(),
+                        fromNodeId: connection.fromNodeId,
+                        toNodeId: connection.toNodeId,
+                        kind: "input",
+                    };
+                    newConnections.push(newConn);
+                    currentConnections = [...currentConnections, newConn];
+                }
             }
-            const { fromNodeId, toNodeId } = connection;
-            setConnections((prev) => [...prev, { id: `conn-${Date.now()}`, fromNodeId, toNodeId, kind: "input" }]);
+
+            if (newConnections.length > 0) {
+                setConnections((prev) => [...prev, ...newConnections]);
+            } else {
+                message.warning(t("canvas.projectPage.configConnection"));
+            }
             setContextMenu(null);
         },
         [message, t],
@@ -618,13 +638,28 @@ function InfiniteCanvasPage() {
         (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio, pending: PendingConnectionCreate) => {
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
             const newNode = createCanvasNode(type, pending.position, metadata);
-            const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
-            if (!connection) {
+            const allNodes = [...nodesRef.current, newNode];
+
+            const sourceIds = pending.sourceNodeIds && pending.sourceNodeIds.length > 0 ? pending.sourceNodeIds : [pending.connection.nodeId];
+            const newConnections: CanvasConnection[] = [];
+            let currentConnections = connectionsRef.current;
+
+            for (const sourceId of sourceIds) {
+                const connection = normalizeConnection(sourceId, newNode.id, allNodes, pending.connection.handleType, currentConnections);
+                if (connection) {
+                    const newConn: CanvasConnection = { id: nanoid(), ...connection, kind: "input" };
+                    newConnections.push(newConn);
+                    currentConnections = [...currentConnections, newConn];
+                }
+            }
+
+            if (newConnections.length === 0) {
                 message.warning(t("canvas.projectPage.configConnection"));
                 return;
             }
+
             setNodes((prev) => [...prev, newNode]);
-            setConnections((prev) => [...prev, { id: nanoid(), ...connection, kind: "input" }]);
+            setConnections((prev) => [...prev, ...newConnections]);
             setSelectedNodeIds(new Set([newNode.id]));
             setSelectedConnectionId(null);
             if (type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio) setDialogNodeId(newNode.id);
@@ -648,6 +683,9 @@ function InfiniteCanvasPage() {
             let isNearNode = false;
             let bestNodeId: string | null = null;
             let bestPriority = Number.POSITIVE_INFINITY;
+            const selected = selectedNodeIdsRef.current;
+            const isBatch = selected.has(current.nodeId) && selected.size > 1;
+            const candidateSourceIds = isBatch ? Array.from(selected) : [current.nodeId];
 
             [...nodesRef.current]
                 .reverse()
@@ -661,7 +699,10 @@ function InfiniteCanvasPage() {
 
                     if (!hitsHandle && !hitsInside && !hitsExpanded) return;
                     isNearNode = true;
-                    if (node.id === current.nodeId || !normalizeConnection(current.nodeId, node.id, nodesRef.current, current.handleType)) return;
+                    const canConnect = candidateSourceIds.some(
+                        (sourceId) => sourceId !== node.id && normalizeConnection(sourceId, node.id, nodesRef.current, current.handleType, connectionsRef.current),
+                    );
+                    if (!canConnect) return;
 
                     const priority = hitsInside ? 0 : hitsHandle ? 1 : 2;
                     if (priority < bestPriority) {
@@ -1575,8 +1616,15 @@ function InfiniteCanvasPage() {
                 } else if (dropTarget.isNearNode) {
                     setConnecting(null);
                 } else {
+                    const selected = selectedNodeIdsRef.current;
+                    const isBatch = selected.has(currentConnection.nodeId) && selected.size > 1;
+                    const sourceNodeIds = isBatch ? Array.from(selected) : [currentConnection.nodeId];
                     setMouseWorld(screenToCanvas(event.clientX, event.clientY));
-                    setPendingConnectionCreate({ connection: currentConnection, position: screenToCanvas(event.clientX, event.clientY) });
+                    setPendingConnectionCreate({
+                        connection: currentConnection,
+                        position: screenToCanvas(event.clientX, event.clientY),
+                        sourceNodeIds,
+                    });
                 }
             }
         },
