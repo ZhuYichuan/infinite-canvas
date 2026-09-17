@@ -77,8 +77,8 @@ export const NotchStage: React.FC<NotchStageProps> = ({ t }) => {
       <div className="mac-stage h-[420px] flex flex-col">
         {/* Menubar */}
         <div className="h-8 px-5 bg-zinc-900/90 border-b border-white/5 flex items-center justify-between text-[11px] text-zinc-400">
-          <span>Finder &nbsp; File &nbsp; Edit &nbsp; View &nbsp; ComfyUI</span>
-          <span>Wed 9:41</span>
+          <span>{t('mac_finder')} &nbsp; {t('mac_file')} &nbsp; {t('mac_edit')} &nbsp; {t('mac_view')} &nbsp; ComfyUI</span>
+          <span>{t('mac_clock')}</span>
         </div>
 
         {/* Physical Notch Cutout */}
@@ -108,7 +108,7 @@ export const NotchStage: React.FC<NotchStageProps> = ({ t }) => {
           <div className="flex flex-col items-end">
             <span className="text-sm font-bold text-white">8.2G</span>
             <span className="text-[10px] text-zinc-400 flex items-center gap-0.5">
-              <span>VRAM</span>
+              <span>{t('stage_vram_label')}</span>
               <span className="text-sky-400">↑ 5%</span>
             </span>
           </div>
@@ -118,11 +118,11 @@ export const NotchStage: React.FC<NotchStageProps> = ({ t }) => {
         <div className="flex-1 flex items-center justify-center p-8 relative">
           {step === 'glance' && (
             <div className="inline-block p-4 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-md text-left transition-all">
-              <span className="text-xs font-mono text-sky-400 block mb-1">01 Glance Node</span>
-              <p className="text-xs text-zinc-300">Prompt: "Cyberpunk rain, neon shadows, 8k"</p>
+              <span className="text-xs font-mono text-sky-400 block mb-1">{t('stage_glance_title')}</span>
+              <p className="text-xs text-zinc-300">{t('stage_glance_prompt')}</p>
               <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-500">
-                <span>Sampler: euler</span>
-                <span className="text-emerald-400 font-mono">Ready 8188</span>
+                <span>{t('stage_glance_sampler')}</span>
+                <span className="text-emerald-400 font-mono">{t('stage_glance_status')}</span>
               </div>
             </div>
           )}
@@ -131,18 +131,18 @@ export const NotchStage: React.FC<NotchStageProps> = ({ t }) => {
             <div className="w-full max-w-md p-4 rounded-2xl bg-black/70 border border-white/15 backdrop-blur-md space-y-2.5 text-xs transition-all">
               <div className="flex items-center justify-between text-zinc-400 font-mono">
                 <span>_meta.title</span>
-                <span className="text-sky-400">Dynamic Slot Inspector</span>
+                <span className="text-sky-400">{t('stage_inspect_slot')}</span>
               </div>
               <div className="flex justify-between py-1 border-t border-white/5">
-                <span className="text-zinc-400">prompt</span>
-                <span className="text-zinc-200">"hyper-detailed visual art..."</span>
+                <span className="text-zinc-400">{t('stage_inspect_prompt')}</span>
+                <span className="text-zinc-200">{t('stage_inspect_prompt_val')}</span>
               </div>
               <div className="flex justify-between py-1 border-t border-white/5">
-                <span className="text-zinc-400">seed</span>
+                <span className="text-zinc-400">{t('stage_inspect_seed')}</span>
                 <span className="font-mono text-sky-300">928104812</span>
               </div>
               <div className="flex justify-between py-1 border-t border-white/5">
-                <span className="text-zinc-400">steps / cfg</span>
+                <span className="text-zinc-400">{t('stage_inspect_steps')}</span>
                 <span className="font-mono text-zinc-200">20 / 3.5</span>
               </div>
             </div>
@@ -151,15 +151,15 @@ export const NotchStage: React.FC<NotchStageProps> = ({ t }) => {
           {step === 'explore' && (
             <div className="w-full max-w-xl grid grid-cols-3 gap-3 text-xs transition-all">
               <div className="p-3.5 rounded-xl bg-black/60 border border-white/10">
-                <span className="text-sky-400 font-mono block text-[10px]">T2I Node</span>
+                <span className="text-sky-400 font-mono block text-[10px]">{t('stage_node_txt2img')}</span>
                 <p className="text-zinc-300 text-[11px] mt-1">Flux.1 Dev</p>
               </div>
               <div className="p-3.5 rounded-xl bg-black/60 border border-white/10">
-                <span className="text-indigo-400 font-mono block text-[10px]">Inpaint Node</span>
-                <p className="text-zinc-300 text-[11px] mt-1">LayerStyle Mask</p>
+                <span className="text-indigo-400 font-mono block text-[10px]">{t('stage_node_inpaint')}</span>
+                <p className="text-zinc-300 text-[11px] mt-1">LayerStyle 遮罩</p>
               </div>
               <div className="p-3.5 rounded-xl bg-black/60 border border-white/10">
-                <span className="text-purple-400 font-mono block text-[10px]">Video Node</span>
+                <span className="text-purple-400 font-mono block text-[10px]">{t('stage_node_video')}</span>
                 <p className="text-zinc-300 text-[11px] mt-1">MiniMax H3</p>
               </div>
             </div>

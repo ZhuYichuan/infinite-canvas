@@ -72,11 +72,11 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
         <div className="flex items-center justify-between pb-5 border-b border-white/5 mb-6">
           <div>
             <strong className="text-base text-white font-bold">{data.name}</strong>
-            <span className="text-xs text-zinc-500 block">ComfyUI 8188 · Local Direct</span>
+            <span className="text-xs text-zinc-500 block">ComfyUI 8188 · 原生本地直连</span>
           </div>
           <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
-            <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-sky-400">30d</span>
-            <span>Today</span>
+            <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-sky-400">近 30 天</span>
+            <span>今日</span>
           </div>
         </div>
 
@@ -84,7 +84,7 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
           {/* Tile 1: Speed with Sparkline */}
           <div className="bg-[#141419] border border-white/10 rounded-xl p-4 col-span-2">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-zinc-400 font-medium">生成耗时 (Sampling Time)</span>
+              <span className="text-zinc-400 font-medium">生成耗时 (采样用时)</span>
               <b className="text-emerald-400">{data.speedDiff}</b>
             </div>
             <div className="text-2xl font-bold text-white mb-2">{data.speed}</div>
@@ -97,7 +97,7 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
           {/* Tile 2: Count with Sparkline */}
           <div className="bg-[#141419] border border-white/10 rounded-xl p-4 col-span-2">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-zinc-400 font-medium">已渲染图像 (Images Count)</span>
+              <span className="text-zinc-400 font-medium">已生成图像数</span>
               <b className="text-emerald-400">{data.imagesDiff}</b>
             </div>
             <div className="text-2xl font-bold text-white mb-2">{data.images}</div>
@@ -109,7 +109,7 @@ export const EcosystemDashboard: React.FC<EcosystemDashboardProps> = ({ t }) => 
 
           {/* Tile 3 */}
           <div className="bg-[#141419] border border-white/10 rounded-xl p-4">
-            <span className="text-xs text-zinc-400 block mb-1">显存峰值 (VRAM)</span>
+            <span className="text-xs text-zinc-400 block mb-1">显存占用峰值</span>
             <strong className="text-xl text-white font-bold">{data.vram}</strong>
           </div>
 

@@ -57,7 +57,7 @@ export const Mascot: React.FC<MascotProps> = ({ onInteract, lang }) => {
       ref={mascotRef}
       onClick={handleClick}
       className={`mascot-hero-wrap ${scale ? 'scale-110' : ''}`}
-      title="我是画布小助手！点击与我互动"
+      title={lang === 'zh-CN' ? '我是画布小助手！点击与我互动' : 'Canvas Assistant! Click to interact'}
     >
       <div className="mascot-hero-body">
         <div className="mascot-hero-eyes">

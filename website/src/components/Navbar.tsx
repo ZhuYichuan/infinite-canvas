@@ -41,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({ lang, onToggleLang, t }) => {
           type="button"
           onClick={onToggleLang}
           className="px-2 py-1 text-xs font-medium rounded-full text-zinc-400 hover:text-white transition-colors cursor-pointer"
-          title="Switch Language"
+          title={t('nav_switch_lang')}
         >
           <span>{lang === 'zh-CN' ? 'EN' : '中'}</span>
         </button>

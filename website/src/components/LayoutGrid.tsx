@@ -1,22 +1,27 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { LayoutTileItem } from '../types';
 
 interface LayoutGridProps {
   t: (key: string) => string;
   onToast: (msg: string) => void;
+  lang?: string;
 }
 
-const DEFAULT_TILES: LayoutTileItem[] = [
-  { id: '1', title: '提示词生成器 (Prompt Editor)', desc: 'A little more room. Or a little less.', metaSlot: '_meta.title = "prompt"', colSpan: 2, rowSpan: 2 },
-  { id: '2', title: '随机种子 (Seed)', colSpan: 1, rowSpan: 1 },
-  { id: '3', title: '局部重绘遮罩', desc: 'LayerStyle 合成', colSpan: 1, rowSpan: 2 },
-  { id: '4', title: '采样步数 (Steps: 20)', colSpan: 1, rowSpan: 1 },
-  { id: '5', title: 'LoRA 权重调节器', metaSlot: 'Weight: 0.85', colSpan: 2, rowSpan: 1 },
-  { id: '6', title: '视频尺寸: 16:9', desc: '0.98 MP 硬件锁死', colSpan: 1, rowSpan: 1 },
+const getDefaultTiles = (t: (key: string) => string): LayoutTileItem[] => [
+  { id: '1', title: t('tile_prompt_title'), desc: t('tile_prompt_desc'), metaSlot: '_meta.title = "prompt"', colSpan: 2, rowSpan: 2 },
+  { id: '2', title: t('tile_seed_title'), colSpan: 1, rowSpan: 1 },
+  { id: '3', title: t('tile_mask_title'), desc: t('tile_mask_desc'), colSpan: 1, rowSpan: 2 },
+  { id: '4', title: t('tile_steps_title'), colSpan: 1, rowSpan: 1 },
+  { id: '5', title: t('tile_lora_title'), metaSlot: t('tile_lora_slot'), colSpan: 2, rowSpan: 1 },
+  { id: '6', title: t('tile_video_title'), desc: t('tile_video_desc'), colSpan: 1, rowSpan: 1 },
 ];
 
-export const LayoutGrid: React.FC<LayoutGridProps> = ({ t, onToast }) => {
-  const [tiles, setTiles] = useState<LayoutTileItem[]>(DEFAULT_TILES);
+export const LayoutGrid: React.FC<LayoutGridProps> = ({ t, onToast, lang }) => {
+  const [tiles, setTiles] = useState<LayoutTileItem[]>(() => getDefaultTiles(t));
+
+  useEffect(() => {
+    setTiles(getDefaultTiles(t));
+  }, [lang]);
 
   const handleToggleWidth = (id: string) => {
     setTiles((prev) =>
@@ -35,21 +40,21 @@ export const LayoutGrid: React.FC<LayoutGridProps> = ({ t, onToast }) => {
   };
 
   const handleReset = () => {
-    setTiles(DEFAULT_TILES);
-    onToast('画布网格已重置');
+    setTiles(getDefaultTiles(t));
+    onToast(t('layout_toast_reset'));
   };
 
   const handleAdd = () => {
     const nextId = String(Date.now());
     const newItem: LayoutTileItem = {
       id: nextId,
-      title: '自定义参数节点',
-      desc: '动态挂载至 ComfyUI 8188 槽位',
+      title: t('tile_custom_title'),
+      desc: t('tile_custom_desc'),
       colSpan: 1,
       rowSpan: 1,
     };
     setTiles((prev) => [...prev, newItem]);
-    onToast('已添加新节点卡片');
+    onToast(t('layout_toast_add'));
   };
 
   return (
@@ -80,7 +85,7 @@ export const LayoutGrid: React.FC<LayoutGridProps> = ({ t, onToast }) => {
               <rect x="14" y="14" width="7" height="7" />
               <rect x="3" y="14" width="7" height="7" />
             </svg>
-            <strong>Your canvas layout</strong>
+            <strong>{t('layout_canvas_title')}</strong>
           </span>
           <button
             type="button"
@@ -120,7 +125,7 @@ export const LayoutGrid: React.FC<LayoutGridProps> = ({ t, onToast }) => {
                   type="button"
                   onClick={() => handleRemove(tile.id)}
                   className="tile-btn cursor-pointer"
-                  title="删除卡片"
+                  title={t('tile_btn_delete')}
                 >
                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="3 6 5 6 21 6" />
@@ -132,7 +137,7 @@ export const LayoutGrid: React.FC<LayoutGridProps> = ({ t, onToast }) => {
                   type="button"
                   onClick={() => handleToggleWidth(tile.id)}
                   className="tile-btn cursor-pointer"
-                  title="改变宽度"
+                  title={t('tile_btn_width')}
                 >
                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3m8-18h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" />
@@ -147,7 +152,7 @@ export const LayoutGrid: React.FC<LayoutGridProps> = ({ t, onToast }) => {
                   type="button"
                   onClick={() => handleToggleHeight(tile.id)}
                   className="tile-btn cursor-pointer"
-                  title="改变高度"
+                  title={t('tile_btn_height')}
                 >
                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 8V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3m-18 8v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" />

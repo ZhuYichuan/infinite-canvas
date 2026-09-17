@@ -95,7 +95,7 @@ export const LaunchOffer: React.FC<LaunchOfferProps> = ({ t, onToast, lang }) =>
         {/* Giant Price */}
         <div className="flex items-center justify-center gap-3 mb-2">
           <div className="text-5xl font-extrabold text-white flex items-baseline">
-            <span className="text-3xl font-normal text-zinc-400 mr-1">$</span>0
+            <span className="text-3xl font-normal text-zinc-400 mr-1">{t('launch_currency')}</span>0
           </div>
           <div className="w-9 h-9 rounded-xl bg-zinc-800 border border-white/10 flex items-center justify-center">
             <span className="w-3 h-3 rounded-full bg-emerald-400 pulse-subtle" />
@@ -137,7 +137,7 @@ export const LaunchOffer: React.FC<LaunchOfferProps> = ({ t, onToast, lang }) =>
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Bun 源码启动
+              {t('tab_bun')}
             </button>
             <button
               type="button"
@@ -148,7 +148,7 @@ export const LaunchOffer: React.FC<LaunchOfferProps> = ({ t, onToast, lang }) =>
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Docker Compose
+              {t('tab_docker')}
             </button>
             <button
               type="button"
@@ -159,7 +159,7 @@ export const LaunchOffer: React.FC<LaunchOfferProps> = ({ t, onToast, lang }) =>
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              运行前置环境
+              {t('tab_prereq')}
             </button>
           </div>
 
@@ -172,7 +172,7 @@ export const LaunchOffer: React.FC<LaunchOfferProps> = ({ t, onToast, lang }) =>
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
-            <span>复制代码</span>
+            <span>{t('launch_copy_code')}</span>
           </button>
         </div>
 

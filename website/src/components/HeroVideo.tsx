@@ -43,19 +43,19 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ onOpenModal, t }) => {
         <div className="h-7 px-4 bg-black/90 flex items-center justify-between text-[11px] text-zinc-300 select-none z-30 relative">
           <div className="flex items-center gap-4">
             <span className="text-white text-xs"></span>
-            <span className="font-semibold text-white">Finder</span>
-            <span>File</span>
-            <span>Edit</span>
-            <span>View</span>
-            <span>Go</span>
-            <span>Window</span>
-            <span>Help</span>
+            <span className="font-semibold text-white">{t('mac_finder')}</span>
+            <span>{t('mac_file')}</span>
+            <span>{t('mac_edit')}</span>
+            <span>{t('mac_view')}</span>
+            <span>{t('mac_go')}</span>
+            <span>{t('mac_window')}</span>
+            <span>{t('mac_help')}</span>
           </div>
           <div className="flex items-center gap-3 text-zinc-400">
             <span>🔋</span>
             <span>📶</span>
             <span>🔍</span>
-            <span className="text-white">Thu 9:41 AM</span>
+            <span className="text-white">{t('mac_clock')}</span>
           </div>
         </div>
 
@@ -79,7 +79,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ onOpenModal, t }) => {
 
           <div className="flex items-baseline gap-1.5 text-xs text-white">
             <strong className="font-bold">8.2G</strong>
-            <span className="text-[10px] text-sky-400 font-mono">VRAM ↓ 5%</span>
+            <span className="text-[10px] text-sky-400 font-mono">{t('mac_vram')} ↓ 5%</span>
           </div>
         </div>
 
@@ -97,16 +97,16 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ onOpenModal, t }) => {
           <div className="absolute inset-0 p-12 flex items-center justify-between pointer-events-none opacity-85">
             {/* Left Prompt Node */}
             <div className="w-56 p-3 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 text-left shadow-2xl">
-              <span className="text-[10px] font-mono text-sky-400 block mb-1">Prompt Node</span>
+              <span className="text-[10px] font-mono text-sky-400 block mb-1">{t('prompt_node_title')}</span>
               <p className="text-[11px] text-zinc-300 font-sans leading-snug">
-                "Cinematic portrait, golden hour rim light, hyper-realistic 8k"
+                {t('prompt_node_val')}
               </p>
             </div>
 
             {/* Right Result Node */}
             <div className="w-56 p-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 shadow-2xl">
               <div className="aspect-video w-full rounded-lg bg-zinc-900 overflow-hidden relative border border-white/10 flex items-center justify-center">
-                <span className="text-[10px] font-mono text-emerald-400">Rendered 8188</span>
+                <span className="text-[10px] font-mono text-emerald-400">{t('render_node_title')}</span>
               </div>
             </div>
           </div>
@@ -126,7 +126,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ onOpenModal, t }) => {
               type="button"
               onClick={handlePlay}
               className="relative z-30 w-16 h-16 rounded-full bg-white/95 hover:bg-white text-zinc-950 flex items-center justify-center shadow-2xl transition-transform hover:scale-108 active:scale-95 cursor-pointer"
-              aria-label="Play Demo Film"
+              aria-label={t('video_play_btn')}
             >
               <svg className="w-6 h-6 ml-0.5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M6 3.8c0-.8.9-1.3 1.6-.9l9 6.2a1.1 1.1 0 0 1 0 1.8l-9 6.2c-.7.4-1.6-.1-1.6-.9V3.8Z" />

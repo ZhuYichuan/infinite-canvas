@@ -57,7 +57,7 @@ export const Footer: React.FC<FooterProps> = ({ t, onToast, lang }) => {
           <div className="flex items-center gap-3">
             <img src="/favicon.svg" alt="logo" className="w-5 h-5" />
             <span className="text-[#111113] font-semibold text-sm">无限画布</span>
-            <span className="text-[#86868b]">© 2026 开源项目 · MIT License</span>
+            <span className="text-[#86868b]">{t('footer_copyright')}</span>
           </div>
 
           <nav className="flex items-center flex-wrap justify-center gap-5 sm:gap-6 text-xs font-medium">
@@ -70,7 +70,7 @@ export const Footer: React.FC<FooterProps> = ({ t, onToast, lang }) => {
           </nav>
 
           <a href="#overview" className="text-xs text-[#6e6e73] hover:text-[#111113] transition-colors flex items-center gap-1 font-medium">
-            <span>回到顶部</span>
+            <span>{t('nav_back_to_top')}</span>
             <span>↑</span>
           </a>
         </div>

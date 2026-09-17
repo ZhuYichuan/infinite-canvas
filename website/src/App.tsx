@@ -85,9 +85,9 @@ export const App: React.FC = () => {
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
-              <span>100% local.</span>
+              <span>{t('hero_badge_local')}</span>
             </div>
-            <span>Nothing leaves your  Mac.</span>
+            <span>{t('hero_badge_privacy')}</span>
           </div>
 
           {/* Mac Screen Showcase with Electric Blue Brackets */}
@@ -104,7 +104,7 @@ export const App: React.FC = () => {
         <EcosystemDashboard t={t} />
 
         {/* 6. Interactive Layout Grid Canvas */}
-        <LayoutGrid t={t} onToast={showToast} />
+        <LayoutGrid t={t} onToast={showToast} lang={lang} />
 
         {/* 7. Privacy Section */}
         <Privacy t={t} />
