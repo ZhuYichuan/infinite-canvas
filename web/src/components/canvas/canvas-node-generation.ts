@@ -53,8 +53,7 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
     const inputByNodeId = new Map(inputs.map((input) => [input.nodeId, input]));
     const resourceByNodeId = new Map(resourceInputs.map((resource) => [resource.nodeId, resource]));
     const nodeTitleById = new Map(nodes.map((node) => [node.id, node.title]));
-    const consumedTextNodeIds = new Set<string>();
-    const mediaLabelByNodeId = new Map<string, string>();
+    const labelByNodeId = new Map<string, string>();
 
     const cleanPrompt = prompt.trim();
     let lastIndex = 0;
@@ -74,18 +73,12 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
         const resources = flattenGenerationInputs([input]);
         const replacements: string[] = [];
         resources.forEach((resource) => {
-            if (resource.type === "text") {
-                const textContent = (resource.text || "").trim();
-                consumedTextNodeIds.add(resource.nodeId);
-                if (textContent) replacements.push(textContent);
-            } else {
-                let label = mediaLabelByNodeId.get(resource.nodeId);
-                if (!label) {
-                    label = resolveMediaLabel(resource, resourceInputs);
-                    mediaLabelByNodeId.set(resource.nodeId, label);
-                }
-                replacements.push(label);
+            let label = labelByNodeId.get(resource.nodeId);
+            if (!label) {
+                label = resolveResourceLabel(resource, resourceInputs);
+                labelByNodeId.set(resource.nodeId, label);
             }
+            replacements.push(label);
         });
         nextPrompt += replacements.join("、");
     }
@@ -94,17 +87,25 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
     const resolvedPrompt = nextPrompt.trim();
 
     const textResources = resourceInputs.filter((input) => input.type === "text" && Boolean(input.text));
+    const consumedTexts = textResources
+        .filter((textRes) => labelByNodeId.has(textRes.nodeId))
+        .map((textRes) => {
+            const label = labelByNodeId.get(textRes.nodeId)!;
+            const content = (textRes.text || "").trim();
+            return `${label}:\n${content}`;
+        });
+
     const unconsumedTexts = textResources
-        .filter((textRes) => !consumedTextNodeIds.has(textRes.nodeId))
+        .filter((textRes) => !labelByNodeId.has(textRes.nodeId))
         .map((textRes) => (textRes.text || "").trim())
         .filter(Boolean);
 
-    const textsToAppend = unconsumedTexts.filter((txt) => !resolvedPrompt.includes(txt));
+    const sectionsToAppend = [...consumedTexts, ...unconsumedTexts].filter((sec) => !resolvedPrompt.includes(sec));
     let finalPrompt = resolvedPrompt;
     if (!resolvedPrompt) {
-        finalPrompt = unconsumedTexts.join("\n\n");
-    } else if (textsToAppend.length > 0) {
-        finalPrompt = `${resolvedPrompt}\n\n${textsToAppend.join("\n\n")}`;
+        finalPrompt = sectionsToAppend.join("\n\n");
+    } else if (sectionsToAppend.length > 0) {
+        finalPrompt = `${resolvedPrompt}\n\n${sectionsToAppend.join("\n\n")}`;
     }
 
     return {
@@ -144,10 +145,6 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], nodes: Ca
             if (!snapshotInputs.has(resource.nodeId)) snapshotInputs.set(resource.nodeId, resource);
         });
         const labels = resources.map((resource) => {
-            if (resource.type === "text") {
-                counts.text++;
-                return (resource.text || "").trim();
-            }
             let label = labelByNodeId.get(resource.nodeId);
             if (!label) {
                 label = generationLabel(resource.type, counts[resource.type]++);
@@ -224,10 +221,9 @@ function flattenGenerationInputs(inputs: NodeGenerationInput[]) {
     return [...new Map(resources.map((input) => [input.nodeId, input])).values()];
 }
 
-function resolveMediaLabel(resource: NodeGenerationResourceInput, resourceInputs: NodeGenerationResourceInput[]): string {
-    if (resource.type === "text") return "";
+function resolveResourceLabel(resource: NodeGenerationResourceInput, resourceInputs: NodeGenerationResourceInput[]): string {
     const index = resourceInputs.filter((input) => input.type === resource.type).findIndex((input) => input.nodeId === resource.nodeId);
-    return generationLabel(resource.type, index);
+    return generationLabel(resource.type, index >= 0 ? index : 0);
 }
 
 function readNodeGenerationResource(node: CanvasNodeData): NodeGenerationResourceInput[] {
@@ -273,7 +269,8 @@ function generationLabel(type: NodeGenerationResourceInput["type"], index: numbe
     if (type === "image") return `<Picture ${index + 1}>`;
     if (type === "video") return `<Video ${index + 1}>`;
     if (type === "audio") return `<Audio ${index + 1}>`;
-    return i18n.t("canvas.composer.resources.text", { index: index + 1 });
+    if (type === "text") return `<Text ${index + 1}>`;
+    return `<Text ${index + 1}>`;
 }
 
 function readReferenceImage(node: CanvasNodeData): ReferenceImage | null {
