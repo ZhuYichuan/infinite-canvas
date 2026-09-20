@@ -1039,7 +1039,8 @@ function InfiniteCanvasPage() {
 
     const reorderNodeReferences = useCallback((toNodeId: string, orderedSourceNodeIds: string[]) => {
         setConnections((prev) => {
-            const targetConns = prev.filter((c) => c.toNodeId === toNodeId && c.kind === "input");
+            const isTargetInput = (c: CanvasConnection) => c.toNodeId === toNodeId && (c.kind === "input" || !c.kind);
+            const targetConns = prev.filter(isTargetInput);
             if (targetConns.length <= 1) return prev;
 
             const connByFromId = new Map(targetConns.map((c) => [c.fromNodeId, c]));
@@ -1060,7 +1061,7 @@ function InfiniteCanvasPage() {
 
             let reorderIndex = 0;
             return prev.map((conn) => {
-                if (conn.toNodeId === toNodeId && conn.kind === "input") {
+                if (isTargetInput(conn)) {
                     const nextConn = reordered[reorderIndex++];
                     return nextConn ?? conn;
                 }

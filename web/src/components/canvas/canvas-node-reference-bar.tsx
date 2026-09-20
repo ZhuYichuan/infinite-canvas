@@ -35,8 +35,12 @@ export function CanvasNodeReferenceBar({
 }) {
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const dragIndexRef = useRef<number | null>(null);
+    const targetIndexRef = useRef<number | null>(null);
+    const isCommittedRef = useRef(false);
+
     const [dragIndex, setDragIndex] = useState<number | null>(null);
-    const [dropTarget, setDropTarget] = useState<{ index: number; position: "before" | "after" } | null>(null);
+    const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
 
     const items = useMemo<CanvasReferenceItemData[]>(() => {
         const counts: Record<string, number> = { image: 0, video: 0, audio: 0, text: 0 };
@@ -75,9 +79,40 @@ export function CanvasNodeReferenceBar({
         });
     }, [connectedNodes, nodes]);
 
+    const commitReorder = (fromIndex: number, toIndex: number) => {
+        if (
+            fromIndex === toIndex ||
+            fromIndex < 0 ||
+            toIndex < 0 ||
+            fromIndex >= items.length ||
+            toIndex >= items.length
+        ) {
+            return;
+        }
+
+        const newItems = [...items];
+        const [moved] = newItems.splice(fromIndex, 1);
+        if (!moved) return;
+        newItems.splice(toIndex, 0, moved);
+
+        const newOrderedSourceIds = Array.from(new Set(newItems.map((item) => item.sourceNodeId)));
+        onReorder?.(nodeId, newOrderedSourceIds);
+    };
+
+    const cleanupDragState = () => {
+        dragIndexRef.current = null;
+        targetIndexRef.current = null;
+        isCommittedRef.current = false;
+        setDragIndex(null);
+        setDropTargetIndex(null);
+    };
+
     const handleDragStart = (e: DragEvent, index: number) => {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", String(index));
+        dragIndexRef.current = index;
+        targetIndexRef.current = null;
+        isCommittedRef.current = false;
         setDragIndex(index);
     };
 
@@ -86,51 +121,44 @@ export function CanvasNodeReferenceBar({
         e.stopPropagation();
         e.dataTransfer.dropEffect = "move";
 
-        if (dragIndex === null || dragIndex === index) {
-            setDropTarget(null);
+        const from = dragIndexRef.current;
+        if (from === null || from === index) {
+            targetIndexRef.current = null;
+            if (dropTargetIndex !== null) setDropTargetIndex(null);
             return;
         }
 
-        const rect = e.currentTarget.getBoundingClientRect();
-        const midX = rect.left + rect.width / 2;
-        const position = e.clientX < midX ? "before" : "after";
-        setDropTarget({ index, position });
+        targetIndexRef.current = index;
+        if (dropTargetIndex !== index) {
+            setDropTargetIndex(index);
+        }
     };
 
-    const handleDrop = (e: DragEvent, targetIndex: number) => {
+    const handleDrop = (e: DragEvent, index?: number) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if (dragIndex === null || dragIndex === targetIndex) {
-            setDragIndex(null);
-            setDropTarget(null);
-            return;
+        const from = dragIndexRef.current;
+        const to = index !== undefined ? index : targetIndexRef.current;
+
+        if (from !== null && to !== null && from !== to) {
+            isCommittedRef.current = true;
+            commitReorder(from, to);
         }
 
-        const rect = e.currentTarget.getBoundingClientRect();
-        const midX = rect.left + rect.width / 2;
-        const position = e.clientX < midX ? "before" : "after";
-
-        const newItems = [...items];
-        const [moved] = newItems.splice(dragIndex, 1);
-        let destIndex = targetIndex;
-        if (dragIndex < targetIndex) {
-            destIndex = position === "before" ? targetIndex - 1 : targetIndex;
-        } else {
-            destIndex = position === "before" ? targetIndex : targetIndex + 1;
-        }
-        newItems.splice(destIndex, 0, moved);
-
-        const newOrderedSourceIds = Array.from(new Set(newItems.map((item) => item.sourceNodeId)));
-        onReorder?.(nodeId, newOrderedSourceIds);
-
-        setDragIndex(null);
-        setDropTarget(null);
+        cleanupDragState();
     };
 
     const handleDragEnd = () => {
-        setDragIndex(null);
-        setDropTarget(null);
+        if (!isCommittedRef.current) {
+            const from = dragIndexRef.current;
+            const to = targetIndexRef.current;
+            if (from !== null && to !== null && from !== to) {
+                isCommittedRef.current = true;
+                commitReorder(from, to);
+            }
+        }
+        cleanupDragState();
     };
 
     return (
@@ -145,28 +173,29 @@ export function CanvasNodeReferenceBar({
             </div>
             <div
                 className="thin-scrollbar flex min-h-12 items-center gap-2 overflow-x-auto pb-1"
-                onDragOver={(e) => e.preventDefault()}
+                onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(e) => handleDrop(e)}
                 onDragLeave={(e) => {
                     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                        setDropTarget(null);
+                        targetIndexRef.current = null;
+                        setDropTargetIndex(null);
                     }
                 }}
             >
                 {items.map((item, index) => {
                     const isDragging = dragIndex === index;
-                    const showBefore = dropTarget?.index === index && dropTarget.position === "before";
-                    const showAfter = dropTarget?.index === index && dropTarget.position === "after";
+                    const isDropTarget = dropTargetIndex === index;
+                    const dropPosition = dragIndex !== null && dragIndex < index ? "after" : "before";
                     return (
-                        <div key={`${item.sourceNodeId}:${item.node.id}`} className="flex items-center gap-2 shrink-0">
-                            {showBefore && (
-                                <div
-                                    className="h-10 w-1 shrink-0 rounded-full shadow-sm transition-all"
-                                    style={{ background: theme.node.activeStroke }}
-                                />
-                            )}
+                        <div key={`${item.sourceNodeId}:${item.node.id}`} className="relative shrink-0">
                             <ReferenceItem
                                 item={item}
                                 isDragging={isDragging}
+                                isDropTarget={isDropTarget}
+                                dropPosition={dropPosition}
                                 isAnyDragging={dragIndex !== null}
                                 onRemove={() => onDisconnect?.(item.sourceNodeId, nodeId)}
                                 onLocate={() => onLocateNode?.(item.node.id)}
@@ -175,12 +204,6 @@ export function CanvasNodeReferenceBar({
                                 onDrop={(e) => handleDrop(e, index)}
                                 onDragEnd={handleDragEnd}
                             />
-                            {showAfter && (
-                                <div
-                                    className="h-10 w-1 shrink-0 rounded-full shadow-sm transition-all"
-                                    style={{ background: theme.node.activeStroke }}
-                                />
-                            )}
                         </div>
                     );
                 })}
@@ -201,6 +224,8 @@ export function CanvasNodeReferenceBar({
 function ReferenceItem({
     item,
     isDragging,
+    isDropTarget,
+    dropPosition,
     isAnyDragging,
     onRemove,
     onLocate,
@@ -211,6 +236,8 @@ function ReferenceItem({
 }: {
     item: CanvasReferenceItemData;
     isDragging: boolean;
+    isDropTarget: boolean;
+    dropPosition: "before" | "after";
     isAnyDragging: boolean;
     onRemove: () => void;
     onLocate?: () => void;
@@ -256,18 +283,31 @@ function ReferenceItem({
                     onDragEnd();
                     setTimeout(() => {
                         draggedRef.current = false;
-                    }, 100);
+                    }, 150);
                 }}
                 onClick={() => {
                     if (draggedRef.current) return;
                     onLocate?.();
                 }}
                 className={`group relative grid size-12 shrink-0 cursor-grab place-items-center rounded-xl border transition-all active:cursor-grabbing ${
-                    isDragging ? "opacity-35 scale-95" : "hover:shadow-sm"
+                    isDragging ? "opacity-30 scale-95" : isDropTarget ? "scale-105" : "hover:shadow-sm"
                 }`}
-                style={{ background: theme.toolbar.activeBg, borderColor: theme.toolbar.border }}
+                style={{
+                    background: theme.toolbar.activeBg,
+                    borderColor: isDropTarget ? theme.node.activeStroke : theme.toolbar.border,
+                }}
                 title={t("canvas.references.locateOrDrag", "点击定位节点，按住拖拽重排")}
             >
+                {/* 放置指示器（绝对定位，零布局位移，pointer-events-none 避免阻断事件） */}
+                {isDropTarget && (
+                    <span
+                        className={`pointer-events-none absolute top-1 bottom-1 w-1 rounded-full shadow-md z-30 transition-all ${
+                            dropPosition === "before" ? "-left-1.5" : "-right-1.5"
+                        }`}
+                        style={{ background: theme.node.activeStroke }}
+                    />
+                )}
+
                 {/* 编号角标 */}
                 <span className="pointer-events-none absolute left-0.5 top-0.5 z-10 rounded px-1 py-0.5 text-[9px] font-semibold leading-none text-white bg-black/65 backdrop-blur-xs select-none shadow-xs">
                     {item.badge}
