@@ -8,6 +8,7 @@
 - [ComfyUI 必备插件安装与说明指南](COMFYUI_PLUGINS.md)
 - [ComfyUI 渠道指南](comfyui-channel.md)
 - [部署与发布指南](../DEPLOY.md)
+- [CI 与镜像发布踩坑手册](CI_RELEASE_TROUBLESHOOTING.md)
 - [Deploy on Render](/docs/overview/render)
 - [Docker Deployment](/docs/overview/docker)
 - [Third-party GitHub Prompt Repositories](/docs/overview/third-party-prompt-repositories)

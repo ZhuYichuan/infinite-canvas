@@ -108,6 +108,7 @@
 - 每次 todo 事项完成后，先从 `docs/content/docs/progress/todo.mdx` 移到 `docs/content/docs/progress/pending-test.mdx`，不要直接写进正式功能说明；用户确认测试通过后再更新 `docs/content/docs/overview/features.mdx`。
 - 每次任务完成前，都要根据实际变更检查并更新 `docs/content/docs/progress/todo.mdx` 和 `docs/content/docs/progress/pending-test.mdx`；如果功能或待办没有变化，也要确认无需修改。
 - 文档不要写过期日期；除非用户明确要求记录具体时间。
+- 文档站基于 MDX（`docs/` 目录）编写：需要展示为字面量的花括号占位符（如 `{filename}`、`{slot}`）必须用反引号包裹，否则会被 MDX 当作 JS 表达式求值导致构建失败；改完文档建议本地 `cd docs && bun run build` 自检。详见 `docs/CI_RELEASE_TROUBLESHOOTING.md`。
 
 ## 发版本流程
 
@@ -119,6 +120,7 @@
 
 ## 发布代码生产环境
 - 部署上线一定要阅读 `DEPLOY.md`
+- CI 与镜像发布（文档站 MDX 构建、Docker 镜像推送、GitHub Pages）踩坑与排查清单参见：`docs/CI_RELEASE_TROUBLESHOOTING.md`，发版前对照其清单自检。
 
 ## PR 审查与处理
 
