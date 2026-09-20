@@ -1037,6 +1037,38 @@ function InfiniteCanvasPage() {
         setConnections((prev) => prev.filter((connection) => connection.fromNodeId !== fromNodeId || connection.toNodeId !== toNodeId));
     }, []);
 
+    const reorderNodeReferences = useCallback((toNodeId: string, orderedSourceNodeIds: string[]) => {
+        setConnections((prev) => {
+            const targetConns = prev.filter((c) => c.toNodeId === toNodeId && c.kind === "input");
+            if (targetConns.length <= 1) return prev;
+
+            const connByFromId = new Map(targetConns.map((c) => [c.fromNodeId, c]));
+            const reordered: CanvasConnection[] = [];
+            for (const fromId of orderedSourceNodeIds) {
+                const conn = connByFromId.get(fromId);
+                if (conn) {
+                    reordered.push(conn);
+                    connByFromId.delete(fromId);
+                }
+            }
+            for (const conn of connByFromId.values()) {
+                reordered.push(conn);
+            }
+
+            const hasChanged = targetConns.some((c, i) => c.id !== reordered[i]?.id);
+            if (!hasChanged) return prev;
+
+            let reorderIndex = 0;
+            return prev.map((conn) => {
+                if (conn.toNodeId === toNodeId && conn.kind === "input") {
+                    const nextConn = reordered[reorderIndex++];
+                    return nextConn ?? conn;
+                }
+                return conn;
+            });
+        });
+    }, []);
+
     const startNodeReferenceSelection = useCallback((nodeId: string) => {
         setReferencePickerNodeId(nodeId);
         setSelectedNodeIds(new Set([nodeId]));
@@ -3748,6 +3780,8 @@ function InfiniteCanvasPage() {
                     onClose={() => setDialogNodeId(null)}
                     onDisconnectReference={disconnectNodeReference}
                     onStartReferenceSelection={startNodeReferenceSelection}
+                    onReorderReferences={reorderNodeReferences}
+                    onLocateNode={focusNode}
                 />
             ) : (
                 <CanvasNodePromptPanel
@@ -3762,6 +3796,8 @@ function InfiniteCanvasPage() {
                     onStop={confirmStopGeneration}
                     onDisconnectReference={disconnectNodeReference}
                     onStartReferenceSelection={startNodeReferenceSelection}
+                    onReorderReferences={reorderNodeReferences}
+                    onLocateNode={focusNode}
                     modeOverride={getNodeDefinition(panelNode.type)?.useBuiltinPanel?.mode}
                     onImageSettingsOpenChange={(open) => {
                         setNodeImageSettingsOpen(open);
@@ -3769,7 +3805,7 @@ function InfiniteCanvasPage() {
                     }}
                 />
             ),
-        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodePromptChange, mentionReferencesByNodeId, nodes, renderPluginPanel, runningNodeIds, startNodeReferenceSelection],
+        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, focusNode, handleConfigNodeChange, handleGenerateNode, handleNodePromptChange, mentionReferencesByNodeId, nodes, renderPluginPanel, reorderNodeReferences, runningNodeIds, startNodeReferenceSelection],
     );
 
     const renderNodeContentPanel = useCallback(
