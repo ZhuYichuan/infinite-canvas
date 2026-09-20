@@ -130,7 +130,7 @@ description: 槽位词汇表、标注约定、解析规则、传输契约与数�
 
 ```
 ① 收集上游资源（buildNodeGenerationContext，复用现有）
-② 槽位指派（metadata.slotAssignments → 解析为 {slot: value}）
+② 槽位指派（metadata.slotAssignments → 解析为 `{slot: value}`）
 ③ 上传参考文件到 ComfyUI（缓存：storageKey → ComfyUI filename）
 ④ 填充工作流 JSON（深拷贝模板 + 写入槽位值 + 动态抹除未传参考节点及输入连线 + 校验）
 ⑤ 提交 /prompt → prompt_id → 轮询 /history
@@ -161,10 +161,10 @@ description: 槽位词汇表、标注约定、解析规则、传输契约与数�
 | 检查项 | 失败行为 |
 |--------|----------|
 | 至少一个保留槽位标记 | 报错："该工作流未标注标准槽位" |
-| 必填槽位存在（按能力） | 报错："缺少 {slot}" |
-| 槽位不重复 | 报错："槽位 {slot} 标记了多个节点" |
-| 标记节点有兼容输入 | 报错："节点 {id} 无 {slot} 兼容输入" |
-| 输出标记存在且唯一 | 报错："缺少 output_{kind} 标记" |
+| 必填槽位存在（按能力） | 报错："缺少 `{slot}`" |
+| 槽位不重复 | 报错："槽位 `{slot}` 标记了多个节点" |
+| 标记节点有兼容输入 | 报错："节点 `{id}` 无 `{slot}` 兼容输入" |
+| 输出标记存在且唯一 | 报错："缺少 `output_{kind}` 标记" |
 | 必填参数值非空（prompt 等） | 报错："prompt 不能为空"（修图能力下 prompt 可为空 = 擦除） |
 | 数值在约束范围内 | 报错（如 width > 4096） |
 
