@@ -26,7 +26,7 @@
 | 形态 | 入口 | 适用场景 |
 | --- | --- | --- |
 | 本地开发 | `cd web && bun install && bun run dev` → `http://localhost:3000` | 开发调试 |
-| Docker | 仓库根目录 `docker compose up -d`（官方镜像 `ghcr.io/basketikun/infinite-canvas`），或 `docker-compose.local.yml` 本地构建 | 单机容器部署，详见 `docs/content/docs/overview/docker.zh-CN.mdx` |
+| Docker | 仓库根目录 `docker compose up -d`（官方镜像 `916446339/infinite-canvas`），或 `docker-compose.local.yml` 本地构建 | 单机容器部署，详见 `docs/content/docs/overview/docker.zh-CN.mdx` |
 | 静态 nginx 服务器 | 本文第 4 节 | **当前生产环境（canvas.imihoo.com）** |
 | Vercel / Render | `vercel.json` / `render.yaml` | 一键云部署 |
 

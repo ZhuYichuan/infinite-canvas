@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/basketikun/infinite-canvas:latest
+    image: 916446339/infinite-canvas:latest
     container_name: infinite-canvas
     ports:
       - "3000:3000"
