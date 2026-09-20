@@ -1,6 +1,5 @@
 import type { AiTextMessage } from "@/services/api/image";
 import i18n from "@/i18n";
-import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 import { CanvasNodeType, type CanvasConnection, type CanvasGenerationReferenceSnapshot, type CanvasNodeData } from "@/types/canvas";
@@ -271,9 +270,9 @@ function readNodeTextInput(node: CanvasNodeData) {
 }
 
 function generationLabel(type: NodeGenerationResourceInput["type"], index: number) {
-    if (type === "image") return imageReferenceLabel(index);
-    if (type === "video") return i18n.t("canvas.configNode.videoReferences") + ` ${index + 1}`;
-    if (type === "audio") return i18n.t("canvas.configNode.audioReferences") + ` ${index + 1}`;
+    if (type === "image") return `<Picture ${index + 1}>`;
+    if (type === "video") return `<Video ${index + 1}>`;
+    if (type === "audio") return `<Audio ${index + 1}>`;
     return i18n.t("canvas.composer.resources.text", { index: index + 1 });
 }
 
