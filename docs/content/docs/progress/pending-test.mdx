@@ -11,7 +11,7 @@ The current release needs manual verification in these areas:
   - **Picture Tag Formatting**: Reference images referenced via `@` in the prompt resolve to `<Picture 1>`, `<Picture 2>` when dispatched to ComfyUI;
   - **Video Tag Formatting**: Reference videos referenced via `@` in the prompt resolve to `<Video 1>`, `<Video 2>`;
   - **Audio Tag Formatting**: Reference audios referenced via `@` in the prompt resolve to `<Audio 1>`, `<Audio 2>`;
-  - **Text Tag Formatting**: Reference text nodes referenced via `@` in the prompt resolve to `<Text 1>`, `<Text 2>`, with definitions appended at prompt tail.
+  - **Text Embedding**: Reference text nodes referenced via `@` directly inline their text content into the prompt at the mention token position.
 
 - Official Landing Website (`website/`) React Architecture & Interactivity Verification:
   - **Vite + React Engineering Dev Server**: Run `bun dev` inside `website/` and open `http://localhost:3001`; verify hot module replacement (HMR), component trees, and zero console warnings;
