@@ -44,7 +44,7 @@ describe("buildNodeGenerationContext", () => {
         const source = makeNode("out", CanvasNodeType.Image);
         const nodes = [textNode, imageNode, source];
         const connections = [input("t1", "out"), input("img1", "out")];
-        const imageLabel = i18n.t("imageReferences.label", { index: 1 });
+        const imageLabel = "<Picture 1>";
 
         const ctx = buildNodeGenerationContext(
             "out",
@@ -106,8 +106,8 @@ describe("buildNodeGenerationContext", () => {
 
         const ctx = buildNodeGenerationContext("cfg", nodes, connections, composerContent);
 
-        const label1 = i18n.t("imageReferences.label", { index: 1 });
-        const label2 = i18n.t("imageReferences.label", { index: 2 });
+        const label1 = "<Picture 1>";
+        const label2 = "<Picture 2>";
         expect(ctx.prompt).toBe(`用 ${label1} 和 ${label2} 以及再次 ${label1} 生成`);
         // img1 is referenced twice in the prompt but appears only once as a reference.
         expect(ctx.referenceImages).toHaveLength(2);

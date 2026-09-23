@@ -6,6 +6,12 @@ import { nanoid } from "nanoid";
 import { localForageStorage } from "@/lib/localforage-storage";
 
 import {
+    DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW,
+    DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW,
+    DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW,
+    DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW,
+    DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW,
+    DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW,
     DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW,
     DEFAULT_CLOUD_COMFYUI_I2I_WORKFLOW,
     DEFAULT_CLOUD_COMFYUI_INPAINT_WORKFLOW,
@@ -115,6 +121,20 @@ export type ConfigTabKey = "channels" | "preferences" | "prompt-sources" | "webd
 export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
 
+/** Builtin channel default models with precise model names and capabilities. */
+export const COMFYUI_BUILTIN_DEFAULT_MODELS: ChannelModel[] = [
+    { name: "Z-Image-Turbo", capability: "image", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW },
+    { name: "Flux2.Dev", capability: "image", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW },
+    { name: "Qwen-Image Inpaint", capability: "image", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW },
+    { name: "Qwen3.5 4B", capability: "text", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW },
+    { name: "MiniMax H3 全能视频", capability: "video", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW },
+    { name: "MiniMax H3 首尾帧视频", capability: "video", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW },
+];
+
+export const COMFYUI_LOCAL_DEFAULT_MODELS: ChannelModel[] = COMFYUI_BUILTIN_DEFAULT_MODELS;
+export const COMFYUI_CLOUD_DEFAULT_MODELS: ChannelModel[] = COMFYUI_BUILTIN_DEFAULT_MODELS;
+export const COMFYUI_DEFAULT_MODELS: ChannelModel[] = COMFYUI_BUILTIN_DEFAULT_MODELS;
+
 export const defaultConfig: AiConfig = {
     channelMode: "local",
     baseUrl: "",
@@ -122,58 +142,27 @@ export const defaultConfig: AiConfig = {
     apiFormat: "comfyui",
     channels: [
         {
-            id: "local",
-            name: "本地 ComfyUI",
+            id: "builtin",
+            name: "系统内置 ComfyUI",
             baseUrl: "",
             apiKey: "",
             apiFormat: "comfyui",
             comfyuiProxyUrl: "http://127.0.0.1:8188",
             comfyuiProxyToken: "",
-            workflows: getDefaultComfyWorkflowItems({ id: "local" }),
-            comfyuiT2iWorkflow: DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW,
-            comfyuiI2iWorkflow: DEFAULT_LOCAL_COMFYUI_I2I_WORKFLOW,
-            comfyuiInpaintWorkflow: DEFAULT_LOCAL_COMFYUI_INPAINT_WORKFLOW,
-            comfyuiTextWorkflow: DEFAULT_LOCAL_COMFYUI_TEXT_WORKFLOW,
-            comfyuiVideoWorkflow: DEFAULT_LOCAL_COMFYUI_VIDEO_WORKFLOW,
-            comfyuiFrameVideoWorkflow: DEFAULT_LOCAL_COMFYUI_FRAME_VIDEO_WORKFLOW,
-            models: [
-                { name: "ComfyUI T2I", capability: "image", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW },
-                { name: "ComfyUI I2I", capability: "image", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_I2I_WORKFLOW },
-                { name: "ComfyUI Inpaint", capability: "image", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_INPAINT_WORKFLOW },
-                { name: "ComfyUI LLM", capability: "text", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_TEXT_WORKFLOW },
-                { name: "ComfyUI Video", capability: "video", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_VIDEO_WORKFLOW },
-                { name: "ComfyUI Frame Video", capability: "video", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_FRAME_VIDEO_WORKFLOW },
-            ],
-        },
-        {
-            id: "cloud",
-            name: "云端 ComfyUI",
-            baseUrl: "",
-            apiKey: "",
-            apiFormat: "comfyui",
-            comfyuiProxyUrl: "",
-            comfyuiProxyToken: "",
-            workflows: getDefaultComfyWorkflowItems({ id: "cloud" }),
-            comfyuiT2iWorkflow: DEFAULT_CLOUD_COMFYUI_T2I_WORKFLOW,
-            comfyuiI2iWorkflow: DEFAULT_CLOUD_COMFYUI_I2I_WORKFLOW,
-            comfyuiInpaintWorkflow: DEFAULT_CLOUD_COMFYUI_INPAINT_WORKFLOW,
-            comfyuiTextWorkflow: DEFAULT_CLOUD_COMFYUI_TEXT_WORKFLOW,
-            comfyuiVideoWorkflow: DEFAULT_CLOUD_COMFYUI_VIDEO_WORKFLOW,
-            comfyuiFrameVideoWorkflow: DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW,
-            models: [
-                { name: "ComfyUI T2I", capability: "image", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_T2I_WORKFLOW },
-                { name: "ComfyUI I2I", capability: "image", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_I2I_WORKFLOW },
-                { name: "ComfyUI Inpaint", capability: "image", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_INPAINT_WORKFLOW },
-                { name: "ComfyUI LLM", capability: "text", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_TEXT_WORKFLOW },
-                { name: "ComfyUI Video", capability: "video", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_VIDEO_WORKFLOW },
-                { name: "ComfyUI Frame Video", capability: "video", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW },
-            ],
+            workflows: getDefaultComfyWorkflowItems({ id: "builtin" }),
+            comfyuiT2iWorkflow: DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW,
+            comfyuiI2iWorkflow: DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW,
+            comfyuiInpaintWorkflow: DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW,
+            comfyuiTextWorkflow: DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW,
+            comfyuiVideoWorkflow: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW,
+            comfyuiFrameVideoWorkflow: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW,
+            models: COMFYUI_BUILTIN_DEFAULT_MODELS,
         },
     ],
-    model: "local::ComfyUI T2I",
-    imageModel: "local::ComfyUI T2I",
-    videoModel: "local::ComfyUI Video",
-    textModel: "local::ComfyUI LLM",
+    model: "builtin::Z-Image-Turbo",
+    imageModel: "builtin::Z-Image-Turbo",
+    videoModel: "builtin::MiniMax H3 全能视频",
+    textModel: "builtin::Qwen3.5 4B",
     audioModel: "",
     audioVoice: "alloy",
     audioFormat: "mp3",
@@ -187,18 +176,12 @@ export const defaultConfig: AiConfig = {
     systemPrompt: "",
     reasoningEffort: "auto",
     models: [
-        "local::ComfyUI T2I",
-        "local::ComfyUI I2I",
-        "local::ComfyUI Inpaint",
-        "local::ComfyUI LLM",
-        "local::ComfyUI Video",
-        "local::ComfyUI Frame Video",
-        "cloud::ComfyUI T2I",
-        "cloud::ComfyUI I2I",
-        "cloud::ComfyUI Inpaint",
-        "cloud::ComfyUI LLM",
-        "cloud::ComfyUI Video",
-        "cloud::ComfyUI Frame Video",
+        "builtin::Z-Image-Turbo",
+        "builtin::Flux2.Dev",
+        "builtin::Qwen-Image Inpaint",
+        "builtin::Qwen3.5 4B",
+        "builtin::MiniMax H3 全能视频",
+        "builtin::MiniMax H3 首尾帧视频",
     ],
     quality: "auto",
     size: "1:1",
@@ -230,13 +213,13 @@ type ConfigStore = {
     clearPromptContinue: () => void;
 };
 
-const VIDEO_KEYWORDS = ["video", "sora", "veo", "kling", "wan", "hailuo"];
+const VIDEO_KEYWORDS = ["video", "sora", "veo", "kling", "wan", "hailuo", "视频", "minimax"];
 
 export function boolConfig(value: string, fallback: boolean) {
     return value ? value === "true" : fallback;
 }
-const AUDIO_KEYWORDS = ["audio", "tts", "speech", "voice", "music", "sound"];
-const IMAGE_KEYWORDS = ["seedream", "gpt-image", "image", "dall-e", "dalle", "imagen", "flux", "sdxl", "stable-diffusion", "midjourney", "t2i", "i2i", "inpaint", "txt2img", "img2img"];
+const AUDIO_KEYWORDS = ["audio", "tts", "speech", "voice", "music", "sound", "音频", "语音"];
+const IMAGE_KEYWORDS = ["seedream", "gpt-image", "image", "dall-e", "dalle", "imagen", "flux", "sdxl", "stable-diffusion", "midjourney", "t2i", "i2i", "inpaint", "txt2img", "img2img", "图", "turbo"];
 
 /** Best-effort default capability for a freshly fetched model name; user can override in the channel editor. */
 export function guessCapability(name: string): ModelCapability {
@@ -444,40 +427,22 @@ export function normalizeChannelModels(models: Array<string | ChannelModel> | un
 }
 
 /** Local channel default models (uses local workflows with pruned/fp8 weights). */
-export const COMFYUI_LOCAL_DEFAULT_MODELS: ChannelModel[] = [
-    { name: "ComfyUI T2I", capability: "image", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW },
-    { name: "ComfyUI I2I", capability: "image", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_I2I_WORKFLOW },
-    { name: "ComfyUI Inpaint", capability: "image", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_INPAINT_WORKFLOW },
-    { name: "ComfyUI LLM", capability: "text", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_TEXT_WORKFLOW },
-    { name: "ComfyUI Video", capability: "video", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_VIDEO_WORKFLOW },
-    { name: "ComfyUI Frame Video", capability: "video", comfyuiWorkflow: DEFAULT_LOCAL_COMFYUI_FRAME_VIDEO_WORKFLOW },
-];
-
-/** Cloud channel default models (uses cloud workflows with bf16 & 8-step turbo). */
-export const COMFYUI_CLOUD_DEFAULT_MODELS: ChannelModel[] = [
-    { name: "ComfyUI T2I", capability: "image", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_T2I_WORKFLOW },
-    { name: "ComfyUI I2I", capability: "image", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_I2I_WORKFLOW },
-    { name: "ComfyUI Inpaint", capability: "image", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_INPAINT_WORKFLOW },
-    { name: "ComfyUI LLM", capability: "text", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_TEXT_WORKFLOW },
-    { name: "ComfyUI Video", capability: "video", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_VIDEO_WORKFLOW },
-    { name: "ComfyUI Frame Video", capability: "video", comfyuiWorkflow: DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW },
-];
-
-/** Models pre-provisioned when a ComfyUI channel is created without explicit models. Defaults to local models. */
-export const COMFYUI_DEFAULT_MODELS: ChannelModel[] = COMFYUI_LOCAL_DEFAULT_MODELS;
-
 export function isCloudChannel(channel?: Partial<ModelChannel> | null): boolean {
     if (!channel) return false;
     return channel.id === "cloud" || Boolean(channel.name && channel.name.includes("云端"));
 }
 
-export function createLocalModelChannel(overrides?: Partial<ModelChannel>): ModelChannel {
+export function createBuiltinModelChannel(overrides?: Partial<ModelChannel>): ModelChannel {
     return createModelChannel({
-        id: "local",
-        name: "本地 ComfyUI",
+        id: "builtin",
+        name: "系统内置 ComfyUI",
         comfyuiProxyUrl: "http://127.0.0.1:8188",
         ...overrides,
     });
+}
+
+export function createLocalModelChannel(overrides?: Partial<ModelChannel>): ModelChannel {
+    return createBuiltinModelChannel(overrides);
 }
 
 export function createCloudModelChannel(overrides?: Partial<ModelChannel>): ModelChannel {
@@ -493,11 +458,11 @@ export function createModelChannel(channel?: Partial<ModelChannel>, options?: { 
     const isCloud = isCloudChannel(channel);
     const workflows = getDefaultComfyuiWorkflows(channel);
     const defaultWorkflowItems = getDefaultComfyWorkflowItems(channel);
-    const defaultModels = isCloud ? COMFYUI_CLOUD_DEFAULT_MODELS : COMFYUI_LOCAL_DEFAULT_MODELS;
+    const defaultModels = COMFYUI_BUILTIN_DEFAULT_MODELS;
     const models = normalizeChannelModels(channel?.models);
     const result: ModelChannel = {
         id: channel?.id?.trim() || nanoid(),
-        name: channel?.name?.trim() || (isCloud ? "云端 ComfyUI" : "本地 ComfyUI"),
+        name: channel?.name?.trim() || (isCloud ? "云端 ComfyUI" : "系统内置 ComfyUI"),
         baseUrl: channel?.baseUrl !== undefined ? channel.baseUrl : "",
         apiKey: channel?.apiKey !== undefined ? channel.apiKey : "",
         apiFormat: "comfyui",
@@ -605,7 +570,7 @@ export function resolveModelChannel(config: AiConfig, value: string) {
         }
     }
     const matched = config.channels.find((channel) => channel.models.some((item) => item.name === model));
-    return matched || config.channels[0] || createLocalModelChannel({ models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
+    return matched || config.channels[0] || createBuiltinModelChannel({ models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
 }
 
 export function resolveModelRequestConfig(config: AiConfig, value: string) {
@@ -623,8 +588,8 @@ function normalizeChannels(config: AiConfig) {
     const persistedChannels = Array.isArray(config.channels) ? config.channels : [];
     const channels = persistedChannels.map((channel, index) => {
         const isCloud = isCloudChannel(channel);
-        const defaultId = channel.id || (isCloud ? "cloud" : index === 0 ? "local" : `channel-${index + 1}`);
-        const defaultName = channel.name || (defaultId === "cloud" ? "云端 ComfyUI" : defaultId === "local" ? "本地 ComfyUI" : i18n.t("config.channels.indexedName", { index: index + 1 }));
+        const defaultId = channel.id || (isCloud ? "cloud" : index === 0 ? "builtin" : `channel-${index + 1}`);
+        const defaultName = channel.name || (defaultId === "cloud" ? "云端 ComfyUI" : defaultId === "builtin" ? "系统内置 ComfyUI" : defaultId === "local" ? "本地 ComfyUI" : i18n.t("config.channels.indexedName", { index: index + 1 }));
         return createModelChannel(
             {
                 ...channel,
@@ -636,7 +601,7 @@ function normalizeChannels(config: AiConfig) {
         );
     });
     if (!channels.length) {
-        channels.push(createLocalModelChannel(), createCloudModelChannel());
+        channels.push(createBuiltinModelChannel());
     }
     return channels;
 }

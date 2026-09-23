@@ -7,6 +7,17 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Unified Built-in ComfyUI Channel and Model Workflows Matrix Verification (系统内置 ComfyUI 渠道与模型工作流矩阵验证):
+  - **Unified Built-in Channel Configuration (统一系统内置渠道)**:
+    - Default configuration includes a single built-in channel named 「系统内置 ComfyUI」 pointing to `http://127.0.0.1:8188`;
+    - The channel lists all 6 official models (`Z-Image-Turbo`, `Flux2.Dev`, `Qwen-Image Inpaint`, `Qwen3.5 4B`, `MiniMax H3 全能视频`, `MiniMax H3 首尾帧视频`);
+    - All 8 official workflows are automatically loaded with detailed Chinese descriptions and category assignments (Video categories contain both FP8 20-step consumer default and BF16 8-step Turbo high performance versions);
+  - **Workflows Directory and Documentation Integrity (工作流资产与文档结构)**:
+    - `Comfy/Comfy-Api/workflows/` neatly organizes workflows into 6 capability folders (`1_t2i_z_image_turbo`, `2_i2i_flux2_dev`, `3_inpaint_qwen_image`, `4_text_qwen3_5`, `5_video_minimax_h3_omni`, `6_video_minimax_h3_frame`);
+    - `Comfy/Comfy-Api/README.md` and subfolder READMEs provide full matrices detailing model names, model weights paths in `models/`, inference steps, VRAM recommendations, and technical characteristics;
+  - **Canvas Node Workflow Switching (画布节点双档/多工作流自由切换)**:
+    - In video generation nodes, switching between 「MiniMax H3 全能视频 (FP8 20步)」 and 「MiniMax H3 全能视频 (BF16 8步 Turbo)」 immediately binds the chosen workflow and dispatches to ComfyUI correctly.
+
 - Channel Multi-Workflow Category Mapping and Picker Verification (渠道与多工作流配置验证):
   - **Channel Workflows Drawer (渠道抽屉工作流管理)**:
     - Open Channel Drawer (`渠道与模型配置` -> `编辑渠道`); verify the 6 categories (文生图 `t2i`, 图生图 `i2i`, 局部编辑 `inpaint`, 文本生成 `text`, 全能参考视频 `omniVideo`, 首尾帧视频 `frameVideo`) are clearly listed as cards with item counts;

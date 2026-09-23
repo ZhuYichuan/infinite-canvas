@@ -1,16 +1,32 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { COMFYUI_DEFAULT_MODELS, createModelChannel, defaultConfig, isAiConfigReady, modelOptionLabel, modelOptionsFromChannels, normalizeApiFormat, normalizeChannelModels, resolveModelChannel, resolveModelForCapability, resolveModelRequestConfig, selectableModelsByCapability, useConfigStore, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import {
+    COMFYUI_DEFAULT_MODELS,
+    createModelChannel,
+    defaultConfig,
+    isAiConfigReady,
+    modelOptionLabel,
+    modelOptionsFromChannels,
+    normalizeApiFormat,
+    normalizeChannelModels,
+    resolveModelChannel,
+    resolveModelForCapability,
+    resolveModelRequestConfig,
+    selectableModelsByCapability,
+    useConfigStore,
+    type AiConfig,
+    type ModelChannel,
+} from "@/stores/use-config-store";
 
 describe("COMFYUI_DEFAULT_MODELS", () => {
     it("pre-provisions the default ComfyUI models", () => {
         expect(COMFYUI_DEFAULT_MODELS.map((model) => model.name)).toEqual([
-            "ComfyUI T2I",
-            "ComfyUI I2I",
-            "ComfyUI Inpaint",
-            "ComfyUI LLM",
-            "ComfyUI Video",
-            "ComfyUI Frame Video",
+            "Z-Image-Turbo",
+            "Flux2.Dev",
+            "Qwen-Image Inpaint",
+            "Qwen3.5 4B",
+            "MiniMax H3 全能视频",
+            "MiniMax H3 首尾帧视频",
         ]);
     });
 });
@@ -35,8 +51,8 @@ describe("createModelChannel", () => {
 
 describe("normalizeChannelModels", () => {
     it("normalizes string entries with a guessed capability and dedupes by name", () => {
-        expect(normalizeChannelModels(["ComfyUI T2I", "ComfyUI T2I", "Custom T2I"])).toEqual([
-            { name: "ComfyUI T2I", capability: "image", script: undefined, comfyuiWorkflow: undefined },
+        expect(normalizeChannelModels(["Z-Image-Turbo", "Z-Image-Turbo", "Custom T2I"])).toEqual([
+            { name: "Z-Image-Turbo", capability: "image", script: undefined, comfyuiWorkflow: undefined },
             { name: "Custom T2I", capability: "image", script: undefined, comfyuiWorkflow: undefined },
         ]);
     });
@@ -88,16 +104,16 @@ describe("ComfyUI model resolution", () => {
         baseUrl: "",
         apiKey: "",
         apiFormat: "comfyui",
-        models: [{ name: "ComfyUI T2I", capability: "image", comfyuiWorkflow: { name: "t2i", json: {}, createdAt: 0 } }],
+        models: [{ name: "Z-Image-Turbo", capability: "image", comfyuiWorkflow: { name: "t2i", json: {}, createdAt: 0 } }],
         comfyuiProxyUrl: "http://127.0.0.1:8189",
         comfyuiProxyToken: "tok",
     };
     const config: AiConfig = { ...defaultConfig, channels: [comfyChannel] };
 
     it("resolves a ComfyUI model to the ComfyUI channel", () => {
-        const resolved = resolveModelRequestConfig(config, "comfy::ComfyUI T2I");
+        const resolved = resolveModelRequestConfig(config, "comfy::Z-Image-Turbo");
         expect(resolved.apiFormat).toBe("comfyui");
-        expect(resolved.model).toBe("ComfyUI T2I");
+        expect(resolved.model).toBe("Z-Image-Turbo");
         expect(resolved.baseUrl).toBe("http://127.0.0.1:8189");
     });
 
@@ -108,7 +124,7 @@ describe("ComfyUI model resolution", () => {
             baseUrl: "",
             apiKey: "",
             apiFormat: "comfyui",
-            models: [{ name: "ComfyUI Video", capability: "video" }],
+            models: [{ name: "MiniMax H3 全能视频", capability: "video" }],
             comfyuiProxyUrl: "http://127.0.0.1:8188",
         };
         const channel2: ModelChannel = {
@@ -117,16 +133,16 @@ describe("ComfyUI model resolution", () => {
             baseUrl: "",
             apiKey: "",
             apiFormat: "comfyui",
-            models: [{ name: "ComfyUI Video", capability: "video" }],
+            models: [{ name: "MiniMax H3 全能视频", capability: "video" }],
             comfyuiProxyUrl: "http://192.168.1.200:8188",
         };
         const cfg: AiConfig = { ...defaultConfig, channels: [channel1, channel2] };
 
-        const res1 = resolveModelChannel(cfg, "channel-1::ComfyUI Video");
+        const res1 = resolveModelChannel(cfg, "channel-1::MiniMax H3 全能视频");
         expect(res1.id).toBe("channel-1");
         expect(res1.comfyuiProxyUrl).toBe("http://127.0.0.1:8188");
 
-        const res2 = resolveModelChannel(cfg, "channel-2::ComfyUI Video");
+        const res2 = resolveModelChannel(cfg, "channel-2::MiniMax H3 全能视频");
         expect(res2.id).toBe("channel-2");
         expect(res2.comfyuiProxyUrl).toBe("http://192.168.1.200:8188");
     });
@@ -144,9 +160,7 @@ describe("persistence merge stability", () => {
             name: "My ComfyUI",
             comfyuiProxyUrl: "http://192.168.1.50:8188",
             comfyuiT2iWorkflow: customT2i,
-            models: [
-                { name: "ComfyUI T2I", capability: "image", comfyuiWorkflow: customT2i },
-            ],
+            models: [{ name: "Z-Image-Turbo", capability: "image", comfyuiWorkflow: customT2i }],
         });
         const persistOptions = (useConfigStore as any).persist.getOptions();
         const merged = persistOptions.merge(
@@ -154,7 +168,7 @@ describe("persistence merge stability", () => {
                 config: {
                     ...defaultConfig,
                     channels: [customChannel],
-                    imageModel: "default::ComfyUI T2I",
+                    imageModel: "default::Z-Image-Turbo",
                 },
             },
             useConfigStore.getState(),
@@ -162,7 +176,7 @@ describe("persistence merge stability", () => {
 
         expect(merged.config.channels[0].comfyuiProxyUrl).toBe("http://192.168.1.50:8188");
         expect(merged.config.channels[0].comfyuiT2iWorkflow).toEqual(customT2i);
-        expect(merged.config.imageModel).toBe("default::ComfyUI T2I");
+        expect(merged.config.imageModel).toBe("default::Z-Image-Turbo");
     });
 
     it("falls back to default models when persisted model references obsolete names", () => {
@@ -179,9 +193,9 @@ describe("persistence merge stability", () => {
             useConfigStore.getState(),
         );
 
-        expect(merged.config.imageModel).toBe("local::ComfyUI T2I");
-        expect(merged.config.videoModel).toBe("local::ComfyUI Video");
-        expect(merged.config.textModel).toBe("local::ComfyUI LLM");
+        expect(merged.config.imageModel).toBe("builtin::Z-Image-Turbo");
+        expect(merged.config.videoModel).toBe("builtin::MiniMax H3 全能视频");
+        expect(merged.config.textModel).toBe("builtin::Qwen3.5 4B");
     });
 
     it("rehydrates after modifying channel via setConfig", async () => {
@@ -192,7 +206,7 @@ describe("persistence merge stability", () => {
         };
         useConfigStore.getState().setConfig({
             ...useConfigStore.getState().config,
-            channels: [modifiedChannel, initialChannels[1]],
+            channels: [modifiedChannel],
         });
         expect(useConfigStore.getState().config.channels[0].comfyuiProxyUrl).toBe("http://192.168.1.99:8188");
 
@@ -200,12 +214,18 @@ describe("persistence merge stability", () => {
         expect(useConfigStore.getState().config.channels[0].comfyuiProxyUrl).toBe("http://192.168.1.99:8188");
     });
 
-    it("persists when deleting cloud channel", async () => {
+    it("persists when deleting custom channel", async () => {
         const initialChannels = useConfigStore.getState().config.channels;
-        const keptChannels = initialChannels.filter((c) => c.id !== "cloud");
+        const extraChannel = createModelChannel({ id: "extra", name: "额外渠道" });
         useConfigStore.getState().setConfig({
             ...useConfigStore.getState().config,
-            channels: keptChannels,
+            channels: [...initialChannels, extraChannel],
+        });
+        expect(useConfigStore.getState().config.channels.length).toBe(2);
+
+        useConfigStore.getState().setConfig({
+            ...useConfigStore.getState().config,
+            channels: initialChannels,
         });
         await useConfigStore.persist.rehydrate();
         expect(useConfigStore.getState().config.channels.length).toBe(1);
@@ -213,20 +233,19 @@ describe("persistence merge stability", () => {
 
     it("persists when reordering channels via setDefaultChannel", async () => {
         const initialChannels = useConfigStore.getState().config.channels;
-        const cloudChannel = initialChannels.find((c) => c.id === "cloud")!;
-        const localChannel = initialChannels.find((c) => c.id === "local")!;
+        const extraChannel = createModelChannel({ id: "extra", name: "额外渠道" });
         useConfigStore.getState().setConfig({
             ...useConfigStore.getState().config,
-            channels: [cloudChannel, localChannel],
+            channels: [extraChannel, initialChannels[0]],
         });
         await useConfigStore.persist.rehydrate();
-        expect(useConfigStore.getState().config.channels[0].id).toBe("cloud");
+        expect(useConfigStore.getState().config.channels[0].id).toBe("extra");
     });
 
     it("persists all preferences fields across rehydration", async () => {
-        useConfigStore.getState().updateConfig("imageModel", "cloud::ComfyUI T2I");
-        useConfigStore.getState().updateConfig("videoModel", "cloud::ComfyUI Video");
-        useConfigStore.getState().updateConfig("textModel", "cloud::ComfyUI LLM");
+        useConfigStore.getState().updateConfig("imageModel", "builtin::Flux2.Dev");
+        useConfigStore.getState().updateConfig("videoModel", "builtin::MiniMax H3 全能视频");
+        useConfigStore.getState().updateConfig("textModel", "builtin::Qwen3.5 4B");
         useConfigStore.getState().updateConfig("canvasImageCount", "5");
         useConfigStore.getState().updateConfig("audioVoice", "echo");
         useConfigStore.getState().updateConfig("audioFormat", "wav");
@@ -237,10 +256,10 @@ describe("persistence merge stability", () => {
         await useConfigStore.persist.rehydrate();
 
         const config = useConfigStore.getState().config;
-        expect(config.imageModel).toBe("cloud::ComfyUI T2I");
-        expect(config.model).toBe("cloud::ComfyUI T2I");
-        expect(config.videoModel).toBe("cloud::ComfyUI Video");
-        expect(config.textModel).toBe("cloud::ComfyUI LLM");
+        expect(config.imageModel).toBe("builtin::Flux2.Dev");
+        expect(config.model).toBe("builtin::Flux2.Dev");
+        expect(config.videoModel).toBe("builtin::MiniMax H3 全能视频");
+        expect(config.textModel).toBe("builtin::Qwen3.5 4B");
         expect(config.canvasImageCount).toBe("5");
         expect(config.audioVoice).toBe("echo");
         expect(config.audioFormat).toBe("wav");
@@ -281,7 +300,7 @@ describe("persistence merge stability", () => {
         };
         useConfigStore.getState().setConfig({
             ...useConfigStore.getState().config,
-            channels: [modified, channels[1]],
+            channels: [modified],
         });
 
         await useConfigStore.persist.rehydrate();
@@ -296,69 +315,77 @@ describe("persistence merge stability", () => {
         expect(savedChannel.comfyuiFrameVideoWorkflow?.name).toBe("custom-frame-video");
     });
 
-    it("supports adding a 3rd channel, selecting its models, routing its API calls, and persisting across reload", async () => {
+    it("supports adding an extra channel, selecting its models, routing its API calls, and persisting across reload", async () => {
         const initialChannels = useConfigStore.getState().config.channels;
-        const channel3 = createModelChannel({
-            id: "chan-3",
+        const channel2 = createModelChannel({
+            id: "chan-2",
             name: "私有 GPU",
             comfyuiProxyUrl: "http://192.168.10.88:8188",
-            comfyuiProxyToken: "token3",
+            comfyuiProxyToken: "token2",
         });
 
         useConfigStore.getState().setConfig({
             ...useConfigStore.getState().config,
-            channels: [...initialChannels, channel3],
-            models: modelOptionsFromChannels([...initialChannels, channel3]),
+            channels: [...initialChannels, channel2],
+            models: modelOptionsFromChannels([...initialChannels, channel2]),
         });
 
         const stateBefore = useConfigStore.getState();
-        expect(stateBefore.config.channels.length).toBe(3);
+        expect(stateBefore.config.channels.length).toBe(2);
 
-        // 1. Check selectable models include channel 3
+        // 1. Check selectable models include channel 2
         const imageModels = selectableModelsByCapability(stateBefore.config, "image");
-        expect(imageModels).toContain("chan-3::ComfyUI T2I");
-        expect(modelOptionLabel(stateBefore.config, "chan-3::ComfyUI T2I")).toBe("ComfyUI T2I（私有 GPU）");
+        expect(imageModels).toContain("chan-2::Z-Image-Turbo");
+        expect(modelOptionLabel(stateBefore.config, "chan-2::Z-Image-Turbo")).toBe("Z-Image-Turbo（私有 GPU）");
 
-        // 2. Check API resolution points to channel 3's URL and token
-        const reqConfig = resolveModelRequestConfig(stateBefore.config, "chan-3::ComfyUI T2I");
+        // 2. Check API resolution points to channel 2's URL and token
+        const reqConfig = resolveModelRequestConfig(stateBefore.config, "chan-2::Z-Image-Turbo");
         expect(reqConfig.baseUrl).toBe("http://192.168.10.88:8188");
-        expect(reqConfig.apiKey).toBe("token3");
-        expect(reqConfig.model).toBe("ComfyUI T2I");
+        expect(reqConfig.apiKey).toBe("token2");
+        expect(reqConfig.model).toBe("Z-Image-Turbo");
 
-        // 3. Check canvas node resolution selects channel 3
-        const resolved = resolveModelForCapability(stateBefore.config, "chan-3::ComfyUI T2I", "image");
-        expect(resolved).toBe("chan-3::ComfyUI T2I");
+        // 3. Check canvas node resolution selects channel 2
+        const resolved = resolveModelForCapability(stateBefore.config, "chan-2::Z-Image-Turbo", "image");
+        expect(resolved).toBe("chan-2::Z-Image-Turbo");
 
         // 4. Rehydrate (simulate browser refresh)
         await useConfigStore.persist.rehydrate();
 
         const stateAfter = useConfigStore.getState();
-        expect(stateAfter.config.channels.length).toBe(3);
-        const rehydratedChan3 = stateAfter.config.channels.find((c) => c.id === "chan-3");
-        expect(rehydratedChan3).toBeDefined();
-        expect(rehydratedChan3?.name).toBe("私有 GPU");
-        expect(rehydratedChan3?.comfyuiProxyUrl).toBe("http://192.168.10.88:8188");
-        expect(rehydratedChan3?.comfyuiProxyToken).toBe("token3");
+        expect(stateAfter.config.channels.length).toBe(2);
+        const rehydratedChan2 = stateAfter.config.channels.find((c) => c.id === "chan-2");
+        expect(rehydratedChan2).toBeDefined();
+        expect(rehydratedChan2?.name).toBe("私有 GPU");
+        expect(rehydratedChan2?.comfyuiProxyUrl).toBe("http://192.168.10.88:8188");
+        expect(rehydratedChan2?.comfyuiProxyToken).toBe("token2");
 
-        // 5. Post-reload API resolution still routes correctly to channel 3
-        const postReloadReqConfig = resolveModelRequestConfig(stateAfter.config, "chan-3::ComfyUI T2I");
+        // 5. Post-reload API resolution still routes correctly to channel 2
+        const postReloadReqConfig = resolveModelRequestConfig(stateAfter.config, "chan-2::Z-Image-Turbo");
         expect(postReloadReqConfig.baseUrl).toBe("http://192.168.10.88:8188");
-        expect(postReloadReqConfig.apiKey).toBe("token3");
+        expect(postReloadReqConfig.apiKey).toBe("token2");
     });
 });
 
-describe("default dual ComfyUI channels", () => {
-    it("provides both local and cloud channels in defaultConfig", () => {
-        expect(defaultConfig.channels.map((c) => c.id)).toEqual(["local", "cloud"]);
-        expect(defaultConfig.channels[0].name).toBe("本地 ComfyUI");
-        expect(defaultConfig.channels[1].name).toBe("云端 ComfyUI");
+describe("default built-in ComfyUI channel", () => {
+    it("provides the unified built-in channel in defaultConfig", () => {
+        expect(defaultConfig.channels.map((c) => c.id)).toEqual(["builtin"]);
+        expect(defaultConfig.channels[0].name).toBe("系统内置 ComfyUI");
         expect(defaultConfig.channels[0].comfyuiProxyUrl).toBe("http://127.0.0.1:8188");
-        expect(defaultConfig.channels[1].comfyuiProxyUrl).toBe("");
+        expect(defaultConfig.channels[0].models.map((m) => m.name)).toEqual([
+            "Z-Image-Turbo",
+            "Flux2.Dev",
+            "Qwen-Image Inpaint",
+            "Qwen3.5 4B",
+            "MiniMax H3 全能视频",
+            "MiniMax H3 首尾帧视频",
+        ]);
+        expect(defaultConfig.channels[0].workflows?.length).toBe(8);
     });
 
-    it("creates cloud channel with cloud models and workflows", () => {
-        const cloudChannel = createModelChannel({ id: "cloud" });
-        expect(cloudChannel.name).toBe("云端 ComfyUI");
-        expect(cloudChannel.models.length).toBe(6);
+    it("creates custom channel with builtin models and workflows", () => {
+        const customChannel = createModelChannel({ id: "my-custom", name: "自定义 ComfyUI" });
+        expect(customChannel.name).toBe("自定义 ComfyUI");
+        expect(customChannel.models.length).toBe(6);
+        expect(customChannel.workflows?.length).toBe(8);
     });
 });

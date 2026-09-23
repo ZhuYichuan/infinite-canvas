@@ -3,12 +3,13 @@
 
 import { findNodes, checkRequired, applyBindings, parseStdin } from "../src/index.ts";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-const DEMO_DIR = "../../Comfy/Comfy-Api/local_channel";
+const DEMO_DIR = resolve(import.meta.dirname, "../../../Comfy/Comfy-Api/workflows");
 
 const tests: Array<{ file: string; needs: { prompt: boolean; width: boolean; height: boolean; refImages: number } }> = [
-    { file: "comfyuiT2iWorkflow_api.json", needs: { prompt: true, width: true, height: true, refImages: 0 } },
-    { file: "comfyuiI2iWorkflow_api.json", needs: { prompt: true, width: true, height: true, refImages: 2 } },
+    { file: "1_t2i_z_image_turbo/z_image_turbo_api.json", needs: { prompt: true, width: true, height: true, refImages: 0 } },
+    { file: "2_i2i_flux2_dev/flux2_dev_i2i_api.json", needs: { prompt: true, width: true, height: true, refImages: 2 } },
 ];
 
 let pass = 0;

@@ -1,102 +1,87 @@
 import type { ComfyuiWorkflow, ComfyWorkflowItem } from "@/stores/use-config-store";
 
-// Local channel workflows (D:\ComfyUI, pruned/scaled fp8 for video)
-import localT2iJson from "@/assets/workflows/comfyuiT2iWorkflow_api.json";
-import localI2iJson from "@/assets/workflows/comfyuiI2iWorkflow_api.json";
-import localInpaintJson from "@/assets/workflows/comfyuiInpaintWorkflow_api.json";
-import localTextJson from "@/assets/workflows/comfyuiTextWorkflow_api.json";
-import localVideoJson from "@/assets/workflows/comfyuiVideoWorkflow_api.json";
-import localFrameVideoJson from "@/assets/workflows/comfyuiFrameVideoWorkflow_api.json";
+// Builtin channel workflows (unified for local and cloud ComfyUI instances)
+import t2iZImageTurboJson from "@/assets/workflows/t2i_z_image_turbo_api.json";
+import i2iFlux2DevJson from "@/assets/workflows/i2i_flux2_dev_api.json";
+import inpaintQwenImageJson from "@/assets/workflows/inpaint_qwen_image_api.json";
+import textQwen35Json from "@/assets/workflows/text_qwen3_5_api.json";
+import omniVideoFp8Json from "@/assets/workflows/video_minimax_h3_omni_fp8_20step_api.json";
+import omniVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_omni_bf16_8step_turbo_api.json";
+import frameVideoFp8Json from "@/assets/workflows/video_minimax_h3_frame_fp8_20step_api.json";
+import frameVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_frame_bf16_8step_turbo_api.json";
 
-// Cloud channel workflows (/root/autodl-tmp/ComfyUI, full bf16 & 8-step turbo for video)
-import cloudT2iJson from "@/assets/workflows/cloud/comfyuiT2iWorkflow_api.json";
-import cloudI2iJson from "@/assets/workflows/cloud/comfyuiI2iWorkflow_api.json";
-import cloudInpaintJson from "@/assets/workflows/cloud/comfyuiInpaintWorkflow_api.json";
-import cloudTextJson from "@/assets/workflows/cloud/comfyuiTextWorkflow_api.json";
-import cloudVideoJson from "@/assets/workflows/cloud/comfyuiVideoWorkflow_api.json";
-import cloudFrameVideoJson from "@/assets/workflows/cloud/comfyuiFrameVideoWorkflow_api.json";
-
-export const DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiT2iWorkflow_api.json",
-    json: localT2iJson as Record<string, unknown>,
+// Built-in single workflow definitions
+export const DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW: ComfyuiWorkflow = {
+    name: "t2i_z_image_turbo_api.json",
+    json: t2iZImageTurboJson as Record<string, unknown>,
     createdAt: 0,
 };
 
-export const DEFAULT_LOCAL_COMFYUI_I2I_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiI2iWorkflow_api.json",
-    json: localI2iJson as Record<string, unknown>,
+export const DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW: ComfyuiWorkflow = {
+    name: "i2i_flux2_dev_api.json",
+    json: i2iFlux2DevJson as Record<string, unknown>,
     createdAt: 0,
 };
 
-export const DEFAULT_LOCAL_COMFYUI_INPAINT_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiInpaintWorkflow_api.json",
-    json: localInpaintJson as Record<string, unknown>,
+export const DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW: ComfyuiWorkflow = {
+    name: "inpaint_qwen_image_api.json",
+    json: inpaintQwenImageJson as Record<string, unknown>,
     createdAt: 0,
 };
 
-/** Built-in fallback workflow for ComfyUI LLM text generation and visual prompt inference (Qwen-3.5 VLM). */
-export const DEFAULT_LOCAL_COMFYUI_TEXT_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiTextWorkflow_api.json",
-    json: localTextJson as Record<string, unknown>,
+export const DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW: ComfyuiWorkflow = {
+    name: "text_qwen3_5_api.json",
+    json: textQwen35Json as Record<string, unknown>,
     createdAt: 0,
 };
 
-export const DEFAULT_LOCAL_COMFYUI_VIDEO_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiVideoWorkflow_api.json",
-    json: localVideoJson as Record<string, unknown>,
+export const DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW: ComfyuiWorkflow = {
+    name: "video_minimax_h3_omni_fp8_20step_api.json",
+    json: omniVideoFp8Json as Record<string, unknown>,
     createdAt: 0,
 };
 
-export const DEFAULT_LOCAL_COMFYUI_FRAME_VIDEO_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiFrameVideoWorkflow_api.json",
-    json: localFrameVideoJson as Record<string, unknown>,
+export const DEFAULT_BUILTIN_COMFYUI_VIDEO_TURBO_WORKFLOW: ComfyuiWorkflow = {
+    name: "video_minimax_h3_omni_bf16_8step_turbo_api.json",
+    json: omniVideoBf16TurboJson as Record<string, unknown>,
     createdAt: 0,
 };
 
-// Cloud channel workflows
-export const DEFAULT_CLOUD_COMFYUI_T2I_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiT2iWorkflow_api.json",
-    json: cloudT2iJson as Record<string, unknown>,
+export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW: ComfyuiWorkflow = {
+    name: "video_minimax_h3_frame_fp8_20step_api.json",
+    json: frameVideoFp8Json as Record<string, unknown>,
     createdAt: 0,
 };
 
-export const DEFAULT_CLOUD_COMFYUI_I2I_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiI2iWorkflow_api.json",
-    json: cloudI2iJson as Record<string, unknown>,
+export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_TURBO_WORKFLOW: ComfyuiWorkflow = {
+    name: "video_minimax_h3_frame_bf16_8step_turbo_api.json",
+    json: frameVideoBf16TurboJson as Record<string, unknown>,
     createdAt: 0,
 };
 
-export const DEFAULT_CLOUD_COMFYUI_INPAINT_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiInpaintWorkflow_api.json",
-    json: cloudInpaintJson as Record<string, unknown>,
-    createdAt: 0,
-};
+// Aliases for unified ComfyUI workflows
+export const DEFAULT_COMFYUI_T2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW;
+export const DEFAULT_COMFYUI_I2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW;
+export const DEFAULT_COMFYUI_INPAINT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW;
+export const DEFAULT_COMFYUI_TEXT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW;
+export const DEFAULT_COMFYUI_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW;
+export const DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW;
 
-export const DEFAULT_CLOUD_COMFYUI_TEXT_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiTextWorkflow_api.json",
-    json: cloudTextJson as Record<string, unknown>,
-    createdAt: 0,
-};
+// Backward-compatible local aliases
+export const DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW;
+export const DEFAULT_LOCAL_COMFYUI_I2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW;
+export const DEFAULT_LOCAL_COMFYUI_INPAINT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW;
+export const DEFAULT_LOCAL_COMFYUI_TEXT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW;
+export const DEFAULT_LOCAL_COMFYUI_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW;
+export const DEFAULT_LOCAL_COMFYUI_FRAME_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW;
 
-export const DEFAULT_CLOUD_COMFYUI_VIDEO_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiVideoWorkflow_api.json",
-    json: cloudVideoJson as Record<string, unknown>,
-    createdAt: 0,
-};
-
-export const DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW: ComfyuiWorkflow = {
-    name: "comfyuiFrameVideoWorkflow_api.json",
-    json: cloudFrameVideoJson as Record<string, unknown>,
-    createdAt: 0,
-};
-
-// Default aliases (defaults to local for backward compatibility)
-export const DEFAULT_COMFYUI_T2I_WORKFLOW = DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW;
-export const DEFAULT_COMFYUI_I2I_WORKFLOW = DEFAULT_LOCAL_COMFYUI_I2I_WORKFLOW;
-export const DEFAULT_COMFYUI_INPAINT_WORKFLOW = DEFAULT_LOCAL_COMFYUI_INPAINT_WORKFLOW;
-export const DEFAULT_COMFYUI_TEXT_WORKFLOW = DEFAULT_LOCAL_COMFYUI_TEXT_WORKFLOW;
-export const DEFAULT_COMFYUI_VIDEO_WORKFLOW = DEFAULT_LOCAL_COMFYUI_VIDEO_WORKFLOW;
-export const DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW = DEFAULT_LOCAL_COMFYUI_FRAME_VIDEO_WORKFLOW;
+// Backward-compatible cloud aliases
+export const DEFAULT_CLOUD_COMFYUI_T2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW;
+export const DEFAULT_CLOUD_COMFYUI_I2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW;
+export const DEFAULT_CLOUD_COMFYUI_INPAINT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW;
+export const DEFAULT_CLOUD_COMFYUI_TEXT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW;
+export const DEFAULT_CLOUD_COMFYUI_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_TURBO_WORKFLOW;
+export const DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_TURBO_WORKFLOW;
 
 export type ComfyuiWorkflowBundle = {
     t2i: ComfyuiWorkflow;
@@ -107,93 +92,113 @@ export type ComfyuiWorkflowBundle = {
     frameVideo: ComfyuiWorkflow;
 };
 
-export const DEFAULT_LOCAL_COMFYUI_WORKFLOWS: ComfyuiWorkflowBundle = {
-    t2i: DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW,
-    i2i: DEFAULT_LOCAL_COMFYUI_I2I_WORKFLOW,
-    inpaint: DEFAULT_LOCAL_COMFYUI_INPAINT_WORKFLOW,
-    text: DEFAULT_LOCAL_COMFYUI_TEXT_WORKFLOW,
-    video: DEFAULT_LOCAL_COMFYUI_VIDEO_WORKFLOW,
-    frameVideo: DEFAULT_LOCAL_COMFYUI_FRAME_VIDEO_WORKFLOW,
+export const DEFAULT_BUILTIN_COMFYUI_WORKFLOWS: ComfyuiWorkflowBundle = {
+    t2i: DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW,
+    i2i: DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW,
+    inpaint: DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW,
+    text: DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW,
+    video: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW,
+    frameVideo: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW,
 };
 
+export const DEFAULT_LOCAL_COMFYUI_WORKFLOWS = DEFAULT_BUILTIN_COMFYUI_WORKFLOWS;
 export const DEFAULT_CLOUD_COMFYUI_WORKFLOWS: ComfyuiWorkflowBundle = {
-    t2i: DEFAULT_CLOUD_COMFYUI_T2I_WORKFLOW,
-    i2i: DEFAULT_CLOUD_COMFYUI_I2I_WORKFLOW,
-    inpaint: DEFAULT_CLOUD_COMFYUI_INPAINT_WORKFLOW,
-    text: DEFAULT_CLOUD_COMFYUI_TEXT_WORKFLOW,
-    video: DEFAULT_CLOUD_COMFYUI_VIDEO_WORKFLOW,
-    frameVideo: DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW,
+    ...DEFAULT_BUILTIN_COMFYUI_WORKFLOWS,
+    video: DEFAULT_BUILTIN_COMFYUI_VIDEO_TURBO_WORKFLOW,
+    frameVideo: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_TURBO_WORKFLOW,
 };
 
 export function getDefaultComfyuiWorkflows(channel?: { id?: string; name?: string } | null): ComfyuiWorkflowBundle {
     const isCloud = channel?.id === "cloud" || (channel?.name ? channel.name.includes("云端") : false);
-    return isCloud ? DEFAULT_CLOUD_COMFYUI_WORKFLOWS : DEFAULT_LOCAL_COMFYUI_WORKFLOWS;
+    return isCloud ? DEFAULT_CLOUD_COMFYUI_WORKFLOWS : DEFAULT_BUILTIN_COMFYUI_WORKFLOWS;
 }
 
+/**
+ * Returns all built-in workflows for the unified ComfyUI channel.
+ * Each category provides official models with accurate titles, specifications, and descriptions.
+ */
 export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: string } | null): ComfyWorkflowItem[] {
-    const bundle = getDefaultComfyuiWorkflows(channel);
-    const isCloud = channel?.id === "cloud" || (channel?.name ? channel.name.includes("云端") : false);
-    const prefix = isCloud ? "cloud" : "local";
+    const prefix = channel?.id || "builtin";
     return [
         {
-            id: `${prefix}-default-t2i`,
-            name: "默认文生图工作流",
+            id: `${prefix}-t2i-z-image-turbo`,
+            name: "Z-Image-Turbo 文生图",
             category: "t2i",
-            json: bundle.t2i.json,
+            json: DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
             isDefault: true,
-            description: "系统内置基础文生图工作流",
+            description: "Z-Image-Turbo 极速文生图工作流 (BF16，4~8步出图)",
         },
         {
-            id: `${prefix}-default-i2i`,
-            name: "默认图生图工作流",
+            id: `${prefix}-i2i-flux2-dev`,
+            name: "Flux2.Dev 图生图",
             category: "i2i",
-            json: bundle.i2i.json,
+            json: DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
             isDefault: true,
-            description: "系统内置基础图生图工作流",
+            description: "Flux2.Dev 多图参考与风格迁移工作流 (FP8 + Turbo LoRA)",
         },
         {
-            id: `${prefix}-default-inpaint`,
-            name: "默认局部编辑工作流",
+            id: `${prefix}-inpaint-qwen-image`,
+            name: "Qwen-Image 局部编辑",
             category: "inpaint",
-            json: bundle.inpaint.json,
+            json: DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
             isDefault: true,
-            description: "系统内置基础局部重绘工作流",
+            description: "Qwen-Image 视觉语言引导局部精准重绘工作流 (4步 Lightning)",
         },
         {
-            id: `${prefix}-default-text`,
-            name: "默认文本生成工作流",
+            id: `${prefix}-text-qwen3-5`,
+            name: "Qwen3.5 文本生成与反推",
             category: "text",
-            json: bundle.text.json,
+            json: DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
             isDefault: true,
-            description: "系统内置大语言模型及反推工作流",
+            description: "Qwen3.5 4B 本地端侧提示词扩写与视觉反推工作流",
         },
         {
-            id: `${prefix}-default-omni-video`,
-            name: "默认全能参考视频工作流",
+            id: `${prefix}-omni-video-minimax-h3-fp8`,
+            name: "MiniMax H3 全能视频 (FP8 20步)",
             category: "omniVideo",
-            json: bundle.video.json,
+            json: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
             isDefault: true,
-            description: "系统内置全能参考视频工作流",
+            description: "MiniMax H3 全能参考视频 (FP8 Scaled, 适合消费级单卡)",
         },
         {
-            id: `${prefix}-default-frame-video`,
-            name: "默认首尾帧视频工作流",
+            id: `${prefix}-omni-video-minimax-h3-bf16-turbo`,
+            name: "MiniMax H3 全能视频 (BF16 8步 Turbo)",
+            category: "omniVideo",
+            json: DEFAULT_BUILTIN_COMFYUI_VIDEO_TURBO_WORKFLOW.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: false,
+            description: "MiniMax H3 全能参考视频极速版 (BF16 Turbo 8步, 适合大显存高性能显卡)",
+        },
+        {
+            id: `${prefix}-frame-video-minimax-h3-fp8`,
+            name: "MiniMax H3 首尾帧视频 (FP8 20步)",
             category: "frameVideo",
-            json: bundle.frameVideo.json,
+            json: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
             isDefault: true,
-            description: "系统内置首尾帧视频生成工作流",
+            description: "MiniMax H3 首尾帧插值视频 (FP8 Scaled, 适合消费级单卡)",
+        },
+        {
+            id: `${prefix}-frame-video-minimax-h3-bf16-turbo`,
+            name: "MiniMax H3 首尾帧视频 (BF16 8步 Turbo)",
+            category: "frameVideo",
+            json: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_TURBO_WORKFLOW.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: false,
+            description: "MiniMax H3 首尾帧插值视频极速版 (BF16 Turbo 8步, 适合大显存高性能显卡)",
         },
     ];
 }

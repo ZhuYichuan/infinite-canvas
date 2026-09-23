@@ -3,6 +3,7 @@
     "inputs": {
       "filename_prefix": "video/MiniMax_H3",
       "format": "auto",
+      "format.codec": "auto",
       "codec": "auto",
       "video": [
         "16",
@@ -172,6 +173,8 @@
     "inputs": {
       "fps": 24,
       "bit_depth": 8,
+      "color_space": "sRGB",
+      "codec": "none",
       "images": [
         "8",
         0
@@ -245,14 +248,6 @@
         "98",
         0
       ],
-      "ref_images.ref_image_7": [
-        "96",
-        0
-      ],
-      "ref_images.ref_image_8": [
-        "97",
-        0
-      ],
       "ref_videos.ref_video_0": [
         "100",
         0
@@ -276,11 +271,19 @@
       "ref_audios.ref_audio_2": [
         "112",
         0
+      ],
+      "ref_images.ref_image_7": [
+        "96",
+        0
+      ],
+      "ref_images.ref_image_8": [
+        "97",
+        0
       ]
     },
     "class_type": "MiniMaxH3ReferenceToVideo",
     "_meta": {
-      "title": "MiniMax H3 Reference to Video"
+      "title": "MiniMax H3 参考转视频"
     }
   },
   "18": {
@@ -321,25 +324,11 @@
   },
   "74": {
     "inputs": {
-      "value": 8
+      "value": 20
     },
     "class_type": "PrimitiveInt",
     "_meta": {
       "title": "4步"
-    }
-  },
-  "75": {
-    "inputs": {
-      "lora_name": "minimax_h3_ref2v_lightx2v_turbo_4step_v0.1_resized_avg_rank_20_bf16.safetensors",
-      "strength_model": 0.3,
-      "model": [
-        "13",
-        0
-      ]
-    },
-    "class_type": "LoraLoaderModelOnly",
-    "_meta": {
-      "title": "LoRA加载器（仅模型）"
     }
   },
   "76": {
@@ -347,7 +336,7 @@
       "shift_video": 16,
       "shift_audio": 4,
       "model": [
-        "75",
+        "13",
         0
       ]
     },
@@ -428,7 +417,8 @@
   },
   "99": {
     "inputs": {
-      "file": "18541c91887458b15a28bbd7ede22c3e.mp4"
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
     },
     "class_type": "LoadVideo",
     "_meta": {
@@ -449,7 +439,8 @@
   },
   "102": {
     "inputs": {
-      "file": "18541c91887458b15a28bbd7ede22c3e.mp4"
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
     },
     "class_type": "LoadVideo",
     "_meta": {
@@ -470,7 +461,8 @@
   },
   "105": {
     "inputs": {
-      "file": "18541c91887458b15a28bbd7ede22c3e.mp4"
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
     },
     "class_type": "LoadVideo",
     "_meta": {

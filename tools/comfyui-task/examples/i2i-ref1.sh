@@ -9,9 +9,9 @@ HEIGHT="${4:-1024}"
 shift 4
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEMO_DIR="${SCRIPT_DIR}/../../../Comfy/Comfy-Api/local_channel"
+DEMO_DIR="${SCRIPT_DIR}/../../../Comfy/Comfy-Api/workflows/2_i2i_flux2_dev"
 
-cat "${DEMO_DIR}/comfyuiI2iWorkflow_api.json" \
+cat "${DEMO_DIR}/flux2_dev_i2i_api.json" \
   | bun run "${SCRIPT_DIR}/../bin/comfyui-task" run \
       --prompt "$PROMPT" \
       --refs "$REF_IMAGE" \
