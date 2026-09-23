@@ -10,8 +10,8 @@ The current release needs manual verification in these areas:
 - Unified Built-in ComfyUI Channel and Model Workflows Matrix Verification (系统内置 ComfyUI 渠道与模型工作流矩阵验证):
   - **Unified Built-in Channel Configuration (统一系统内置渠道)**:
     - Default configuration includes a single built-in channel named 「系统内置 ComfyUI」 pointing to `http://127.0.0.1:8188`;
-    - The channel lists all 6 official models (`Z-Image-Turbo`, `Flux2.Dev`, `Qwen-Image Inpaint`, `Qwen3.5 4B`, `MiniMax H3 全能视频`, `MiniMax H3 首尾帧视频`);
-    - All 8 official workflows are automatically loaded with detailed Chinese descriptions and category assignments (Video categories contain both FP8 20-step consumer default and BF16 8-step Turbo high performance versions);
+    - The channel lists all 7 official models (`Z-Image-Turbo`, `Flux2.Dev`, `Qwen-Image-2.1`, `Qwen-Image Inpaint`, `Qwen3.5 4B`, `MiniMax H3 全能视频`, `MiniMax H3 首尾帧视频`);
+    - All 10 official workflows are automatically loaded with detailed Chinese descriptions and category assignments (including `Qwen-Image-2.1` in both `t2i` and `i2i` supporting up to 10 reference images);
   - **Workflows Directory and Documentation Integrity (工作流资产与文档结构)**:
     - `Comfy/Comfy-Api/workflows/` neatly organizes workflows into 6 capability folders (`1_t2i`, `2_i2i`, `3_inpaint`, `4_text`, `5_omni_video`, `6_frame_video`);
     - `Comfy/Comfy-Api/README.md` and subfolder READMEs provide full matrices detailing model names, model weights paths in `models/`, inference steps, VRAM recommendations, and technical characteristics;

@@ -147,7 +147,7 @@ export function validateComfyuiWorkflow(
     }
 
     // 2. 输出标记检查
-    const hasOutputImage = Boolean(titleToNodeIds["output_image"]?.length);
+    const hasOutputImage = Boolean(titleToNodeIds["output_image"]?.length || titleToNodeIds["out_image"]?.length);
     const hasOutputVideo = Boolean(titleToNodeIds["output_video"]?.length);
     const hasOutputText = Boolean(titleToNodeIds["output_text"]?.length);
 
@@ -299,7 +299,7 @@ export function applyBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiBind
             value = params.seed;
             boundSeed = true;
         } else if (title.startsWith("ref_image") && params.refImages?.length) {
-            const m = /^ref_image_(0[1-9])$/.exec(title);
+            const m = /^ref_image_(\d{2})$/.exec(title);
             const index = m ? Number(m[1]) - 1 : 0;
             if (params.refImages[index]) {
                 slot = BINDING_TITLE_TO_INPUT_SLOT.ref_image[record.class_type] || "image";
@@ -337,7 +337,7 @@ export function applyBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiBind
         const rawTitle = record._meta?.title;
         const title = typeof rawTitle === "string" ? rawTitle.trim().toLowerCase() : "";
 
-        const imgMatch = /^ref_image_(0[1-9])$/.exec(title);
+        const imgMatch = /^ref_image_(\d{2})$/.exec(title);
         if (imgMatch) {
             const idx = Number(imgMatch[1]) - 1;
             if (idx >= assignedImageCount) removedNodeIds.add(id);
@@ -1817,7 +1817,7 @@ export function applyVideoBindings(
 
         // 1. 全能参考 - 图片插槽绑定
         if (params.assetIds && params.assetIds.length > 0) {
-            const numberedMatch = /^ref_image_(0[1-9])$/.exec(title);
+            const numberedMatch = /^ref_image_(\d{2})$/.exec(title);
             if (numberedMatch) {
                 const idx = Number(numberedMatch[1]) - 1;
                 if (params.assetIds[idx]) {
@@ -1901,7 +1901,7 @@ export function applyVideoBindings(
             removedNodeIds.add(id);
         }
 
-        const imgMatch = /^ref_image_(0[1-9])$/.exec(title);
+        const imgMatch = /^ref_image_(\d{2})$/.exec(title);
         if (imgMatch) {
             const idx = Number(imgMatch[1]) - 1;
             if (idx >= assignedImageCount) removedNodeIds.add(id);

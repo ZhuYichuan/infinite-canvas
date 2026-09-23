@@ -19,6 +19,10 @@ const BUILTIN_WORKFLOW_IDENTIFIERS = new Set([
     "MiniMax H3 首尾帧 (FP8 20步)",
     "video_minimax_h3_frame_bf16_8step_turbo_api.json",
     "MiniMax H3 首尾帧 (BF16 8步极速)",
+    "qwen_image_21_api.json",
+    "Qwen-Image-2.1 文生图",
+    "Qwen-Image-2.1 多图参考图生图",
+    "Qwen-Image-2.1 全能生图",
 ]);
 
 /**

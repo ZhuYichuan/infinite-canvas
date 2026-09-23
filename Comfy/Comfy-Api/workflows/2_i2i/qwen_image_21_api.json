@@ -12,7 +12,7 @@
     },
     "class_type": "SaveImageAdvanced",
     "_meta": {
-      "title": "out_image"
+      "title": "output_image"
     }
   },
   "485": {

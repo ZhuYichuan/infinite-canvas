@@ -23,6 +23,7 @@ describe("COMFYUI_DEFAULT_MODELS", () => {
         expect(COMFYUI_DEFAULT_MODELS.map((model) => model.name)).toEqual([
             "Z-Image-Turbo",
             "Flux2.Dev",
+            "Qwen-Image-2.1",
             "Qwen-Image Inpaint",
             "Qwen3.5 4B",
             "MiniMax H3 全能视频",
@@ -374,19 +375,20 @@ describe("default built-in ComfyUI channel", () => {
         expect(defaultConfig.channels[0].models.map((m) => m.name)).toEqual([
             "Z-Image-Turbo",
             "Flux2.Dev",
+            "Qwen-Image-2.1",
             "Qwen-Image Inpaint",
             "Qwen3.5 4B",
             "MiniMax H3 全能视频",
             "MiniMax H3 首尾帧视频",
         ]);
-        expect(defaultConfig.channels[0].workflows?.length).toBe(8);
+        expect(defaultConfig.channels[0].workflows?.length).toBe(10);
     });
 
     it("creates custom channel with builtin models and workflows", () => {
         const customChannel = createModelChannel({ id: "my-custom", name: "自定义 ComfyUI" });
         expect(customChannel.name).toBe("自定义 ComfyUI");
-        expect(customChannel.models.length).toBe(6);
-        expect(customChannel.workflows?.length).toBe(8);
+        expect(customChannel.models.length).toBe(7);
+        expect(customChannel.workflows?.length).toBe(10);
         expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
         expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);

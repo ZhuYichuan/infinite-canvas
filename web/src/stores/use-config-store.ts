@@ -9,6 +9,7 @@ import {
     DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW,
     DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW,
     DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW,
+    DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW,
     DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW,
     DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW,
     DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW,
@@ -126,6 +127,7 @@ const CHANNEL_MODEL_SEPARATOR = "::";
 export const COMFYUI_BUILTIN_DEFAULT_MODELS: ChannelModel[] = [
     { name: "Z-Image-Turbo", capability: "image", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW },
     { name: "Flux2.Dev", capability: "image", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW },
+    { name: "Qwen-Image-2.1", capability: "image", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW },
     { name: "Qwen-Image Inpaint", capability: "image", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW },
     { name: "Qwen3.5 4B", capability: "text", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW },
     { name: "MiniMax H3 全能视频", capability: "video", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW },

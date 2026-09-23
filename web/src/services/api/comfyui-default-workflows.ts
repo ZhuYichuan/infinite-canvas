@@ -9,8 +9,15 @@ import omniVideoFp8Json from "@/assets/workflows/video_minimax_h3_omni_fp8_20ste
 import omniVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_omni_bf16_8step_turbo_api.json";
 import frameVideoFp8Json from "@/assets/workflows/video_minimax_h3_frame_fp8_20step_api.json";
 import frameVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_frame_bf16_8step_turbo_api.json";
+import qwenImage21Json from "@/assets/workflows/qwen_image_21_api.json";
 
 // Built-in single workflow definitions
+export const DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW: ComfyuiWorkflow = {
+    name: "Qwen-Image-2.1 全能生图",
+    json: qwenImage21Json as Record<string, unknown>,
+    createdAt: 0,
+    isBuiltin: true,
+};
 export const DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW: ComfyuiWorkflow = {
     name: "Z-Image-Turbo 文生图",
     json: t2iZImageTurboJson as Record<string, unknown>,
@@ -139,6 +146,16 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             description: "Z-Image-Turbo 极速文生图工作流 (BF16，4~8步出图)",
         },
         {
+            id: `${prefix}-t2i-qwen-image-21`,
+            name: "Qwen-Image-2.1 文生图",
+            category: "t2i",
+            json: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: false,
+            description: "Qwen-Image-2.1 大模型文生图工作流 (BF16，支持多模态理解与超写实画质)",
+        },
+        {
             id: `${prefix}-i2i-flux2-dev`,
             name: "Flux2.Dev 图生图",
             category: "i2i",
@@ -147,6 +164,16 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             isBuiltin: true,
             isDefault: true,
             description: "Flux2.Dev 多图参考与风格迁移工作流 (FP8 + Turbo LoRA)",
+        },
+        {
+            id: `${prefix}-i2i-qwen-image-21`,
+            name: "Qwen-Image-2.1 多图参考图生图",
+            category: "i2i",
+            json: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: false,
+            description: "Qwen-Image-2.1 多图融合与风格迁移工作流 (支持最多 10 张参考图)",
         },
         {
             id: `${prefix}-inpaint-qwen-image`,
