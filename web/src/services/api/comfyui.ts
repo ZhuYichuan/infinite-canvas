@@ -386,6 +386,15 @@ export function applyBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiBind
                     if (record.class_type === "Flux2Scheduler" && (key === "width" || key === "height")) {
                         continue;
                     }
+                    // 动态多模态插槽（如 TextEncodeQwenImage21 的 images.image_* 或 ComfySwitchNode）属于可选输入，只抹除插槽连线，不级联删除节点本身
+                    if (
+                        record.class_type === "TextEncodeQwenImage21" ||
+                        record.class_type === "ComfySwitchNode" ||
+                        key.startsWith("images.image_") ||
+                        key.startsWith("image_")
+                    ) {
+                        continue;
+                    }
                     hasRemovedInput = true;
                     break;
                 }
@@ -397,7 +406,8 @@ export function applyBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiBind
             }
 
             // 3. 通用反向级联：若某非输出节点仅被已删除节点消费（无存活消费者），则一并抹除
-            if (record.class_type !== "SaveImage") {
+            const isOutputNode = record.class_type?.startsWith("SaveImage") || record.class_type === "SaveVideo" || record.class_type === "PreviewImage";
+            if (!isOutputNode && record.class_type !== "ComfySwitchNode" && record.class_type !== "TextEncodeQwenImage21") {
                 let hasLiveConsumer = false;
                 let hasRemovedConsumer = false;
                 for (const [otherId, otherNode] of Object.entries(cloned)) {
@@ -438,6 +448,15 @@ export function applyBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiBind
                     }
                 }
             }
+        }
+    }
+
+    // 联动设置 ComfySwitchNode 开关（无图为 true 走文生图 EmptyLatentImage，有图为 false 走图生图参考图 Latent）
+    for (const node of Object.values(cloned)) {
+        if (typeof node !== "object" || node === null) continue;
+        const record = node as NodeRecord;
+        if (record.class_type === "ComfySwitchNode" && record.inputs && "switch" in record.inputs) {
+            record.inputs.switch = (params.refImages?.length || 0) === 0;
         }
     }
 
@@ -549,6 +568,9 @@ function normalizeBaseUrl(baseUrl: string) {
  * Submit a bound workflow to ComfyUI's /prompt endpoint; returns prompt_id as jobId.
  */
 export async function submitJob(workflow: ComfyuiWorkflowJson, baseUrl: string, token?: string): Promise<string> {
+    if (!workflow || typeof workflow !== "object" || Object.keys(workflow).length === 0) {
+        throw new ComfyuiNoWorkflowError("工作流拓扑为空，请检查当前渠道工作流配置或重新选择有效的工作流");
+    }
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
     const clientId = nanoid();
@@ -1022,7 +1044,7 @@ function imageReferenceSlots(workflow: ComfyuiWorkflowJson) {
         .map((node) => (node && typeof node === "object" ? (node as { _meta?: { title?: unknown } })._meta?.title : undefined))
         .filter((title): title is string => typeof title === "string")
         .map((title) => title.trim().toLowerCase())
-        .filter((title) => /^ref_image(_0[1-9])?$/.test(title))
+        .filter((title) => /^ref_image(_\d{2})?$/.test(title))
         .sort();
 }
 

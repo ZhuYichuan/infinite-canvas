@@ -831,3 +831,42 @@ describe("validateComfyuiWorkflow & findWorkflow", () => {
     });
 });
 
+describe("Qwen-Image-2.1 and submitJob validation", () => {
+    it("safely binds Qwen-Image-2.1 for text-to-image without cascade deleting nodes", async () => {
+        const qwenJson = (await import("@/assets/workflows/qwen_image_21_api.json")).default;
+        const bound = applyBindings(qwenJson as unknown as ComfyuiWorkflowJson, {
+            prompt: "ancient chinese portrait",
+            width: 1024,
+            height: 1024,
+            seed: 42,
+        });
+
+        expect(Object.keys(bound).length).toBe(14);
+        expect(bound["481"]).toBeDefined(); // SaveImageAdvanced
+        expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
+        expect((bound["480:474"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toBeUndefined();
+    });
+
+    it("safely binds Qwen-Image-2.1 for image-to-image with reference image", async () => {
+        const qwenJson = (await import("@/assets/workflows/qwen_image_21_api.json")).default;
+        const bound = applyBindings(qwenJson as unknown as ComfyuiWorkflowJson, {
+            prompt: "portrait based on photo",
+            width: 1024,
+            height: 1024,
+            seed: 42,
+            refImages: ["uploaded_asset.png"],
+        });
+
+        expect(Object.keys(bound).length).toBe(15);
+        expect(bound["481"]).toBeDefined();
+        expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(false);
+        expect((bound["480:474"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toEqual(["495", 0]);
+        expect((bound["480:474"]?.inputs as Record<string, unknown>)?.["images.image_2"]).toBeUndefined();
+    });
+
+    it("rejects empty workflow in submitJob", async () => {
+        await expect(submitJob({}, "http://127.0.0.1:8188")).rejects.toThrow(ComfyuiNoWorkflowError);
+    });
+});
+
+
