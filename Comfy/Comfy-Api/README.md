@@ -2,7 +2,7 @@
 
 本项目全面采用**原生 ComfyUI 原生 API 直连架构**（纯前端浏览器直连，默认地址 `http://127.0.0.1:8188`，可自由配置为本地机器或云端 GPU 实例 IP）。
 
-系统将所有出厂核心生成能力收敛统一为**「系统内置 ComfyUI 渠道」**，涵盖 6 大生成能力，并在视频等长耗时能力下提供消费级（FP8 20步）与极速性能级（BF16 8步 Turbo）双档工作流供自由切换。
+系统将所有出厂核心生成能力收敛统一为**「系统内置 ComfyUI 渠道」**，涵盖 6 大生成能力，并在视频等长耗时能力下提供消费级（FP8 20步）、极速性能级（BF16 8步 Turbo）与全量高精级（BF16 20步）三档内置工作流供自由切换。
 
 ---
 
@@ -14,8 +14,8 @@
 | **2** | **图生图 (I2I)** | [图生图工作流](./workflows/2_i2i/) | `Flux2.Dev`<br/>`Qwen-Image-2.1` | `diffusion_models/flux2_dev_fp8mixed.safetensors`<br/>`diffusion_models/qwen_image_2.1_bf16.safetensors`<br/>`loras/Flux2TurboComfyv2.safetensors`<br/>`clip/qwen3vl_8b_bf16.safetensors` | 8~16 步 (Flux2)<br/>25 步 (Qwen2.1) | 12G ~ 24G | Flow Matching 顶级质感 / 原生支持最多 10 张参考图联合垫图与角色风格强迁移 |
 | **3** | **局部编辑 (Inpaint)** | [局部编辑工作流](./workflows/3_inpaint/) | `Qwen-Image Inpaint` | `diffusion_models/qwen_image_fp8_e4m3fn.safetensors`<br/>`loras/Qwen-Image-Lightning-4steps-V1.0.safetensors`<br/>`text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors`<br/>`vae/qwen_image_vae.safetensors` | 4 步 | 8G ~ 12G | Qwen2.5-VL 视觉理解、4 步 Lightning 极速重绘、LayerStyle 平滑边缘无缝融入 |
 | **4** | **文本生成 / 反推 (Text)** | [文本生成工作流](./workflows/4_text/) | `Qwen3.5 4B` | `diffusion_models/qwen3.5_4b_bf16.safetensors` | 自回归 | 4G ~ 6G | 轻量端侧 4B 语言模型、支持提示词自动扩写与图像反推提示词、数据纯本地离线保密 |
-| **5** | **全能参考视频 (Omni Video)** | [全能参考视频工作流](./workflows/5_omni_video/) | `MiniMax H3 ref2va` | **FP8版**: `diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_ref2va_bf16.safetensors`<br/>**LoRA**: `loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>**Text**: `text_encoders/qwen3vl_32b_minimax_h3...safetensors`<br/>**VAE**: `minimax_h3_video_vae_fp16`, `minimax_h3_audio_vae_fp32` | 20步 (FP8)<br/>8步 (Turbo) | 16G ~ 24G+ | 首创多模态参考（最多 9 图 + 3 视频 + 3 音频）、原生音画潜空间联合生成、0.98 MP 电影画质 |
-| **6** | **首尾帧视频 (Frame Video)** | [首尾帧视频工作流](./workflows/6_frame_video/) | `MiniMax H3 fl2va` | **FP8版**: `diffusion_models/minimax_h3_fl2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_fl2va_bf16.safetensors`<br/>**LoRA**: `loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>辅助模型同全能视频 | 20步 (FP8)<br/>8步 (Turbo) | 16G ~ 24G+ | 精准锚定起始帧与结束帧、运镜与动作平滑插值过渡、音画同步生成 |
+| **5** | **全能参考视频 (Omni Video)** | [全能参考视频工作流](./workflows/5_omni_video/) | `MiniMax H3 ref2va` | **FP8版**: `diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_ref2va_bf16.safetensors`<br/>**LoRA**: `loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>**Text**: `text_encoders/qwen3vl_32b_minimax_h3...safetensors`<br/>**VAE**: `minimax_h3_video_vae_fp16`, `minimax_h3_audio_vae_fp32` | 20步 (FP8)<br/>8步 (Turbo)<br/>20步 (BF16高精) | 16G ~ 24G+ | 首创多模态参考（最多 9 图 + 3 视频 + 3 音频）、原生音画潜空间联合生成、0.98 MP 电影画质 |
+| **6** | **首尾帧视频 (Frame Video)** | [首尾帧视频工作流](./workflows/6_frame_video/) | `MiniMax H3 fl2va` | **FP8版**: `diffusion_models/minimax_h3_fl2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_fl2va_bf16.safetensors`<br/>**LoRA**: `loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>辅助模型同全能视频 | 20步 (FP8)<br/>8步 (Turbo)<br/>20步 (BF16高精) | 16G ~ 24G+ | 精准锚定起始帧与结束帧、运镜与动作平滑插值过渡、音画同步生成 |
 
 ---
 

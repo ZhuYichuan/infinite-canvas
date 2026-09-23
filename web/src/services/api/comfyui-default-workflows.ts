@@ -7,8 +7,10 @@ import inpaintQwenImageJson from "@/assets/workflows/inpaint_qwen_image_api.json
 import textQwen35Json from "@/assets/workflows/text_qwen3_5_api.json";
 import omniVideoFp8Json from "@/assets/workflows/video_minimax_h3_omni_fp8_20step_api.json";
 import omniVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_omni_bf16_8step_turbo_api.json";
+import omniVideoBf1620StepJson from "@/assets/workflows/video_minimax_h3_omni_bf16_20step_api.json";
 import frameVideoFp8Json from "@/assets/workflows/video_minimax_h3_frame_fp8_20step_api.json";
 import frameVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_frame_bf16_8step_turbo_api.json";
+import frameVideoBf1620StepJson from "@/assets/workflows/video_minimax_h3_frame_bf16_20step_api.json";
 import qwenImage21Json from "@/assets/workflows/qwen_image_21_api.json";
 
 // Built-in single workflow definitions
@@ -60,6 +62,13 @@ export const DEFAULT_BUILTIN_COMFYUI_VIDEO_TURBO_WORKFLOW: ComfyuiWorkflow = {
     isBuiltin: true,
 };
 
+export const DEFAULT_BUILTIN_COMFYUI_VIDEO_BF16_20STEP_WORKFLOW: ComfyuiWorkflow = {
+    name: "MiniMax H3 全能参考 (BF16 20步)",
+    json: omniVideoBf1620StepJson as Record<string, unknown>,
+    createdAt: 0,
+    isBuiltin: true,
+};
+
 export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW: ComfyuiWorkflow = {
     name: "MiniMax H3 首尾帧 (FP8 20步)",
     json: frameVideoFp8Json as Record<string, unknown>,
@@ -70,6 +79,13 @@ export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW: ComfyuiWorkflow = {
 export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_TURBO_WORKFLOW: ComfyuiWorkflow = {
     name: "MiniMax H3 首尾帧 (BF16 8步极速)",
     json: frameVideoBf16TurboJson as Record<string, unknown>,
+    createdAt: 0,
+    isBuiltin: true,
+};
+
+export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_BF16_20STEP_WORKFLOW: ComfyuiWorkflow = {
+    name: "MiniMax H3 首尾帧 (BF16 20步)",
+    json: frameVideoBf1620StepJson as Record<string, unknown>,
     createdAt: 0,
     isBuiltin: true,
 };
@@ -216,6 +232,16 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             description: "MiniMax H3 全能参考视频极速版 (BF16 Turbo 8步, 适合大显存高性能显卡)",
         },
         {
+            id: `${prefix}-omni-video-minimax-h3-bf16-20step`,
+            name: "MiniMax H3 全能视频 (BF16 20步)",
+            category: "omniVideo",
+            json: DEFAULT_BUILTIN_COMFYUI_VIDEO_BF16_20STEP_WORKFLOW.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: false,
+            description: "MiniMax H3 全能参考视频高精版 (BF16 20步, 完整精度采样，画质上限最高)",
+        },
+        {
             id: `${prefix}-frame-video-minimax-h3-fp8`,
             name: "MiniMax H3 首尾帧视频 (FP8 20步)",
             category: "frameVideo",
@@ -234,6 +260,16 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             isBuiltin: true,
             isDefault: false,
             description: "MiniMax H3 首尾帧插值视频极速版 (BF16 Turbo 8步, 适合大显存高性能显卡)",
+        },
+        {
+            id: `${prefix}-frame-video-minimax-h3-bf16-20step`,
+            name: "MiniMax H3 首尾帧视频 (BF16 20步)",
+            category: "frameVideo",
+            json: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_BF16_20STEP_WORKFLOW.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: false,
+            description: "MiniMax H3 首尾帧插值视频高精版 (BF16 20步, 完整精度采样，动态演化更平滑)",
         },
     ];
 }
