@@ -73,6 +73,8 @@ export type CanvasNodeMetadata = {
     fontSize?: number;
     generationMode?: CanvasGenerationMode;
     generationType?: CanvasImageGenerationType;
+    channelId?: string;
+    workflowId?: string;
     model?: string;
     reasoningEffort?: "auto" | "low" | "medium" | "high" | "xhigh";
     size?: string;

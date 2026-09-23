@@ -2,7 +2,7 @@ import localforage from "localforage";
 
 import { nanoid } from "nanoid";
 import i18n from "@/i18n";
-import { modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig, type ChannelModel } from "@/stores/use-config-store";
+import { findWorkflow, getDefaultWorkflow, modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig, type ChannelModel, type WorkflowCategory } from "@/stores/use-config-store";
 import {
     DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
     DEFAULT_COMFYUI_I2I_WORKFLOW,
@@ -94,6 +94,156 @@ export type ComfyuiBindings = {
     refImages?: string[];
     refMask?: string;
 };
+
+/**
+ * Validate a workflow JSON against a specific WorkflowCategory under the strict _meta.title protocol.
+ */
+export function validateComfyuiWorkflow(
+    workflow: unknown,
+    category: WorkflowCategory,
+): { ok: boolean; error?: string; slots?: string[] } {
+    if (typeof workflow !== "object" || workflow === null || Array.isArray(workflow)) {
+        return { ok: false, error: "工作流 JSON 必须为对象（ComfyUI API 格式）" };
+    }
+
+    type NodeRecord = { class_type?: string; inputs?: Record<string, unknown>; _meta?: { title?: unknown } };
+    const nodes = Object.entries(workflow as Record<string, unknown>);
+    if (nodes.length === 0) {
+        return { ok: false, error: "工作流内容为空" };
+    }
+
+    const titleToNodeIds: Record<string, string[]> = {};
+    const presentTitles = new Set<string>();
+
+    for (const [nodeId, node] of nodes) {
+        if (typeof node !== "object" || node === null) continue;
+        const rec = node as NodeRecord;
+        const rawTitle = rec._meta?.title;
+        if (typeof rawTitle !== "string") continue;
+        const title = rawTitle.trim().toLowerCase();
+        if (!title) continue;
+        presentTitles.add(title);
+        if (!titleToNodeIds[title]) titleToNodeIds[title] = [];
+        titleToNodeIds[title].push(nodeId);
+    }
+
+    // 1. 保留槽位唯一性检查
+    const RESERVED_SINGLE_SLOTS = [
+        "prompt", "seed", "width", "height", "duration",
+        "first_frame", "last_frame", "ref_mask", "mask", "ref_mask_01",
+        "output_image", "output_video", "output_text",
+    ];
+
+    for (const slot of RESERVED_SINGLE_SLOTS) {
+        if (titleToNodeIds[slot] && titleToNodeIds[slot].length > 1) {
+            return { ok: false, error: `保留槽位 "${slot}" 标记了多个节点（节点 ID: ${titleToNodeIds[slot].join(", ")}），必须保持唯一` };
+        }
+    }
+
+    for (const [title, ids] of Object.entries(titleToNodeIds)) {
+        if (/^(ref_image_\d+|ref_video_\d+|ref_audio_\d+)$/.test(title) && ids.length > 1) {
+            return { ok: false, error: `参考槽位 "${title}" 标记了多个节点（节点 ID: ${ids.join(", ")}），必须保持唯一` };
+        }
+    }
+
+    // 2. 输出标记检查
+    const hasOutputImage = Boolean(titleToNodeIds["output_image"]?.length);
+    const hasOutputVideo = Boolean(titleToNodeIds["output_video"]?.length);
+    const hasOutputText = Boolean(titleToNodeIds["output_text"]?.length);
+
+    if (category === "t2i" || category === "i2i" || category === "inpaint") {
+        if (!hasOutputImage) {
+            return { ok: false, error: "生图工作流缺少 \"output_image\" 标记（请在 SaveImage 等保存节点上标记 _meta.title 为 output_image）" };
+        }
+        if (hasOutputVideo || hasOutputText) {
+            return { ok: false, error: "生图工作流不得包含 output_video 或 output_text 标记" };
+        }
+    } else if (category === "omniVideo" || category === "frameVideo") {
+        if (!hasOutputVideo) {
+            return { ok: false, error: "生视频工作流缺少 \"output_video\" 标记（请在 SaveVideo 或 VHS_VideoCombine 保存节点上标记 _meta.title 为 output_video）" };
+        }
+        if (hasOutputImage || hasOutputText) {
+            return { ok: false, error: "生视频工作流不得包含 output_image 或 output_text 标记" };
+        }
+    } else if (category === "text") {
+        if (!hasOutputText) {
+            return { ok: false, error: "文本工作流缺少 \"output_text\" 标记（请在保存/展示节点上标记 _meta.title 为 output_text）" };
+        }
+        if (hasOutputImage || hasOutputVideo) {
+            return { ok: false, error: "文本工作流不得包含 output_image 或 output_video 标记" };
+        }
+    }
+
+    // 3. 各分类针对性槽位检查
+    const hasPrompt = Boolean(titleToNodeIds["prompt"]?.length);
+    const hasRefMask = Boolean(titleToNodeIds["ref_mask"]?.length || titleToNodeIds["mask"]?.length || titleToNodeIds["ref_mask_01"]?.length);
+    const hasFirstFrame = Boolean(titleToNodeIds["first_frame"]?.length);
+    const hasLastFrame = Boolean(titleToNodeIds["last_frame"]?.length);
+    const hasRefImage = Array.from(presentTitles).some((t) => /^ref_image(_\d+)?$/.test(t));
+    const hasRefVideo = Array.from(presentTitles).some((t) => /^ref_video(_\d+)?$/.test(t));
+    const hasRefAudio = Array.from(presentTitles).some((t) => /^ref_audio(_\d+)?$/.test(t));
+
+    switch (category) {
+        case "t2i":
+            if (!hasPrompt) {
+                return { ok: false, error: "文生图工作流缺少 \"prompt\" 提示词槽位节点" };
+            }
+            if (hasRefMask) {
+                return { ok: false, error: "文生图工作流不应包含 \"ref_mask\" 局部重绘槽位（如需局部重绘，请添加为局部编辑工作流）" };
+            }
+            if (hasFirstFrame || hasLastFrame) {
+                return { ok: false, error: "文生图工作流不应包含 first_frame / last_frame 首尾帧槽位" };
+            }
+            break;
+
+        case "i2i":
+            if (!hasPrompt) {
+                return { ok: false, error: "图生图工作流缺少 \"prompt\" 提示词槽位节点" };
+            }
+            if (!hasRefImage) {
+                return { ok: false, error: "图生图工作流缺少参考图槽位（至少需标记一个 \"ref_image_01\" 槽位节点）" };
+            }
+            if (hasRefMask) {
+                return { ok: false, error: "图生图工作流不应包含 \"ref_mask\" 局部重绘槽位" };
+            }
+            break;
+
+        case "inpaint":
+            if (!hasRefMask) {
+                return { ok: false, error: "局部编辑工作流缺少 \"ref_mask\" 遮罩槽位节点" };
+            }
+            if (!hasRefImage) {
+                return { ok: false, error: "局部编辑工作流缺少 \"ref_image_01\" 底图槽位节点" };
+            }
+            break;
+
+        case "text":
+            if (!hasPrompt) {
+                return { ok: false, error: "文本工作流缺少 \"prompt\" 提示词/指令槽位节点" };
+            }
+            break;
+
+        case "omniVideo":
+            if (!hasPrompt) {
+                return { ok: false, error: "全能参考视频工作流缺少 \"prompt\" 提示词槽位节点" };
+            }
+            if (hasFirstFrame || hasLastFrame) {
+                return { ok: false, error: "全能参考视频工作流不应包含 first_frame / last_frame 首尾帧槽位（请添加为首尾帧视频工作流）" };
+            }
+            break;
+
+        case "frameVideo":
+            if (!hasFirstFrame || !hasLastFrame) {
+                return { ok: false, error: "首尾帧视频工作流必须同时包含 \"first_frame\" 与 \"last_frame\" 槽位节点" };
+            }
+            if (hasRefVideo || hasRefAudio) {
+                return { ok: false, error: "首尾帧视频工作流不支持参考视频或参考音频槽位" };
+            }
+            break;
+    }
+
+    return { ok: true, slots: Array.from(presentTitles) };
+}
 
 /** Generate a random safe integer seed for ComfyUI nodes (15-digit safe integer). */
 export function generateRandomSeed(): number {
@@ -815,6 +965,8 @@ export interface ComfyuiImageRequest {
     seed?: number;
     jobId?: string;
     references?: ReferenceImage[];
+    channelId?: string;
+    workflowId?: string;
     signal?: AbortSignal;
     onProgress?: (status: string, detail?: Record<string, unknown>) => void;
 }
@@ -898,7 +1050,17 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
         const channelModel = channel.models.find((model) => model.name === requestModel);
         const references = req.references || [];
         const isI2i = references.length > 0;
-        const workflow = isI2i
+        const category: WorkflowCategory = isI2i ? "i2i" : "t2i";
+        const channelId = req.channelId || req.config.channelId || channel.id;
+        const workflowId = req.workflowId || req.config.workflowId;
+        const targetWorkflowItem = workflowId
+            ? findWorkflow(req.config, channelId, workflowId, category)
+            : Array.isArray(channel.workflows)
+              ? getDefaultWorkflow(channel, category)
+              : undefined;
+        const workflow = targetWorkflowItem
+            ? { json: targetWorkflowItem.json }
+            : isI2i
             ? (channelModel && isI2iWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiI2iWorkflow ||
               channel.models.find((m) => isI2iWorkflowModel(m))?.comfyuiWorkflow
@@ -1016,6 +1178,8 @@ export interface ComfyuiInpaintRequest {
     prompt: string;
     sourceDataUrl: string;
     maskDataUrl: string;
+    channelId?: string;
+    workflowId?: string;
     seed?: number;
     jobId?: string;
     signal?: AbortSignal;
@@ -1031,10 +1195,19 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
         const channel = resolveModelChannel(req.config, rawModel);
         const requestModel = modelOptionName(rawModel);
         const channelModel = channel.models.find((model) => model.name === requestModel);
+        const channelId = req.channelId || req.config.channelId || channel.id;
+        const workflowId = req.workflowId || req.config.workflowId;
+        const targetWorkflowItem = workflowId
+            ? findWorkflow(req.config, channelId, workflowId, "inpaint")
+            : Array.isArray(channel.workflows)
+              ? getDefaultWorkflow(channel, "inpaint")
+              : undefined;
         const inpaintWorkflow =
-            (channelModel && isInpaintWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
-            channel.comfyuiInpaintWorkflow ||
-            channel.models.find((m) => isInpaintWorkflowModel(m))?.comfyuiWorkflow;
+            targetWorkflowItem
+                ? { json: targetWorkflowItem.json }
+                : (channelModel && isInpaintWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
+                  channel.comfyuiInpaintWorkflow ||
+                  channel.models.find((m) => isInpaintWorkflowModel(m))?.comfyuiWorkflow;
         if (!inpaintWorkflow) {
             throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noInpaintWorkflow"));
         }
@@ -1380,6 +1553,8 @@ export interface ComfyuiTextRequest {
     prompt: string;
     model?: string;
     imageDataUrl?: string;
+    channelId?: string;
+    workflowId?: string;
     seed?: number;
     jobId?: string;
     signal?: AbortSignal;
@@ -1396,10 +1571,19 @@ export async function requestComfyuiText(req: ComfyuiTextRequest): Promise<{ tex
         const channel = resolveModelChannel(req.config, rawModel);
         const requestModel = modelOptionName(rawModel);
         const channelModel = channel.models.find((model) => model.name === requestModel);
+        const channelId = req.channelId || req.config.channelId || channel.id;
+        const workflowId = req.workflowId || req.config.workflowId;
+        const targetWorkflowItem = workflowId
+            ? findWorkflow(req.config, channelId, workflowId, "text")
+            : Array.isArray(channel.workflows)
+              ? getDefaultWorkflow(channel, "text")
+              : undefined;
         const textWorkflow =
-            (channelModel && isTextWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
-            channel.comfyuiTextWorkflow ||
-            channel.models.find((m) => isTextWorkflowModel(m))?.comfyuiWorkflow;
+            targetWorkflowItem
+                ? { json: targetWorkflowItem.json }
+                : (channelModel && isTextWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
+                  channel.comfyuiTextWorkflow ||
+                  channel.models.find((m) => isTextWorkflowModel(m))?.comfyuiWorkflow;
 
         if (!textWorkflow) {
             throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noTextWorkflow"));
@@ -1809,6 +1993,8 @@ export interface ComfyuiVideoRequest {
     firstFrame?: ReferenceImage;
     lastFrame?: ReferenceImage;
     videoMode?: "omni" | "frame";
+    channelId?: string;
+    workflowId?: string;
     seed?: number;
     signal?: AbortSignal;
     jobId?: string;
@@ -1821,13 +2007,24 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const requestModel = modelOptionName(rawModel);
     const channelModel = channel.models.find((model) => model.name === requestModel);
     const videoMode = req.videoMode || (req.config.videoMode === "frame" ? "frame" : "omni");
-    const videoWorkflow = videoMode === "frame"
-        ? (channelModel && isFrameVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
-          channel.comfyuiFrameVideoWorkflow ||
-          channel.models.find((m) => isFrameVideoWorkflowModel(m))?.comfyuiWorkflow
-        : (channelModel && isOmniVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
-          channel.comfyuiVideoWorkflow ||
-          channel.models.find((m) => isOmniVideoWorkflowModel(m))?.comfyuiWorkflow;
+    const category: WorkflowCategory = videoMode === "frame" ? "frameVideo" : "omniVideo";
+    const channelId = req.channelId || req.config.channelId || channel.id;
+    const workflowId = req.workflowId || req.config.workflowId;
+    const targetWorkflowItem = workflowId
+        ? findWorkflow(req.config, channelId, workflowId, category)
+        : Array.isArray(channel.workflows)
+          ? getDefaultWorkflow(channel, category)
+          : undefined;
+    const videoWorkflow =
+        targetWorkflowItem
+            ? { json: targetWorkflowItem.json }
+            : videoMode === "frame"
+            ? (channelModel && isFrameVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
+              channel.comfyuiFrameVideoWorkflow ||
+              channel.models.find((m) => isFrameVideoWorkflowModel(m))?.comfyuiWorkflow
+            : (channelModel && isOmniVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
+              channel.comfyuiVideoWorkflow ||
+              channel.models.find((m) => isOmniVideoWorkflowModel(m))?.comfyuiWorkflow;
 
     if (!videoWorkflow) {
         throw new ComfyuiNoWorkflowError(i18n.t(videoMode === "frame" ? "comfyui.noFrameVideoWorkflow" : "comfyui.noVideoWorkflow"));

@@ -2213,7 +2213,14 @@ function InfiniteCanvasPage() {
     const maskEditImageNode = useCallback(
         async (node: CanvasNodeData, payload: CanvasImageMaskEditPayload) => {
             if (!node.metadata?.content) return;
-            const generationConfig = { ...buildGenerationConfig(effectiveConfig, node, "image"), count: "1", size: node.metadata?.size || "auto", ...(payload.model ? { model: payload.model, imageModel: payload.model } : {}) };
+            const generationConfig = {
+                ...buildGenerationConfig(effectiveConfig, node, "image"),
+                count: "1",
+                size: node.metadata?.size || "auto",
+                ...(payload.model ? { model: payload.model, imageModel: payload.model } : {}),
+                ...(payload.channelId ? { channelId: payload.channelId } : {}),
+                ...(payload.workflowId ? { workflowId: payload.workflowId } : {}),
+            };
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog(true);
                 return;
@@ -2233,7 +2240,13 @@ function InfiniteCanvasPage() {
                     position: { x: node.position.x + node.width + 96, y: node.position.y },
                     width: node.width,
                     height: node.height,
-                    metadata: { prompt, status: NODE_STATUS_LOADING, ...generationMetadata },
+                    metadata: {
+                        prompt,
+                        status: NODE_STATUS_LOADING,
+                        channelId: payload.channelId || node.metadata?.channelId,
+                        workflowId: payload.workflowId || node.metadata?.workflowId,
+                        ...generationMetadata,
+                    },
                 },
             ]);
             setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId, kind: "input" }]);
@@ -2644,6 +2657,8 @@ function InfiniteCanvasPage() {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata) : {}),
                             prompt,
                             effectivePrompt,
+                            channelId: sourceNode?.metadata?.channelId,
+                            workflowId: sourceNode?.metadata?.workflowId,
                             status: NODE_STATUS_LOADING,
                             jobId: undefined,
                             isTimeout: undefined,
@@ -2925,6 +2940,8 @@ function InfiniteCanvasPage() {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata) : {}),
                             prompt,
                             effectivePrompt,
+                            channelId: sourceNode?.metadata?.channelId,
+                            workflowId: sourceNode?.metadata?.workflowId,
                             status: NODE_STATUS_LOADING,
                             model: generationConfig.model,
                             size: generationConfig.size,
@@ -3087,6 +3104,8 @@ function InfiniteCanvasPage() {
                         ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata) : {}),
                         prompt,
                         effectivePrompt,
+                        channelId: sourceNode?.metadata?.channelId,
+                        workflowId: sourceNode?.metadata?.workflowId,
                         status: NODE_STATUS_LOADING,
                         fontSize: sourceNode?.metadata?.fontSize || 14,
                         model: generationConfig.model,
@@ -4102,7 +4121,16 @@ function InfiniteCanvasPage() {
                 {cropNode?.metadata?.content ? <CanvasNodeCropDialog dataUrl={cropNode.metadata.content} open={Boolean(cropNode)} onClose={() => setCropNodeId(null)} onConfirm={(crop) => void cropImageNode(cropNode!, crop)} /> : null}
 
                 {maskEditNode?.metadata?.content ? (
-                    <CanvasNodeMaskEditDialog dataUrl={maskEditNode.metadata.content} open={Boolean(maskEditNode)} onClose={() => setMaskEditNodeId(null)} onConfirm={(payload) => void maskEditImageNode(maskEditNode!, payload)} inpaintOptions={inpaintOptions} defaultModel={effectiveConfig.imageModel} />
+                    <CanvasNodeMaskEditDialog
+                        dataUrl={maskEditNode.metadata.content}
+                        open={Boolean(maskEditNode)}
+                        onClose={() => setMaskEditNodeId(null)}
+                        onConfirm={(payload) => void maskEditImageNode(maskEditNode!, payload)}
+                        inpaintOptions={inpaintOptions}
+                        defaultModel={effectiveConfig.imageModel}
+                        defaultChannelId={maskEditNode.metadata.channelId}
+                        defaultWorkflowId={maskEditNode.metadata.workflowId}
+                    />
                 ) : null}
 
                 {splitNode?.metadata?.content ? <CanvasNodeSplitDialog dataUrl={splitNode.metadata.content} open={Boolean(splitNode)} onClose={() => setSplitNodeId(null)} onConfirm={(params) => void splitImageNode(splitNode!, params)} /> : null}

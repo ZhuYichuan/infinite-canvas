@@ -1,0 +1,560 @@
+{
+  "1": {
+    "inputs": {
+      "filename_prefix": "video/MiniMax_H3",
+      "format": "auto",
+      "format.codec": "auto",
+      "codec": "auto",
+      "video": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "output_video"
+    }
+  },
+  "5": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "6": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": [
+        "11",
+        1
+      ],
+      "vae": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE解码（音频）"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "9": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "K采样器选择"
+    }
+  },
+  "10": {
+    "inputs": {
+      "scheduler": "simple",
+      "steps": [
+        "74",
+        0
+      ],
+      "denoise": 1,
+      "model": [
+        "85",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "基本调度器"
+    }
+  },
+  "11": {
+    "inputs": {
+      "noise": [
+        "15",
+        0
+      ],
+      "guider": [
+        "12",
+        0
+      ],
+      "sampler": [
+        "9",
+        0
+      ],
+      "sigmas": [
+        "10",
+        0
+      ],
+      "latent_image": [
+        "17",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "自定义采样器（高级）"
+    }
+  },
+  "12": {
+    "inputs": {
+      "model": [
+        "85",
+        0
+      ],
+      "conditioning": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "基本引导器"
+    }
+  },
+  "13": {
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_pruned_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "14": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "15": {
+    "inputs": {
+      "noise_seed": [
+        "125",
+        0
+      ]
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "随机噪波"
+    }
+  },
+  "16": {
+    "inputs": {
+      "fps": 24,
+      "bit_depth": 8,
+      "color_space": "sRGB",
+      "codec": "none",
+      "images": [
+        "8",
+        0
+      ],
+      "audio": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "创建视频"
+    }
+  },
+  "17": {
+    "inputs": {
+      "prompt": [
+        "18",
+        0
+      ],
+      "width": [
+        "120",
+        0
+      ],
+      "height": [
+        "121",
+        0
+      ],
+      "length": [
+        "126",
+        1
+      ],
+      "ref_image_size": "match",
+      "clip": [
+        "14",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "audio_vae": [
+        "6",
+        0
+      ],
+      "ref_images.ref_image_0": [
+        "21",
+        0
+      ],
+      "ref_images.ref_image_1": [
+        "68",
+        0
+      ],
+      "ref_images.ref_image_2": [
+        "69",
+        0
+      ],
+      "ref_images.ref_image_3": [
+        "93",
+        0
+      ],
+      "ref_images.ref_image_4": [
+        "94",
+        0
+      ],
+      "ref_images.ref_image_5": [
+        "92",
+        0
+      ],
+      "ref_images.ref_image_6": [
+        "98",
+        0
+      ],
+      "ref_videos.ref_video_0": [
+        "100",
+        0
+      ],
+      "ref_videos.ref_video_1": [
+        "103",
+        0
+      ],
+      "ref_videos.ref_video_2": [
+        "106",
+        0
+      ],
+      "ref_audios.ref_audio_0": [
+        "108",
+        0
+      ],
+      "ref_audios.ref_audio_1": [
+        "110",
+        0
+      ],
+      "ref_audios.ref_audio_2": [
+        "112",
+        0
+      ],
+      "ref_images.ref_image_7": [
+        "96",
+        0
+      ],
+      "ref_images.ref_image_8": [
+        "97",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3ReferenceToVideo",
+    "_meta": {
+      "title": "MiniMax H3 参考转视频"
+    }
+  },
+  "18": {
+    "inputs": {
+      "value": "图片1 开始下雪"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "prompt"
+    }
+  },
+  "21": {
+    "inputs": {
+      "image": "1970年破旧小院.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_01"
+    }
+  },
+  "68": {
+    "inputs": {
+      "image": "ComfyUI-close_up_00004_.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_02"
+    }
+  },
+  "69": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_03"
+    }
+  },
+  "74": {
+    "inputs": {
+      "value": 20
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "4步"
+    }
+  },
+  "76": {
+    "inputs": {
+      "shift_video": 16,
+      "shift_audio": 4,
+      "model": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3SigmaShift",
+    "_meta": {
+      "title": "MiniMax H3 Sigma Shift"
+    }
+  },
+  "85": {
+    "inputs": {
+      "reuse_threshold": 0.2,
+      "start_percent": 0.15,
+      "end_percent": 0.95,
+      "verbose": true,
+      "model": [
+        "76",
+        0
+      ]
+    },
+    "class_type": "EasyCache",
+    "_meta": {
+      "title": "EasyCache"
+    }
+  },
+  "92": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_06"
+    }
+  },
+  "93": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_04"
+    }
+  },
+  "94": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_05"
+    }
+  },
+  "96": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_08"
+    }
+  },
+  "97": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_09"
+    }
+  },
+  "98": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_07"
+    }
+  },
+  "99": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_01"
+    }
+  },
+  "100": {
+    "inputs": {
+      "video": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "102": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_02"
+    }
+  },
+  "103": {
+    "inputs": {
+      "video": [
+        "102",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "105": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_03"
+    }
+  },
+  "106": {
+    "inputs": {
+      "video": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "108": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_01"
+    }
+  },
+  "110": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_02"
+    }
+  },
+  "112": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_03"
+    }
+  },
+  "120": {
+    "inputs": {
+      "Number": "544"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "121": {
+    "inputs": {
+      "Number": "960"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "125": {
+    "inputs": {
+      "value": 3
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "seed"
+    }
+  },
+  "126": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "127",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "数学表达式"
+    }
+  },
+  "127": {
+    "inputs": {
+      "value": 14
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "duration"
+    }
+  }
+}

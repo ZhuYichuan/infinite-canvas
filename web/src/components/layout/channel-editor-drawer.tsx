@@ -1,12 +1,31 @@
-import { App, Button, Drawer, Input, Space } from "antd";
-import { useEffect, useState } from "react";
+import { App, Button, Drawer, Input, Space, Popconfirm, Tag, Tooltip } from "antd";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, Plus, Trash2, Check, RotateCcw, Upload, FileCode, CheckCircle2 } from "lucide-react";
+import { nanoid } from "nanoid";
 
-import { checkComfyuiConnection, isMixedContentHttp, notifyMixedContentBlocked } from "@/services/api/comfyui";
-import { normalizeChannelModels, type ChannelModel, type ComfyuiWorkflow, type ModelChannel } from "@/stores/use-config-store";
-import { getDefaultComfyuiWorkflows } from "@/services/api/comfyui-default-workflows";
-import { ComfyuiWorkflowEditor } from "./comfyui-workflow-editor";
+import { checkComfyuiConnection, isMixedContentHttp, notifyMixedContentBlocked, validateComfyuiWorkflow } from "@/services/api/comfyui";
+import {
+    normalizeChannelModels,
+    type ComfyWorkflowItem,
+    type WorkflowCategory,
+    type ModelChannel,
+} from "@/stores/use-config-store";
+import { getDefaultComfyWorkflowItems } from "@/services/api/comfyui-default-workflows";
+
+const WORKFLOW_CATEGORIES: Array<{ key: WorkflowCategory; title: string; desc: string }> = [
+    { key: "t2i", title: "文生图工作流", desc: "文本生成图像（必标 prompt、output_image）" },
+    { key: "i2i", title: "图生图工作流", desc: "参考图垫图生成（必标 prompt、ref_image_01、output_image）" },
+    { key: "inpaint", title: "局部编辑工作流", desc: "遮罩重绘修图（必标 ref_image_01、ref_mask、output_image）" },
+    { key: "text", title: "文本生成工作流", desc: "大语言模型问答与反推（必标 prompt、output_text）" },
+    { key: "omniVideo", title: "全能参考视频工作流", desc: "多模态参考生视频（必标 prompt、output_video）" },
+    { key: "frameVideo", title: "首尾帧视频工作流", desc: "首尾关键帧生视频（必标 first_frame、last_frame、output_video）" },
+];
+
+function formatWorkflowSize(json: Record<string, unknown>) {
+    const bytes = JSON.stringify(json).length;
+    return bytes < 1024 ? `${bytes}B` : `${(bytes / 1024).toFixed(1)}KB`;
+}
 
 export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: boolean; channel: ModelChannel | null; onSave: (channel: ModelChannel) => void; onClose: () => void }) {
     type ProxyFieldErrors = { url?: string; token?: string };
@@ -15,6 +34,9 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const [proxyErrors, setProxyErrors] = useState<ProxyFieldErrors>({});
     const [testingConnection, setTestingConnection] = useState(false);
     const { message } = App.useApp();
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const pendingCategoryRef = useRef<WorkflowCategory | null>(null);
 
     const handleTestConnection = async () => {
         const url = (draft?.comfyuiProxyUrl || "").trim() || "http://127.0.0.1:8188";
@@ -35,7 +57,9 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
 
     useEffect(() => {
         if (open && channel) {
-            setDraft(channel);
+            const defaults = getDefaultComfyWorkflowItems(channel);
+            const workflows = Array.isArray(channel.workflows) && channel.workflows.length > 0 ? channel.workflows : defaults;
+            setDraft({ ...channel, workflows });
             setProxyErrors({});
         }
     }, [open, channel]);
@@ -43,68 +67,86 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     if (!draft) return null;
 
     const patch = (value: Partial<ModelChannel>) => setDraft((current) => (current ? { ...current, ...value } : current));
-    const setModels = (models: ChannelModel[]) => patch({ models });
 
-    const setComfyuiInpaintWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
-        setDraft((current) => {
-            if (!current) return current;
-            const models = current.models.map((m) =>
-                m.name === "ComfyUI Inpaint" || m.name.toLowerCase().includes("inpaint") || m.name.includes("局部编辑")
-                    ? { ...m, comfyuiWorkflow: workflow }
-                    : m,
-            );
-            return { ...current, comfyuiInpaintWorkflow: workflow, models };
-        });
+    const currentWorkflows: ComfyWorkflowItem[] = Array.isArray(draft.workflows) && draft.workflows.length > 0
+        ? draft.workflows
+        : getDefaultComfyWorkflowItems(draft);
+
+    const setWorkflows = (workflows: ComfyWorkflowItem[]) => {
+        patch({ workflows });
     };
-    const setComfyuiTextWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
-        setDraft((current) => {
-            if (!current) return current;
-            const models = current.models.map((m) =>
-                m.name === "ComfyUI LLM" || m.capability === "text"
-                    ? { ...m, comfyuiWorkflow: workflow }
-                    : m,
-            );
-            return { ...current, comfyuiTextWorkflow: workflow, models };
-        });
+
+    const handleTriggerUpload = (category: WorkflowCategory) => {
+        pendingCategoryRef.current = category;
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+            fileInputRef.current.click();
+        }
     };
-    const setComfyuiVideoWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
-        setDraft((current) => {
-            if (!current) return current;
-            const models = current.models.map((m) =>
-                m.name === "ComfyUI Video" ? { ...m, comfyuiWorkflow: workflow } : m,
-            );
-            return { ...current, comfyuiVideoWorkflow: workflow, models };
-        });
+
+    const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        const category = pendingCategoryRef.current;
+        if (!file || !category) return;
+        try {
+            const text = await file.text();
+            const parsed: unknown = JSON.parse(text);
+            const validation = validateComfyuiWorkflow(parsed, category);
+            if (!validation.ok) {
+                message.error(`工作流协议校验失败: ${validation.error}`);
+                return;
+            }
+
+            const rawName = file.name.replace(/\.[^/.]+$/, "");
+            const existingInCat = currentWorkflows.filter((w) => w.category === category);
+            const newWorkflow: ComfyWorkflowItem = {
+                id: nanoid(),
+                name: rawName || `${category}-workflow-${existingInCat.length + 1}`,
+                category,
+                json: parsed as Record<string, unknown>,
+                createdAt: Date.now(),
+                isBuiltin: false,
+                isDefault: existingInCat.length === 0,
+            };
+
+            setWorkflows([...currentWorkflows, newWorkflow]);
+            message.success(`成功添加工作流 "${newWorkflow.name}"！`);
+        } catch {
+            message.error("解析文件失败，请确保上传的是有效的 JSON 格式工作流");
+        }
     };
-    const setComfyuiFrameVideoWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
-        setDraft((current) => {
-            if (!current) return current;
-            const targetName = current.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"))?.name || "ComfyUI Frame Video";
-            const models = current.models.some((m) => m.name === targetName)
-                ? current.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
-                : [...current.models, { name: targetName, capability: "video" as const, comfyuiWorkflow: workflow }];
-            return { ...current, comfyuiFrameVideoWorkflow: workflow, models };
+
+    const handleSetDefault = (category: WorkflowCategory, id: string) => {
+        const next = currentWorkflows.map((w) => {
+            if (w.category === category) {
+                return { ...w, isDefault: w.id === id };
+            }
+            return w;
         });
+        setWorkflows(next);
+        message.success("已更新默认工作流");
     };
-    const setComfyuiI2iWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
-        setDraft((current) => {
-            if (!current) return current;
-            const targetName = current.models.find((m) => m.name === "ComfyUI I2I")?.name || "ComfyUI I2I";
-            const models = current.models.some((m) => m.name === targetName)
-                ? current.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
-                : [...current.models, { name: targetName, capability: "image" as const, comfyuiWorkflow: workflow }];
-            return { ...current, comfyuiI2iWorkflow: workflow, models };
-        });
+
+    const handleRemove = (category: WorkflowCategory, id: string) => {
+        const target = currentWorkflows.find((w) => w.id === id);
+        if (target?.isBuiltin) {
+            message.warning("系统内置工作流不可删除");
+            return;
+        }
+        const filtered = currentWorkflows.filter((w) => w.id !== id);
+        const remainingInCat = filtered.filter((w) => w.category === category);
+        if (target?.isDefault && remainingInCat.length > 0) {
+            remainingInCat[0].isDefault = true;
+        }
+        setWorkflows(filtered);
+        message.success("工作流已删除");
     };
-    const setComfyuiT2iWorkflow = (workflow: ComfyuiWorkflow | undefined) => {
-        setDraft((current) => {
-            if (!current) return current;
-            const targetName = current.models.find((m) => m.name === "ComfyUI T2I")?.name || current.models[0]?.name || "ComfyUI T2I";
-            const models = current.models.some((m) => m.name === targetName)
-                ? current.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
-                : [...current.models, { name: targetName, capability: "image" as const, comfyuiWorkflow: workflow }];
-            return { ...current, comfyuiT2iWorkflow: workflow, models };
-        });
+
+    const handleResetCategory = (category: WorkflowCategory) => {
+        const defaults = getDefaultComfyWorkflowItems(draft).filter((w) => w.category === category);
+        const others = currentWorkflows.filter((w) => w.category !== category);
+        setWorkflows([...others, ...defaults]);
+        message.success("已恢复内置默认工作流");
     };
 
     const save = () => {
@@ -120,11 +162,27 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         }
         setProxyErrors(errors);
         if (Object.keys(errors).length) return;
+
+        const savedWorkflows = currentWorkflows;
+        const t2iDef = savedWorkflows.find((w) => w.category === "t2i" && w.isDefault) || savedWorkflows.find((w) => w.category === "t2i");
+        const i2iDef = savedWorkflows.find((w) => w.category === "i2i" && w.isDefault) || savedWorkflows.find((w) => w.category === "i2i");
+        const inpaintDef = savedWorkflows.find((w) => w.category === "inpaint" && w.isDefault) || savedWorkflows.find((w) => w.category === "inpaint");
+        const textDef = savedWorkflows.find((w) => w.category === "text" && w.isDefault) || savedWorkflows.find((w) => w.category === "text");
+        const videoDef = savedWorkflows.find((w) => w.category === "omniVideo" && w.isDefault) || savedWorkflows.find((w) => w.category === "omniVideo");
+        const frameDef = savedWorkflows.find((w) => w.category === "frameVideo" && w.isDefault) || savedWorkflows.find((w) => w.category === "frameVideo");
+
         onSave({
             ...draft,
             name: draft.name.trim() || t("config.channels.unnamed"),
             comfyuiProxyUrl: proxyUrl,
+            workflows: savedWorkflows,
             models: normalizeChannelModels(draft.models),
+            comfyuiT2iWorkflow: t2iDef ? { name: t2iDef.name, json: t2iDef.json, createdAt: t2iDef.createdAt } : undefined,
+            comfyuiI2iWorkflow: i2iDef ? { name: i2iDef.name, json: i2iDef.json, createdAt: i2iDef.createdAt } : undefined,
+            comfyuiInpaintWorkflow: inpaintDef ? { name: inpaintDef.name, json: inpaintDef.json, createdAt: inpaintDef.createdAt } : undefined,
+            comfyuiTextWorkflow: textDef ? { name: textDef.name, json: textDef.json, createdAt: textDef.createdAt } : undefined,
+            comfyuiVideoWorkflow: videoDef ? { name: videoDef.name, json: videoDef.json, createdAt: videoDef.createdAt } : undefined,
+            comfyuiFrameVideoWorkflow: frameDef ? { name: frameDef.name, json: frameDef.json, createdAt: frameDef.createdAt } : undefined,
         });
         onClose();
     };
@@ -132,7 +190,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     return (
         <Drawer
             open={open}
-            width={640}
+            width={680}
             title={t("config.channelEditor.title")}
             onClose={onClose}
             styles={{ body: { paddingTop: 16 } }}
@@ -207,99 +265,119 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                 </label>
             </div>
 
-            {draft.apiFormat === "comfyui" && (() => {
-                const defaultWorkflows = getDefaultComfyuiWorkflows(draft);
-                return (
-                    <>
-                        <div className="mt-5 space-y-2">
-                            <div>
-                                <div className="text-sm font-semibold">{t("config.channelEditor.t2iWorkflowTitle")}</div>
-                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.t2iWorkflowDesc")}</div>
-                            </div>
-                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                                <ComfyuiWorkflowEditor
-                                    value={draft.comfyuiT2iWorkflow || draft.models.find((m) => m.name === "ComfyUI T2I")?.comfyuiWorkflow || draft.models[0]?.comfyuiWorkflow}
-                                    defaultWorkflow={defaultWorkflows.t2i}
-                                    onChange={setComfyuiT2iWorkflow}
-                                />
-                            </div>
-                        </div>
+            <div className="mt-6 border-t border-stone-200 pt-5 dark:border-stone-800">
+                <div className="mb-4">
+                    <div className="text-base font-semibold">工作流管理（6 大分类）</div>
+                    <div className="mt-0.5 text-xs text-stone-500">
+                        每个分类下可添加多个独立工作流。上传时需包含完整的 <code>_meta.title</code> 槽位协议标注。
+                    </div>
+                </div>
 
-                        <div className="mt-5 space-y-2">
-                            <div>
-                                <div className="text-sm font-semibold">{t("config.channelEditor.i2iWorkflowTitle")}</div>
-                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.i2iWorkflowDesc")}</div>
-                            </div>
-                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                                <ComfyuiWorkflowEditor
-                                    value={draft.comfyuiI2iWorkflow || draft.models.find((m) => m.name === "ComfyUI I2I")?.comfyuiWorkflow}
-                                    defaultWorkflow={defaultWorkflows.i2i}
-                                    onChange={setComfyuiI2iWorkflow}
-                                />
-                            </div>
-                        </div>
+                <div className="space-y-5">
+                    {WORKFLOW_CATEGORIES.map((cat) => {
+                        const items = currentWorkflows.filter((w) => w.category === cat.key);
+                        return (
+                            <div key={cat.key} className="rounded-xl border border-stone-200/80 bg-stone-50/50 p-3.5 dark:border-stone-800 dark:bg-stone-900/30">
+                                <div className="mb-2.5 flex items-center justify-between gap-2">
+                                    <div>
+                                        <div className="text-sm font-semibold text-stone-800 dark:text-stone-200">{cat.title}</div>
+                                        <div className="text-[11px] text-stone-500">{cat.desc}</div>
+                                    </div>
+                                    <Space size="small">
+                                        <Button
+                                            size="small"
+                                            icon={<Plus className="size-3.5" />}
+                                            onClick={() => handleTriggerUpload(cat.key)}
+                                        >
+                                            添加工作流
+                                        </Button>
+                                        <Tooltip title="重置回系统内置默认工作流">
+                                            <Button
+                                                size="small"
+                                                icon={<RotateCcw className="size-3" />}
+                                                onClick={() => handleResetCategory(cat.key)}
+                                            />
+                                        </Tooltip>
+                                    </Space>
+                                </div>
 
-                        <div className="mt-5 space-y-2">
-                            <div>
-                                <div className="text-sm font-semibold">{t("config.channelEditor.inpaintWorkflowTitle")}</div>
-                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.inpaintWorkflowDesc")}</div>
-                            </div>
-                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                                <ComfyuiWorkflowEditor
-                                    value={draft.comfyuiInpaintWorkflow || draft.models.find((m) => m.name === "ComfyUI Inpaint")?.comfyuiWorkflow}
-                                    defaultWorkflow={defaultWorkflows.inpaint}
-                                    onChange={setComfyuiInpaintWorkflow}
-                                />
-                            </div>
-                        </div>
+                                <div className="space-y-1.5">
+                                    {items.length === 0 ? (
+                                        <div className="rounded-lg border border-dashed border-stone-200 py-3 text-center text-xs text-stone-400 dark:border-stone-800">
+                                            暂无工作流，请点击右上角添加
+                                        </div>
+                                    ) : (
+                                        items.map((item) => (
+                                            <div
+                                                key={item.id}
+                                                className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs transition ${
+                                                    item.isDefault
+                                                        ? "border-blue-300 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-950/20"
+                                                        : "border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-950/40"
+                                                }`}
+                                            >
+                                                <div className="min-w-0 flex-1 truncate">
+                                                    <div className="flex items-center gap-1.5 font-medium text-stone-800 dark:text-stone-200">
+                                                        <FileCode className="size-3.5 shrink-0 text-stone-400" />
+                                                        <span className="truncate">{item.name}</span>
+                                                        {item.isBuiltin && <Tag color="default" className="!mr-0 !text-[10px]">内置</Tag>}
+                                                        {item.isDefault && (
+                                                            <Tag color="blue" className="!mr-0 !text-[10px] flex items-center gap-0.5">
+                                                                <CheckCircle2 className="size-2.5" /> 默认
+                                                            </Tag>
+                                                        )}
+                                                        <span className="ml-1 text-[10px] font-normal text-stone-400">
+                                                            {formatWorkflowSize(item.json)}
+                                                        </span>
+                                                    </div>
+                                                </div>
 
-                        <div className="mt-5 space-y-2">
-                            <div>
-                                <div className="text-sm font-semibold">{t("config.channelEditor.textWorkflowTitle")}</div>
-                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.textWorkflowDesc")}</div>
+                                                <Space size="small" className="shrink-0">
+                                                    {!item.isDefault && (
+                                                        <Button
+                                                            size="small"
+                                                            type="link"
+                                                            className="!h-6 !px-1 text-xs"
+                                                            onClick={() => handleSetDefault(cat.key, item.id)}
+                                                        >
+                                                            设为默认
+                                                        </Button>
+                                                    )}
+                                                    {!item.isBuiltin && (
+                                                        <Popconfirm
+                                                            title="确认删除该工作流？"
+                                                            onConfirm={() => handleRemove(cat.key, item.id)}
+                                                            okText="删除"
+                                                            cancelText="取消"
+                                                        >
+                                                            <Button
+                                                                size="small"
+                                                                type="text"
+                                                                danger
+                                                                className="!h-6 !w-6 !p-0"
+                                                                icon={<Trash2 className="size-3.5" />}
+                                                            />
+                                                        </Popconfirm>
+                                                    )}
+                                                </Space>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
-                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                                <ComfyuiWorkflowEditor
-                                    value={draft.comfyuiTextWorkflow || draft.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text")?.comfyuiWorkflow}
-                                    defaultWorkflow={defaultWorkflows.text}
-                                    onChange={setComfyuiTextWorkflow}
-                                />
-                            </div>
-                        </div>
+                        );
+                    })}
+                </div>
+            </div>
 
-                        <div className="mt-5 space-y-2">
-                            <div>
-                                <div className="text-sm font-semibold">{t("config.channelEditor.videoWorkflowTitle")}</div>
-                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.videoWorkflowDesc")}</div>
-                            </div>
-                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                                <ComfyuiWorkflowEditor
-                                    value={draft.comfyuiVideoWorkflow || draft.models.find((m) => m.name === "ComfyUI Video")?.comfyuiWorkflow}
-                                    defaultWorkflow={defaultWorkflows.video}
-                                    onChange={setComfyuiVideoWorkflow}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mt-5 space-y-2">
-                            <div>
-                                <div className="text-sm font-semibold">{t("config.channelEditor.frameVideoWorkflowTitle")}</div>
-                                <div className="mt-0.5 text-xs text-stone-500">{t("config.channelEditor.frameVideoWorkflowDesc")}</div>
-                            </div>
-                            <div className="rounded-lg border border-stone-200 p-2.5 dark:border-stone-800">
-                                <ComfyuiWorkflowEditor
-                                    value={
-                                        draft.comfyuiFrameVideoWorkflow ||
-                                        draft.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"))?.comfyuiWorkflow
-                                    }
-                                    defaultWorkflow={defaultWorkflows.frameVideo}
-                                    onChange={setComfyuiFrameVideoWorkflow}
-                                />
-                            </div>
-                        </div>
-                    </>
-                );
-            })()}
+            {/* 隐藏的文件上传 input */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={handleFileChange}
+            />
         </Drawer>
     );
 }

@@ -19,12 +19,26 @@ import {
     DEFAULT_LOCAL_COMFYUI_TEXT_WORKFLOW,
     DEFAULT_LOCAL_COMFYUI_VIDEO_WORKFLOW,
     getDefaultComfyuiWorkflows,
+    getDefaultComfyWorkflowItems,
 } from "@/services/api/comfyui-default-workflows";
 import i18n from "@/i18n";
 
 export type ApiCallFormat = "openai" | "gemini" | "comfyui";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
+
+export type WorkflowCategory = "t2i" | "i2i" | "inpaint" | "text" | "omniVideo" | "frameVideo";
+
+export type ComfyWorkflowItem = {
+    id: string;
+    name: string;
+    category: WorkflowCategory;
+    json: Record<string, unknown>;
+    createdAt: number;
+    isBuiltin?: boolean;
+    isDefault?: boolean;
+    description?: string;
+};
 
 export type ComfyuiWorkflow = {
     name: string;
@@ -48,6 +62,7 @@ export type ModelChannel = {
     models: ChannelModel[];
     comfyuiProxyUrl?: string;
     comfyuiProxyToken?: string;
+    workflows?: ComfyWorkflowItem[];
     comfyuiT2iWorkflow?: ComfyuiWorkflow;
     comfyuiI2iWorkflow?: ComfyuiWorkflow;
     comfyuiInpaintWorkflow?: ComfyuiWorkflow;
@@ -62,6 +77,8 @@ export type AiConfig = {
     apiKey: string;
     apiFormat: ApiCallFormat;
     channels: ModelChannel[];
+    channelId?: string;
+    workflowId?: string;
     model: string;
     imageModel: string;
     videoModel: string;
@@ -112,6 +129,7 @@ export const defaultConfig: AiConfig = {
             apiFormat: "comfyui",
             comfyuiProxyUrl: "http://127.0.0.1:8188",
             comfyuiProxyToken: "",
+            workflows: getDefaultComfyWorkflowItems({ id: "local" }),
             comfyuiT2iWorkflow: DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW,
             comfyuiI2iWorkflow: DEFAULT_LOCAL_COMFYUI_I2I_WORKFLOW,
             comfyuiInpaintWorkflow: DEFAULT_LOCAL_COMFYUI_INPAINT_WORKFLOW,
@@ -135,6 +153,7 @@ export const defaultConfig: AiConfig = {
             apiFormat: "comfyui",
             comfyuiProxyUrl: "",
             comfyuiProxyToken: "",
+            workflows: getDefaultComfyWorkflowItems({ id: "cloud" }),
             comfyuiT2iWorkflow: DEFAULT_CLOUD_COMFYUI_T2I_WORKFLOW,
             comfyuiI2iWorkflow: DEFAULT_CLOUD_COMFYUI_I2I_WORKFLOW,
             comfyuiInpaintWorkflow: DEFAULT_CLOUD_COMFYUI_INPAINT_WORKFLOW,
@@ -473,6 +492,7 @@ export function createCloudModelChannel(overrides?: Partial<ModelChannel>): Mode
 export function createModelChannel(channel?: Partial<ModelChannel>, options?: { preprovisionComfyuiModels?: boolean }): ModelChannel {
     const isCloud = isCloudChannel(channel);
     const workflows = getDefaultComfyuiWorkflows(channel);
+    const defaultWorkflowItems = getDefaultComfyWorkflowItems(channel);
     const defaultModels = isCloud ? COMFYUI_CLOUD_DEFAULT_MODELS : COMFYUI_LOCAL_DEFAULT_MODELS;
     const models = normalizeChannelModels(channel?.models);
     const result: ModelChannel = {
@@ -484,6 +504,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>, options?: { 
         models: models.length ? models : options?.preprovisionComfyuiModels !== false ? [...defaultModels] : [],
         comfyuiProxyUrl: channel?.comfyuiProxyUrl !== undefined ? channel.comfyuiProxyUrl : isCloud ? "" : "http://127.0.0.1:8188",
         comfyuiProxyToken: channel?.comfyuiProxyToken !== undefined ? channel.comfyuiProxyToken : "",
+        workflows: Array.isArray(channel?.workflows) && channel.workflows.length > 0 ? channel.workflows : defaultWorkflowItems,
         comfyuiT2iWorkflow: channel?.comfyuiT2iWorkflow !== undefined ? channel.comfyuiT2iWorkflow : workflows.t2i,
         comfyuiI2iWorkflow: channel?.comfyuiI2iWorkflow !== undefined ? channel.comfyuiI2iWorkflow : workflows.i2i,
         comfyuiInpaintWorkflow: channel?.comfyuiInpaintWorkflow !== undefined ? channel.comfyuiInpaintWorkflow : workflows.inpaint,
@@ -492,6 +513,32 @@ export function createModelChannel(channel?: Partial<ModelChannel>, options?: { 
         comfyuiFrameVideoWorkflow: channel?.comfyuiFrameVideoWorkflow !== undefined ? channel.comfyuiFrameVideoWorkflow : workflows.frameVideo,
     };
     return result;
+}
+
+export function getChannelWorkflows(channel?: ModelChannel | null, category?: WorkflowCategory): ComfyWorkflowItem[] {
+    if (!channel) return [];
+    const list = Array.isArray(channel.workflows) && channel.workflows.length > 0 ? channel.workflows : getDefaultComfyWorkflowItems(channel);
+    if (!category) return list;
+    return list.filter((wf) => wf.category === category);
+}
+
+export function getDefaultWorkflow(channel?: ModelChannel | null, category: WorkflowCategory): ComfyWorkflowItem | undefined {
+    const list = getChannelWorkflows(channel, category);
+    return list.find((wf) => wf.isDefault) || list[0];
+}
+
+export function findWorkflow(config: AiConfig, channelId?: string, workflowId?: string, category?: WorkflowCategory): ComfyWorkflowItem | undefined {
+    const channel = channelId ? config.channels.find((c) => c.id === channelId) : config.channels[0];
+    if (!channel) return undefined;
+    const list = getChannelWorkflows(channel, category);
+    if (workflowId) {
+        const found = list.find((wf) => wf.id === workflowId);
+        if (found) return found;
+    }
+    if (category) {
+        return getDefaultWorkflow(channel, category);
+    }
+    return list[0];
 }
 
 export function encodeChannelModel(channelId: string, model: string) {
@@ -536,6 +583,10 @@ export function normalizeModelOptionValue(value: string | undefined, channels: M
 }
 
 export function resolveModelChannel(config: AiConfig, value: string) {
+    if (config.channelId) {
+        const matched = config.channels.find((channel) => channel.id === config.channelId);
+        if (matched) return matched;
+    }
     const decoded = decodeChannelModel(value);
     if (decoded) {
         const matched = config.channels.find((channel) => channel.id === decoded.channelId);

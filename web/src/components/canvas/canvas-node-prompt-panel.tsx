@@ -4,6 +4,7 @@ import { Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
+import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
 import { decodeChannelModel, defaultConfig, encodeChannelModel, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -126,7 +127,19 @@ export function CanvasNodePromptPanel({
                     <CanvasPromptLibrary onSelect={updatePrompt} />
                     {mode === "image" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="image" onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[180px]" />
+                            <ChannelWorkflowPicker
+                                category={
+                                    Boolean(
+                                        connectedNodes?.some((n) => n.type === CanvasNodeType.Image || (n.type === CanvasNodeType.Group && (n.metadata?.groupChildCount || 0) > 0)) ||
+                                        mentionReferences?.some((r) => r.type === "image")
+                                    )
+                                        ? "i2i"
+                                        : "t2i"
+                                }
+                                channelId={node.metadata?.channelId}
+                                workflowId={node.metadata?.workflowId}
+                                onChange={(channelId, workflowId) => onConfigChange(node.id, { channelId, workflowId })}
+                            />
                             <CanvasImageSettingsPopover
                                 config={config}
                                 placement="topLeft"
@@ -138,20 +151,11 @@ export function CanvasNodePromptPanel({
                         </>
                     ) : mode === "video" ? (
                         <>
-                            <ModelPicker
-                                config={config}
-                                value={config.model}
-                                onChange={(model) => {
-                                    const isFrame = model.toLowerCase().includes("frame") || model.includes("首尾帧");
-                                    const isOmni = model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
-                                    onConfigChange(node.id, {
-                                        model,
-                                        ...(isFrame ? { videoMode: "frame" } : isOmni ? { videoMode: "omni" } : {}),
-                                    });
-                                }}
-                                capability="video"
-                                onMissingConfig={() => openConfigDialog(true)}
-                                className="min-w-0 max-w-[180px]"
+                            <ChannelWorkflowPicker
+                                category={node.metadata?.videoMode === "frame" ? "frameVideo" : "omniVideo"}
+                                channelId={node.metadata?.channelId}
+                                workflowId={node.metadata?.workflowId}
+                                onChange={(channelId, workflowId) => onConfigChange(node.id, { channelId, workflowId })}
                             />
                             <CanvasVideoSettingsPopover
                                 config={config}
@@ -166,7 +170,12 @@ export function CanvasNodePromptPanel({
                         </>
                     ) : (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="text" onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[180px]" />
+                            <ChannelWorkflowPicker
+                                category="text"
+                                channelId={node.metadata?.channelId}
+                                workflowId={node.metadata?.workflowId}
+                                onChange={(channelId, workflowId) => onConfigChange(node.id, { channelId, workflowId })}
+                            />
                             <CanvasTextSettingsPopover config={config} count={node.metadata?.textCount || 1} buttonClassName="!h-10 min-w-0 !max-w-[160px] !justify-start !rounded-full !px-3" onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })} onCountChange={(textCount) => onConfigChange(node.id, { textCount })} />
                         </>
                     )}

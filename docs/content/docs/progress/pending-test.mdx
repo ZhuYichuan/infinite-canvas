@@ -7,6 +7,21 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Channel Multi-Workflow Category Mapping and Picker Verification (渠道与多工作流配置验证):
+  - **Channel Workflows Drawer (渠道抽屉工作流管理)**:
+    - Open Channel Drawer (`渠道与模型配置` -> `编辑渠道`); verify the 6 categories (文生图 `t2i`, 图生图 `i2i`, 局部编辑 `inpaint`, 文本生成 `text`, 全能参考视频 `omniVideo`, 首尾帧视频 `frameVideo`) are clearly listed as cards with item counts;
+    - Each category displays its configured workflows with status badges (如「默认」「内置」);
+    - Clicking 「上传添加」prompts to select a JSON file and strictly validates `_meta.title` against the selected category slots (missing mandatory slots or containing forbidden slots raises clear error toasts);
+    - Support clicking 「设为默认」to switch default workflow, 「重置回内置」to restore initial templates, and deleting custom workflows (built-in templates are protected from deletion);
+  - **Node Prompt Panel Channel & Workflow Dual Picker (节点控制栏双下拉联动)**:
+    - Image Node: shows compact `[渠道]` + `[工作流]` selectors. When no reference images are connected, it automatically lists `t2i` workflows. Once a reference image is connected, it seamlessly switches to `i2i` workflows and selects the default `i2i` workflow;
+    - Video Node: dynamically lists `omniVideo` or `frameVideo` workflows based on the selected video mode;
+    - Text Node & Config Composer: lists `text` workflows;
+    - Mask Edit Dialog (局部重绘弹窗): contains the dual selector for `inpaint` workflows;
+  - **Generation Execution Routing (生成调度精准命中)**:
+    - Triggering generation uses the selected `channelId` and `workflowId` to fetch and execute the exact bound ComfyUI workflow JSON;
+    - Generated child nodes preserve the source node's selected channel and workflow IDs.
+
 - Canvas Reference Bar Drag-and-Drop Reordering and Source Node Locating Verification:
   - **Drag-and-Drop Reordering**: In the reference bar (`参考内容`) above the prompt panel and config composer, dragging reference cards horizontally displays insertion indicator lines and updates card positions upon drop;
   - **Sequence Badges**: Compact number badges (`图1`, `图2`, `视频1`, `音频1`, `文本1`) dynamically re-index to reflect the updated sequence;

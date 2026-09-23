@@ -6,11 +6,14 @@ import { useTranslation } from "react-i18next";
 
 import { readImageMeta } from "@/lib/image-utils";
 import { useImageEditorViewport } from "@/components/canvas/use-image-editor-viewport";
+import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
 
 export type CanvasImageMaskEditPayload = {
     prompt: string;
     maskDataUrl: string;
     model?: string;
+    channelId?: string;
+    workflowId?: string;
 };
 
 type DrawMode = "paint" | "erase";
@@ -21,7 +24,25 @@ type BrushPreview = { x: number; y: number; size: number; adjusting: boolean };
 const defaultBrushSize = 100;
 const maskFillColor = "rgba(37, 99, 235, .38)";
 
-export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm, inpaintOptions = [], defaultModel = "" }: { dataUrl: string; open: boolean; onClose: () => void; onConfirm: (payload: CanvasImageMaskEditPayload) => void; inpaintOptions?: Array<{ value: string; label: string }>; defaultModel?: string }) {
+export function CanvasNodeMaskEditDialog({
+    dataUrl,
+    open,
+    onClose,
+    onConfirm,
+    inpaintOptions = [],
+    defaultModel = "",
+    defaultChannelId = "",
+    defaultWorkflowId = "",
+}: {
+    dataUrl: string;
+    open: boolean;
+    onClose: () => void;
+    onConfirm: (payload: CanvasImageMaskEditPayload) => void;
+    inpaintOptions?: Array<{ value: string; label: string }>;
+    defaultModel?: string;
+    defaultChannelId?: string;
+    defaultWorkflowId?: string;
+}) {
     const { t } = useTranslation();
     const maskCanvasRef = useRef<HTMLCanvasElement>(null);
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -35,6 +56,8 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm, in
     const [mode, setMode] = useState<DrawMode>("paint");
     const [error, setError] = useState("");
     const [model, setModel] = useState("");
+    const [channelId, setChannelId] = useState(defaultChannelId);
+    const [workflowId, setWorkflowId] = useState(defaultWorkflowId);
     const [historySize, setHistorySize] = useState(0);
     const [redoSize, setRedoSize] = useState(0);
     const [brushPreview, setBrushPreview] = useState<BrushPreview | null>(null);
@@ -54,8 +77,10 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm, in
         brushAdjustRef.current = null;
         drawingRef.current = { active: false, stroke: null };
         setModel(inpaintOptions.some((option) => option.value === defaultModel) ? defaultModel : inpaintOptions[0]?.value ?? "");
+        setChannelId(defaultChannelId);
+        setWorkflowId(defaultWorkflowId);
         void readImageMeta(dataUrl).then(setImage);
-    }, [dataUrl, open]);
+    }, [dataUrl, defaultChannelId, defaultModel, defaultWorkflowId, inpaintOptions, open]);
 
     useEffect(() => {
         clearCanvas(maskCanvasRef.current);
@@ -209,7 +234,7 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm, in
         if (!nextPrompt) return setError(t("canvas.editors.maskPromptRequired"));
         if (!canvas) return;
         if (!canvasHasPaint(canvas)) return setError(t("canvas.editors.maskRequired"));
-        onConfirm({ prompt: nextPrompt, maskDataUrl: buildEditMask(canvas), model });
+        onConfirm({ prompt: nextPrompt, maskDataUrl: buildEditMask(canvas), model, channelId, workflowId });
     };
 
     return (
@@ -304,12 +329,18 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm, in
                         <Slider min={8} max={160} step={2} value={brushSize} onChange={setBrushSize} />
                     </div>
 
-                    {inpaintOptions.length ? (
-                        <div className="space-y-2">
-                            <div className="text-sm font-medium opacity-75">{t("canvas.editors.inpaintWorkflow")}</div>
-                            <Select size="small" value={model} onChange={setModel} options={inpaintOptions} style={{ width: "100%" }} />
-                        </div>
-                    ) : null}
+                    <div className="space-y-2">
+                        <div className="text-sm font-medium opacity-75">{t("canvas.editors.inpaintWorkflow", "工作流设置")}</div>
+                        <ChannelWorkflowPicker
+                            category="inpaint"
+                            channelId={channelId}
+                            workflowId={workflowId}
+                            onChange={(nextChannelId, nextWorkflowId) => {
+                                setChannelId(nextChannelId);
+                                setWorkflowId(nextWorkflowId);
+                            }}
+                        />
+                    </div>
 
                     <div className="space-y-2">
                         <div className="text-sm font-medium opacity-75">{t("canvas.editors.editInstructions")}</div>

@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n from "@/i18n";
-import { applyBindings, cancelJob, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollComfyuiVideoJob, pollJob, requestComfyuiImage, submitComfyuiVideoJob, submitJob } from "@/services/api/comfyui";
+import { applyBindings, cancelJob, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollComfyuiVideoJob, pollJob, requestComfyuiImage, submitComfyuiVideoJob, submitJob, validateComfyuiWorkflow } from "@/services/api/comfyui";
 import type { ComfyuiWorkflowJson } from "@/services/api/comfyui";
-import { defaultConfig, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { defaultConfig, findWorkflow, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW } from "@/services/api/comfyui-default-workflows";
 
 // The generation log store the service writes to (same localforage structure as image-storage).
 const { comfyuiLogStore } = vi.hoisted(() => ({
@@ -280,7 +281,7 @@ describe("pollJob", () => {
         expect(url).toBe("http://10.7.8.12:8188/history/job_1");
         expect(init.headers.Authorization).toBe("Bearer tok");
         await vi.advanceTimersByTimeAsync(2000);
-        await expect(result).resolves.toEqual(["asset_1.png", "asset_2.png"]);
+        await expect(result).resolves.toEqual(["/api/view?filename=asset_1.png&type=output&subfolder=", "/api/view?filename=asset_2.png&type=output&subfolder="]);
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
@@ -767,3 +768,66 @@ describe("native ComfyUI video validation", () => {
         expect((error as Error).message).toBe(i18n.t("comfyui.noVideoOutput"));
     });
 });
+
+describe("validateComfyuiWorkflow & findWorkflow", () => {
+    it("validates built-in t2i workflow successfully", () => {
+        const result = validateComfyuiWorkflow(DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW.json, "t2i");
+        expect(result.ok).toBe(true);
+    });
+
+    it("rejects t2i workflow missing prompt slot", () => {
+        const invalidWf = {
+            "1": { class_type: "KSampler", inputs: { seed: 123 }, _meta: { title: "seed" } },
+            "2": { class_type: "SaveImage", inputs: {}, _meta: { title: "output_image" } },
+        };
+        const result = validateComfyuiWorkflow(invalidWf as unknown as ComfyuiWorkflowJson, "t2i");
+        expect(result.ok).toBe(false);
+        expect(result.error).toContain("缺少");
+        expect(result.error).toContain("prompt");
+    });
+
+    it("rejects t2i workflow containing forbidden inpaint ref_mask slot", () => {
+        const wfWithMask = {
+            ...DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW.json,
+            "999": { class_type: "LoadImage", inputs: {}, _meta: { title: "ref_mask" } },
+        };
+        const result = validateComfyuiWorkflow(wfWithMask as unknown as ComfyuiWorkflowJson, "t2i");
+        expect(result.ok).toBe(false);
+        expect(result.error).toContain("ref_mask");
+    });
+
+    it("finds default workflow for a category when no specific workflowId is given", () => {
+        const config: AiConfig = {
+            ...defaultConfig,
+            channels: [
+                {
+                    ...defaultConfig.channels[0],
+                    workflows: [
+                        { id: "wf-1", name: "WF 1", category: "t2i", json: DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW.json, isDefault: false },
+                        { id: "wf-2", name: "WF 2 (Default)", category: "t2i", json: DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW.json, isDefault: true },
+                    ],
+                },
+            ],
+        };
+        const found = findWorkflow(config, config.channels[0].id, undefined, "t2i");
+        expect(found?.id).toBe("wf-2");
+    });
+
+    it("finds specific workflow by workflowId", () => {
+        const config: AiConfig = {
+            ...defaultConfig,
+            channels: [
+                {
+                    ...defaultConfig.channels[0],
+                    workflows: [
+                        { id: "wf-1", name: "WF 1", category: "t2i", json: DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW.json, isDefault: false },
+                        { id: "wf-2", name: "WF 2 (Default)", category: "t2i", json: DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW.json, isDefault: true },
+                    ],
+                },
+            ],
+        };
+        const found = findWorkflow(config, config.channels[0].id, "wf-1", "t2i");
+        expect(found?.id).toBe("wf-1");
+    });
+});
+

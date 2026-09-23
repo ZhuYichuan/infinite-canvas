@@ -1,4 +1,4 @@
-import type { ComfyuiWorkflow } from "@/stores/use-config-store";
+import type { ComfyuiWorkflow, ComfyWorkflowItem } from "@/stores/use-config-store";
 
 // Local channel workflows (D:\ComfyUI, pruned/scaled fp8 for video)
 import localT2iJson from "@/assets/workflows/comfyuiT2iWorkflow_api.json";
@@ -128,4 +128,72 @@ export const DEFAULT_CLOUD_COMFYUI_WORKFLOWS: ComfyuiWorkflowBundle = {
 export function getDefaultComfyuiWorkflows(channel?: { id?: string; name?: string } | null): ComfyuiWorkflowBundle {
     const isCloud = channel?.id === "cloud" || (channel?.name ? channel.name.includes("云端") : false);
     return isCloud ? DEFAULT_CLOUD_COMFYUI_WORKFLOWS : DEFAULT_LOCAL_COMFYUI_WORKFLOWS;
+}
+
+export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: string } | null): ComfyWorkflowItem[] {
+    const bundle = getDefaultComfyuiWorkflows(channel);
+    const isCloud = channel?.id === "cloud" || (channel?.name ? channel.name.includes("云端") : false);
+    const prefix = isCloud ? "cloud" : "local";
+    return [
+        {
+            id: `${prefix}-default-t2i`,
+            name: "默认文生图工作流",
+            category: "t2i",
+            json: bundle.t2i.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: true,
+            description: "系统内置基础文生图工作流",
+        },
+        {
+            id: `${prefix}-default-i2i`,
+            name: "默认图生图工作流",
+            category: "i2i",
+            json: bundle.i2i.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: true,
+            description: "系统内置基础图生图工作流",
+        },
+        {
+            id: `${prefix}-default-inpaint`,
+            name: "默认局部编辑工作流",
+            category: "inpaint",
+            json: bundle.inpaint.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: true,
+            description: "系统内置基础局部重绘工作流",
+        },
+        {
+            id: `${prefix}-default-text`,
+            name: "默认文本生成工作流",
+            category: "text",
+            json: bundle.text.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: true,
+            description: "系统内置大语言模型及反推工作流",
+        },
+        {
+            id: `${prefix}-default-omni-video`,
+            name: "默认全能参考视频工作流",
+            category: "omniVideo",
+            json: bundle.video.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: true,
+            description: "系统内置全能参考视频工作流",
+        },
+        {
+            id: `${prefix}-default-frame-video`,
+            name: "默认首尾帧视频工作流",
+            category: "frameVideo",
+            json: bundle.frameVideo.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: true,
+            description: "系统内置首尾帧视频生成工作流",
+        },
+    ];
 }

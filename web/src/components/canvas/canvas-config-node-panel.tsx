@@ -4,6 +4,7 @@ import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
+import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
 import { decodeChannelModel, defaultConfig, encodeChannelModel, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -96,21 +97,20 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
             </div>
 
             <div className="mb-2 grid min-w-0 cursor-default grid-cols-[minmax(0,1fr)_148px] items-center gap-2" onMouseDown={(event) => event.stopPropagation()}>
-                <ModelPicker
-                    className="canvas-compact-control h-10"
-                    config={config}
-                    value={config.model}
-                    onChange={(model) => {
-                        const isFrame = model.toLowerCase().includes("frame") || model.includes("首尾帧");
-                        const isOmni = model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
-                        onConfigChange(node.id, {
-                            model,
-                            ...(isFrame ? { videoMode: "frame" } : isOmni ? { videoMode: "omni" } : {}),
-                        });
+                <ChannelWorkflowPicker
+                    category={
+                        mode === "image"
+                            ? (inputSummary.imageCount > 0 ? "i2i" : "t2i")
+                            : mode === "video"
+                            ? (node.metadata?.videoMode === "frame" ? "frameVideo" : "omniVideo")
+                            : "text"
+                    }
+                    channelId={node.metadata?.channelId}
+                    workflowId={node.metadata?.workflowId}
+                    onChange={(channelId, workflowId) => {
+                        onConfigChange(node.id, { channelId, workflowId });
                     }}
-                    capability={mode}
-                    onMissingConfig={() => openConfigDialog(true)}
-                    fullWidth
+                    className="canvas-compact-control h-10"
                 />
                 {mode === "video" ? (
                     <CanvasVideoSettingsPopover

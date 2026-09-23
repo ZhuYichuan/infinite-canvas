@@ -136,6 +136,8 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
     const model = resolveModelForCapability(config, node?.metadata?.model, mode);
     return {
         ...config,
+        channelId: node?.metadata?.channelId || config.channelId,
+        workflowId: node?.metadata?.workflowId || config.workflowId,
         model,
         videoModel: mode === "video" ? model : config.videoModel,
         imageModel: mode === "image" ? model : config.imageModel,

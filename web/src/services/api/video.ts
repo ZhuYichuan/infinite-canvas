@@ -57,6 +57,8 @@ export async function requestVideoGeneration(config: AiConfig, prompt: string, r
         firstFrame: options?.firstFrame,
         lastFrame: options?.lastFrame,
         videoMode: options?.videoMode || (config.videoMode === "frame" ? "frame" : "omni"),
+        channelId: config.channelId,
+        workflowId: config.workflowId,
         seed: options?.seed,
         signal: options?.signal,
         jobId: options?.jobId,
@@ -74,6 +76,8 @@ export async function createVideoGenerationTask(config: AiConfig, prompt: string
         references,
         referenceVideos: options?.referenceVideos,
         referenceAudios: options?.referenceAudios,
+        channelId: config.channelId,
+        workflowId: config.workflowId,
         seed: options?.seed,
         signal: options?.signal,
     });
