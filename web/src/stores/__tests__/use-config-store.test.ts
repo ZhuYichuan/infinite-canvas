@@ -387,5 +387,13 @@ describe("default built-in ComfyUI channel", () => {
         expect(customChannel.name).toBe("自定义 ComfyUI");
         expect(customChannel.models.length).toBe(6);
         expect(customChannel.workflows?.length).toBe(8);
+        expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
+        expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
+        expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);
+        expect(customChannel.comfyuiInpaintWorkflow?.isBuiltin).toBe(true);
+        expect(customChannel.comfyuiTextWorkflow?.isBuiltin).toBe(true);
+        expect(customChannel.comfyuiVideoWorkflow?.isBuiltin).toBe(true);
+        expect(customChannel.comfyuiFrameVideoWorkflow?.isBuiltin).toBe(true);
     });
 });
+

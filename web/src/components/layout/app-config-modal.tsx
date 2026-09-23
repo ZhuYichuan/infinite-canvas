@@ -15,7 +15,7 @@ import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent }
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
 import { getDefaultComfyuiWorkflows } from "@/services/api/comfyui-default-workflows";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
-import { createModelChannel, encodeChannelModel, isChannelReady, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ComfyuiWorkflow, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { createModelChannel, encodeChannelModel, getDefaultWorkflow, isChannelReady, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ComfyuiWorkflow, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 
 type ModelGroup = {
     capability: ModelCapability;
@@ -213,91 +213,12 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                 <div className="space-y-3">
                                     {config.channels.map((channel, index) => {
                                         const isComfyui = channel.apiFormat === "comfyui";
-                                        const t2iModel = channel.models.find((m) => m.name === "ComfyUI T2I") || channel.models[0];
-                                        const t2iWorkflow = channel.comfyuiT2iWorkflow || t2iModel?.comfyuiWorkflow;
-                                        const i2iModel = channel.models.find((m) => m.name === "ComfyUI I2I" || m.name.toLowerCase().includes("i2i") || m.name.includes("图生图"));
-                                        const i2iWorkflow = channel.comfyuiI2iWorkflow || i2iModel?.comfyuiWorkflow;
-                                        const inpaintModel = channel.models.find((m) => m.name === "ComfyUI Inpaint" || m.name.toLowerCase().includes("inpaint") || m.name.includes("局部编辑"));
-                                        const inpaintWorkflow = channel.comfyuiInpaintWorkflow || inpaintModel?.comfyuiWorkflow;
-                                        const textModel = channel.models.find((m) => m.name === "ComfyUI LLM" || m.capability === "text");
-                                        const textWorkflow = channel.comfyuiTextWorkflow || textModel?.comfyuiWorkflow;
-                                        const videoModel = channel.models.find((m) => m.name === "ComfyUI Video");
-                                        const videoWorkflow = channel.comfyuiVideoWorkflow || videoModel?.comfyuiWorkflow;
-                                        const frameVideoModel = channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
-                                        const frameVideoWorkflow = channel.comfyuiFrameVideoWorkflow || frameVideoModel?.comfyuiWorkflow;
-
-                                        const handleT2iWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
-                                            const targetName = t2iModel?.name || "ComfyUI T2I";
-                                            const nextChannel: ModelChannel = {
-                                                ...channel,
-                                                comfyuiT2iWorkflow: workflow,
-                                                models: channel.models.some((m) => m.name === targetName)
-                                                    ? channel.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
-                                                    : [...channel.models, { name: targetName, capability: "image", comfyuiWorkflow: workflow }],
-                                            };
-                                            saveChannel(nextChannel);
-                                        };
-
-                                        const handleI2iWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
-                                            const targetName = i2iModel?.name || "ComfyUI I2I";
-                                            const nextChannel: ModelChannel = {
-                                                ...channel,
-                                                comfyuiI2iWorkflow: workflow,
-                                                models: channel.models.some((m) => m.name === targetName)
-                                                    ? channel.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
-                                                    : [...channel.models, { name: targetName, capability: "image", comfyuiWorkflow: workflow }],
-                                            };
-                                            saveChannel(nextChannel);
-                                        };
-
-                                        const handleInpaintWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
-                                            const nextChannel: ModelChannel = {
-                                                ...channel,
-                                                comfyuiInpaintWorkflow: workflow,
-                                                models: channel.models.map((m) =>
-                                                    m.name === "ComfyUI Inpaint" || m.name.toLowerCase().includes("inpaint") || m.name.includes("局部编辑")
-                                                        ? { ...m, comfyuiWorkflow: workflow }
-                                                        : m,
-                                                ),
-                                            };
-                                            saveChannel(nextChannel);
-                                        };
-
-                                        const handleTextWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
-                                            const nextChannel: ModelChannel = {
-                                                ...channel,
-                                                comfyuiTextWorkflow: workflow,
-                                                models: channel.models.map((m) =>
-                                                    m.name === "ComfyUI LLM" || m.capability === "text"
-                                                        ? { ...m, comfyuiWorkflow: workflow }
-                                                        : m,
-                                                ),
-                                            };
-                                            saveChannel(nextChannel);
-                                        };
-
-                                        const handleVideoWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
-                                            const nextChannel: ModelChannel = {
-                                                ...channel,
-                                                comfyuiVideoWorkflow: workflow,
-                                                models: channel.models.map((m) =>
-                                                    m.name === "ComfyUI Video" ? { ...m, comfyuiWorkflow: workflow } : m,
-                                                ),
-                                            };
-                                            saveChannel(nextChannel);
-                                        };
-
-                                        const handleFrameVideoWorkflowChange = (workflow: ComfyuiWorkflow | undefined) => {
-                                            const targetName = frameVideoModel?.name || "ComfyUI Frame Video";
-                                            const nextChannel: ModelChannel = {
-                                                ...channel,
-                                                comfyuiFrameVideoWorkflow: workflow,
-                                                models: channel.models.some((m) => m.name === targetName)
-                                                    ? channel.models.map((m) => (m.name === targetName ? { ...m, comfyuiWorkflow: workflow } : m))
-                                                    : [...channel.models, { name: targetName, capability: "video", comfyuiWorkflow: workflow }],
-                                            };
-                                            saveChannel(nextChannel);
-                                        };
+                                        const t2iItem = getDefaultWorkflow(channel, "t2i");
+                                        const i2iItem = getDefaultWorkflow(channel, "i2i");
+                                        const inpaintItem = getDefaultWorkflow(channel, "inpaint");
+                                        const textItem = getDefaultWorkflow(channel, "text");
+                                        const videoItem = getDefaultWorkflow(channel, "omniVideo");
+                                        const frameVideoItem = getDefaultWorkflow(channel, "frameVideo");
 
                                         return (
                                             <div key={channel.id} className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
@@ -335,9 +256,9 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                                 </div>
                                                                 <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
                                                                     <ComfyuiWorkflowEditor
-                                                                        value={t2iWorkflow}
+                                                                        value={t2iItem || channel.comfyuiT2iWorkflow || defaultWorkflows.t2i}
                                                                         defaultWorkflow={defaultWorkflows.t2i}
-                                                                        onChange={handleT2iWorkflowChange}
+                                                                        isBuiltin={t2iItem ? Boolean(t2iItem.isBuiltin) : undefined}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -349,9 +270,9 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                                 </div>
                                                                 <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
                                                                     <ComfyuiWorkflowEditor
-                                                                        value={i2iWorkflow}
+                                                                        value={i2iItem || channel.comfyuiI2iWorkflow || defaultWorkflows.i2i}
                                                                         defaultWorkflow={defaultWorkflows.i2i}
-                                                                        onChange={handleI2iWorkflowChange}
+                                                                        isBuiltin={i2iItem ? Boolean(i2iItem.isBuiltin) : undefined}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -363,9 +284,9 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                                 </div>
                                                                 <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
                                                                     <ComfyuiWorkflowEditor
-                                                                        value={inpaintWorkflow}
+                                                                        value={inpaintItem || channel.comfyuiInpaintWorkflow || defaultWorkflows.inpaint}
                                                                         defaultWorkflow={defaultWorkflows.inpaint}
-                                                                        onChange={handleInpaintWorkflowChange}
+                                                                        isBuiltin={inpaintItem ? Boolean(inpaintItem.isBuiltin) : undefined}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -377,9 +298,9 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                                 </div>
                                                                 <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
                                                                     <ComfyuiWorkflowEditor
-                                                                        value={textWorkflow}
+                                                                        value={textItem || channel.comfyuiTextWorkflow || defaultWorkflows.text}
                                                                         defaultWorkflow={defaultWorkflows.text}
-                                                                        onChange={handleTextWorkflowChange}
+                                                                        isBuiltin={textItem ? Boolean(textItem.isBuiltin) : undefined}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -391,9 +312,9 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                                 </div>
                                                                 <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
                                                                     <ComfyuiWorkflowEditor
-                                                                        value={videoWorkflow}
+                                                                        value={videoItem || channel.comfyuiVideoWorkflow || defaultWorkflows.video}
                                                                         defaultWorkflow={defaultWorkflows.video}
-                                                                        onChange={handleVideoWorkflowChange}
+                                                                        isBuiltin={videoItem ? Boolean(videoItem.isBuiltin) : undefined}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -405,9 +326,9 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                                 </div>
                                                                 <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
                                                                     <ComfyuiWorkflowEditor
-                                                                        value={frameVideoWorkflow}
+                                                                        value={frameVideoItem || channel.comfyuiFrameVideoWorkflow || defaultWorkflows.frameVideo}
                                                                         defaultWorkflow={defaultWorkflows.frameVideo}
-                                                                        onChange={handleFrameVideoWorkflowChange}
+                                                                        isBuiltin={frameVideoItem ? Boolean(frameVideoItem.isBuiltin) : undefined}
                                                                     />
                                                                 </div>
                                                             </div>

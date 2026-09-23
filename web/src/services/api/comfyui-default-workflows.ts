@@ -12,51 +12,59 @@ import frameVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_frame_b
 
 // Built-in single workflow definitions
 export const DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW: ComfyuiWorkflow = {
-    name: "t2i_z_image_turbo_api.json",
+    name: "Z-Image-Turbo 文生图",
     json: t2iZImageTurboJson as Record<string, unknown>,
     createdAt: 0,
+    isBuiltin: true,
 };
 
 export const DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW: ComfyuiWorkflow = {
-    name: "i2i_flux2_dev_api.json",
+    name: "Flux2.Dev 图生图",
     json: i2iFlux2DevJson as Record<string, unknown>,
     createdAt: 0,
+    isBuiltin: true,
 };
 
 export const DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW: ComfyuiWorkflow = {
-    name: "inpaint_qwen_image_api.json",
+    name: "Qwen-Image 局部编辑",
     json: inpaintQwenImageJson as Record<string, unknown>,
     createdAt: 0,
+    isBuiltin: true,
 };
 
 export const DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW: ComfyuiWorkflow = {
-    name: "text_qwen3_5_api.json",
+    name: "Qwen-3.5 文本生成/反推",
     json: textQwen35Json as Record<string, unknown>,
     createdAt: 0,
+    isBuiltin: true,
 };
 
 export const DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW: ComfyuiWorkflow = {
-    name: "video_minimax_h3_omni_fp8_20step_api.json",
+    name: "MiniMax H3 全能参考 (FP8 20步)",
     json: omniVideoFp8Json as Record<string, unknown>,
     createdAt: 0,
+    isBuiltin: true,
 };
 
 export const DEFAULT_BUILTIN_COMFYUI_VIDEO_TURBO_WORKFLOW: ComfyuiWorkflow = {
-    name: "video_minimax_h3_omni_bf16_8step_turbo_api.json",
+    name: "MiniMax H3 全能参考 (BF16 8步极速)",
     json: omniVideoBf16TurboJson as Record<string, unknown>,
     createdAt: 0,
+    isBuiltin: true,
 };
 
 export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW: ComfyuiWorkflow = {
-    name: "video_minimax_h3_frame_fp8_20step_api.json",
+    name: "MiniMax H3 首尾帧 (FP8 20步)",
     json: frameVideoFp8Json as Record<string, unknown>,
     createdAt: 0,
+    isBuiltin: true,
 };
 
 export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_TURBO_WORKFLOW: ComfyuiWorkflow = {
-    name: "video_minimax_h3_frame_bf16_8step_turbo_api.json",
+    name: "MiniMax H3 首尾帧 (BF16 8步极速)",
     json: frameVideoBf16TurboJson as Record<string, unknown>,
     createdAt: 0,
+    isBuiltin: true,
 };
 
 // Aliases for unified ComfyUI workflows

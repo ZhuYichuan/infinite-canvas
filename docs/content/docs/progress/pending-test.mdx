@@ -24,6 +24,7 @@ The current release needs manual verification in these areas:
     - Each category displays its configured workflows with status badges (如「默认」「内置」);
     - Clicking 「上传添加」prompts to select a JSON file and strictly validates `_meta.title` against the selected category slots (missing mandatory slots or containing forbidden slots raises clear error toasts);
     - Support clicking 「设为默认」to switch default workflow, 「重置回内置」to restore initial templates, and deleting custom workflows (built-in templates are protected from deletion);
+    - Verify that after clicking 「恢复内置默认工作流」in the drawer and saving, the channel card on the Config page correctly displays the blue 「系统内置」badge instead of being misidentified as amber 「自定义」;
   - **Node Prompt Panel Channel & Workflow Dual Picker (节点控制栏双下拉联动)**:
     - Image Node: shows compact `[渠道]` + `[工作流]` selectors. When no reference images are connected, it automatically lists `t2i` workflows. Once a reference image is connected, it seamlessly switches to `i2i` workflows and selects the default `i2i` workflow;
     - Video Node: dynamically lists `omniVideo` or `frameVideo` workflows based on the selected video mode;

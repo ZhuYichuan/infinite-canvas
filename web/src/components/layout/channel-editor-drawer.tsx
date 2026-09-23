@@ -177,12 +177,12 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
             comfyuiProxyUrl: proxyUrl,
             workflows: savedWorkflows,
             models: normalizeChannelModels(draft.models),
-            comfyuiT2iWorkflow: t2iDef ? { name: t2iDef.name, json: t2iDef.json, createdAt: t2iDef.createdAt } : undefined,
-            comfyuiI2iWorkflow: i2iDef ? { name: i2iDef.name, json: i2iDef.json, createdAt: i2iDef.createdAt } : undefined,
-            comfyuiInpaintWorkflow: inpaintDef ? { name: inpaintDef.name, json: inpaintDef.json, createdAt: inpaintDef.createdAt } : undefined,
-            comfyuiTextWorkflow: textDef ? { name: textDef.name, json: textDef.json, createdAt: textDef.createdAt } : undefined,
-            comfyuiVideoWorkflow: videoDef ? { name: videoDef.name, json: videoDef.json, createdAt: videoDef.createdAt } : undefined,
-            comfyuiFrameVideoWorkflow: frameDef ? { name: frameDef.name, json: frameDef.json, createdAt: frameDef.createdAt } : undefined,
+            comfyuiT2iWorkflow: t2iDef ? { name: t2iDef.name, json: t2iDef.json, createdAt: t2iDef.createdAt, isBuiltin: t2iDef.isBuiltin } : undefined,
+            comfyuiI2iWorkflow: i2iDef ? { name: i2iDef.name, json: i2iDef.json, createdAt: i2iDef.createdAt, isBuiltin: i2iDef.isBuiltin } : undefined,
+            comfyuiInpaintWorkflow: inpaintDef ? { name: inpaintDef.name, json: inpaintDef.json, createdAt: inpaintDef.createdAt, isBuiltin: inpaintDef.isBuiltin } : undefined,
+            comfyuiTextWorkflow: textDef ? { name: textDef.name, json: textDef.json, createdAt: textDef.createdAt, isBuiltin: textDef.isBuiltin } : undefined,
+            comfyuiVideoWorkflow: videoDef ? { name: videoDef.name, json: videoDef.json, createdAt: videoDef.createdAt, isBuiltin: videoDef.isBuiltin } : undefined,
+            comfyuiFrameVideoWorkflow: frameDef ? { name: frameDef.name, json: frameDef.json, createdAt: frameDef.createdAt, isBuiltin: frameDef.isBuiltin } : undefined,
         });
         onClose();
     };

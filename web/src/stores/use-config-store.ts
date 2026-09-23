@@ -50,6 +50,7 @@ export type ComfyuiWorkflow = {
     name: string;
     json: Record<string, unknown>;
     createdAt: number;
+    isBuiltin?: boolean;
 };
 
 export type ChannelModel = {

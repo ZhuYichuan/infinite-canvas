@@ -1,6 +1,25 @@
 import { useTranslation } from "react-i18next";
 
-import type { ComfyuiWorkflow } from "@/stores/use-config-store";
+import type { ComfyuiWorkflow, ComfyWorkflowItem } from "@/stores/use-config-store";
+
+const BUILTIN_WORKFLOW_IDENTIFIERS = new Set([
+    "t2i_z_image_turbo_api.json",
+    "Z-Image-Turbo 文生图",
+    "i2i_flux2_dev_api.json",
+    "Flux2.Dev 图生图",
+    "inpaint_qwen_image_api.json",
+    "Qwen-Image 局部编辑",
+    "text_qwen3_5_api.json",
+    "Qwen-3.5 文本生成/反推",
+    "video_minimax_h3_omni_fp8_20step_api.json",
+    "MiniMax H3 全能参考 (FP8 20步)",
+    "video_minimax_h3_omni_bf16_8step_turbo_api.json",
+    "MiniMax H3 全能参考 (BF16 8步极速)",
+    "video_minimax_h3_frame_fp8_20step_api.json",
+    "MiniMax H3 首尾帧 (FP8 20步)",
+    "video_minimax_h3_frame_bf16_8step_turbo_api.json",
+    "MiniMax H3 首尾帧 (BF16 8步极速)",
+]);
 
 /**
  * Displays attached ComfyUI workflow information (built-in or custom).
@@ -8,14 +27,33 @@ import type { ComfyuiWorkflow } from "@/stores/use-config-store";
 export function ComfyuiWorkflowEditor({
     value,
     defaultWorkflow,
+    isBuiltin,
 }: {
-    value?: ComfyuiWorkflow;
-    defaultWorkflow?: ComfyuiWorkflow;
+    value?: ComfyuiWorkflow | ComfyWorkflowItem;
+    defaultWorkflow?: ComfyuiWorkflow | ComfyWorkflowItem;
+    isBuiltin?: boolean;
     onChange?: (value?: ComfyuiWorkflow) => void;
 }) {
     const { t } = useTranslation();
 
-    const isCustom = Boolean(value && defaultWorkflow && value !== defaultWorkflow && value.name !== defaultWorkflow.name);
+    const isCustom = (() => {
+        if (typeof isBuiltin === "boolean") {
+            return !isBuiltin;
+        }
+        if (value && "isBuiltin" in value && typeof value.isBuiltin === "boolean") {
+            return !value.isBuiltin;
+        }
+        if (!value || value === defaultWorkflow) {
+            return false;
+        }
+        if (value.name && BUILTIN_WORKFLOW_IDENTIFIERS.has(value.name)) {
+            return false;
+        }
+        if (defaultWorkflow && value.name === defaultWorkflow.name) {
+            return false;
+        }
+        return true;
+    })();
     const activeWorkflow = value || defaultWorkflow;
 
     return (
