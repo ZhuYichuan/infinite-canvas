@@ -1,0 +1,333 @@
+{
+  "481": {
+    "inputs": {
+      "filename_prefix": "Qwen_image_2.1",
+      "format": "png",
+      "format.bit_depth": "8-bit",
+      "format.input_color_space": "sRGB",
+      "images": [
+        "480:457",
+        0
+      ]
+    },
+    "class_type": "SaveImageAdvanced",
+    "_meta": {
+      "title": "out_image"
+    }
+  },
+  "485": {
+    "inputs": {
+      "value": "宋代古风人物"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "prompt"
+    }
+  },
+  "486": {
+    "inputs": {
+      "value": 1080
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "seed"
+    }
+  },
+  "487": {
+    "inputs": {
+      "value": 1000
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "488": {
+    "inputs": {
+      "value": 2000
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "490": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_03"
+    }
+  },
+  "493": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_02"
+    }
+  },
+  "495": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_01"
+    }
+  },
+  "496": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_04"
+    }
+  },
+  "497": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_05"
+    }
+  },
+  "498": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_06"
+    }
+  },
+  "499": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_07"
+    }
+  },
+  "500": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_08"
+    }
+  },
+  "501": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_09"
+    }
+  },
+  "502": {
+    "inputs": {
+      "image": "-u_hbRQ5_ref_2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_10"
+    }
+  },
+  "480:451": {
+    "inputs": {
+      "unet_name": "qwen_image_2.1_bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "480:453": {
+    "inputs": {
+      "clip_name": "qwen3vl_8b_bf16.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "480:454": {
+    "inputs": {
+      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "480:456": {
+    "inputs": {
+      "width": [
+        "487",
+        0
+      ],
+      "height": [
+        "488",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空Latent图像"
+    }
+  },
+  "480:457": {
+    "inputs": {
+      "samples": [
+        "480:458",
+        0
+      ],
+      "vae": [
+        "480:454",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "480:458": {
+    "inputs": {
+      "seed": [
+        "486",
+        0
+      ],
+      "steps": 25,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "480:469",
+        0
+      ],
+      "positive": [
+        "480:474",
+        0
+      ],
+      "negative": [
+        "480:474",
+        1
+      ],
+      "latent_image": [
+        "480:468",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "480:468": {
+    "inputs": {
+      "switch": true,
+      "on_false": [
+        "480:474",
+        2
+      ],
+      "on_true": [
+        "480:456",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "切换"
+    }
+  },
+  "480:469": {
+    "inputs": {
+      "device": "auto",
+      "dtype": "default",
+      "model": [
+        "480:451",
+        0
+      ]
+    },
+    "class_type": "QwenImage21Cache",
+    "_meta": {
+      "title": "Qwen Image 2.1 Cache"
+    }
+  },
+  "480:474": {
+    "inputs": {
+      "prompt": [
+        "485",
+        0
+      ],
+      "negative_prompt": "",
+      "resolution": 0,
+      "clip": [
+        "480:453",
+        0
+      ],
+      "images.image_1": [
+        "495",
+        0
+      ],
+      "vae": [
+        "480:454",
+        0
+      ],
+      "images.image_4": [
+        "496",
+        0
+      ],
+      "images.image_5": [
+        "497",
+        0
+      ],
+      "images.image_6": [
+        "498",
+        0
+      ],
+      "images.image_7": [
+        "499",
+        0
+      ],
+      "images.image_8": [
+        "500",
+        0
+      ],
+      "images.image_9": [
+        "501",
+        0
+      ],
+      "images.image_10": [
+        "502",
+        0
+      ],
+      "images.image_2": [
+        "493",
+        0
+      ],
+      "images.image_3": [
+        "490",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImage21",
+    "_meta": {
+      "title": "Text Encode Qwen Image 2.1"
+    }
+  }
+}

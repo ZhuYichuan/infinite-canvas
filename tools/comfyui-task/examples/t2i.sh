@@ -8,7 +8,7 @@ HEIGHT="${3:-1024}"
 shift 3
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEMO_DIR="${SCRIPT_DIR}/../../../Comfy/Comfy-Api/workflows/1_t2i_z_image_turbo"
+DEMO_DIR="${SCRIPT_DIR}/../../../Comfy/Comfy-Api/workflows/1_t2i"
 
 cat "${DEMO_DIR}/z_image_turbo_api.json" \
   | bun run "${SCRIPT_DIR}/../bin/comfyui-task" run \
