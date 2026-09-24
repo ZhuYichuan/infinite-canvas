@@ -216,10 +216,14 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                         const isComfyui = channel.apiFormat === "comfyui";
                                         const t2iItem = getDefaultWorkflow(channel, "t2i");
                                         const i2iItem = getDefaultWorkflow(channel, "i2i");
-                                        const inpaintItem = getDefaultWorkflow(channel, "inpaint");
                                         const textItem = getDefaultWorkflow(channel, "text");
                                         const videoItem = getDefaultWorkflow(channel, "omniVideo");
                                         const frameVideoItem = getDefaultWorkflow(channel, "frameVideo");
+
+                                        const inpaintItem = getDefaultWorkflow(channel, "inpaint");
+                                        const superResolveItem = getDefaultWorkflow(channel, "superResolve");
+                                        const angleItem = getDefaultWorkflow(channel, "angle");
+                                        const upscaleItem = getDefaultWorkflow(channel, "upscale");
 
                                         return (
                                             <div key={channel.id} className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
@@ -249,88 +253,145 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                 {isComfyui && (() => {
                                                     const defaultWorkflows = getDefaultComfyuiWorkflows(channel);
                                                     return (
-                                                        <div className="mt-3.5 space-y-3 border-t border-stone-100 pt-3 dark:border-stone-800/80">
-                                                            <div>
-                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.t2iWorkflowTitle")}</span>
-                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.t2iWorkflowDesc")}</span>
+                                                        <div className="mt-3.5 space-y-4 border-t border-stone-100 pt-3 dark:border-stone-800/80">
+                                                            {/* 核心生成工作流 */}
+                                                            <div className="space-y-2">
+                                                                <div className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                                                                    核心生成工作流（生图 / 生视频 / 文本）
                                                                 </div>
-                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                    <ComfyuiWorkflowEditor
-                                                                        value={t2iItem || channel.comfyuiT2iWorkflow || defaultWorkflows.t2i}
-                                                                        defaultWorkflow={defaultWorkflows.t2i}
-                                                                        isBuiltin={t2iItem ? Boolean(t2iItem.isBuiltin) : undefined}
-                                                                    />
+                                                                <div className="space-y-2">
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">{t("config.channelEditor.t2iWorkflowTitle")}</span>
+                                                                            <span className="text-[11px] text-stone-400">{t("config.channelEditor.t2iWorkflowDesc")}</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={t2iItem || channel.comfyuiT2iWorkflow || defaultWorkflows.t2i}
+                                                                                defaultWorkflow={defaultWorkflows.t2i}
+                                                                                isBuiltin={t2iItem ? Boolean(t2iItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">{t("config.channelEditor.i2iWorkflowTitle")}</span>
+                                                                            <span className="text-[11px] text-stone-400">{t("config.channelEditor.i2iWorkflowDesc")}</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={i2iItem || channel.comfyuiI2iWorkflow || defaultWorkflows.i2i}
+                                                                                defaultWorkflow={defaultWorkflows.i2i}
+                                                                                isBuiltin={i2iItem ? Boolean(i2iItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">{t("config.channelEditor.textWorkflowTitle")}</span>
+                                                                            <span className="text-[11px] text-stone-400">{t("config.channelEditor.textWorkflowDesc")}</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={textItem || channel.comfyuiTextWorkflow || defaultWorkflows.text}
+                                                                                defaultWorkflow={defaultWorkflows.text}
+                                                                                isBuiltin={textItem ? Boolean(textItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">{t("config.channelEditor.videoWorkflowTitle")}</span>
+                                                                            <span className="text-[11px] text-stone-400">{t("config.channelEditor.videoWorkflowDesc")}</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={videoItem || channel.comfyuiVideoWorkflow || defaultWorkflows.video}
+                                                                                defaultWorkflow={defaultWorkflows.video}
+                                                                                isBuiltin={videoItem ? Boolean(videoItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">{t("config.channelEditor.frameVideoWorkflowTitle")}</span>
+                                                                            <span className="text-[11px] text-stone-400">{t("config.channelEditor.frameVideoWorkflowDesc")}</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={frameVideoItem || channel.comfyuiFrameVideoWorkflow || defaultWorkflows.frameVideo}
+                                                                                defaultWorkflow={defaultWorkflows.frameVideo}
+                                                                                isBuiltin={frameVideoItem ? Boolean(frameVideoItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
-                                                            <div>
-                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.i2iWorkflowTitle")}</span>
-                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.i2iWorkflowDesc")}</span>
-                                                                </div>
-                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                    <ComfyuiWorkflowEditor
-                                                                        value={i2iItem || channel.comfyuiI2iWorkflow || defaultWorkflows.i2i}
-                                                                        defaultWorkflow={defaultWorkflows.i2i}
-                                                                        isBuiltin={i2iItem ? Boolean(i2iItem.isBuiltin) : undefined}
-                                                                    />
-                                                                </div>
-                                                            </div>
+                                                            <div className="border-t border-stone-100 pt-2.5 dark:border-stone-800/60" />
 
-                                                            <div>
-                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.inpaintWorkflowTitle")}</span>
-                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.inpaintWorkflowDesc")}</span>
+                                                            {/* 工具增强工作流 */}
+                                                            <div className="space-y-2">
+                                                                <div className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                                                                    工具增强工作流（局部编辑 / 超分 / 多角度 / 高清放大）
                                                                 </div>
-                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                    <ComfyuiWorkflowEditor
-                                                                        value={inpaintItem || channel.comfyuiInpaintWorkflow || defaultWorkflows.inpaint}
-                                                                        defaultWorkflow={defaultWorkflows.inpaint}
-                                                                        isBuiltin={inpaintItem ? Boolean(inpaintItem.isBuiltin) : undefined}
-                                                                    />
-                                                                </div>
-                                                            </div>
+                                                                <div className="space-y-2">
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">{t("config.channelEditor.inpaintWorkflowTitle")}</span>
+                                                                            <span className="text-[11px] text-stone-400">{t("config.channelEditor.inpaintWorkflowDesc")}</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={inpaintItem || channel.comfyuiInpaintWorkflow || defaultWorkflows.inpaint}
+                                                                                defaultWorkflow={defaultWorkflows.inpaint}
+                                                                                isBuiltin={inpaintItem ? Boolean(inpaintItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
 
-                                                            <div>
-                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.textWorkflowTitle")}</span>
-                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.textWorkflowDesc")}</span>
-                                                                </div>
-                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                    <ComfyuiWorkflowEditor
-                                                                        value={textItem || channel.comfyuiTextWorkflow || defaultWorkflows.text}
-                                                                        defaultWorkflow={defaultWorkflows.text}
-                                                                        isBuiltin={textItem ? Boolean(textItem.isBuiltin) : undefined}
-                                                                    />
-                                                                </div>
-                                                            </div>
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">AI 超分工作流</span>
+                                                                            <span className="text-[11px] text-stone-400">画质高精重建（必标 ref_image_01、output_image）</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={superResolveItem || channel.comfyuiSuperResolveWorkflow}
+                                                                                isBuiltin={superResolveItem ? Boolean(superResolveItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
 
-                                                            <div>
-                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.videoWorkflowTitle")}</span>
-                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.videoWorkflowDesc")}</span>
-                                                                </div>
-                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                    <ComfyuiWorkflowEditor
-                                                                        value={videoItem || channel.comfyuiVideoWorkflow || defaultWorkflows.video}
-                                                                        defaultWorkflow={defaultWorkflows.video}
-                                                                        isBuiltin={videoItem ? Boolean(videoItem.isBuiltin) : undefined}
-                                                                    />
-                                                                </div>
-                                                            </div>
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">多角度生成工作流</span>
+                                                                            <span className="text-[11px] text-stone-400">相机视角环绕生成（必标 ref_image_01、prompt、output_image）</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={angleItem || channel.comfyuiAngleWorkflow}
+                                                                                isBuiltin={angleItem ? Boolean(angleItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
 
-                                                            <div>
-                                                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                                                                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{t("config.channelEditor.frameVideoWorkflowTitle")}</span>
-                                                                    <span className="text-[11px] text-stone-400">{t("config.channelEditor.frameVideoWorkflowDesc")}</span>
-                                                                </div>
-                                                                <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
-                                                                    <ComfyuiWorkflowEditor
-                                                                        value={frameVideoItem || channel.comfyuiFrameVideoWorkflow || defaultWorkflows.frameVideo}
-                                                                        defaultWorkflow={defaultWorkflows.frameVideo}
-                                                                        isBuiltin={frameVideoItem ? Boolean(frameVideoItem.isBuiltin) : undefined}
-                                                                    />
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">高清放大工作流</span>
+                                                                            <span className="text-[11px] text-stone-400">潜空间/Tile高清放大（必标 ref_image_01、output_image）</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={upscaleItem || channel.comfyuiUpscaleWorkflow}
+                                                                                isBuiltin={upscaleItem ? Boolean(upscaleItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
