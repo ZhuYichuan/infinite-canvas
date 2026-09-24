@@ -346,7 +346,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                     {
                         key: "toolbar",
                         label: t("config.tabs.toolbar", "工具栏配置"),
-                        children: <ConfigToolbar onOpenChannelEditor={(channelId) => setEditingChannelId(channelId)} />,
+                        children: <ConfigToolbar onNavigateToChannels={() => setActiveTab("channels")} />,
                     },
                     {
                         key: "preferences",

@@ -13,13 +13,16 @@ import {
 } from "@/stores/use-config-store";
 import { getDefaultComfyWorkflowItems } from "@/services/api/comfyui-default-workflows";
 
-const WORKFLOW_CATEGORIES: Array<{ key: WorkflowCategory; title: string; desc: string }> = [
+const CORE_WORKFLOW_CATEGORIES: Array<{ key: WorkflowCategory; title: string; desc: string }> = [
     { key: "t2i", title: "文生图工作流", desc: "文本生成图像（必标 prompt、output_image）" },
     { key: "i2i", title: "图生图工作流", desc: "参考图垫图生成（必标 prompt、ref_image_01、output_image）" },
-    { key: "inpaint", title: "局部编辑工作流", desc: "遮罩重绘修图（必标 ref_image_01、ref_mask、output_image）" },
     { key: "text", title: "文本生成工作流", desc: "大语言模型问答与反推（必标 prompt、output_text）" },
     { key: "omniVideo", title: "全能参考视频工作流", desc: "多模态参考生视频（必标 prompt、output_video）" },
     { key: "frameVideo", title: "首尾帧视频工作流", desc: "首尾关键帧生视频（必标 first_frame、last_frame、output_video）" },
+];
+
+const TOOL_WORKFLOW_CATEGORIES: Array<{ key: WorkflowCategory; title: string; desc: string }> = [
+    { key: "inpaint", title: "局部编辑工作流", desc: "遮罩重绘修图（必标 ref_image_01、ref_mask、output_image）" },
     { key: "superResolve", title: "AI 超分工作流", desc: "画质高精重建（必标 ref_image_01、output_image）" },
     { key: "angle", title: "多角度生成工作流", desc: "相机视角环绕生成（必标 ref_image_01、prompt、output_image）" },
     { key: "upscale", title: "高清放大工作流", desc: "潜空间/Tile高清放大（必标 ref_image_01、output_image）" },
@@ -276,14 +279,14 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
 
             <div className="mt-6 border-t border-stone-200 pt-5 dark:border-stone-800">
                 <div className="mb-4">
-                    <div className="text-base font-semibold">工作流管理（6 大分类）</div>
+                    <div className="text-base font-semibold">工作流能力矩阵（9 大分类）</div>
                     <div className="mt-0.5 text-xs text-stone-500">
-                        每个分类下可添加多个独立工作流。上传时需包含完整的 <code>_meta.title</code> 槽位协议标注。
+                        统一管理该渠道下的所有 ComfyUI 工作流能力。上传时需包含完整的 <code>_meta.title</code> 槽位协议标注。
                     </div>
                 </div>
 
-                <div className="space-y-5">
-                    {WORKFLOW_CATEGORIES.map((cat) => {
+                {(() => {
+                    const renderWorkflowCategory = (cat: { key: WorkflowCategory; title: string; desc: string }) => {
                         const items = currentWorkflows.filter((w) => w.category === cat.key);
                         return (
                             <div key={cat.key} className="rounded-xl border border-stone-200/80 bg-stone-50/50 p-3.5 dark:border-stone-800 dark:bg-stone-900/30">
@@ -375,8 +378,30 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                                 </div>
                             </div>
                         );
-                    })}
-                </div>
+                    };
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="space-y-2.5">
+                                <div className="text-xs font-semibold tracking-wide text-stone-500">
+                                    核心生成工作流（生图 / 生视频 / 文本）
+                                </div>
+                                <div className="space-y-3">
+                                    {CORE_WORKFLOW_CATEGORIES.map(renderWorkflowCategory)}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2.5">
+                                <div className="text-xs font-semibold tracking-wide text-stone-500">
+                                    工具增强工作流（局部编辑 / 超分 / 多角度 / 高清放大）
+                                </div>
+                                <div className="space-y-3">
+                                    {TOOL_WORKFLOW_CATEGORIES.map(renderWorkflowCategory)}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* 隐藏的文件上传 input */}

@@ -36,18 +36,9 @@ export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
 
 export type WorkflowCategory = "t2i" | "i2i" | "inpaint" | "text" | "omniVideo" | "frameVideo" | "superResolve" | "angle" | "upscale";
 
-export type ToolbarAiToolBindings = {
-    maskEdit?: { channelId?: string; workflowId?: string };
-    reversePrompt?: { channelId?: string; workflowId?: string };
-    superResolve?: { channelId?: string; workflowId?: string };
-    angle?: { channelId?: string; workflowId?: string };
-    upscale?: { channelId?: string; workflowId?: string };
-};
-
 export type ToolbarConfig = {
     ids: string[];
     showLabels: boolean;
-    bindings: ToolbarAiToolBindings;
 };
 
 export type ComfyWorkflowItem = {
@@ -144,7 +135,6 @@ export const defaultToolbarConfig: ToolbarConfig = {
         "copyPrompt", "reversePrompt", "replace", "maskEdit", "crop", "split", "upscale", "view"
     ],
     showLabels: false,
-    bindings: {},
 };
 
 export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
@@ -424,12 +414,8 @@ export const useConfigStore = create<ConfigStore>()(
                 const defaultToolbar = defaultToolbarConfig;
                 const persistedToolbar = persistedConfig.toolbar;
                 const toolbar: ToolbarConfig = {
-                    ...defaultToolbar,
-                    ...(persistedToolbar || {}),
-                    bindings: {
-                        ...(defaultToolbar.bindings || {}),
-                        ...(persistedToolbar?.bindings || {}),
-                    },
+                    ids: Array.isArray(persistedToolbar?.ids) ? persistedToolbar.ids : defaultToolbar.ids,
+                    showLabels: typeof persistedToolbar?.showLabels === "boolean" ? persistedToolbar.showLabels : defaultToolbar.showLabels,
                 };
                 return {
                     ...current,

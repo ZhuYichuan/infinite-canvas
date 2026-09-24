@@ -7,24 +7,28 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
-- Toolbar Configuration and AI Tool Workflow Verification (自定义工具栏配置与 AI 增强工具流联动验证):
+- Decoupled Channel Workflows and Toolbar Configuration Verification (渠道工作流与自定义工具栏解耦验证):
   - **Toolbar Settings Tab (全局设置「工具栏」Tab)**:
     - Open Settings modal and click the 「工具栏」 tab;
     - Verify 10 pure frontend tools (信息, 删除, 存资产, 下载, 复制提示词, 替换图片, 锁比例, 裁剪, 切图, 查看大图) are rendered with switch toggles; toggling updates local config state and reflects immediately in the canvas image hover toolbar;
-    - Verify 5 AI-enhanced tools (局部编辑, 反推提示词, AI 超分, 多角度, 图片放大) are rendered with switches, channel pickers, and workflow selectors;
-    - Test direct workflow upload (`.json`) on the tool card: verify client-side slot validation rules (e.g. `superResolve` requires `ref_image_01` & `output_image`, forbids `ref_mask`), successful upload adds the workflow to the selected channel and auto-binds it;
-    - Test clicking 「管理渠道与工作流」 link navigates directly to the Channels tab;
+    - Verify 5 AI-enhanced tools (局部编辑, 反推提示词, AI 超分, 多角度, 图片放大) are rendered with switches and read-only status tags;
+    - For ready tools (e.g. Inpaint), verify green tag 「已就绪: {workflow.name}」; for unconfigured tools, verify amber tag 「渠道未配置工作流」 and clicking 「去配置 >」 navigates to the Channels tab;
+    - Verify top right 「管理渠道与工作流」 button navigates directly to the Channels tab;
+  - **Channel Drawer 9-Category Workflow Matrix (渠道抽屉 9 大分类分组管理)**:
+    - Open Channel Drawer (`渠道与模型配置` -> `编辑渠道`);
+    - Verify workflows are organized into two distinct groups:
+      - 核心生成工作流（生图 / 生视频 / 文本）：`t2i`, `i2i`, `text`, `omniVideo`, `frameVideo`;
+      - 工具增强工作流（局部编辑 / 超分 / 多角度 / 高清放大）：`inpaint`, `superResolve`, `angle`, `upscale`;
+    - Test uploading, setting as default, and deleting workflows under tool enhancement categories;
   - **Canvas Floating Toolbar Quick Config Modal (画布悬浮栏配置联动)**:
     - Hover over an image node on the canvas and click the settings gear / more button in the floating toolbar;
     - Verify quick-toggle switches update visibility;
     - Click 「高级配置 / 绑定工作流 >」 at the bottom of the modal; verify it opens the global Settings modal and automatically selects the 「工具栏」 tab;
   - **AI Super Resolution Node Generation (AI 超分节点工作流调用管线)**:
     - Click the 「超分」 button on an image node's toolbar:
-      - If no `superResolve` workflow is bound: displays a guidance card with a 「前往配置工作流」 button; clicking it navigates to the toolbar configuration tab;
-      - If a `superResolve` workflow is bound: displays the bound workflow name and description with a 「开始超分重建」 button;
+      - If no `superResolve` workflow is configured in current channel: displays a guidance card with a 「前往配置工作流」 button; clicking it navigates to the Channels tab;
+      - If a `superResolve` workflow is configured: displays the bound workflow name and description with a 「开始超分重建」 button;
       - Clicking 「开始超分重建」 creates a child loading node on the right with a lineage connection, invokes `requestComfyuiImage` with `category: "superResolve"`, queries ComfyUI status, and populates the generated high-resolution image upon completion;
-  - **Workflows Directory Structure (ComfyUI 工作流规范化扩展)**:
-    - Verify `Comfy/Comfy-Api/workflows/` contains standard directories `7_super_resolve`, `8_angle`, `9_upscale` and documentation guides, expanding the built-in capability matrix from 6 to 9 categories.
 
 - Unified Built-in ComfyUI Channel and Model Workflows Matrix Verification (系统内置 ComfyUI 渠道与模型工作流矩阵验证):
   - **Unified Built-in Channel Configuration (统一系统内置渠道)**:

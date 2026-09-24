@@ -2313,11 +2313,11 @@ function InfiniteCanvasPage() {
     const executeSuperResolveNode = useCallback(
         async (node: CanvasNodeData, workflowId?: string, channelId?: string) => {
             if (!node.metadata?.content) return;
-            const targetChannelId = channelId || effectiveConfig.toolbar?.bindings?.superResolve?.channelId || effectiveConfig.channels[0]?.id;
-            const targetWorkflowId = workflowId || effectiveConfig.toolbar?.bindings?.superResolve?.workflowId;
-            const targetWorkflow = findWorkflow(effectiveConfig, targetChannelId, targetWorkflowId, "superResolve");
+            const targetChannelId =
+                channelId || effectiveConfig.channels.find((c) => c.id === effectiveConfig.channelId)?.id || effectiveConfig.channels[0]?.id;
+            const targetWorkflow = findWorkflow(effectiveConfig, targetChannelId, workflowId, "superResolve");
             if (!targetWorkflow) {
-                openConfigDialog(false, "toolbar");
+                openConfigDialog(false, "channels");
                 return;
             }
 
@@ -4223,10 +4223,10 @@ function InfiniteCanvasPage() {
                     destroyOnClose
                 >
                     {(() => {
-                        const targetChannelId = effectiveConfig.toolbar?.bindings?.superResolve?.channelId;
-                        const targetWorkflowId = effectiveConfig.toolbar?.bindings?.superResolve?.workflowId;
+                        const targetChannelId =
+                            effectiveConfig.channels.find((c) => c.id === effectiveConfig.channelId)?.id || effectiveConfig.channels[0]?.id;
                         const superWorkflow = superResolveNode
-                            ? findWorkflow(effectiveConfig, targetChannelId, targetWorkflowId, "superResolve")
+                            ? findWorkflow(effectiveConfig, targetChannelId, undefined, "superResolve")
                             : null;
                         return (
                             <div className="space-y-4 pt-2">
@@ -4277,7 +4277,7 @@ function InfiniteCanvasPage() {
                                             type="primary"
                                             onClick={() => {
                                                 setSuperResolveNodeId(null);
-                                                openConfigDialog(false, "toolbar");
+                                                openConfigDialog(false, "channels");
                                             }}
                                         >
                                             {t("canvas.projectPage.configureWorkflow")}
