@@ -151,7 +151,7 @@ export function validateComfyuiWorkflow(
     const hasOutputVideo = Boolean(titleToNodeIds["output_video"]?.length);
     const hasOutputText = Boolean(titleToNodeIds["output_text"]?.length);
 
-    if (category === "t2i" || category === "i2i" || category === "inpaint") {
+    if (category === "t2i" || category === "i2i" || category === "inpaint" || category === "superResolve" || category === "angle" || category === "upscale") {
         if (!hasOutputImage) {
             return { ok: false, error: "生图工作流缺少 \"output_image\" 标记（请在 SaveImage 等保存节点上标记 _meta.title 为 output_image）" };
         }
@@ -214,6 +214,36 @@ export function validateComfyuiWorkflow(
             }
             if (!hasRefImage) {
                 return { ok: false, error: "局部编辑工作流缺少 \"ref_image_01\" 底图槽位节点" };
+            }
+            break;
+
+        case "superResolve":
+            if (!hasRefImage) {
+                return { ok: false, error: "超分工作流缺少原图输入槽位（至少需标记一个 \"ref_image_01\" 槽位节点）" };
+            }
+            if (hasRefMask) {
+                return { ok: false, error: "超分工作流不应包含 \"ref_mask\" 局部重绘槽位" };
+            }
+            break;
+
+        case "angle":
+            if (!hasRefImage) {
+                return { ok: false, error: "多角度工作流缺少基准原图输入槽位（至少需标记一个 \"ref_image_01\" 槽位节点）" };
+            }
+            if (!hasPrompt) {
+                return { ok: false, error: "多角度工作流缺少 \"prompt\" 视角描述/相机参数槽位节点" };
+            }
+            if (hasRefMask) {
+                return { ok: false, error: "多角度工作流不应包含 \"ref_mask\" 局部重绘槽位" };
+            }
+            break;
+
+        case "upscale":
+            if (!hasRefImage) {
+                return { ok: false, error: "放大工作流缺少原图输入槽位（至少需标记一个 \"ref_image_01\" 槽位节点）" };
+            }
+            if (hasRefMask) {
+                return { ok: false, error: "放大工作流不应包含 \"ref_mask\" 局部重绘槽位" };
             }
             break;
 
@@ -989,6 +1019,7 @@ export interface ComfyuiImageRequest {
     references?: ReferenceImage[];
     channelId?: string;
     workflowId?: string;
+    category?: WorkflowCategory;
     signal?: AbortSignal;
     onProgress?: (status: string, detail?: Record<string, unknown>) => void;
 }
@@ -1072,7 +1103,7 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
         const channelModel = channel.models.find((model) => model.name === requestModel);
         const references = req.references || [];
         const isI2i = references.length > 0;
-        const category: WorkflowCategory = isI2i ? "i2i" : "t2i";
+        const category: WorkflowCategory = req.category || (isI2i ? "i2i" : "t2i");
         const channelId = req.channelId || req.config.channelId || channel.id;
         const workflowId = req.workflowId || req.config.workflowId;
         const targetWorkflowItem = workflowId

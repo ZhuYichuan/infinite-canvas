@@ -6,9 +6,10 @@ import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 
 import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
+import { requestComfyuiImage } from "@/services/api/comfyui";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
-import { defaultConfig, inpaintModelOptions, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { defaultConfig, findWorkflow, inpaintModelOptions, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadImage } from "@/services/image-storage";
 import { uploadMediaFile } from "@/services/file-storage";
 import { nanoid } from "nanoid";
@@ -2309,6 +2310,79 @@ function InfiniteCanvasPage() {
         setDialogNodeId(childId);
     }, []);
 
+    const executeSuperResolveNode = useCallback(
+        async (node: CanvasNodeData, workflowId?: string, channelId?: string) => {
+            if (!node.metadata?.content) return;
+            const targetChannelId = channelId || effectiveConfig.toolbar?.bindings?.superResolve?.channelId || effectiveConfig.channels[0]?.id;
+            const targetWorkflowId = workflowId || effectiveConfig.toolbar?.bindings?.superResolve?.workflowId;
+            const targetWorkflow = findWorkflow(effectiveConfig, targetChannelId, targetWorkflowId, "superResolve");
+            if (!targetWorkflow) {
+                openConfigDialog(false, "toolbar");
+                return;
+            }
+
+            const generationConfig = {
+                ...buildGenerationConfig(effectiveConfig, node, "image"),
+                count: "1",
+                ...(targetChannelId ? { channelId: targetChannelId } : {}),
+                ...(targetWorkflow.id ? { workflowId: targetWorkflow.id } : {}),
+            };
+            const childId = nanoid();
+            setSuperResolveNodeId(null);
+            setNodes((prev) => [
+                ...prev,
+                {
+                    id: childId,
+                    type: CanvasNodeType.Image,
+                    title: `超分 - ${node.title || "Image"}`,
+                    position: { x: node.position.x + node.width + 96, y: node.position.y },
+                    width: node.width,
+                    height: node.height,
+                    metadata: {
+                        prompt: node.metadata?.prompt || "",
+                        status: NODE_STATUS_LOADING,
+                        channelId: targetChannelId,
+                        workflowId: targetWorkflow.id,
+                    },
+                },
+            ]);
+            setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId, kind: "lineage" }]);
+            setSelectedNodeIds(new Set([childId]));
+            setSelectedConnectionId(null);
+            setDialogNodeId(childId);
+            const controller = startGenerationRequest(childId, node.id, childId);
+            try {
+                const source = { id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, storageKey: node.metadata.storageKey };
+                const image = await requestComfyuiImage({
+                    config: generationConfig,
+                    model: generationConfig.imageModel || generationConfig.model,
+                    prompt: node.metadata?.prompt || "",
+                    references: [source],
+                    channelId: targetChannelId,
+                    workflowId: targetWorkflow.id,
+                    category: "superResolve",
+                    signal: controller.signal,
+                    onProgress: (status, detail) => {
+                        if (status === "submitted" && detail?.jobId) {
+                            setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, jobId: detail.jobId } } : item)));
+                        }
+                    },
+                }).then((res) => res.items[0]);
+                const uploaded = await uploadImage(image.dataUrl);
+                const size = fitNodeSize(uploaded.width, uploaded.height);
+                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, width: size.width, height: size.height, metadata: { ...item.metadata, ...imageMetadata(uploaded) } } : item)));
+            } catch (error) {
+                if (isGenerationCanceled(error)) return;
+                const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
+                message.error(errorDetails);
+                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, errorDetails } } : item)));
+            } finally {
+                finishGenerationRequest(childId, controller);
+            }
+        },
+        [effectiveConfig, finishGenerationRequest, message, openConfigDialog, startGenerationRequest, t],
+    );
+
     const generateAngleNode = useCallback(
         async (node: CanvasNodeData, params: CanvasImageAngleParams) => {
             if (!node.metadata?.content) return;
@@ -4139,8 +4213,80 @@ function InfiniteCanvasPage() {
                     <CanvasNodeUpscaleDialog dataUrl={upscaleNode.metadata.content} open={Boolean(upscaleNode)} onClose={() => setUpscaleNodeId(null)} onConfirm={(params) => void upscaleImageNode(upscaleNode!, params)} />
                 ) : null}
 
-                <Modal title={t("canvas.projectPage.superResolve")} open={Boolean(superResolveNode?.metadata?.content)} centered footer={null} onCancel={() => setSuperResolveNodeId(null)}>
-                    <div className="py-8 text-center text-base font-medium">{t("canvas.projectPage.notImplemented")}</div>
+                <Modal
+                    title={t("canvas.imageTools.superResolve")}
+                    open={Boolean(superResolveNode?.metadata?.content)}
+                    centered
+                    footer={null}
+                    onCancel={() => setSuperResolveNodeId(null)}
+                    width={480}
+                    destroyOnClose
+                >
+                    {(() => {
+                        const targetChannelId = effectiveConfig.toolbar?.bindings?.superResolve?.channelId;
+                        const targetWorkflowId = effectiveConfig.toolbar?.bindings?.superResolve?.workflowId;
+                        const superWorkflow = superResolveNode
+                            ? findWorkflow(effectiveConfig, targetChannelId, targetWorkflowId, "superResolve")
+                            : null;
+                        return (
+                            <div className="space-y-4 pt-2">
+                                {superResolveNode?.metadata?.content && (
+                                    <div className="flex max-h-56 items-center justify-center overflow-hidden rounded-lg bg-black/5 p-2 dark:bg-white/5">
+                                        <img
+                                            src={superResolveNode.metadata.content}
+                                            alt=""
+                                            className="max-h-52 rounded object-contain shadow-sm"
+                                        />
+                                    </div>
+                                )}
+                                <div className="text-sm">
+                                    {superWorkflow ? (
+                                        <div className="space-y-2 rounded-lg bg-black/5 p-3 dark:bg-white/5">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium text-foreground">{t("canvas.projectPage.workflow")}:</span>
+                                                <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                                    {superWorkflow.name || t("canvas.projectPage.defaultWorkflow")}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">{t("canvas.projectPage.superResolveHint")}</p>
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-lg border border-dashed border-amber-500/40 bg-amber-50/50 p-3 text-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+                                            <p className="font-medium">{t("canvas.projectPage.noSuperResolveWorkflowTitle")}</p>
+                                            <p className="mt-1 text-xs opacity-90">{t("canvas.projectPage.noSuperResolveWorkflowDesc")}</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex items-center justify-end gap-2 border-t pt-3">
+                                    <Button onClick={() => setSuperResolveNodeId(null)}>
+                                        {t("common.cancel")}
+                                    </Button>
+                                    {superWorkflow ? (
+                                        <Button
+                                            type="primary"
+                                            onClick={() => {
+                                                if (superResolveNode) {
+                                                    void executeSuperResolveNode(superResolveNode);
+                                                }
+                                            }}
+                                        >
+                                            {t("canvas.projectPage.startSuperResolve")}
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            type="primary"
+                                            onClick={() => {
+                                                setSuperResolveNodeId(null);
+                                                openConfigDialog(false, "toolbar");
+                                            }}
+                                        >
+                                            {t("canvas.projectPage.configureWorkflow")}
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </Modal>
 
                 {angleNode?.metadata?.content ? <CanvasNodeAngleDialog dataUrl={angleNode.metadata.content} open={Boolean(angleNode)} onClose={() => setAngleNodeId(null)} onConfirm={(params) => void generateAngleNode(angleNode!, params)} /> : null}

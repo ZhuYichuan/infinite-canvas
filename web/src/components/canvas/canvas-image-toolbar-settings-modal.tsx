@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Button, Card, Checkbox, Form, Modal, Space, Switch, Tag, Tooltip, Typography, theme as antdTheme } from "antd";
-import { Ellipsis, Image as ImageIcon, Settings2 } from "lucide-react";
+import { Ellipsis, Image as ImageIcon, Settings2, Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { ImageQuickToolId } from "./canvas-image-toolbar-tools";
@@ -39,6 +39,7 @@ export function ImageToolSettingsModal({
     onShowLabelsChange,
     onCancel,
     onSave,
+    onOpenAdvancedSettings,
 }: {
     open: boolean;
     tools: ImageToolbarSettingsTool[];
@@ -48,6 +49,7 @@ export function ImageToolSettingsModal({
     onShowLabelsChange: (value: boolean) => void;
     onCancel: () => void;
     onSave: () => void;
+    onOpenAdvancedSettings?: () => void;
 }) {
     const { t } = useTranslation();
     const { token } = antdTheme.useToken();
@@ -131,9 +133,16 @@ export function ImageToolSettingsModal({
             destroyOnHidden
             footer={
                 <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <span>{t("canvas.imageTools.showLabels")}</span>
-                        <Switch checked={showLabels} onChange={onShowLabelsChange} />
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <span>{t("canvas.imageTools.showLabels")}</span>
+                            <Switch checked={showLabels} onChange={onShowLabelsChange} />
+                        </div>
+                        {onOpenAdvancedSettings && (
+                            <Button type="link" size="small" icon={<Wrench className="size-3.5" />} onClick={onOpenAdvancedSettings} className="!p-0 text-xs">
+                                {t("canvas.imageTools.advancedSettings", "高级配置 / 工作流绑定 >")}
+                            </Button>
+                        )}
                     </div>
                     <Space>
                         <Button onClick={onCancel}>{t("common.cancel")}</Button>

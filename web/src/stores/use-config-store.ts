@@ -34,7 +34,21 @@ export type ApiCallFormat = "openai" | "gemini" | "comfyui";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
 
-export type WorkflowCategory = "t2i" | "i2i" | "inpaint" | "text" | "omniVideo" | "frameVideo";
+export type WorkflowCategory = "t2i" | "i2i" | "inpaint" | "text" | "omniVideo" | "frameVideo" | "superResolve" | "angle" | "upscale";
+
+export type ToolbarAiToolBindings = {
+    maskEdit?: { channelId?: string; workflowId?: string };
+    reversePrompt?: { channelId?: string; workflowId?: string };
+    superResolve?: { channelId?: string; workflowId?: string };
+    angle?: { channelId?: string; workflowId?: string };
+    upscale?: { channelId?: string; workflowId?: string };
+};
+
+export type ToolbarConfig = {
+    ids: string[];
+    showLabels: boolean;
+    bindings: ToolbarAiToolBindings;
+};
 
 export type ComfyWorkflowItem = {
     id: string;
@@ -77,6 +91,9 @@ export type ModelChannel = {
     comfyuiTextWorkflow?: ComfyuiWorkflow;
     comfyuiVideoWorkflow?: ComfyuiWorkflow;
     comfyuiFrameVideoWorkflow?: ComfyuiWorkflow;
+    comfyuiSuperResolveWorkflow?: ComfyuiWorkflow;
+    comfyuiAngleWorkflow?: ComfyuiWorkflow;
+    comfyuiUpscaleWorkflow?: ComfyuiWorkflow;
 };
 
 export type AiConfig = {
@@ -109,6 +126,7 @@ export type AiConfig = {
     background: string;
     count: string;
     canvasImageCount: string;
+    toolbar?: ToolbarConfig;
 };
 
 export type WebdavSyncConfig = {
@@ -118,7 +136,16 @@ export type WebdavSyncConfig = {
     directory: string;
     lastSyncedAt: string;
 };
-export type ConfigTabKey = "channels" | "preferences" | "prompt-sources" | "webdav" | "local-storage";
+export type ConfigTabKey = "channels" | "toolbar" | "preferences" | "prompt-sources" | "webdav" | "local-storage";
+
+export const defaultToolbarConfig: ToolbarConfig = {
+    ids: [
+        "info", "delete", "saveAsset", "download",
+        "copyPrompt", "reversePrompt", "replace", "maskEdit", "crop", "split", "upscale", "view"
+    ],
+    showLabels: false,
+    bindings: {},
+};
 
 export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
@@ -191,6 +218,7 @@ export const defaultConfig: AiConfig = {
     background: "",
     count: "1",
     canvasImageCount: "1",
+    toolbar: defaultToolbarConfig,
 };
 
 export const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -209,6 +237,7 @@ type ConfigStore = {
     shouldPromptContinue: boolean;
     setConfig: (config: AiConfig) => void;
     updateConfig: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
+    updateToolbarConfig: (patch: Partial<ToolbarConfig>) => void;
     updateWebdavConfig: <K extends keyof WebdavSyncConfig>(key: K, value: WebdavSyncConfig[K]) => void;
     isAiConfigReady: (config: AiConfig, model: string) => boolean;
     openConfigDialog: (shouldPromptContinue?: boolean, tab?: ConfigTabKey) => void;
@@ -328,6 +357,23 @@ export const useConfigStore = create<ConfigStore>()(
                         ...(key === "imageModel" ? { model: value as string } : {}),
                     },
                 })),
+            updateToolbarConfig: (patch) =>
+                set((state) => {
+                    const currentToolbar = state.config.toolbar || defaultToolbarConfig;
+                    return {
+                        config: {
+                            ...state.config,
+                            toolbar: {
+                                ...currentToolbar,
+                                ...patch,
+                                bindings: {
+                                    ...(currentToolbar.bindings || {}),
+                                    ...(patch.bindings || {}),
+                                },
+                            },
+                        },
+                    };
+                }),
             updateWebdavConfig: (key, value) =>
                 set((state) => ({
                     webdav: {
@@ -375,6 +421,16 @@ export const useConfigStore = create<ConfigStore>()(
                     return firstMatch || "";
                 };
                 const imageModel = resolveOption(config.imageModel || config.model, defaultConfig.imageModel, "image");
+                const defaultToolbar = defaultToolbarConfig;
+                const persistedToolbar = persistedConfig.toolbar;
+                const toolbar: ToolbarConfig = {
+                    ...defaultToolbar,
+                    ...(persistedToolbar || {}),
+                    bindings: {
+                        ...(defaultToolbar.bindings || {}),
+                        ...(persistedToolbar?.bindings || {}),
+                    },
+                };
                 return {
                     ...current,
                     webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
@@ -401,6 +457,7 @@ export const useConfigStore = create<ConfigStore>()(
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
                         canvasImageCount: config.canvasImageCount || "1",
+                        toolbar,
                     },
                 };
             },

@@ -20,6 +20,9 @@ const WORKFLOW_CATEGORIES: Array<{ key: WorkflowCategory; title: string; desc: s
     { key: "text", title: "文本生成工作流", desc: "大语言模型问答与反推（必标 prompt、output_text）" },
     { key: "omniVideo", title: "全能参考视频工作流", desc: "多模态参考生视频（必标 prompt、output_video）" },
     { key: "frameVideo", title: "首尾帧视频工作流", desc: "首尾关键帧生视频（必标 first_frame、last_frame、output_video）" },
+    { key: "superResolve", title: "AI 超分工作流", desc: "画质高精重建（必标 ref_image_01、output_image）" },
+    { key: "angle", title: "多角度生成工作流", desc: "相机视角环绕生成（必标 ref_image_01、prompt、output_image）" },
+    { key: "upscale", title: "高清放大工作流", desc: "潜空间/Tile高清放大（必标 ref_image_01、output_image）" },
 ];
 
 function formatWorkflowSize(json: Record<string, unknown>) {
@@ -170,6 +173,9 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         const textDef = savedWorkflows.find((w) => w.category === "text" && w.isDefault) || savedWorkflows.find((w) => w.category === "text");
         const videoDef = savedWorkflows.find((w) => w.category === "omniVideo" && w.isDefault) || savedWorkflows.find((w) => w.category === "omniVideo");
         const frameDef = savedWorkflows.find((w) => w.category === "frameVideo" && w.isDefault) || savedWorkflows.find((w) => w.category === "frameVideo");
+        const superResolveDef = savedWorkflows.find((w) => w.category === "superResolve" && w.isDefault) || savedWorkflows.find((w) => w.category === "superResolve");
+        const angleDef = savedWorkflows.find((w) => w.category === "angle" && w.isDefault) || savedWorkflows.find((w) => w.category === "angle");
+        const upscaleDef = savedWorkflows.find((w) => w.category === "upscale" && w.isDefault) || savedWorkflows.find((w) => w.category === "upscale");
 
         onSave({
             ...draft,
@@ -183,6 +189,9 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
             comfyuiTextWorkflow: textDef ? { name: textDef.name, json: textDef.json, createdAt: textDef.createdAt, isBuiltin: textDef.isBuiltin } : undefined,
             comfyuiVideoWorkflow: videoDef ? { name: videoDef.name, json: videoDef.json, createdAt: videoDef.createdAt, isBuiltin: videoDef.isBuiltin } : undefined,
             comfyuiFrameVideoWorkflow: frameDef ? { name: frameDef.name, json: frameDef.json, createdAt: frameDef.createdAt, isBuiltin: frameDef.isBuiltin } : undefined,
+            comfyuiSuperResolveWorkflow: superResolveDef ? { name: superResolveDef.name, json: superResolveDef.json, createdAt: superResolveDef.createdAt, isBuiltin: superResolveDef.isBuiltin } : undefined,
+            comfyuiAngleWorkflow: angleDef ? { name: angleDef.name, json: angleDef.json, createdAt: angleDef.createdAt, isBuiltin: angleDef.isBuiltin } : undefined,
+            comfyuiUpscaleWorkflow: upscaleDef ? { name: upscaleDef.name, json: upscaleDef.json, createdAt: upscaleDef.createdAt, isBuiltin: upscaleDef.isBuiltin } : undefined,
         });
         onClose();
     };

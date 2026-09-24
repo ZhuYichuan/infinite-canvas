@@ -9,6 +9,7 @@ import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
 import { ComfyuiWorkflowEditor } from "@/components/layout/comfyui-workflow-editor";
 import { ConfigPromptSources } from "@/components/layout/config-prompt-sources";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
+import { ConfigToolbar } from "@/components/layout/config-toolbar";
 import type { AppLocale } from "@/i18n";
 import { exportAppConfig, importAppConfig } from "@/services/config-file";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
@@ -341,6 +342,11 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                 </div>
                             </div>
                         ),
+                    },
+                    {
+                        key: "toolbar",
+                        label: t("config.tabs.toolbar", "工具栏配置"),
+                        children: <ConfigToolbar onOpenChannelEditor={(channelId) => setEditingChannelId(channelId)} />,
                     },
                     {
                         key: "preferences",
