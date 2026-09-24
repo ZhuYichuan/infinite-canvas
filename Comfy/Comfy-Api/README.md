@@ -16,12 +16,15 @@
 | **4** | **文本生成 / 反推 (Text)** | [文本生成工作流](./workflows/4_text/) | `Qwen3.5 4B` | `diffusion_models/qwen3.5_4b_bf16.safetensors` | 自回归 | 4G ~ 6G | 轻量端侧 4B 语言模型、支持提示词自动扩写与图像反推提示词、数据纯本地离线保密 |
 | **5** | **全能参考视频 (Omni Video)** | [全能参考视频工作流](./workflows/5_omni_video/) | `MiniMax H3 ref2va` | **FP8版**: `diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_ref2va_bf16.safetensors`<br/>**LoRA**: `loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>**Text**: `text_encoders/qwen3vl_32b_minimax_h3...safetensors`<br/>**VAE**: `minimax_h3_video_vae_fp16`, `minimax_h3_audio_vae_fp32` | 20步 (FP8)<br/>8步 (Turbo)<br/>20步 (BF16高精) | 16G ~ 24G+ | 首创多模态参考（最多 9 图 + 3 视频 + 3 音频）、原生音画潜空间联合生成、0.98 MP 电影画质 |
 | **6** | **首尾帧视频 (Frame Video)** | [首尾帧视频工作流](./workflows/6_frame_video/) | `MiniMax H3 fl2va` | **FP8版**: `diffusion_models/minimax_h3_fl2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_fl2va_bf16.safetensors`<br/>**LoRA**: `loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>辅助模型同全能视频 | 20步 (FP8)<br/>8步 (Turbo)<br/>20步 (BF16高精) | 16G ~ 24G+ | 精准锚定起始帧与结束帧、运镜与动作平滑插值过渡、音画同步生成 |
+| **7** | **AI 超分 (Super Resolve)** | [AI 超分工作流](./workflows/7_super_resolve/) | 自定义/待配置 (SUPIR / RealESRGAN / DAT) | `models/upscale_models/...`<br/>或对应扩散超分模型 | 依模型而定 | 4G ~ 16G+ | 画布图片节点「AI 超分」快捷工具专用通道，低清修复与高倍率超分辨率重建 |
+| **8** | **多角度 (Multi-Angle)** | [多角度生成工作流](./workflows/8_angle/) | 自定义/待配置 (多视角控制 / View-LoRA) | `models/diffusion_models/...`<br/>`models/loras/...` | 依模型而定 | 8G ~ 16G+ | 画布图片节点「多角度」快捷工具专用通道，通过相机视角参数控制主体环绕多视角生成 |
+| **9** | **高清放大 (AI Upscale)** | [高清放大工作流](./workflows/9_upscale/) | 自定义/待配置 (Tile Upscale / Latent) | `models/controlnet/control_v11f1e_sd15_tile...` 等 | 依模型而定 | 6G ~ 16G+ | 画布图片节点「放大」快捷工具的高清增强通道，支持潜空间与 Tile 结构保持放大 |
 
 ---
 
 ## 目录结构
 
-所有内置工作流与说明统一收敛在 `workflows/` 目录下：
+所有内置与扩展工作流统一收敛在 `workflows/` 目录下：
 
 ```text
 Comfy/Comfy-Api/
@@ -51,12 +54,18 @@ Comfy/Comfy-Api/
     │   ├── minimax_h3_ref2va_bf16_8step_turbo_api.json# 极速 Turbo 8 步
     │   ├── minimax_h3_ref2va_bf16_20step_api.json     # 全量 20 步
     │   └── minimax_h3_ref2va_workflow.json            # UI 工作流
-    └── 6_frame_video/                      # 6. 首尾帧视频工作流 (First-Last Frame Video)
-        ├── README.md
-        ├── minimax_h3_fl2va_fp8_20step_api.json       # 消费级 20 步
-        ├── minimax_h3_fl2va_bf16_8step_turbo_api.json # 极速 Turbo 8 步
-        ├── minimax_h3_fl2va_bf16_20step_api.json      # 全量 20 步
-        └── minimax_h3_fl2va_workflow.json             # UI 工作流
+    ├── 6_frame_video/                      # 6. 首尾帧视频工作流 (First-Last Frame Video)
+    │   ├── README.md
+    │   ├── minimax_h3_fl2va_fp8_20step_api.json       # 消费级 20 步
+    │   ├── minimax_h3_fl2va_bf16_8step_turbo_api.json # 极速 Turbo 8 步
+    │   ├── minimax_h3_fl2va_bf16_20step_api.json      # 全量 20 步
+    │   └── minimax_h3_fl2va_workflow.json             # UI 工作流
+    ├── 7_super_resolve/                    # 7. AI 超分工作流 (Super Resolution)
+    │   └── README.md                       # 说明与插槽契约 (ref_image_01 -> output_image)
+    ├── 8_angle/                            # 8. 多角度生成工作流 (Multi-Angle Generation)
+    │   └── README.md                       # 说明与插槽契约 (ref_image_01, prompt -> output_image)
+    └── 9_upscale/                          # 9. 高清放大工作流 (AI Upscale)
+        └── README.md                       # 说明与插槽契约 (ref_image_01 -> output_image)
 ```
 
 ---
