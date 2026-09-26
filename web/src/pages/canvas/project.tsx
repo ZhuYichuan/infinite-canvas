@@ -663,7 +663,7 @@ function InfiniteCanvasPage() {
             setConnections((prev) => [...prev, ...newConnections]);
             setSelectedNodeIds(new Set([newNode.id]));
             setSelectedConnectionId(null);
-            if (type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio) setDialogNodeId(newNode.id);
+            if (type !== CanvasNodeType.Text) setDialogNodeId(newNode.id);
             setPendingConnectionCreate(null);
             setConnecting(null);
         },
@@ -870,7 +870,7 @@ function InfiniteCanvasPage() {
                   ? Boolean(definition.autoOpenPanel)
                   : definition?.useBuiltinPanel
                     ? true
-                    : isBuiltinType(type) && type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio && type !== CanvasNodeType.Group;
+                    : isBuiltinType(type) && type !== CanvasNodeType.Text && type !== CanvasNodeType.Group;
             if (wantsPanel) setDialogNodeId(newNode.id);
         },
         [effectiveConfig.canvasImageCount, effectiveConfig.count, effectiveConfig.imageModel, effectiveConfig.model, effectiveConfig.size, getCanvasCenter],
@@ -3120,6 +3120,8 @@ function InfiniteCanvasPage() {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata) : {}),
                             prompt,
                             effectivePrompt,
+                            channelId: sourceNode?.metadata?.channelId,
+                            workflowId: sourceNode?.metadata?.workflowId,
                             status: NODE_STATUS_LOADING,
                             generationMode: mode,
                             generationReferences: generationContext.generationReferences,
@@ -3155,6 +3157,7 @@ function InfiniteCanvasPage() {
                             signal: controller.signal,
                             duration,
                             seed: initialSeed,
+                            channelId: sourceNode?.metadata?.channelId,
                             workflowId: sourceNode?.metadata?.workflowId,
                         });
                         const audio = await storeGeneratedAudio(result.blob);
@@ -3168,6 +3171,8 @@ function InfiniteCanvasPage() {
                                               ...audioMetadata(audio),
                                               prompt,
                                               effectivePrompt,
+                                              channelId: sourceNode?.metadata?.channelId,
+                                              workflowId: sourceNode?.metadata?.workflowId,
                                               seconds: String(duration),
                                               seed: result.seed,
                                               jobId: result.jobId,
@@ -3603,6 +3608,7 @@ function InfiniteCanvasPage() {
                         signal: controller.signal,
                         duration,
                         seed: initialSeed,
+                        channelId: node.metadata?.channelId,
                         workflowId: node.metadata?.workflowId,
                     });
                     const audio = await storeGeneratedAudio(result.blob);
@@ -3620,6 +3626,8 @@ function InfiniteCanvasPage() {
                                           isTimeout: undefined,
                                           seconds: String(duration),
                                           seed: result.seed,
+                                          channelId: node.metadata?.channelId,
+                                          workflowId: node.metadata?.workflowId,
                                       },
                                   }
                                 : item,
@@ -4065,7 +4073,7 @@ function InfiniteCanvasPage() {
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node, nodes) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel && node.type !== CanvasNodeType.Audio}
+                            showPanel={!isNodeResizing && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             groupChildCount={groupChildCountById.get(node.id) || 0}
                             isGroupDropTarget={dropTargetGroupId === node.id}
                             batchExpanded={expandedBatchNodeIds.has(node.id)}

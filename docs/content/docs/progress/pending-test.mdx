@@ -12,8 +12,11 @@ The current release needs manual verification in these areas:
     - Open Channel Drawer (`渠道与模型配置` -> `编辑渠道`), verify `audio` (音频生成) appears in the 核心生成工作流列表;
     - Default channel includes built-in `MiniMax Music 03` audio workflow (`Comfy/Comfy-Api/workflows/10_audio/audio_minimax_music_3_api.json`);
     - Custom workflow upload validates required `output_audio` slot (`SaveAudioAdvanced`);
-  - **Audio Node Prompt & Duration Controls (音频节点提示词与时长控制)**:
+  - **Audio Node Prompt & Duration Controls (音频节点提示词与工作流控制)**:
+    - Creating an audio node automatically unfolds the generation prompt panel; clicking an audio node focuses and toggles the panel below the node;
     - Audio node prompt bar displays `ChannelWorkflowPicker` for `category="audio"` and `CanvasAudioSettingsPopover` (showing current duration, e.g. `60s`);
+    - Node hover toolbar displays `edit` (MessageSquare) to toggle prompt panel and `saveAsset` (FolderPlus) when audio content is present;
+    - ConfigNode (组合配置节点) includes `audio` mode with `ChannelWorkflowPicker` and audio duration popover;
     - Duration popover provides quick preset pills (`60s`, `120s`, `180s`) and a slider ranging from `10s` to `300s` with a `1s` step;
     - Multiline prompt placeholder clearly demonstrates `[caption]` and `[lyrics]` tag formatting;
   - **Prompt Tag Extraction & Slot Binding (提示词 `[caption]` / `[lyrics]` 分流与槽位绑定)**:

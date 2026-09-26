@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Image as ImageIcon, LoaderCircle, MessageSquare, Play, Settings2, Square, Video } from "lucide-react";
+import { Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, Settings2, Square, Video } from "lucide-react";
 import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -11,6 +11,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { normalizeVideoSizeValue } from "@/components/video-settings-panel";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
+import { CanvasAudioSettingsPopover } from "./canvas-audio-settings-popover";
 import { CanvasTextSettingsPopover } from "./canvas-text-settings-popover";
 import type { CanvasGenerationMode, CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
 
@@ -80,6 +81,15 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                                     </span>
                                 ),
                             },
+                            {
+                                value: "audio",
+                                label: (
+                                    <span className="inline-flex items-center gap-1">
+                                        <Music2 className="size-3.5" />
+                                        {t("canvas.configNode.audio", { defaultValue: "音频" })}
+                                    </span>
+                                ),
+                            },
                         ]}
                     />
                 </div>
@@ -103,6 +113,8 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                             ? (inputSummary.imageCount > 0 ? "i2i" : "t2i")
                             : mode === "video"
                             ? (node.metadata?.videoMode === "frame" ? "frameVideo" : "omniVideo")
+                            : mode === "audio"
+                            ? "audio"
                             : "text"
                     }
                     channelId={node.metadata?.channelId}
@@ -121,6 +133,13 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                     />
                 ) : mode === "image" ? (
                     <CanvasImageSettingsPopover config={config} placement="topRight" autoAdjustOverflow={false} buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })} />
+                ) : mode === "audio" ? (
+                    <CanvasAudioSettingsPopover
+                        config={config}
+                        placement="topRight"
+                        buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2"
+                        onConfigChange={(key, value) => onConfigChange(node.id, { seconds: value, audioSeconds: value })}
+                    />
                 ) : (
                     <CanvasTextSettingsPopover config={config} count={node.metadata?.textCount || 1} placement="topRight" buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })} onCountChange={(textCount) => onConfigChange(node.id, { textCount })} />
                 )}

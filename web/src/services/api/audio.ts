@@ -25,6 +25,7 @@ export type AudioRequestOptions = {
     signal?: AbortSignal;
     duration?: number;
     seed?: number;
+    channelId?: string;
     workflowId?: string;
     model?: string;
 };
@@ -38,6 +39,7 @@ export async function requestAudioGeneration(
         config,
         prompt,
         model: options?.model,
+        channelId: options?.channelId,
         duration: options?.duration,
         seed: options?.seed,
         workflowId: options?.workflowId,

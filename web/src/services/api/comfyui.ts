@@ -2367,6 +2367,7 @@ export type ComfyuiAudioRequest = {
     config: AiConfig;
     prompt: string;
     model?: string;
+    channelId?: string;
     duration?: number;
     seed?: number;
     workflowId?: string;
@@ -2383,11 +2384,13 @@ export type ComfyuiAudioResult = {
 
 export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<ComfyuiAudioResult> {
     const rawModel = req.model || req.config.audioModel || req.config.model;
-    const channel = resolveModelChannel(req.config, rawModel);
+    const channel = req.channelId
+        ? req.config.channels?.find((c) => c.id === req.channelId) || resolveModelChannel(req.config, rawModel)
+        : resolveModelChannel(req.config, rawModel);
     const baseUrl = (channel.comfyuiProxyUrl || "").trim();
     const token = channel.comfyuiProxyToken;
 
-    let workflowItem = findWorkflow(req.config, channel.id, req.workflowId, "audio");
+    let workflowItem = req.workflowId ? findWorkflow(req.config, channel.id, req.workflowId, "audio") : undefined;
     if (!workflowItem) workflowItem = getDefaultWorkflow(channel, "audio");
     if (!workflowItem && channel.comfyuiAudioWorkflow) {
         workflowItem = {
