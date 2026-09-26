@@ -19,6 +19,7 @@
 | **7** | **AI 超分 (Super Resolve)** | [AI 超分工作流](./workflows/7_super_resolve/) | 自定义/待配置 (SUPIR / RealESRGAN / DAT) | `models/upscale_models/...`<br/>或对应扩散超分模型 | 依模型而定 | 4G ~ 16G+ | 画布图片节点「AI 超分」快捷工具专用通道，低清修复与高倍率超分辨率重建 |
 | **8** | **多角度 (Multi-Angle)** | [多角度生成工作流](./workflows/8_angle/) | 自定义/待配置 (多视角控制 / View-LoRA) | `models/diffusion_models/...`<br/>`models/loras/...` | 依模型而定 | 8G ~ 16G+ | 画布图片节点「多角度」快捷工具专用通道，通过相机视角参数控制主体环绕多视角生成 |
 | **9** | **高清放大 (AI Upscale)** | [高清放大工作流](./workflows/9_upscale/) | 自定义/待配置 (Tile Upscale / Latent) | `models/controlnet/control_v11f1e_sd15_tile...` 等 | 依模型而定 | 6G ~ 16G+ | 画布图片节点「放大」快捷工具的高清增强通道，支持潜空间与 Tile 结构保持放大 |
+| **10** | **音乐与音频 (Audio / Music)** | [音频生成工作流](./workflows/10_audio/) | `MiniMax Music 03` | `diffusion_models/minimax_music3_dit_fp16.safetensors`<br/>`text_encoders/minimax_music3_text_encoder_pruned_int8_convrot.safetensors`<br/>`vae/minimax_music3_dav.safetensors` | 30 步 | 8G ~ 16G+ | 扩散音乐模型、双文本驱动（风格三段式 + 结构歌词）、支持最长 5 分钟完整歌曲与纯伴奏 |
 
 ---
 
@@ -64,8 +65,12 @@ Comfy/Comfy-Api/
     │   └── README.md                       # 说明与插槽契约 (ref_image_01 -> output_image)
     ├── 8_angle/                            # 8. 多角度生成工作流 (Multi-Angle Generation)
     │   └── README.md                       # 说明与插槽契约 (ref_image_01, prompt -> output_image)
-    └── 9_upscale/                          # 9. 高清放大工作流 (AI Upscale)
-        └── README.md                       # 说明与插槽契约 (ref_image_01 -> output_image)
+    ├── 9_upscale/                          # 9. 高清放大工作流 (AI Upscale)
+    │   └── README.md                       # 说明与插槽契约 (ref_image_01 -> output_image)
+    └── 10_audio/                           # 10. 音频与音乐工作流 (Audio / Music)
+        ├── README.md                       # 说明与插槽契约 (caption, lyrics, duration, seed -> output_audio)
+        ├── audio_minimax_music_3_api.json  # MiniMax Music 03 API 格式
+        └── audio_minimax_music_3_workflow.json # UI 工作流
 ```
 
 ---
