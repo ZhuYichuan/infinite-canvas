@@ -12,6 +12,7 @@ import frameVideoFp8Json from "@/assets/workflows/video_minimax_h3_frame_fp8_20s
 import frameVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_frame_bf16_8step_turbo_api.json";
 import frameVideoBf1620StepJson from "@/assets/workflows/video_minimax_h3_frame_bf16_20step_api.json";
 import qwenImage21Json from "@/assets/workflows/qwen_image_21_api.json";
+import audioMinimaxMusic3Json from "@/assets/workflows/audio_minimax_music_3_api.json";
 
 // Built-in single workflow definitions
 export const DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW: ComfyuiWorkflow = {
@@ -90,6 +91,13 @@ export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_BF16_20STEP_WORKFLOW: ComfyuiWo
     isBuiltin: true,
 };
 
+export const DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW: ComfyuiWorkflow = {
+    name: "MiniMax Music 03 音乐生成",
+    json: audioMinimaxMusic3Json as Record<string, unknown>,
+    createdAt: 0,
+    isBuiltin: true,
+};
+
 // Aliases for unified ComfyUI workflows
 export const DEFAULT_COMFYUI_T2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW;
 export const DEFAULT_COMFYUI_I2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW;
@@ -97,6 +105,7 @@ export const DEFAULT_COMFYUI_INPAINT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_INPAINT_
 export const DEFAULT_COMFYUI_TEXT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW;
 export const DEFAULT_COMFYUI_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW;
 export const DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW;
+export const DEFAULT_COMFYUI_AUDIO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW;
 
 // Backward-compatible local aliases
 export const DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW;
@@ -270,6 +279,16 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             isBuiltin: true,
             isDefault: false,
             description: "MiniMax H3 首尾帧插值视频高精版 (BF16 20步, 完整精度采样，动态演化更平滑)",
+        },
+        {
+            id: `${prefix}-audio-minimax-music-3`,
+            name: "MiniMax Music 03 音乐生成",
+            category: "audio",
+            json: DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: true,
+            description: "MiniMax Music 03 扩散音乐大模型 (支持最长 5 分钟完整歌曲与纯伴奏)",
         },
     ];
 }

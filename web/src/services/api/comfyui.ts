@@ -131,7 +131,8 @@ export function validateComfyuiWorkflow(
     const RESERVED_SINGLE_SLOTS = [
         "prompt", "seed", "width", "height", "duration",
         "first_frame", "last_frame", "ref_mask", "mask", "ref_mask_01",
-        "output_image", "output_video", "output_text",
+        "output_image", "output_video", "output_text", "output_audio",
+        "caption", "lyrics",
     ];
 
     for (const slot of RESERVED_SINGLE_SLOTS) {
@@ -150,27 +151,35 @@ export function validateComfyuiWorkflow(
     const hasOutputImage = Boolean(titleToNodeIds["output_image"]?.length || titleToNodeIds["out_image"]?.length);
     const hasOutputVideo = Boolean(titleToNodeIds["output_video"]?.length);
     const hasOutputText = Boolean(titleToNodeIds["output_text"]?.length);
+    const hasOutputAudio = Boolean(titleToNodeIds["output_audio"]?.length);
 
     if (category === "t2i" || category === "i2i" || category === "inpaint" || category === "superResolve" || category === "angle" || category === "upscale") {
         if (!hasOutputImage) {
             return { ok: false, error: "生图工作流缺少 \"output_image\" 标记（请在 SaveImage 等保存节点上标记 _meta.title 为 output_image）" };
         }
-        if (hasOutputVideo || hasOutputText) {
-            return { ok: false, error: "生图工作流不得包含 output_video 或 output_text 标记" };
+        if (hasOutputVideo || hasOutputText || hasOutputAudio) {
+            return { ok: false, error: "生图工作流不得包含 output_video、output_text 或 output_audio 标记" };
         }
     } else if (category === "omniVideo" || category === "frameVideo") {
         if (!hasOutputVideo) {
             return { ok: false, error: "生视频工作流缺少 \"output_video\" 标记（请在 SaveVideo 或 VHS_VideoCombine 保存节点上标记 _meta.title 为 output_video）" };
         }
-        if (hasOutputImage || hasOutputText) {
-            return { ok: false, error: "生视频工作流不得包含 output_image 或 output_text 标记" };
+        if (hasOutputImage || hasOutputText || hasOutputAudio) {
+            return { ok: false, error: "生视频工作流不得包含 output_image、output_text 或 output_audio 标记" };
         }
     } else if (category === "text") {
         if (!hasOutputText) {
             return { ok: false, error: "文本工作流缺少 \"output_text\" 标记（请在保存/展示节点上标记 _meta.title 为 output_text）" };
         }
-        if (hasOutputImage || hasOutputVideo) {
-            return { ok: false, error: "文本工作流不得包含 output_image 或 output_video 标记" };
+        if (hasOutputImage || hasOutputVideo || hasOutputAudio) {
+            return { ok: false, error: "文本工作流不得包含 output_image、output_video 或 output_audio 标记" };
+        }
+    } else if (category === "audio") {
+        if (!hasOutputAudio) {
+            return { ok: false, error: "音频工作流缺少 \"output_audio\" 标记（请在 SaveAudioAdvanced 或 SaveAudio 保存节点上标记 _meta.title 为 output_audio）" };
+        }
+        if (hasOutputImage || hasOutputVideo || hasOutputText) {
+            return { ok: false, error: "音频工作流不得包含 output_image、output_video 或 output_text 标记" };
         }
     }
 
@@ -182,6 +191,8 @@ export function validateComfyuiWorkflow(
     const hasRefImage = Array.from(presentTitles).some((t) => /^ref_image(_\d+)?$/.test(t));
     const hasRefVideo = Array.from(presentTitles).some((t) => /^ref_video(_\d+)?$/.test(t));
     const hasRefAudio = Array.from(presentTitles).some((t) => /^ref_audio(_\d+)?$/.test(t));
+    const hasCaption = Boolean(titleToNodeIds["caption"]?.length);
+    const hasLyrics = Boolean(titleToNodeIds["lyrics"]?.length);
 
     switch (category) {
         case "t2i":
@@ -270,6 +281,12 @@ export function validateComfyuiWorkflow(
                 return { ok: false, error: "首尾帧视频工作流不支持参考视频或参考音频槽位" };
             }
             break;
+
+        case "audio":
+            if (!hasPrompt && !hasCaption && !hasLyrics) {
+                return { ok: false, error: "音频工作流缺少提示词槽位（请标记 prompt、caption 或 lyrics 之一）" };
+            }
+            break;
     }
 
     return { ok: true, slots: Array.from(presentTitles) };
@@ -290,6 +307,9 @@ const BINDING_TITLE_TO_INPUT_SLOT: Record<string, Record<string, string>> = {
     seed: { KSampler: "seed", KSamplerAdvanced: "noise_seed", PrimitiveInt: "value", PrimitiveFloat: "value" },
     ref_image: { LoadImage: "image", LoadImageMask: "image" },
     ref_mask: { LoadImage: "image", LoadImageMask: "image" },
+    caption: { PrimitiveStringMultiline: "value", PrimitiveString: "value", CLIPTextEncode: "text" },
+    lyrics: { PrimitiveStringMultiline: "value", PrimitiveString: "value", CLIPTextEncode: "text" },
+    duration: { Float: "Number", PrimitiveInt: "value", PrimitiveFloat: "value" },
 };
 
 /**
@@ -2241,6 +2261,199 @@ export async function requestComfyuiVideo(req: ComfyuiVideoRequest): Promise<{ u
         }
         const result = await waiting;
         return { ...result, jobId };
+    } catch (error) {
+        if (error instanceof ComfyuiTimeoutError && !error.jobId) {
+            throw new ComfyuiTimeoutError(error.timeoutMs, jobId);
+        }
+        throw error;
+    }
+}
+
+export type ComfyuiAudioBindings = {
+    prompt?: string;
+    caption?: string;
+    lyrics?: string;
+    duration?: number;
+    seed?: number;
+};
+
+/**
+ * Split prompt strictly by [caption] and [lyrics] tags.
+ * If neither tag is present, the whole text is passed as caption.
+ */
+export function parseAudioPrompt(rawPrompt: string): { caption: string; lyrics: string } {
+    const text = (rawPrompt || "").trim();
+    if (!text) return { caption: "", lyrics: "" };
+
+    const captionMatch = /\[caption\]([\s\S]*?)(?=\[lyrics\]|$)/i.exec(text);
+    const lyricsMatch = /\[lyrics\]([\s\S]*?)(?=\[caption\]|$)/i.exec(text);
+
+    if (captionMatch || lyricsMatch) {
+        return {
+            caption: (captionMatch ? captionMatch[1] : "").trim(),
+            lyrics: (lyricsMatch ? lyricsMatch[1] : "").trim(),
+        };
+    }
+
+    return {
+        caption: text,
+        lyrics: "",
+    };
+}
+
+export function applyAudioBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiAudioBindings): ComfyuiWorkflowJson {
+    const cloned = structuredClone(workflow);
+    type NodeRecord = { class_type?: string; inputs?: Record<string, unknown>; _meta?: { title?: unknown } };
+    let boundSeed = false;
+
+    for (const node of Object.values(cloned)) {
+        if (typeof node !== "object" || node === null) continue;
+        const record = node as NodeRecord;
+        const rawTitle = record._meta?.title;
+        if (typeof rawTitle !== "string" || !record.class_type || !record.inputs) continue;
+        const title = rawTitle.trim().toLowerCase();
+        let slot: string | undefined;
+        let value: unknown;
+
+        if (title === "caption" && params.caption !== undefined) {
+            slot = BINDING_TITLE_TO_INPUT_SLOT.caption?.[record.class_type] ||
+                ("value" in record.inputs ? "value" : "text" in record.inputs ? "text" : "caption" in record.inputs ? "caption" : undefined);
+            value = params.caption;
+        } else if (title === "lyrics" && params.lyrics !== undefined) {
+            slot = BINDING_TITLE_TO_INPUT_SLOT.lyrics?.[record.class_type] ||
+                ("value" in record.inputs ? "value" : "text" in record.inputs ? "text" : "lyrics" in record.inputs ? "lyrics" : undefined);
+            value = params.lyrics;
+        } else if ((title === "duration" || title === "max_duration") && params.duration !== undefined) {
+            slot = BINDING_TITLE_TO_INPUT_SLOT.duration?.[record.class_type] ||
+                ("Number" in record.inputs ? "Number" : "value" in record.inputs ? "value" : "duration" in record.inputs ? "duration" : "max_duration" in record.inputs ? "max_duration" : undefined);
+            value = params.duration;
+        } else if (title === "prompt" && params.prompt !== undefined) {
+            slot = BINDING_TITLE_TO_INPUT_SLOT.prompt[record.class_type] ||
+                ("value" in record.inputs ? "value" : "text" in record.inputs ? "text" : "prompt" in record.inputs ? "prompt" : undefined);
+            value = params.prompt || params.caption || "";
+        } else if (title === "seed" && params.seed !== undefined) {
+            slot = BINDING_TITLE_TO_INPUT_SLOT.seed[record.class_type];
+            if (!slot) {
+                if ("seed" in record.inputs) slot = "seed";
+                else if ("noise_seed" in record.inputs) slot = "noise_seed";
+                else if ("value" in record.inputs) slot = "value";
+            }
+            value = params.seed;
+            boundSeed = true;
+        }
+
+        if (slot) record.inputs[slot] = value;
+    }
+
+    if (!boundSeed && params.seed !== undefined) {
+        for (const node of Object.values(cloned)) {
+            if (typeof node !== "object" || node === null) continue;
+            const record = node as NodeRecord;
+            if (!record.inputs) continue;
+            if (typeof record.inputs.seed === "number") {
+                record.inputs.seed = params.seed;
+                break;
+            } else if (typeof record.inputs.noise_seed === "number") {
+                record.inputs.noise_seed = params.seed;
+                break;
+            }
+        }
+    }
+
+    return cloned;
+}
+
+export type ComfyuiAudioRequest = {
+    config: AiConfig;
+    prompt: string;
+    model?: string;
+    duration?: number;
+    seed?: number;
+    workflowId?: string;
+    signal?: AbortSignal;
+    onProgress?: (status: string, detail?: { jobId?: string }) => void;
+};
+
+export type ComfyuiAudioResult = {
+    blob: Blob;
+    dataUrl: string;
+    seed: number;
+    jobId: string;
+};
+
+export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<ComfyuiAudioResult> {
+    const rawModel = req.model || req.config.audioModel || req.config.model;
+    const channel = resolveModelChannel(req.config, rawModel);
+    const baseUrl = (channel.comfyuiProxyUrl || "").trim();
+    const token = channel.comfyuiProxyToken;
+
+    let workflowItem = findWorkflow(req.config, channel.id, req.workflowId, "audio");
+    if (!workflowItem) workflowItem = getDefaultWorkflow(channel, "audio");
+    if (!workflowItem && channel.comfyuiAudioWorkflow) {
+        workflowItem = {
+            id: `${channel.id}-audio-workflow`,
+            name: channel.comfyuiAudioWorkflow.name,
+            category: "audio",
+            json: channel.comfyuiAudioWorkflow.json,
+            createdAt: channel.comfyuiAudioWorkflow.createdAt,
+            isBuiltin: channel.comfyuiAudioWorkflow.isBuiltin,
+        };
+    }
+    if (!workflowItem) {
+        throw new ComfyuiError("未找到可用的 ComfyUI 音频工作流");
+    }
+
+    const seed = req.seed !== undefined && req.seed >= 0 ? req.seed : generateRandomSeed();
+    const { caption, lyrics } = parseAudioPrompt(req.prompt);
+    const duration = req.duration ?? (Number(req.config.audioSeconds) || 60);
+
+    const boundWorkflow = applyAudioBindings(workflowItem.json, {
+        prompt: req.prompt,
+        caption,
+        lyrics,
+        duration,
+        seed,
+    });
+
+    const jobId = await submitJob(boundWorkflow, baseUrl, token);
+    req.onProgress?.("submitted", { jobId });
+
+    try {
+        const signal = req.signal;
+        if (signal?.aborted) {
+            await cancelJob(jobId, baseUrl, token);
+            throw new ComfyuiAbortedError();
+        }
+
+        const polling = pollJob(jobId, baseUrl, token, signal);
+        let waiting: Promise<PollJobResult | undefined> = polling;
+        if (signal) {
+            const aborted: Promise<never> = new Promise((_resolve, reject) => {
+                signal.addEventListener("abort", () => {
+                    void cancelJob(jobId, baseUrl, token).catch(() => undefined);
+                    reject(new ComfyuiAbortedError());
+                }, { once: true });
+            });
+            waiting = Promise.race([polling, aborted]);
+        }
+
+        const pollResult = await waiting;
+        if (!pollResult || !pollResult.outputs?.length) {
+            throw new ComfyuiError("ComfyUI 未生成音频产物");
+        }
+
+        const audioOutput = pollResult.outputs.find((out) => out.type === "audio" || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(out.filename || ""));
+        if (!audioOutput) {
+            throw new ComfyuiError("ComfyUI 任务完成但未找到音频文件产物");
+        }
+
+        const downloaded = await downloadAsset(audioOutput.id, baseUrl, token);
+        return {
+            blob: downloaded.blob,
+            dataUrl: downloaded.dataUrl,
+            seed,
+            jobId,
+        };
     } catch (error) {
         if (error instanceof ComfyuiTimeoutError && !error.jobId) {
             throw new ComfyuiTimeoutError(error.timeoutMs, jobId);

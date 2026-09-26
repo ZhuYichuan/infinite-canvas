@@ -61,13 +61,11 @@ export function buildImageGenerationMetadata(type: CanvasImageGenerationType, co
     };
 }
 
-export function buildAudioGenerationMetadata(config: AiConfig): CanvasNodeMetadata {
+export function buildAudioGenerationMetadata(config: AiConfig, seed?: number): CanvasNodeMetadata {
     return {
         model: config.model,
-        audioVoice: config.audioVoice,
-        audioFormat: config.audioFormat,
-        audioSpeed: config.audioSpeed,
-        audioInstructions: config.audioInstructions,
+        seconds: config.audioSeconds || "60",
+        ...(seed !== undefined ? { seed } : {}),
     };
 }
 

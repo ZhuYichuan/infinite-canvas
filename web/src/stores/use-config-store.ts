@@ -25,6 +25,7 @@ import {
     DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW,
     DEFAULT_LOCAL_COMFYUI_TEXT_WORKFLOW,
     DEFAULT_LOCAL_COMFYUI_VIDEO_WORKFLOW,
+    DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW,
     getDefaultComfyuiWorkflows,
     getDefaultComfyWorkflowItems,
 } from "@/services/api/comfyui-default-workflows";
@@ -34,7 +35,7 @@ export type ApiCallFormat = "openai" | "gemini" | "comfyui";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
 
-export type WorkflowCategory = "t2i" | "i2i" | "inpaint" | "text" | "omniVideo" | "frameVideo" | "superResolve" | "angle" | "upscale";
+export type WorkflowCategory = "t2i" | "i2i" | "inpaint" | "text" | "omniVideo" | "frameVideo" | "superResolve" | "angle" | "upscale" | "audio";
 
 export type ToolbarConfig = {
     ids: string[];
@@ -85,6 +86,7 @@ export type ModelChannel = {
     comfyuiSuperResolveWorkflow?: ComfyuiWorkflow;
     comfyuiAngleWorkflow?: ComfyuiWorkflow;
     comfyuiUpscaleWorkflow?: ComfyuiWorkflow;
+    comfyuiAudioWorkflow?: ComfyuiWorkflow;
 };
 
 export type AiConfig = {
@@ -104,6 +106,7 @@ export type AiConfig = {
     audioFormat: string;
     audioSpeed: string;
     audioInstructions: string;
+    audioSeconds: string;
     videoSeconds: string;
     videoMode: string;
     vquality: string;
@@ -149,6 +152,7 @@ export const COMFYUI_BUILTIN_DEFAULT_MODELS: ChannelModel[] = [
     { name: "Qwen3.5 4B", capability: "text", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW },
     { name: "MiniMax H3 全能视频", capability: "video", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW },
     { name: "MiniMax H3 首尾帧视频", capability: "video", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW },
+    { name: "MiniMax Music 03", capability: "audio", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW },
 ];
 
 export const COMFYUI_LOCAL_DEFAULT_MODELS: ChannelModel[] = COMFYUI_BUILTIN_DEFAULT_MODELS;
@@ -176,6 +180,7 @@ export const defaultConfig: AiConfig = {
             comfyuiTextWorkflow: DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW,
             comfyuiVideoWorkflow: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW,
             comfyuiFrameVideoWorkflow: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW,
+            comfyuiAudioWorkflow: DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW,
             models: COMFYUI_BUILTIN_DEFAULT_MODELS,
         },
     ],
@@ -183,11 +188,12 @@ export const defaultConfig: AiConfig = {
     imageModel: "builtin::Z-Image-Turbo",
     videoModel: "builtin::MiniMax H3 全能视频",
     textModel: "builtin::Qwen3.5 4B",
-    audioModel: "",
+    audioModel: "builtin::MiniMax Music 03",
     audioVoice: "alloy",
     audioFormat: "mp3",
     audioSpeed: "1",
     audioInstructions: "",
+    audioSeconds: "60",
     videoSeconds: "6",
     videoMode: "omni",
     vquality: "720",
@@ -202,6 +208,7 @@ export const defaultConfig: AiConfig = {
         "builtin::Qwen3.5 4B",
         "builtin::MiniMax H3 全能视频",
         "builtin::MiniMax H3 首尾帧视频",
+        "builtin::MiniMax Music 03",
     ],
     quality: "auto",
     size: "1:1",

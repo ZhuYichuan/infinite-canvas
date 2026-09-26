@@ -3,7 +3,6 @@ import { ArrowUp, LoaderCircle, Maximize2, RefreshCw, Square } from "lucide-reac
 import { Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
-import { ModelPicker } from "@/components/model-picker";
 import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
 import { decodeChannelModel, defaultConfig, encodeChannelModel, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -165,7 +164,12 @@ export function CanvasNodePromptPanel({
                         </>
                     ) : mode === "audio" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="audio" onMissingConfig={() => openConfigDialog(true)} className="min-w-0 max-w-[180px]" />
+                            <ChannelWorkflowPicker
+                                category="audio"
+                                channelId={node.metadata?.channelId}
+                                workflowId={node.metadata?.workflowId}
+                                onChange={(channelId, workflowId) => onConfigChange(node.id, { channelId, workflowId })}
+                            />
                             <CanvasAudioSettingsPopover config={config} buttonClassName="!h-10 min-w-0 !max-w-[160px] !justify-start !rounded-full !px-3" onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))} />
                         </>
                     ) : (
@@ -258,6 +262,7 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
         size: node.metadata?.size || globalConfig.size || defaultConfig.size,
         background: node.metadata?.background ?? globalConfig.background ?? defaultConfig.background,
         videoSeconds: node.metadata?.seconds || globalConfig.videoSeconds || defaultConfig.videoSeconds,
+        audioSeconds: node.metadata?.seconds || globalConfig.audioSeconds || defaultConfig.audioSeconds || "60",
         vquality: node.metadata?.vquality || globalConfig.vquality || defaultConfig.vquality,
         videoGenerateAudio: node.metadata?.generateAudio || globalConfig.videoGenerateAudio || defaultConfig.videoGenerateAudio,
         videoWatermark: node.metadata?.watermark || globalConfig.videoWatermark || defaultConfig.videoWatermark,
@@ -291,8 +296,6 @@ function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig)
 }
 
 function audioConfigPatch(key: CanvasAudioSettingKey, value: string) {
-    if (key === "audioVoice") return { audioVoice: value };
-    if (key === "audioFormat") return { audioFormat: value };
-    if (key === "audioSpeed") return { audioSpeed: value };
-    return { audioInstructions: value };
+    if (key === "audioSeconds") return { seconds: value, audioSeconds: value };
+    return { [key]: value };
 }

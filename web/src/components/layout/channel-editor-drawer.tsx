@@ -19,6 +19,7 @@ const CORE_WORKFLOW_CATEGORIES: Array<{ key: WorkflowCategory; title: string; de
     { key: "text", title: "文本生成工作流", desc: "大语言模型问答与反推（必标 prompt、output_text）" },
     { key: "omniVideo", title: "全能参考视频工作流", desc: "多模态参考生视频（必标 prompt、output_video）" },
     { key: "frameVideo", title: "首尾帧视频工作流", desc: "首尾关键帧生视频（必标 first_frame、last_frame、output_video）" },
+    { key: "audio", title: "音乐与音频工作流", desc: "音乐与音频生成（必标 caption/lyrics 或 prompt、output_audio）" },
 ];
 
 const TOOL_WORKFLOW_CATEGORIES: Array<{ key: WorkflowCategory; title: string; desc: string }> = [

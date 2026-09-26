@@ -5,6 +5,7 @@ import { audioMimeType, normalizeAudioFormatValue, normalizeAudioSpeedValue, nor
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
 import { runModelPlugin } from "./model-plugin";
+import { requestComfyuiAudio } from "./comfyui";
 
 type RequestOptions = { signal?: AbortSignal };
 const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
@@ -20,8 +21,29 @@ function aiHeaders(config: AiConfig) {
     };
 }
 
-export async function requestAudioGeneration(_config: AiConfig, _prompt: string, _options?: RequestOptions): Promise<Blob> {
-    throw new Error("当前项目仅支持 ComfyUI 渠道，已移除大模型音频生成 API。");
+export type AudioRequestOptions = {
+    signal?: AbortSignal;
+    duration?: number;
+    seed?: number;
+    workflowId?: string;
+    model?: string;
+};
+
+export async function requestAudioGeneration(
+    config: AiConfig,
+    prompt: string,
+    options?: AudioRequestOptions,
+): Promise<{ blob: Blob; seed: number; jobId: string }> {
+    const res = await requestComfyuiAudio({
+        config,
+        prompt,
+        model: options?.model,
+        duration: options?.duration,
+        seed: options?.seed,
+        workflowId: options?.workflowId,
+        signal: options?.signal,
+    });
+    return { blob: res.blob, seed: res.seed, jobId: res.jobId };
 }
 
 async function audioPluginBlob(result: unknown, format: string): Promise<Blob> {

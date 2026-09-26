@@ -7,6 +7,24 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Native ComfyUI MiniMax Music 03 Audio Generation Verification (本地 ComfyUI MiniMax Music 03 音频与音乐生成验证):
+  - **Channel Audio Workflow Configuration (渠道管理音频工作流支持)**:
+    - Open Channel Drawer (`渠道与模型配置` -> `编辑渠道`), verify `audio` (音频生成) appears in the 核心生成工作流列表;
+    - Default channel includes built-in `MiniMax Music 03` audio workflow (`Comfy/Comfy-Api/workflows/10_audio/audio_minimax_music_3_api.json`);
+    - Custom workflow upload validates required `output_audio` slot (`SaveAudioAdvanced`);
+  - **Audio Node Prompt & Duration Controls (音频节点提示词与时长控制)**:
+    - Audio node prompt bar displays `ChannelWorkflowPicker` for `category="audio"` and `CanvasAudioSettingsPopover` (showing current duration, e.g. `60s`);
+    - Duration popover provides quick preset pills (`60s`, `120s`, `180s`) and a slider ranging from `10s` to `300s` with a `1s` step;
+    - Multiline prompt placeholder clearly demonstrates `[caption]` and `[lyrics]` tag formatting;
+  - **Prompt Tag Extraction & Slot Binding (提示词 `[caption]` / `[lyrics]` 分流与槽位绑定)**:
+    - When prompt contains `[caption] ... [lyrics] ...`, text is cleanly split into `caption` and `lyrics` node inputs;
+    - If no tags are provided, the full prompt automatically defaults to `caption`;
+    - `seed` is automatically generated and saved back to node metadata;
+    - Duration float value binds to the ComfyLiterals Float node (`Number` input);
+  - **Audio Asset Persistence & Playback (音频资产存储与播放)**:
+    - Output audio file is retrieved from ComfyUI `/view` endpoint and persisted to `localforage`;
+    - Node renders HTML5 audio controls for seamless immediate playback.
+
 - Decoupled Channel Workflows and Toolbar Configuration Verification (渠道工作流与自定义工具栏解耦验证):
   - **Toolbar Settings Tab (全局设置「工具栏」Tab)**:
     - Open Settings modal and click the 「工具栏」 tab;

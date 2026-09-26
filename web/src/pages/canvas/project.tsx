@@ -3149,8 +3149,34 @@ function InfiniteCanvasPage() {
                     }
                     const controller = startGenerationRequest(audioId, nodeId, nodeId, runController);
                     try {
-                        const audio = await storeGeneratedAudio(await requestAudioGeneration(generationConfig, effectivePrompt, { signal: controller.signal }), generationConfig.audioFormat);
-                        setNodes((prev) => prev.map((node) => (node.id === audioId ? { ...node, metadata: { ...node.metadata, ...audioMetadata(audio), prompt, effectivePrompt, ...buildAudioGenerationMetadata(generationConfig) } } : node)));
+                        const duration = Number(sourceNode?.metadata?.seconds || generationConfig.audioSeconds) || 60;
+                        const initialSeed = sourceNode?.metadata?.seed;
+                        const result = await requestAudioGeneration(generationConfig, effectivePrompt, {
+                            signal: controller.signal,
+                            duration,
+                            seed: initialSeed,
+                            workflowId: sourceNode?.metadata?.workflowId,
+                        });
+                        const audio = await storeGeneratedAudio(result.blob);
+                        setNodes((prev) =>
+                            prev.map((node) =>
+                                node.id === audioId
+                                    ? {
+                                          ...node,
+                                          metadata: {
+                                              ...node.metadata,
+                                              ...audioMetadata(audio),
+                                              prompt,
+                                              effectivePrompt,
+                                              seconds: String(duration),
+                                              seed: result.seed,
+                                              jobId: result.jobId,
+                                              status: NODE_STATUS_SUCCESS,
+                                          },
+                                      }
+                                    : node,
+                            ),
+                        );
                     } finally {
                         finishGenerationRequest(audioId, controller);
                     }
@@ -3571,11 +3597,31 @@ function InfiniteCanvasPage() {
                         ),
                     );
                 } else if (mode === "audio") {
-                    const audio = await storeGeneratedAudio(await requestAudioGeneration(generationConfig, prompt, { signal: controller.signal }), generationConfig.audioFormat);
+                    const duration = Number(node.metadata?.seconds || generationConfig.audioSeconds) || 60;
+                    const initialSeed = node.metadata?.seed;
+                    const result = await requestAudioGeneration(generationConfig, prompt, {
+                        signal: controller.signal,
+                        duration,
+                        seed: initialSeed,
+                        workflowId: node.metadata?.workflowId,
+                    });
+                    const audio = await storeGeneratedAudio(result.blob);
                     setNodes((prev) =>
                         prev.map((item) =>
                             item.id === node.id
-                                ? { ...item, metadata: { ...item.metadata, ...audioMetadata(audio), status: NODE_STATUS_SUCCESS, errorDetails: undefined, jobId: undefined, isTimeout: undefined, ...buildAudioGenerationMetadata(generationConfig) } }
+                                ? {
+                                      ...item,
+                                      metadata: {
+                                          ...item.metadata,
+                                          ...audioMetadata(audio),
+                                          status: NODE_STATUS_SUCCESS,
+                                          errorDetails: undefined,
+                                          jobId: result.jobId,
+                                          isTimeout: undefined,
+                                          seconds: String(duration),
+                                          seed: result.seed,
+                                      },
+                                  }
                                 : item,
                         ),
                     );

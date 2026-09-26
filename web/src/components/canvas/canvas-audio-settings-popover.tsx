@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Settings2 } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Button } from "antd";
 
-import { AudioSettingsPanel } from "@/components/audio-settings-panel";
-import { audioFormatLabel, audioSpeedLabel, audioVoiceLabel } from "@/lib/audio-generation";
+import { AudioSettingsPanel, audioSecondsLabel } from "@/components/audio-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
 
-export type CanvasAudioSettingKey = "audioVoice" | "audioFormat" | "audioSpeed" | "audioInstructions";
+export type CanvasAudioSettingKey = "audioSeconds";
 
 type CanvasAudioSettingsPopoverProps = {
     config: AiConfig;
@@ -51,9 +50,9 @@ export function CanvasAudioSettingsPopover({ config, onConfigChange, buttonClass
     return (
         <>
             <span ref={buttonRef} className="inline-flex min-w-0">
-                <Button size="small" type="text" className={buttonClassName || "!h-8 !max-w-[170px] !justify-start !rounded-full !px-2.5"} style={{ background: theme.node.fill, color: theme.node.text }} icon={<Settings2 className="size-3.5" />} onClick={() => setOpen((current) => !current)}>
+                <Button size="small" type="text" className={buttonClassName || "!h-8 !max-w-[120px] !justify-start !rounded-full !px-2.5"} style={{ background: theme.node.fill, color: theme.node.text }} icon={<Clock className="size-3.5" />} onClick={() => setOpen((current) => !current)}>
                     <span className="truncate">
-                        {audioVoiceLabel(config.audioVoice)} · {audioFormatLabel(config.audioFormat)} · {audioSpeedLabel(config.audioSpeed)}
+                        {audioSecondsLabel(config.audioSeconds)}
                     </span>
                 </Button>
             </span>
@@ -77,7 +76,7 @@ function AudioSettingsPortal({
     config: AiConfig;
     onConfigChange: (key: CanvasAudioSettingKey, value: string) => void;
 }) {
-    const width = 356;
+    const width = 320;
     const gap = 8;
     const margin = 12;
     const alignRight = placement?.endsWith("Right");
@@ -101,13 +100,14 @@ function AudioSettingsPortal({
     return createPortal(
         <div
             ref={panelRef}
-            className="canvas-image-settings-popover"
             style={style}
+            data-canvas-no-zoom
+            className="thin-scrollbar"
             onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
         >
-            <AudioSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-4" />
+            <AudioSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} />
         </div>,
         document.body,
     );
