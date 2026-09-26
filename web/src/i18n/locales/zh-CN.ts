@@ -502,6 +502,8 @@ export default {
             videoWorkflowDesc: "支持连入最多 9 张参考图、3 段视频、3 段音频的多模态视频生成工作流。",
             frameVideoWorkflowTitle: "首尾帧视频工作流 (Frame Video)",
             frameVideoWorkflowDesc: "支持绑定首帧 (first_frame) 与尾帧 (last_frame) 的视频生成工作流。",
+            audioWorkflowTitle: "音乐与音频工作流 (Audio)",
+            audioWorkflowDesc: "在画布进行音乐创作与音频生成时调用此工作流。",
             capabilities: {
                 image: "生图",
                 video: "视频",

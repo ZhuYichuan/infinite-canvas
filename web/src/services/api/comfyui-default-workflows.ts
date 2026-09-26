@@ -130,6 +130,7 @@ export type ComfyuiWorkflowBundle = {
     text: ComfyuiWorkflow;
     video: ComfyuiWorkflow;
     frameVideo: ComfyuiWorkflow;
+    audio: ComfyuiWorkflow;
 };
 
 export const DEFAULT_BUILTIN_COMFYUI_WORKFLOWS: ComfyuiWorkflowBundle = {
@@ -139,6 +140,7 @@ export const DEFAULT_BUILTIN_COMFYUI_WORKFLOWS: ComfyuiWorkflowBundle = {
     text: DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW,
     video: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW,
     frameVideo: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW,
+    audio: DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW,
 };
 
 export const DEFAULT_LOCAL_COMFYUI_WORKFLOWS = DEFAULT_BUILTIN_COMFYUI_WORKFLOWS;

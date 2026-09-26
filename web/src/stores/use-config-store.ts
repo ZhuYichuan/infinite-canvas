@@ -529,6 +529,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>, options?: { 
         comfyuiTextWorkflow: channel?.comfyuiTextWorkflow !== undefined ? channel.comfyuiTextWorkflow : workflows.text,
         comfyuiVideoWorkflow: channel?.comfyuiVideoWorkflow !== undefined ? channel.comfyuiVideoWorkflow : workflows.video,
         comfyuiFrameVideoWorkflow: channel?.comfyuiFrameVideoWorkflow !== undefined ? channel.comfyuiFrameVideoWorkflow : workflows.frameVideo,
+        comfyuiAudioWorkflow: channel?.comfyuiAudioWorkflow !== undefined ? channel.comfyuiAudioWorkflow : workflows.audio,
     };
     return result;
 }

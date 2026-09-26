@@ -177,6 +177,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         const textDef = savedWorkflows.find((w) => w.category === "text" && w.isDefault) || savedWorkflows.find((w) => w.category === "text");
         const videoDef = savedWorkflows.find((w) => w.category === "omniVideo" && w.isDefault) || savedWorkflows.find((w) => w.category === "omniVideo");
         const frameDef = savedWorkflows.find((w) => w.category === "frameVideo" && w.isDefault) || savedWorkflows.find((w) => w.category === "frameVideo");
+        const audioDef = savedWorkflows.find((w) => w.category === "audio" && w.isDefault) || savedWorkflows.find((w) => w.category === "audio");
         const superResolveDef = savedWorkflows.find((w) => w.category === "superResolve" && w.isDefault) || savedWorkflows.find((w) => w.category === "superResolve");
         const angleDef = savedWorkflows.find((w) => w.category === "angle" && w.isDefault) || savedWorkflows.find((w) => w.category === "angle");
         const upscaleDef = savedWorkflows.find((w) => w.category === "upscale" && w.isDefault) || savedWorkflows.find((w) => w.category === "upscale");
@@ -193,6 +194,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
             comfyuiTextWorkflow: textDef ? { name: textDef.name, json: textDef.json, createdAt: textDef.createdAt, isBuiltin: textDef.isBuiltin } : undefined,
             comfyuiVideoWorkflow: videoDef ? { name: videoDef.name, json: videoDef.json, createdAt: videoDef.createdAt, isBuiltin: videoDef.isBuiltin } : undefined,
             comfyuiFrameVideoWorkflow: frameDef ? { name: frameDef.name, json: frameDef.json, createdAt: frameDef.createdAt, isBuiltin: frameDef.isBuiltin } : undefined,
+            comfyuiAudioWorkflow: audioDef ? { name: audioDef.name, json: audioDef.json, createdAt: audioDef.createdAt, isBuiltin: audioDef.isBuiltin } : undefined,
             comfyuiSuperResolveWorkflow: superResolveDef ? { name: superResolveDef.name, json: superResolveDef.json, createdAt: superResolveDef.createdAt, isBuiltin: superResolveDef.isBuiltin } : undefined,
             comfyuiAngleWorkflow: angleDef ? { name: angleDef.name, json: angleDef.json, createdAt: angleDef.createdAt, isBuiltin: angleDef.isBuiltin } : undefined,
             comfyuiUpscaleWorkflow: upscaleDef ? { name: upscaleDef.name, json: upscaleDef.json, createdAt: upscaleDef.createdAt, isBuiltin: upscaleDef.isBuiltin } : undefined,
@@ -385,7 +387,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                         <div className="space-y-6">
                             <div className="space-y-2.5">
                                 <div className="text-xs font-semibold tracking-wide text-stone-500">
-                                    核心生成工作流（生图 / 生视频 / 文本）
+                                    核心生成工作流（生图 / 生视频 / 文本 / 音频）
                                 </div>
                                 <div className="space-y-3">
                                     {CORE_WORKFLOW_CATEGORIES.map(renderWorkflowCategory)}

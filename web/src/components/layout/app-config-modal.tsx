@@ -219,6 +219,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                         const textItem = getDefaultWorkflow(channel, "text");
                                         const videoItem = getDefaultWorkflow(channel, "omniVideo");
                                         const frameVideoItem = getDefaultWorkflow(channel, "frameVideo");
+                                        const audioItem = getDefaultWorkflow(channel, "audio");
 
                                         const inpaintItem = getDefaultWorkflow(channel, "inpaint");
                                         const superResolveItem = getDefaultWorkflow(channel, "superResolve");
@@ -257,7 +258,7 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                             {/* 核心生成工作流 */}
                                                             <div className="space-y-2">
                                                                 <div className="text-xs font-semibold text-stone-700 dark:text-stone-300">
-                                                                    核心生成工作流（生图 / 生视频 / 文本）
+                                                                    核心生成工作流（生图 / 生视频 / 文本 / 音频）
                                                                 </div>
                                                                 <div className="space-y-2">
                                                                     <div>
@@ -326,6 +327,20 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                                                 value={frameVideoItem || channel.comfyuiFrameVideoWorkflow || defaultWorkflows.frameVideo}
                                                                                 defaultWorkflow={defaultWorkflows.frameVideo}
                                                                                 isBuiltin={frameVideoItem ? Boolean(frameVideoItem.isBuiltin) : undefined}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                                            <span className="text-xs font-medium text-stone-600 dark:text-stone-400">{t("config.channelEditor.audioWorkflowTitle")}</span>
+                                                                            <span className="text-[11px] text-stone-400">{t("config.channelEditor.audioWorkflowDesc")}</span>
+                                                                        </div>
+                                                                        <div className="rounded-md border border-stone-100 bg-stone-50/50 p-2 dark:border-stone-800 dark:bg-stone-900/30">
+                                                                            <ComfyuiWorkflowEditor
+                                                                                value={audioItem || channel.comfyuiAudioWorkflow || defaultWorkflows.audio}
+                                                                                defaultWorkflow={defaultWorkflows.audio}
+                                                                                isBuiltin={audioItem ? Boolean(audioItem.isBuiltin) : undefined}
                                                                             />
                                                                         </div>
                                                                     </div>

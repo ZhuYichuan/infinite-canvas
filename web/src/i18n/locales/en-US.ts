@@ -502,6 +502,8 @@ export default {
             videoWorkflowDesc: "Supports up to 9 images, 3 videos, and 3 audios for multimodal reference video generation.",
             frameVideoWorkflowTitle: "First & Last Frame Video Workflow (Frame Video)",
             frameVideoWorkflowDesc: "Supports binding first_frame and last_frame for frame-guided video generation.",
+            audioWorkflowTitle: "Music & Audio Workflow (Audio)",
+            audioWorkflowDesc: "Invoked when generating music or audio on the canvas.",
             capabilities: {
                 image: "Image",
                 video: "Video",
