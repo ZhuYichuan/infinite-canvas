@@ -847,7 +847,7 @@ describe("Qwen-Image-2.1 and submitJob validation", () => {
         expect((bound["480:474"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toBeUndefined();
     });
 
-    it("safely binds Qwen-Image-2.1 for image-to-image with reference image", async () => {
+    it("safely binds Qwen-Image-2.1 for image-to-image with reference image and custom size (honoring EmptyLatentImage)", async () => {
         const qwenJson = (await import("@/assets/workflows/qwen_image_21_api.json")).default;
         const bound = applyBindings(qwenJson as unknown as ComfyuiWorkflowJson, {
             prompt: "portrait based on photo",
@@ -859,9 +859,24 @@ describe("Qwen-Image-2.1 and submitJob validation", () => {
 
         expect(Object.keys(bound).length).toBe(15);
         expect(bound["481"]).toBeDefined();
-        expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(false);
+        // 指定了宽高尺寸时，保持 switch = true 走 EmptyLatentImage 遵循指定尺寸
+        expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
         expect((bound["480:474"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toEqual(["495", 0]);
         expect((bound["480:474"]?.inputs as Record<string, unknown>)?.["images.image_2"]).toBeUndefined();
+    });
+
+    it("safely binds Qwen-Image-2.1 for image-to-image without custom size (falling back to reference latent)", async () => {
+        const qwenJson = (await import("@/assets/workflows/qwen_image_21_api.json")).default;
+        const bound = applyBindings(qwenJson as unknown as ComfyuiWorkflowJson, {
+            prompt: "portrait based on photo",
+            seed: 42,
+            refImages: ["uploaded_asset.png"],
+        });
+
+        expect(Object.keys(bound).length).toBe(15);
+        expect(bound["481"]).toBeDefined();
+        // 未指定尺寸时，切到 switch = false 走参考图 Latent
+        expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(false);
     });
 
     it("rejects empty workflow in submitJob", async () => {

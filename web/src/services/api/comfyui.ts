@@ -501,12 +501,19 @@ export function applyBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiBind
         }
     }
 
-    // 联动设置 ComfySwitchNode 开关（无图为 true 走文生图 EmptyLatentImage，有图为 false 走图生图参考图 Latent）
+    // 联动设置 ComfySwitchNode 开关（如 Qwen-Image-2.1）：
+    // 若显式指定了 width 和 height，优先保持 switch=true（走 EmptyLatentImage 遵循指定尺寸与比例）；
+    // 若未指定尺寸且有参考图，则走图生图参考图 Latent (switch=false)；无参考图则走 EmptyLatentImage (switch=true)
     for (const node of Object.values(cloned)) {
         if (typeof node !== "object" || node === null) continue;
         const record = node as NodeRecord;
-        if (record.class_type === "ComfySwitchNode" && record.inputs && "switch" in record.inputs) {
-            record.inputs.switch = (params.refImages?.length || 0) === 0;
+        if (record.class_type === "ComfySwitchNode" && record.inputs && typeof record.inputs.switch === "boolean") {
+            const hasCustomSize = params.width !== undefined && params.height !== undefined;
+            if (hasCustomSize) {
+                record.inputs.switch = true;
+            } else {
+                record.inputs.switch = (params.refImages?.length || 0) === 0;
+            }
         }
     }
 
