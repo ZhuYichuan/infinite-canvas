@@ -94,6 +94,8 @@ function AudioSettingsPortal({
         boxShadow: "0 18px 54px rgba(28, 25, 23, 0.16)",
         padding: 18,
         overflowY: "auto",
+        overflowX: "hidden",
+        boxSizing: "border-box",
         color: theme.node.text,
     } as const;
 
@@ -102,12 +104,12 @@ function AudioSettingsPortal({
             ref={panelRef}
             style={style}
             data-canvas-no-zoom
-            className="thin-scrollbar"
+            className="canvas-image-settings-popover thin-scrollbar"
             onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
         >
-            <AudioSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} />
+            <AudioSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} className="space-y-4" />
         </div>,
         document.body,
     );

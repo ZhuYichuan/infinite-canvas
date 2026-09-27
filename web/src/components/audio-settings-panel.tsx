@@ -26,7 +26,7 @@ export function AudioSettingsPanel({
     onConfigChange,
     theme,
     showTitle = true,
-    className = "w-[300px] space-y-4 rounded-2xl px-1 py-0.5",
+    className = "space-y-4",
 }: AudioSettingsPanelProps) {
     const { t } = useTranslation();
     const currentSeconds = Math.min(300, Math.max(10, Number(config.audioSeconds) || 60));
@@ -63,18 +63,15 @@ export function AudioSettingsPanel({
                         ))}
                     </div>
 
-                    <div className="pt-2 px-1">
+                    <div className="px-1 pt-1">
                         <Slider
                             min={10}
                             max={300}
                             step={1}
                             value={currentSeconds}
+                            tooltip={{ formatter: (v) => `${v} 秒` }}
                             onChange={(val) => onConfigChange("audioSeconds", String(val))}
                         />
-                        <div className="flex justify-between text-[11px] select-none" style={{ color: theme.node.muted }}>
-                            <span>10s</span>
-                            <span>最大 300s (5分钟)</span>
-                        </div>
                     </div>
                 </SettingGroup>
             </div>
