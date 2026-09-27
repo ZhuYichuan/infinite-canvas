@@ -107,6 +107,19 @@
 
 ---
 
+### 7. MiniMax Music 03 音频生成时长偏差补偿（少 1 秒问题）
+
+**现象**：
+- 用户在画布设置面板选择生成 10 秒音频，ComfyUI 实际导出的音乐产物时长恒定为 9 秒；选择 60 秒时实际导出 59 秒。
+
+**根因**：
+- 底层 MiniMax Music 03 扩散模型（DiT）与 ComfyUI 原生音频潜空间节点（`EmptyMiniMaxMusic3LatentAudio`）在根据采样步数与时长计算帧数时，因音频采样率帧对齐或去噪结尾帧裁剪，导致最终解码出的音频长度普遍比输入的 `duration` 整数少 1 秒。
+
+**处理方案**：
+- 在 `web/src/services/api/comfyui.ts` 的 `requestComfyuiAudio` 提交层中，保持前端 UI 与画布节点元数据展示用户真实选择的时长（如 10s），而在底层向 ComfyUI 提交工作流参数时自动追加 +1 秒偏差补偿（`submittedDuration = duration + 1`），使实际产出的音乐时长与用户设定值完全吻合。
+
+---
+
 ## 调试方法推荐
 
 1. **直连验证**：

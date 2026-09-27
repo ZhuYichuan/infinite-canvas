@@ -2400,6 +2400,7 @@ export function applyAudioBindings(workflow: ComfyuiWorkflowJson, params: Comfyu
         } else if ((title === "duration" || title === "max_duration") && params.duration !== undefined) {
             slot = BINDING_TITLE_TO_INPUT_SLOT.duration?.[record.class_type] ||
                 ("Number" in record.inputs ? "Number" : "value" in record.inputs ? "value" : "duration" in record.inputs ? "duration" : "max_duration" in record.inputs ? "max_duration" : undefined);
+            // 绑定音频生成时长（秒）。注意：params.duration 已由上层调用包含针对 MiniMax Music 03 产物少 1 秒的 +1s 补偿值
             value = params.duration;
         } else if (title === "prompt" && params.prompt !== undefined) {
             slot = BINDING_TITLE_TO_INPUT_SLOT.prompt[record.class_type] ||
@@ -2484,11 +2485,24 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
     const { caption, lyrics } = parseAudioPrompt(req.prompt);
     const duration = req.duration ?? (Number(req.config.audioSeconds) || 60);
 
+    // =========================================================================
+    // 【特别说明 / 时长偏差补偿处理 (+1s)】
+    // 实测与 ComfyUI 原生工作流验证发现：MiniMax Music 03 音频生成工作流（由 MiniMaxMusic3TextEncode
+    // 与 EmptyMiniMaxMusic3LatentAudio 等节点驱动）实际生成的音频文件时长总是比传入的 max_duration / duration
+    // 参数少 1 秒（例如用户选择 10 秒，模型实际产物仅有 9 秒；选择 60 秒，实际产物仅有 59 秒）。
+    //
+    // 为了使模型最终生成的音频产物时长与用户在画布 UI（设置面板 / 节点秒数选项）中期望的秒数完全吻合：
+    // 此处在向 ComfyUI 提交工作流参数时，对时长默认自动多加 1 秒（即 submittedDuration = duration + 1）。
+    // 前端 UI、画布节点元数据与历史记录中依然保持用户原始选定的目标数值（如 10s、60s），
+    // 仅在向底层 ComfyUI API 提交运行参数时进行该偏差补偿，彻底解决导出音频总短 1 秒的问题。
+    // =========================================================================
+    const submittedDuration = Math.max(1, duration + 1);
+
     const boundWorkflow = applyAudioBindings(workflowItem.json, {
         prompt: req.prompt,
         caption,
         lyrics,
-        duration,
+        duration: submittedDuration,
         seed,
     });
 

@@ -23,7 +23,7 @@ The current release needs manual verification in these areas:
     - When prompt contains `[caption] ... [lyrics] ...`, text is cleanly split into `caption` and `lyrics` node inputs;
     - If no tags are provided, the full prompt automatically defaults to `caption`;
     - `seed` is automatically generated and saved back to node metadata;
-    - Duration float value binds to the ComfyLiterals Float node (`Number` input);
+    - Duration float value binds to the ComfyLiterals Float node (`Number` input), with automatic +1s compensation applied during ComfyUI submission to ensure generated audio length exactly matches user choice;
   - **Audio Asset Persistence & Playback (音频资产存储与播放)**:
     - Output audio file is retrieved from ComfyUI `/view` endpoint and persisted to `localforage`;
     - Node renders HTML5 audio controls for seamless immediate playback.
