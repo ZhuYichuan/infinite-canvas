@@ -834,20 +834,66 @@ export async function pollJobRaw(jobId: string, baseUrl: string, token?: string,
                     }
                 }
 
-                if (Array.isArray(nodeOut.audio)) {
-                    for (const aud of nodeOut.audio) {
-                        if (aud?.filename) {
-                            const subfolder = aud.subfolder || "";
-                            const itemType = aud.type || "output";
-                            const viewPath = `/api/view?filename=${encodeURIComponent(aud.filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
+                const rawAudioList = Array.isArray(nodeOut.audio)
+                    ? nodeOut.audio
+                    : Array.isArray((nodeOut.ui as any)?.audio)
+                    ? (nodeOut.ui as any).audio
+                    : Array.isArray((nodeOut as any)?.audios)
+                    ? (nodeOut as any).audios
+                    : Array.isArray((nodeOut.ui as any)?.audios)
+                    ? (nodeOut.ui as any).audios
+                    : nodeOut.audio && typeof nodeOut.audio === "object"
+                    ? [nodeOut.audio]
+                    : (nodeOut.ui as any)?.audio && typeof (nodeOut.ui as any).audio === "object"
+                    ? [(nodeOut.ui as any).audio]
+                    : [];
+
+                if (rawAudioList.length > 0) {
+                    for (const aud of rawAudioList) {
+                        const filename = typeof aud === "string" ? aud : aud?.filename || aud?.name || "";
+                        if (filename) {
+                            const subfolder = typeof aud === "object" && aud?.subfolder ? aud.subfolder : "";
+                            const itemType = typeof aud === "object" && aud?.type ? aud.type : "output";
+                            const ext = filename.split(".").pop()?.toLowerCase() || "";
+                            const contentType =
+                                ext === "wav" ? "audio/wav" :
+                                ext === "ogg" ? "audio/ogg" :
+                                ext === "flac" ? "audio/flac" :
+                                ext === "opus" ? "audio/opus" :
+                                ext === "m4a" || ext === "aac" ? "audio/mp4" :
+                                "audio/mpeg";
+                            const viewPath = `/api/view?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
                             outputs.push({
                                 id: viewPath,
-                                filename: aud.filename,
+                                filename,
                                 subfolder,
                                 type: "audio",
-                                content_type: "audio/mp3",
+                                content_type: contentType,
                                 node_id: nodeId,
                             });
+                        }
+                    }
+                } else {
+                    const scanObj = (nodeOut.ui && typeof nodeOut.ui === "object" ? { ...nodeOut, ...(nodeOut.ui as any) } : nodeOut) as Record<string, unknown>;
+                    for (const [key, val] of Object.entries(scanObj)) {
+                        if (key === "text" || key === "string" || key === "ui") continue;
+                        const items = Array.isArray(val) ? val : [val];
+                        for (const item of items) {
+                            if (!item) continue;
+                            const fn = typeof item === "string" ? item : typeof item === "object" && "filename" in item ? String(item.filename) : typeof item === "object" && "name" in item ? String(item.name) : "";
+                            if (fn && /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(fn)) {
+                                const subfolder = typeof item === "object" && "subfolder" in item ? String(item.subfolder || "") : "";
+                                const itemType = typeof item === "object" && "type" in item ? String(item.type || "output") : "output";
+                                const viewPath = `/api/view?filename=${encodeURIComponent(fn)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
+                                outputs.push({
+                                    id: viewPath,
+                                    filename: fn,
+                                    subfolder,
+                                    type: "audio",
+                                    content_type: "audio/mpeg",
+                                    node_id: nodeId,
+                                });
+                            }
                         }
                     }
                 }
@@ -1820,6 +1866,34 @@ export function collectVideoAssetIds(outputs: unknown): string[] {
 }
 
 /**
+ * Collect output asset ids for audio generation jobs.
+ */
+export function collectAudioAssetIds(outputs: unknown): string[] {
+    if (!Array.isArray(outputs)) return [];
+    const ids: string[] = [];
+    for (const item of outputs) {
+        if (!item || typeof item !== "object") continue;
+        const rec = item as { id?: unknown; type?: unknown; content_type?: unknown; filename?: unknown; url?: unknown };
+        const id = typeof rec.id === "string" && rec.id ? rec.id : typeof rec.url === "string" && rec.url ? rec.url : typeof rec.filename === "string" ? rec.filename : "";
+        if (!id) continue;
+        const fn = typeof rec.filename === "string" ? rec.filename.toLowerCase() : "";
+        const idLower = id.toLowerCase();
+        const type = String(rec.type || "").toLowerCase();
+        const contentType = String(rec.content_type || "").toLowerCase();
+        const isAudio =
+            type === "audio" ||
+            contentType.startsWith("audio/") ||
+            /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(fn) ||
+            /\.(mp3|wav|ogg|flac|m4a|aac|opus)/i.test(idLower);
+
+        if (isAudio) {
+            ids.push(id);
+        }
+    }
+    return ids;
+}
+
+/**
  * Deep-copy a video workflow and bind prompt, reference images, and random seed.
  */
 
@@ -2428,7 +2502,8 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
             throw new ComfyuiAbortedError();
         }
 
-        const polling = pollJob(jobId, baseUrl, token, signal);
+        const startedAt = Date.now();
+        const polling = pollJobRaw(jobId, baseUrl, token, signal, startedAt + JOB_TIMEOUT_MS);
         let waiting: Promise<PollJobResult | undefined> = polling;
         if (signal) {
             const aborted: Promise<never> = new Promise((_resolve, reject) => {
@@ -2445,12 +2520,18 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
             throw new ComfyuiError("ComfyUI 未生成音频产物");
         }
 
-        const audioOutput = pollResult.outputs.find((out) => out.type === "audio" || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(out.filename || ""));
+        const audioOutput = pollResult.outputs.find((out) =>
+            out.type === "audio" ||
+            out.content_type?.startsWith("audio/") ||
+            /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(out.filename || "") ||
+            /\.(mp3|wav|ogg|flac|m4a|aac|opus)/i.test(out.id || "")
+        );
         if (!audioOutput) {
             throw new ComfyuiError("ComfyUI 任务完成但未找到音频文件产物");
         }
 
-        const downloaded = await downloadAsset(audioOutput.id, baseUrl, token);
+        const targetAssetId = audioOutput.id || (audioOutput.filename ? `/api/view?filename=${encodeURIComponent(audioOutput.filename)}&type=${encodeURIComponent(audioOutput.type || "output")}&subfolder=${encodeURIComponent(audioOutput.subfolder || "")}` : "");
+        const downloaded = await downloadAsset(targetAssetId, baseUrl, token);
         return {
             blob: downloaded.blob,
             dataUrl: downloaded.dataUrl,

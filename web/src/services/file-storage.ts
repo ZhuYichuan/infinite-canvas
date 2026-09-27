@@ -78,9 +78,22 @@ function readVideoMeta(url: string) {
 function readAudioMeta(url: string) {
     return new Promise<{ durationMs?: number }>((resolve) => {
         const audio = document.createElement("audio");
-        const done = () => resolve({ durationMs: Number.isFinite(audio.duration) ? Math.round(audio.duration * 1000) : undefined });
-        audio.onloadedmetadata = done;
-        audio.onerror = done;
+        audio.preload = "metadata";
+        let settled = false;
+        const done = () => {
+            if (settled) return;
+            settled = true;
+            resolve({ durationMs: Number.isFinite(audio.duration) ? Math.round(audio.duration * 1000) : undefined });
+        };
+        const timer = setTimeout(done, 3000);
+        audio.onloadedmetadata = () => {
+            clearTimeout(timer);
+            done();
+        };
+        audio.onerror = () => {
+            clearTimeout(timer);
+            done();
+        };
         audio.src = url;
     });
 }
