@@ -534,19 +534,22 @@ export function createModelChannel(channel?: Partial<ModelChannel>, options?: { 
     return result;
 }
 
-export function getChannelWorkflows(channel?: ModelChannel | null, category?: WorkflowCategory): ComfyWorkflowItem[] {
+export function getChannelWorkflows(channel?: ModelChannel | null, category?: WorkflowCategory | WorkflowCategory[]): ComfyWorkflowItem[] {
     if (!channel) return [];
     const list = Array.isArray(channel.workflows) && channel.workflows.length > 0 ? channel.workflows : getDefaultComfyWorkflowItems(channel);
     if (!category) return list;
+    if (Array.isArray(category)) {
+        return list.filter((wf) => category.includes(wf.category));
+    }
     return list.filter((wf) => wf.category === category);
 }
 
-export function getDefaultWorkflow(channel?: ModelChannel | null, category: WorkflowCategory): ComfyWorkflowItem | undefined {
+export function getDefaultWorkflow(channel?: ModelChannel | null, category?: WorkflowCategory | WorkflowCategory[]): ComfyWorkflowItem | undefined {
     const list = getChannelWorkflows(channel, category);
     return list.find((wf) => wf.isDefault) || list[0];
 }
 
-export function findWorkflow(config: AiConfig, channelId?: string, workflowId?: string, category?: WorkflowCategory): ComfyWorkflowItem | undefined {
+export function findWorkflow(config: AiConfig, channelId?: string, workflowId?: string, category?: WorkflowCategory | WorkflowCategory[]): ComfyWorkflowItem | undefined {
     const channel = channelId ? config.channels.find((c) => c.id === channelId) : config.channels[0];
     if (!channel) return undefined;
     const list = getChannelWorkflows(channel, category);

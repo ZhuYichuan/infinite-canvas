@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
 import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
-import { decodeChannelModel, defaultConfig, encodeChannelModel, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { normalizeVideoSizeValue } from "@/components/video-settings-panel";
@@ -112,15 +112,20 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         mode === "image"
                             ? (inputSummary.imageCount > 0 ? "i2i" : "t2i")
                             : mode === "video"
-                            ? (node.metadata?.videoMode === "frame" ? "frameVideo" : "omniVideo")
+                            ? ["omniVideo", "frameVideo"]
                             : mode === "audio"
                             ? "audio"
                             : "text"
                     }
+                    preferredCategory={mode === "video" ? (config.videoMode === "frame" ? "frameVideo" : "omniVideo") : undefined}
                     channelId={node.metadata?.channelId}
                     workflowId={node.metadata?.workflowId}
-                    onChange={(channelId, workflowId) => {
-                        onConfigChange(node.id, { channelId, workflowId });
+                    onChange={(channelId, workflowId, workflow) => {
+                        const patch: Partial<CanvasNodeMetadata> = { channelId, workflowId };
+                        if (mode === "video") {
+                            patch.videoMode = workflow?.category === "frameVideo" ? "frame" : workflow?.category === "omniVideo" ? "omni" : config.videoMode;
+                        }
+                        onConfigChange(node.id, patch);
                     }}
                     className="canvas-compact-control h-10"
                 />
@@ -186,7 +191,15 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     const model = resolveModelForCapability(globalConfig, rawModel, mode);
     const isFrame = model.toLowerCase().includes("frame") || model.includes("首尾帧");
     const isOmni = model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
-    const videoMode = node.metadata?.videoMode || (isFrame ? "frame" : isOmni ? "omni" : globalConfig.videoMode || defaultConfig.videoMode || "omni");
+    let videoMode = node.metadata?.videoMode;
+    if (mode === "video" && node.metadata?.workflowId) {
+        const wf = findWorkflow(globalConfig, node.metadata.channelId, node.metadata.workflowId);
+        if (wf?.category === "frameVideo") videoMode = "frame";
+        else if (wf?.category === "omniVideo") videoMode = "omni";
+    }
+    if (!videoMode) {
+        videoMode = isFrame ? "frame" : isOmni ? "omni" : globalConfig.videoMode || defaultConfig.videoMode || "omni";
+    }
 
     return {
         ...globalConfig,
@@ -224,9 +237,13 @@ function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig)
             if (value === "frame") {
                 const frameModel = channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
                 if (frameModel) patch.model = encodeChannelModel(channel.id, frameModel.name);
+                const defaultFrameWf = getDefaultWorkflow(channel, "frameVideo");
+                if (defaultFrameWf) patch.workflowId = defaultFrameWf.id;
             } else if (value === "omni") {
-                const omniModel = channel.models.find((m) => m.name === "ComfyUI Video");
+                const omniModel = channel.models.find((m) => m.name === "ComfyUI Video" || (!m.name.toLowerCase().includes("frame") && !m.name.includes("首尾帧") && m.capability === "video"));
                 if (omniModel) patch.model = encodeChannelModel(channel.id, omniModel.name);
+                const defaultOmniWf = getDefaultWorkflow(channel, "omniVideo");
+                if (defaultOmniWf) patch.workflowId = defaultOmniWf.id;
             }
         }
         return patch;

@@ -1,4 +1,4 @@
-import { defaultConfig, resolveModelForCapability, type AiConfig } from "@/stores/use-config-store";
+import { defaultConfig, findWorkflow, resolveModelForCapability, type AiConfig } from "@/stores/use-config-store";
 import i18n from "@/i18n";
 import { imageToDataUrl, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { resolveMediaUrl } from "@/services/file-storage";
@@ -134,10 +134,22 @@ export function getInputSummary(inputs: NodeGenerationInput[]) {
 
 export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasNodeGenerationMode): AiConfig {
     const model = resolveModelForCapability(config, node?.metadata?.model, mode);
+    const channelId = node?.metadata?.channelId || config.channelId;
+    const workflowId = node?.metadata?.workflowId || config.workflowId;
+    let videoMode = node?.metadata?.videoMode;
+    if (mode === "video" && workflowId) {
+        const wf = findWorkflow(config, channelId, workflowId);
+        if (wf?.category === "frameVideo") videoMode = "frame";
+        else if (wf?.category === "omniVideo") videoMode = "omni";
+    }
+    if (!videoMode) {
+        videoMode = config.videoMode || defaultConfig.videoMode || "omni";
+    }
+
     return {
         ...config,
-        channelId: node?.metadata?.channelId || config.channelId,
-        workflowId: node?.metadata?.workflowId || config.workflowId,
+        channelId,
+        workflowId,
         model,
         videoModel: mode === "video" ? model : config.videoModel,
         imageModel: mode === "image" ? model : config.imageModel,
@@ -149,7 +161,7 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         background: node?.metadata?.background ?? config.background ?? defaultConfig.background,
         videoSeconds: node?.metadata?.seconds || config.videoSeconds || defaultConfig.videoSeconds,
         audioSeconds: node?.metadata?.seconds || config.audioSeconds || defaultConfig.audioSeconds || "60",
-        videoMode: node?.metadata?.videoMode || config.videoMode || defaultConfig.videoMode || "omni",
+        videoMode,
         vquality: node?.metadata?.vquality || config.vquality || defaultConfig.vquality,
         videoGenerateAudio: node?.metadata?.generateAudio || config.videoGenerateAudio || defaultConfig.videoGenerateAudio,
         videoWatermark: node?.metadata?.watermark || config.videoWatermark || defaultConfig.videoWatermark,

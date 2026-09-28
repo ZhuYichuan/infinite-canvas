@@ -2160,15 +2160,15 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const channel = resolveModelChannel(req.config, rawModel);
     const requestModel = modelOptionName(rawModel);
     const channelModel = channel.models.find((model) => model.name === requestModel);
-    const videoMode = req.videoMode || (req.config.videoMode === "frame" ? "frame" : "omni");
-    const category: WorkflowCategory = videoMode === "frame" ? "frameVideo" : "omniVideo";
+    const initialVideoMode = req.videoMode || (req.config.videoMode === "frame" ? "frame" : "omni");
     const channelId = req.channelId || req.config.channelId || channel.id;
     const workflowId = req.workflowId || req.config.workflowId;
     const targetWorkflowItem = workflowId
-        ? findWorkflow(req.config, channelId, workflowId, category)
+        ? findWorkflow(req.config, channelId, workflowId)
         : Array.isArray(channel.workflows)
-          ? getDefaultWorkflow(channel, category)
+          ? getDefaultWorkflow(channel, initialVideoMode === "frame" ? "frameVideo" : "omniVideo")
           : undefined;
+    const videoMode = targetWorkflowItem?.category === "frameVideo" ? "frame" : targetWorkflowItem?.category === "omniVideo" ? "omni" : initialVideoMode;
     const videoWorkflow =
         targetWorkflowItem
             ? { json: targetWorkflowItem.json }

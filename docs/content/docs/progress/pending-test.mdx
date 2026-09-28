@@ -7,6 +7,27 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Video Node Workflow & Settings Bidirectional Linkage Verification (视频节点工作流选择与视频设置双向联动验证):
+  - **Grouped Video Workflow Display (工作流下拉按分类分组展示)**:
+    - 打开视频节点（或配置节点切换到「视频」模式），点击工作流下拉框；
+    - 验证下拉列表中同时展示「全能参考视频」和「首尾帧视频」两大分组及其所有工作流；
+  - **Workflow Selection to Settings Sync (选择工作流联动设置面板)**:
+    - 在工作流下拉框中选择任一「首尾帧视频」工作流；
+    - 验证视频设置按钮文字变为「首尾帧 · ...」；打开设置弹窗，验证「生成模式」自动高亮为「首尾帧 (Frame)」；
+    - 在工作流下拉框中切换为任一「全能参考视频」工作流；
+    - 验证视频设置按钮文字与弹窗设置自动高亮为「全能参考 (Omni)」；
+  - **Settings Panel to Workflow Selection Sync (设置面板切换模式联动工作流)**:
+    - 打开「视频设置」弹窗，在生成模式中点击「首尾帧 (Frame)」；
+    - 验证外部工作流下拉选择器即刻自动切换为当前渠道的首尾帧默认工作流；
+    - 点击「全能参考 (Omni)」；
+    - 验证工作流下拉选择器即刻自动切换为当前渠道的全能参考默认工作流；
+  - **Channel Switch Mode Retention (切换渠道模式保持策略)**:
+    - 当前模式为「首尾帧」时，切换至其他已配置渠道；
+    - 验证自动优先选中新渠道下的首尾帧工作流；若新渠道无首尾帧工作流，则自动回退至第一个可用视频工作流并同步更新模式；
+  - **Node Initialization & Execution Consistency (节点加载初始化与执行一致性)**:
+    - 刷新页面重新加载已保存工作流的视频节点，验证工作流与设置面板展示的模式 100% 保持一致，无反向覆盖或重置异常；
+    - 执行视频生成任务，验证提交给 ComfyUI 的参数严格遵循选中的工作流分类（首尾帧插帧 vs 全能多模态参考）。
+
 - Native ComfyUI MiniMax Music 03 Audio Generation Verification (本地 ComfyUI MiniMax Music 03 音频与音乐生成验证):
   - **Channel Audio Workflow Configuration (渠道管理音频工作流支持)**:
     - Open Channel Drawer (`渠道与模型配置` -> `编辑渠道`), verify `audio` (音频生成) appears in the 核心生成工作流列表;
