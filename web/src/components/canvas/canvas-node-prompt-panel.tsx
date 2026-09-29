@@ -277,7 +277,7 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
         size: node.metadata?.size || globalConfig.size || defaultConfig.size,
         background: node.metadata?.background ?? globalConfig.background ?? defaultConfig.background,
-        videoSeconds: node.metadata?.seconds || globalConfig.videoSeconds || defaultConfig.videoSeconds,
+        videoSeconds: (node.metadata?.seconds === "6" ? undefined : node.metadata?.seconds) || (globalConfig.videoSeconds === "6" ? "5" : globalConfig.videoSeconds) || defaultConfig.videoSeconds,
         audioSeconds: node.metadata?.seconds || globalConfig.audioSeconds || defaultConfig.audioSeconds || "60",
         vquality: node.metadata?.vquality || globalConfig.vquality || defaultConfig.vquality,
         videoGenerateAudio: node.metadata?.generateAudio || globalConfig.videoGenerateAudio || defaultConfig.videoGenerateAudio,

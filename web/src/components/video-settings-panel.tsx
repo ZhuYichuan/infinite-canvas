@@ -47,8 +47,8 @@ type VideoSettingsPanelProps = {
 
 export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5" }: VideoSettingsPanelProps) {
     const { t } = useTranslation();
-    const videoMode = config.videoMode === "frame" ? "frame" : "omni";
-    const secondsNum = Math.min(15, Math.max(5, Number(config.videoSeconds) || 5));
+    const rawSeconds = Number(config.videoSeconds);
+    const secondsNum = Math.min(15, Math.max(5, !rawSeconds || rawSeconds === 6 ? 5 : rawSeconds));
     const currentSize = normalizeVideoSizeValue(config.size);
     const { width: currentW, height: currentH, aspect, tier: selectedTier } = parseVideoSize(currentSize);
 
@@ -212,7 +212,8 @@ export function videoSizeLabel(value: string) {
 }
 
 export function videoSecondsLabel(value: string) {
-    const s = Math.min(15, Math.max(5, Number(value) || 5));
+    const raw = Number(value);
+    const s = Math.min(15, Math.max(5, !raw || raw === 6 ? 5 : raw));
     return `${s}s`;
 }
 

@@ -159,7 +159,7 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         quality: node?.metadata?.quality || config.quality || defaultConfig.quality,
         size: node?.metadata?.size || config.size || defaultConfig.size,
         background: node?.metadata?.background ?? config.background ?? defaultConfig.background,
-        videoSeconds: node?.metadata?.seconds || config.videoSeconds || defaultConfig.videoSeconds,
+        videoSeconds: (node?.metadata?.seconds === "6" ? undefined : node?.metadata?.seconds) || (config.videoSeconds === "6" ? "5" : config.videoSeconds) || defaultConfig.videoSeconds,
         audioSeconds: node?.metadata?.seconds || config.audioSeconds || defaultConfig.audioSeconds || "60",
         videoMode,
         vquality: node?.metadata?.vquality || config.vquality || defaultConfig.vquality,

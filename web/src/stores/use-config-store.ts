@@ -385,7 +385,7 @@ export const useConfigStore = create<ConfigStore>()(
         }),
         {
             name: CONFIG_STORE_KEY,
-            version: 1,
+            version: 2,
             storage: createJSONStorage(() => localForageStorage),
             migrate: (persistedState: any, version: number) => {
                 if (version < 1) {
@@ -393,6 +393,11 @@ export const useConfigStore = create<ConfigStore>()(
                         ...persistedState,
                         config: defaultConfig,
                     };
+                }
+                if (version < 2 && persistedState?.config) {
+                    if (persistedState.config.videoSeconds === "6") {
+                        persistedState.config.videoSeconds = "5";
+                    }
                 }
                 return persistedState;
             },
@@ -444,7 +449,7 @@ export const useConfigStore = create<ConfigStore>()(
                         audioInstructions: config.audioInstructions || "",
                         systemPrompt: config.systemPrompt || "",
                         reasoningEffort: config.reasoningEffort || "auto",
-                        videoSeconds: config.videoSeconds || "5",
+                        videoSeconds: !config.videoSeconds || config.videoSeconds === "6" ? "5" : config.videoSeconds,
                         videoMode: config.videoMode || "omni",
                         vquality: config.vquality || "720",
                         videoGenerateAudio: config.videoGenerateAudio || "true",
