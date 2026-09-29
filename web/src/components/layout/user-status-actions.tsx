@@ -40,7 +40,7 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
             <Link to="/guide" className={naturalIconClass} style={iconStyle} aria-label={t("topNav.guide")} title={t("topNav.guide")}>
                 <BookOpen className="size-4" />
             </Link>
-            <Link to="/pricing" className={naturalIconClass} style={iconStyle} aria-label="部署方案与算力镜像" title="部署方案与算力镜像">
+            <Link to="/pricing" className={naturalIconClass} style={iconStyle} aria-label="限时云端镜像0元体验" title="限时云端镜像0元体验">
                 <Sparkles className="size-4 text-amber-500" />
             </Link>
             {showConfig ? (
