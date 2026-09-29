@@ -29,7 +29,7 @@ export const CONTACT_INFO = {
         wechatId: "openlts", // 真实微信号
         title: "微信扫码咨询与购买",
         qrPath: "/images/contact/wechat-qr.png",
-        tip: "添加时请备注：【19.9体验包】/【伴学更新】/【119服务包】/【1对1作者部署】，极速优先通过！",
+        tip: "添加时请备注：【0元极速体验】/【伴学更新】/【119服务包】/【1对1作者部署】，极速优先通过！",
     },
     douyin: {
         name: "@同学你好",
@@ -111,34 +111,35 @@ export default function PricingPage() {
 
                 {/* 2. 四大主力方案卡片 (展现交付效果、优势与明确服务边界) */}
                 <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-                    {/* 方案 A: 极速自助体验包 (¥19.9 一次性 / 纯文档自助) */}
+                    {/* 方案 A: 极速自助体验包 (限时 ¥0.00 / 纯文档自助) */}
                     <div className="relative flex flex-col justify-between rounded-3xl border border-stone-200 bg-background p-6 shadow-sm sm:p-7 dark:border-stone-800">
                         <div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-stone-500/10 text-stone-700 dark:bg-stone-500/20 dark:text-stone-300">
+                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
                                         <Terminal className="size-5" />
                                     </div>
                                     <h3 className="text-xl font-bold leading-tight">
                                         极速自助<br />体验包
                                     </h3>
                                 </div>
-                                <Tag className="!mr-0 shrink-0">纯文档自助</Tag>
+                                <Tag color="green" className="!mr-0 shrink-0 font-medium">限时0.00元</Tag>
                             </div>
 
                             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
-                                仅提供 AutoDL 官方云端预装镜像，告别本地显卡限制与繁琐配置。提供保姆级图文与视频部署文档，纯文档自查。
+                                作者已部署 LightCC & AutoDL 官方预装镜像，告别本地显卡限制与繁琐配置。提供 3 步开箱即用接入文档，纯文档自查。
                             </p>
 
-                            <div className="mt-5 flex items-baseline gap-1">
+                            <div className="mt-5 flex items-baseline gap-1.5 flex-wrap">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-4xl font-extrabold tracking-tight text-stone-950 dark:text-stone-100">¥19.9</span>
+                                    <span className="text-4xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">¥0.00</span>
+                                    <span className="text-xs text-stone-400 line-through">原价 ¥19.9</span>
                                     <Tooltip
                                         title={
                                             <div className="p-1 text-xs leading-relaxed">
-                                                <div className="font-semibold text-amber-300">💡 为什么收 19.9 元？</div>
+                                                <div className="font-semibold text-emerald-400">💡 限时 0.00 元福利说明</div>
                                                 <div className="mt-1 text-stone-200">
-                                                    包含百 G 大模型的云镜像每天都在产生存储租金。若不收费用，镜像会因欠费被平台直接清理删除，因此必须象征性收取一点费用分摊存储成本，保障镜像长期存活。
+                                                    作者已在 LightCC 与 AutoDL 平台部署官方预装云镜像供社区免费使用，免镜像费！注册 LightCC 新用户还送 3 元算力券（可免费体验 RTX 5090 1 小时）。您只需按需支付云平台的 GPU 算力租金。
                                                 </div>
                                             </div>
                                         }
@@ -147,17 +148,17 @@ export default function PricingPage() {
                                     >
                                         <button
                                             type="button"
-                                            className="inline-flex cursor-pointer items-center text-stone-400 hover:text-amber-500 transition-colors focus:outline-none"
-                                            aria-label="为什么收 19.9 元说明"
+                                            className="inline-flex cursor-pointer items-center text-stone-400 hover:text-emerald-500 transition-colors focus:outline-none"
+                                            aria-label="限时 0.00 元说明"
                                         >
                                             <HelpCircle className="size-4" />
                                         </button>
                                     </Tooltip>
                                 </div>
-                                <span className="text-xs text-stone-500">/ 分摊镜像存储费</span>
+                                <span className="text-xs text-stone-500">/ 限时免费体验（仅付算力租金）</span>
                             </div>
                             <div className="mt-1 text-xs text-stone-400">
-                                仅提供部署与排错文档，不提供任何人工技术支持
+                                作者官方镜像免费开放，提供教程文档，不含人工答疑
                             </div>
 
                             <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
@@ -165,19 +166,23 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-2 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
-                                        <span>专属 AutoDL 官方镜像分享码与一键开机配置脚本</span>
+                                        <span>LightCC（推荐首选）+ AutoDL 官方预装镜像与开机指引</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
-                                        <span>保姆级图文与视频部署演示（从开机到出图实录）</span>
+                                        <span>LightCC 注册赠 3 元券福利（免费跑 5090 算力 1 小时）</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
-                                        <span>常见报错排查自救指南（网络/端口/显存自查）</span>
+                                        <span>3 步极速接入指引（开机 -&gt; 复制地址 -&gt; 粘贴到画布）</span>
                                     </li>
                                     <li className="flex items-start gap-1.5">
                                         <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
                                         <span>预装 5 大核心插件与主流精选模型工作流</span>
+                                    </li>
+                                    <li className="flex items-start gap-1.5">
+                                        <span className="font-semibold text-stone-600 dark:text-stone-400">•</span>
+                                        <span>常见报错排查自救指南（网络/端口/显存自查）</span>
                                     </li>
                                 </ul>
                             </div>
@@ -187,7 +192,7 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-600 dark:text-stone-300">
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                                        <span>一杯咖啡钱极低门槛，轻薄本/Mac 秒级上手</span>
+                                        <span>限时 0 元极低门槛，轻薄本/Mac 秒级上手</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
@@ -205,7 +210,7 @@ export default function PricingPage() {
                                 <ul className="mt-2 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>仅限 AutoDL 云端镜像：本方案不包含本地便携包部署</span>
+                                        <span>仅限云端预装镜像：本方案不包含本地便携包部署</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
@@ -213,11 +218,11 @@ export default function PricingPage() {
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>遇脚本或网络报错请完全自行排查</span>
+                                        <span>遇脚本或网络报错请完全自行对照文档排查</span>
                                     </li>
                                     <li className="flex items-center gap-1.5">
                                         <XCircle className="size-3.5 text-stone-400 shrink-0" />
-                                        <span>云端算力平台租金自行支付（1~N元/时）</span>
+                                        <span>云端算力平台租金自行支付（按时计费，新用户可领券）</span>
                                     </li>
                                 </ul>
                             </div>
@@ -227,9 +232,9 @@ export default function PricingPage() {
                             <Button
                                 size="large"
                                 className="w-full !h-11 !font-medium"
-                                onClick={() => openContactModal("极速自助体验包（¥19.9）")}
+                                onClick={() => window.open("https://github.com/ZhuYichuan/infinite-canvas/blob/main/docs/CLOUD_MIRROR_GUIDE.md", "_blank")}
                             >
-                                获取极速体验包（¥19.9）
+                                查看云端镜像使用教程（限时0元）
                             </Button>
                         </div>
                     </div>
@@ -548,21 +553,21 @@ export default function PricingPage() {
                             <tbody className="divide-y divide-stone-100 text-stone-600 dark:divide-stone-800/60 dark:text-stone-300">
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">方案费用</td>
-                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">¥19.9 一次性买断</td>
+                                    <td className="px-3 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400">限时 ¥0.00 免费体验</td>
                                     <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">¥79 / 全年更新</td>
                                     <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">¥119 / 年（含3次远程）</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">¥299 / 次（赠全年伴学）</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">运行环境支持</td>
-                                    <td className="px-3 py-3.5 text-stone-600 dark:text-stone-400">仅限 AutoDL 云端镜像（不含本地）</td>
+                                    <td className="px-3 py-3.5 text-stone-600 dark:text-stone-400">仅限云端镜像（LightCC / AutoDL，不含本地）</td>
                                     <td className="px-3 py-3.5 font-semibold text-blue-600 dark:text-blue-400">AutoDL 云端 + 本地部署（要求 最低Win10 / 显存&gt;12G 最佳）</td>
                                     <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">AutoDL 云端 + 本地部署（含 Workbuddy 接入）</td>
                                     <td className="px-3 py-3.5">工程师按需调优（云端或本地）</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">核心交付内容</td>
-                                    <td className="px-3 py-3.5">AutoDL 镜像码 + 启动脚本 + 部署排错文档</td>
+                                    <td className="px-3 py-3.5">官方云端镜像 + 免本地配置 + 3步接入指引</td>
                                     <td className="px-3 py-3.5 font-semibold text-stone-900 dark:text-stone-100">AutoDL 云端 + 本地部署 + 持续升级服务</td>
                                     <td className="px-3 py-3.5 font-semibold text-indigo-700 dark:text-indigo-300">伴学包全套 + Workbuddy 智能体配置 + 3 次远程解决问题</td>
                                     <td className="px-3 py-3.5">远程端到端调通 + 显存调优 + 赠全年权益</td>
@@ -590,7 +595,7 @@ export default function PricingPage() {
                                 </tr>
                                 <tr>
                                     <td className="py-3.5 pl-6 pr-3 font-medium text-stone-900 dark:text-stone-100">售后与保障</td>
-                                    <td className="px-3 py-3.5">虚拟数字资源，附带完整文档</td>
+                                    <td className="px-3 py-3.5">公开免费文档，云端按需开机体验</td>
                                     <td className="px-3 py-3.5">社群持续维护，问题优先响应</td>
                                     <td className="px-3 py-3.5 font-semibold text-indigo-600 dark:text-indigo-400">3 次远程问题解决，额度有效期 1 年</td>
                                     <td className="px-3 py-3.5 font-semibold text-purple-600 dark:text-purple-400">承诺包跑通包出图，跑不通全额退款</td>
@@ -600,7 +605,7 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {/* 4. 为什么极速体验包仅需 19.9 元且不提供人工支持？（坦诚告知：关于人力成本与持续维护） */}
+                {/* 4. 为什么极速体验包限时 0.00 元且不提供人工支持？（坦诚告知：关于人力成本与持续维护） */}
                 <div className="mt-16 rounded-3xl border border-stone-200 bg-stone-50/70 p-6 sm:p-10 dark:border-stone-800 dark:bg-stone-900/50">
                     <div className="mx-auto max-w-3xl text-center">
                         <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-background px-3 py-1 text-xs font-medium text-stone-600 dark:border-stone-700 dark:text-stone-300">
@@ -608,10 +613,10 @@ export default function PricingPage() {
                             <span>坦诚告知 · 关于极低体验价与服务边界的真心话</span>
                         </div>
                         <h2 className="mt-3 text-2xl font-bold tracking-tight text-stone-950 dark:text-stone-100 sm:text-3xl">
-                            为什么极速体验包要收 19.9 元？为什么不提供人工支持？
+                            为什么极速体验包限时 0.00 元？为什么不提供人工支持？
                         </h2>
                         <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-400">
-                            《无限画布》前端代码与文档 100% 保持开源免费。极速体验包之所以收取 19.9 元，是因为<strong>云端一个包含 MiniMax、Flux 等百 G 模型的预装镜像，平台每天都在扣除高昂的存储租金；如果不收费用，镜像就会因欠费被平台直接清理销毁，大家也将无法使用。因此必须象征性收取一点费用分摊存储成本，以维持镜像长期存活。</strong>同时，由于 19.9 元纯属象征性成本分摊、完全无法覆盖工程师一对一排障的人力时间成本，因此该方案严格仅限文档自查、不提供人工答疑支持；若您需要作者微信优先答疑请选 ¥79 伴学包，需要 Workbuddy 智能体接入与 3 次远程排障请选 ¥119 服务包，需要专家全程代劳请选 ¥299 远程服务。
+                            《无限画布》前端代码与文档 100% 保持开源免费。为了让每一位没有高端显卡的创作者都能以零门槛体验 ComfyUI 大模型，<strong>作者已在 LightCC 与 AutoDL 平台部署官方预装镜像，并实行限时 0.00 元免费开放使用</strong>（您只需按需支付云算力平台每小时几毛到 1~2 元的 GPU 机器租金，LightCC 注册还送 3 元体验券可免费体验 1 小时 5090）。同时，由于该方案属于完全免费的社区自助福利、无法覆盖工程师一对一排障的人力时间成本，因此该方案严格仅限文档自查、不提供人工答疑支持；若您需要作者微信优先答疑请选 ¥79 伴学包，需要 Workbuddy 智能体接入与 3 次远程排障请选 ¥119 服务包，需要专家全程代劳请选 ¥299 远程服务。
                         </p>
                     </div>
 
@@ -620,9 +625,9 @@ export default function PricingPage() {
                             <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
                                 <Database className="size-5" />
                             </div>
-                            <h3 className="mt-3 text-sm font-bold text-stone-900 dark:text-stone-100">1. 云端镜像高昂的长期存储租金</h3>
+                            <h3 className="mt-3 text-sm font-bold text-stone-900 dark:text-stone-100">1. 作者自费部署云镜像，限时 0 元回馈社区</h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                一个包含 5 大核心插件、MiniMax H3、Flux2、Qwen3.5 等全模态高精度权重的完整 ComfyUI 镜像，体积高达 <strong>80GB ~ 120GB</strong>。算力云平台按天收取持续的镜像存储费与公网分发流量费，每月均有固定的云账单支出。
+                                一个包含 5 大核心插件、MiniMax H3、Flux 等全模态权重的完整 ComfyUI 镜像体积高达 <strong>80GB ~ 120GB</strong>。作者已将其预装并发布至平台镜像市场，免去大家本地配置之苦，开机即可直连画布体验。
                             </p>
                         </div>
 
@@ -654,11 +659,11 @@ export default function PricingPage() {
                     <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
-                                <HelpCircle className="size-4 text-blue-500" />
-                                为什么极速体验包要收取 19.9 元？提供人工支持吗？
+                                <HelpCircle className="size-4 text-emerald-500" />
+                                极速体验包真的限时 0.00 元吗？还需要支付其他费用吗？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                <strong>核心是为了维持镜像存活，仅提供 AutoDL 云端镜像，不提供人工技术支持</strong>。云端存储一个包含全套百 G 模型与插件的预装镜像，平台每天都在扣除固定的存储费用；如果不收费用，镜像会因欠费被平台直接清理删除。19.9 元纯属象征性分摊长期存储租金，让大家随时有一键可用的镜像。该方案仅限 AutoDL 云端使用（不含本地便携包），且因价格极低无法覆盖人工排查时间成本，仅附带全套详尽文档供自查。若需本地环境支持与答疑请选 ¥79 伴学包，需远程代劳请选 ¥299 专家部署。
+                                <strong>镜像本身限时 0.00 元免费开放使用，无需向我们支付任何费用，仅需按需自付云平台的 GPU 算力租金。</strong>作者已在 LightCC 和 AutoDL 平台部署好预装环境，开机后直接将地址填入画布即可使用。通过推荐链接注册 LightCC 还赠送 3 元算力券，可免费体验 RTX 5090 一小时。使用完毕请及时关机避免产生额外费用。极速体验包不包含人工答疑支持，遇到问题请严格对照文档自查；若需本地环境支持与作者答疑请选 ¥79 伴学包，需远程代劳请选 ¥299 专家部署。
                             </p>
                         </Card>
 
@@ -685,10 +690,10 @@ export default function PricingPage() {
                         <Card className="!rounded-2xl dark:!border-stone-800 dark:!bg-stone-900/40">
                             <h3 className="flex items-center gap-2 text-base font-semibold">
                                 <HelpCircle className="size-4 text-blue-500" />
-                                如果我买了 19.9 元体验包，遇到部署报错怎么处理？
+                                如果我使用 0 元极速体验包，遇到部署报错怎么处理？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                随包附带了保姆级视频与《常见报错排查手册》（涵盖 90% 的网络超时、端口占用、显存爆满等问题）。请先严格对照文档自查排错；若尝试后希望彻底省心，可随时补差价升级为 ¥79 伴学微信答疑、¥119 智能体与远程服务包 或 ¥299 专家远程服务。
+                                随包附带了保姆级 3 步接入指南与《常见报错排查自救指南》（涵盖 90% 的网络超时、端口复制、连接测试等问题）。请先严格对照文档自查排错；若尝试后希望彻底省心，可随时升级为 ¥79 伴学微信答疑、¥119 智能体与远程服务包 或 ¥299 专家远程服务。
                             </p>
                         </Card>
 
@@ -698,7 +703,7 @@ export default function PricingPage() {
                                 我是苹果 Mac 电脑（M1/M2/M3），能不能用？
                             </h3>
                             <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-                                强烈推荐！Mac 电脑本地跑 ComfyUI 大模型速度较慢且不支持诸多 CUDA 加速节点；通过我们的 AutoDL 云端镜像，Mac 只需要打开浏览器即可远程享用 24G 顶级 Nvidia 显卡算力，体验丝滑流畅。
+                                强烈推荐！Mac 电脑本地跑 ComfyUI 大模型速度较慢且不支持诸多 CUDA 加速节点；通过我们的 LightCC / AutoDL 云端镜像，Mac 只需要打开浏览器即可远程享用 24G 顶级 Nvidia 显卡算力，体验丝滑流畅。
                             </p>
                         </Card>
 
