@@ -16,6 +16,23 @@
   <a href="docs/content/docs/overview/features.zh-CN.mdx">功能介绍</a> · <a href="docs/content/docs/overview/quick-start.zh-CN.mdx">快速开始</a> · <a href="docs/CLOUD_MIRROR_GUIDE.md">云端镜像免配置指南</a> · <a href="DEPLOY.md">部署与发布</a> · <a href="docs/COMFYUI_WORKFLOW_GUIDE.md">ComfyUI 工作流配置指南</a> · <a href="docs/comfyui-channel.md">ComfyUI 渠道说明</a> · <a href="docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx">工作流标准规范</a> · <a href="docs/content/docs/progress/todo.mdx">待办事项</a>
 </p>
 
+<blockquote align="center">
+  ☕ <b>请作者喝杯咖啡</b> · <sub>创作与打磨不易，若对你的创作有所帮助，欢迎支持持续维护</sub><br><br>
+  <sub><i>本项目由维护者在业余时间独立持续迭代，从 ComfyUI 原生 API 深度适配、工作流动态槽位驱动，到云端预装镜像搭建与文档梳理，背后倾注了大量心血。<br>如果无限画布曾让你的 AI 创作更顺畅、为你节省了环境配置时间，非常感谢你的每一份真诚支持，这是开源路上最温暖的动力！</i></sub><br><br>
+  <table align="center">
+    <tr>
+      <td align="center" width="130">
+        <img src="assets/sponsor/wechat.jpg" width="110" alt="微信支付"><br>
+        <sub><b>微信支付</b></sub>
+      </td>
+      <td align="center" width="130">
+        <img src="assets/sponsor/alipay.jpg" width="110" alt="支付宝"><br>
+        <sub><b>支付宝</b></sub>
+      </td>
+    </tr>
+  </table>
+</blockquote>
+
 ## 关于本项目
 
 本项目基于原项目 [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas) fork 而来，在此向原作者 [basketikun](https://github.com/basketikun) 致以诚挚的感谢！
@@ -27,27 +44,6 @@
 - **内置开箱即用工作流**：内置文生图、图生图、局部重绘、文本/反推、全能参考视频、首尾帧视频等常用工作流，也可随时上传自定义工作流。
 
 无限画布是一款面向 AI 创作的开源可视化工作台：画布编排、AI 生图 / 视频生成、参考图编辑、Agent 智能助手、提示词库与素材管理都集中在同一个界面里，适合连续探索与迭代视觉方案。
-
-<details>
-  <summary>☕ <b>请作者喝杯咖啡</b>（开源维护与持续打磨不易，若对你的创作有所帮助，欢迎赞助支持）</summary>
-  <br>
-  <blockquote>
-    本项目由维护者在业余时间独立持续迭代，从 ComfyUI 原生 API 深度适配、工作流动态槽位驱动，到云端预装镜像搭建与文档梳理，背后倾注了大量业余时间与精力。<br>
-    如果无限画布让你的 AI 创作体验更顺畅、为你节省了环境配置时间或带来了一点灵感，欢迎请作者喝杯咖啡 ☕。你的每一份真诚支持，都是支撑项目长期稳定维护的最大动力！
-  </blockquote>
-  <table align="center">
-    <tr>
-      <td align="center" width="200">
-        <img src="assets/sponsor/wechat.jpg" width="160" alt="微信支付"><br>
-        <sub><b>微信支付</b></sub>
-      </td>
-      <td align="center" width="200">
-        <img src="assets/sponsor/alipay.jpg" width="160" alt="支付宝"><br>
-        <sub><b>支付宝</b></sub>
-      </td>
-    </tr>
-  </table>
-</details>
 
 > [!CAUTION]
 > 项目处于开发阶段，不保证本地存储的历史数据兼容；项目尚未上线，存储格式可能直接调整。需要稳定分支请自行 fork 后独立开发。
