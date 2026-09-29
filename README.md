@@ -28,6 +28,27 @@
 
 无限画布是一款面向 AI 创作的开源可视化工作台：画布编排、AI 生图 / 视频生成、参考图编辑、Agent 智能助手、提示词库与素材管理都集中在同一个界面里，适合连续探索与迭代视觉方案。
 
+<details>
+  <summary>☕ <b>请作者喝杯咖啡</b>（开源维护与持续打磨不易，若对你的创作有所帮助，欢迎赞助支持）</summary>
+  <br>
+  <blockquote>
+    本项目由维护者在业余时间独立持续迭代，从 ComfyUI 原生 API 深度适配、工作流动态槽位驱动，到云端预装镜像搭建与文档梳理，背后倾注了大量业余时间与精力。<br>
+    如果无限画布让你的 AI 创作体验更顺畅、为你节省了环境配置时间或带来了一点灵感，欢迎请作者喝杯咖啡 ☕。你的每一份真诚支持，都是支撑项目长期稳定维护的最大动力！
+  </blockquote>
+  <table align="center">
+    <tr>
+      <td align="center" width="200">
+        <img src="assets/sponsor/wechat.jpg" width="160" alt="微信支付"><br>
+        <sub><b>微信支付</b></sub>
+      </td>
+      <td align="center" width="200">
+        <img src="assets/sponsor/alipay.jpg" width="160" alt="支付宝"><br>
+        <sub><b>支付宝</b></sub>
+      </td>
+    </tr>
+  </table>
+</details>
+
 > [!CAUTION]
 > 项目处于开发阶段，不保证本地存储的历史数据兼容；项目尚未上线，存储格式可能直接调整。需要稳定分支请自行 fork 后独立开发。
 
@@ -161,6 +182,7 @@ docker compose up -d
 | | 联系方式 |
 | --- | --- |
 | 本分支维护者 | 邮箱：916446339@qq.com · 电话：18656460515 · 抖音：<img src="assets/douyin-qrcode.png" width="110" alt="抖音二维码"> |
+| ☕ 赞助支持 | 创作不易，欢迎[请作者喝杯咖啡](#关于本项目)（支持微信支付 / 支付宝） |
 
 ## 开源协议
 
