@@ -8,9 +8,11 @@
 
 ## 镜像地址一览
 
+> 🎁 **新用户限时福利**：通过作者推荐链接注册 **LightCC** 平台，新用户立即获赠 **3 元优惠券**，可直接**免费体验 RTX 5090 算力 1 个小时**，零成本极速开机体验！
+
 | 平台 | 镜像一键启动地址 | 推荐度与平台特点 |
 | :--- | :--- | :--- |
-| **LightCC** | [LightCC 官方镜像入口](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) | **⭐ 官方首选推荐** · 按量计费、极速启动、一键跳转 Web 应用；推荐 RTX 4080 / 4090 等 |
+| **LightCC** | [LightCC 官方镜像入口](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) | **⭐ 官方首选推荐** · 🎁 **新用户送 3 元券（免费体验 5090 1小时）**、按量计费、极速启动、一键跳转 Web 应用 |
 | **AutoDL** | [AutoDL 官方镜像入口](https://www.autodl.art/app/market/305?v=932) | 备选支持 · 算力资源丰富、多卡型可选、稳定可靠；推荐 RTX 4090 / 5090D 等 |
 
 ---

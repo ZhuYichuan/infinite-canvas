@@ -61,7 +61,7 @@
 
 ### 前置条件
 
-- **方式一（推荐：云端镜像免本地配置）**：直接使用作者在 [LightCC（首选推荐）](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) 或 [AutoDL](https://www.autodl.art/app/market/305?v=932) 提供的官方预装镜像一键开机，免去本地显卡、Python、CUDA 与庞大模型下载。详见下方 [使用云端镜像免本地配置](#-使用云端镜像免本地配置)。
+- **方式一（推荐：云端镜像免本地配置）**：直接使用作者在 [LightCC（首选推荐，新用户送 3 元券可免费体验 5090 1小时）](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) 或 [AutoDL](https://www.autodl.art/app/market/305?v=932) 提供的官方预装镜像一键开机，免去本地显卡、Python、CUDA 与庞大模型下载。详见下方 [使用云端镜像免本地配置](#-使用云端镜像免本地配置)。
 - **方式二（本地自建 ComfyUI）**：本机（或局域网）已运行 ComfyUI，默认地址 `http://127.0.0.1:8188`，浏览器能访问该地址（CORS / 网络策略需放通，详见渠道文档）。
 
 ### 本地开发
@@ -89,11 +89,11 @@ docker compose up -d
 
 > [!TIP]
 > **🚀 使用云端镜像免本地配置（强烈推荐）**
-> 无需本地高性能独立显卡，免去繁琐配置 Python / CUDA 环境与下载数十 GB 模型文件的漫长等待！本项目已上架开箱即用的预装镜像，**首选推荐使用 LightCC 平台**（按量计费、极速启动、一键进入应用），同时也支持 AutoDL。开机后仅需复制地址填入画布即可直接使用。
+> 无需本地高性能独立显卡，免去繁琐配置 Python / CUDA 环境与下载数十 GB 模型文件的漫长等待！本项目已上架开箱即用的预装镜像，**首选推荐使用 LightCC 平台**（🎁 **新用户注册即送 3 元优惠券，可免费体验 RTX 5090 算力 1 个小时！**），同时也支持 AutoDL。开机后仅需复制地址填入画布即可直接使用。
 
 | 平台 | 镜像一键开机地址 | 推荐度与特点 |
 | :--- | :--- | :--- |
-| **LightCC** | [LightCC 官方镜像入口](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) | **⭐ 首选推荐** · 按量计费、极速启动、一键进入应用 |
+| **LightCC** | [LightCC 官方镜像入口](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) | **⭐ 首选推荐** · 🎁 送 3 元券（免费体验 5090 1小时）、按量计费、极速启动、一键进入应用 |
 | **AutoDL** | [AutoDL 官方镜像入口](https://www.autodl.art/app/market/305?v=932) | 备选支持 · 算力丰富、多显卡型号可选、稳定可靠 |
 
 📖 **完整图文指南**：[云端镜像免本地配置完整手册 (docs/CLOUD_MIRROR_GUIDE.md)](docs/CLOUD_MIRROR_GUIDE.md)
