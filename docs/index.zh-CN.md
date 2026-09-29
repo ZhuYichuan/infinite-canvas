@@ -11,6 +11,7 @@
 ## 操作手册
 
 - [ComfyUI 工作流配置指南 (中英文)](COMFYUI_WORKFLOW_GUIDE.md)
+- [云端镜像免本地配置指南](CLOUD_MIRROR_GUIDE.md)
 - [画布节点操作手册](/zh-CN/docs/canvas/canvas-node-manual)
 - [画布快捷键](/zh-CN/docs/canvas/canvas-shortcuts)
 

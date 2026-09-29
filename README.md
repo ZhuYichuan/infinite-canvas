@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/content/docs/overview/features.zh-CN.mdx">功能介绍</a> · <a href="docs/content/docs/overview/quick-start.zh-CN.mdx">快速开始</a> · <a href="DEPLOY.md">部署与发布</a> · <a href="docs/COMFYUI_WORKFLOW_GUIDE.md">ComfyUI 工作流配置指南</a> · <a href="docs/comfyui-channel.md">ComfyUI 渠道说明</a> · <a href="docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx">工作流标准规范</a> · <a href="docs/content/docs/progress/todo.mdx">待办事项</a>
+  <a href="docs/content/docs/overview/features.zh-CN.mdx">功能介绍</a> · <a href="docs/content/docs/overview/quick-start.zh-CN.mdx">快速开始</a> · <a href="docs/CLOUD_MIRROR_GUIDE.md">云端镜像免配置指南</a> · <a href="DEPLOY.md">部署与发布</a> · <a href="docs/COMFYUI_WORKFLOW_GUIDE.md">ComfyUI 工作流配置指南</a> · <a href="docs/comfyui-channel.md">ComfyUI 渠道说明</a> · <a href="docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx">工作流标准规范</a> · <a href="docs/content/docs/progress/todo.mdx">待办事项</a>
 </p>
 
 ## 关于本项目
@@ -47,8 +47,8 @@
 
 ### 前置条件
 
-- 本机（或局域网）已运行 ComfyUI，默认地址 `http://127.0.0.1:8188`。
-- 浏览器能访问该地址（CORS / 网络策略需放通，详见渠道文档）。
+- **方式一（推荐：云端镜像免本地配置）**：直接使用作者在 [LightCC](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) 或 [AutoDL](https://www.autodl.art/app/market/305?v=932) 提供的官方预装镜像一键开机，免去本地显卡、Python、CUDA 与庞大模型下载。详见下方 [使用云端镜像免本地配置](#-使用云端镜像免本地配置)。
+- **方式二（本地自建 ComfyUI）**：本机（或局域网）已运行 ComfyUI，默认地址 `http://127.0.0.1:8188`，浏览器能访问该地址（CORS / 网络策略需放通，详见渠道文档）。
 
 ### 本地开发
 
@@ -71,10 +71,65 @@ docker compose up -d
 
 运行后默认端口 3000，可访问 `http://localhost:3000`。
 
+## ☁️ 使用云端镜像免本地配置
+
+> [!TIP]
+> **🚀 使用云端镜像免本地配置（强烈推荐）**
+> 无需本地高性能独立显卡，免去繁琐配置 Python / CUDA 环境与下载数十 GB 模型文件的漫长等待！本项目已在 **LightCC** 和 **AutoDL** 上架了开箱即用的预装镜像，开机后仅需复制地址填入画布即可直接使用。
+
+| 平台 | 镜像一键开机地址 | 特点 |
+| :--- | :--- | :--- |
+| **LightCC** | [LightCC 官方镜像入口](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) | 按量计费、极速启动、一键进入应用 |
+| **AutoDL** | [AutoDL 官方镜像入口](https://www.autodl.art/app/market/305?v=932) | 算力丰富、多显卡型号可选、稳定可靠 |
+
+📖 **完整图文指南**：[云端镜像免本地配置完整手册 (docs/CLOUD_MIRROR_GUIDE.md)](docs/CLOUD_MIRROR_GUIDE.md)
+
+### 3 步极速接入流程
+
+#### 1. 到云端找到镜像，选择机器开机并点击访问入口
+- **AutoDL**：开机后在应用实例列表「访问应用服务」一栏点击 **WebUI-6006**。
+- **LightCC**：开机后在「我的应用」中找到「ComfyUI无限画布」，点击 **「进入应用 →」**。
+
+<table width="100%">
+  <tr>
+    <td width="50%" align="center"><b>AutoDL 开机点击 WebUI-6006</b></td>
+    <td width="50%" align="center"><b>LightCC 开机点击进入应用</b></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/cloud-mirror/autodl-1.png" alt="AutoDL 点击 WebUI-6006"></td>
+    <td width="50%"><img src="assets/cloud-mirror/lightcc-1.png" alt="LightCC 进入应用"></td>
+  </tr>
+</table>
+
+#### 2. 点击访问地址，并从浏览器中复制出来
+在新打开的 ComfyUI 页面中，直接复制浏览器地址栏的完整 URL（包含域名与端口）：
+
+<table width="100%">
+  <tr>
+    <td width="50%" align="center"><b>复制 AutoDL 浏览器访问地址</b></td>
+    <td width="50%" align="center"><b>复制 LightCC 浏览器访问地址</b></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/cloud-mirror/autodl-2.png" alt="复制 AutoDL 浏览器地址"></td>
+    <td width="50%"><img src="assets/cloud-mirror/lightcc-2.png" alt="复制 LightCC 浏览器地址"></td>
+  </tr>
+</table>
+
+#### 3. 到画布页面配置 ComfyUI 地址
+1. 打开无限画布（支持直接访问官方线上体验版 [https://canvas.imihoo.com](https://canvas.imihoo.com/) 或本地部署的 `http://localhost:3000`）。
+2. 点击右上角配置图标打开「配置与用户偏好」，在「渠道设置」中新建或编辑 ComfyUI 渠道。
+3. 填入「渠道名称」（如 `autodl` 或 `lightcc`），将上一步复制的地址粘贴到 **「ComfyUI 接口地址」** 输入框中，点击「测试连接」成功后保存。
+4. 返回画布，在生成图片或视频时选择刚刚配置好的渠道名称，即可直接运行生成！
+
+<p align="center">
+  <img src="assets/cloud-mirror/canvas-config-3.png" width="92%" alt="画布配置 ComfyUI 渠道地址">
+</p>
+
 ## ComfyUI 配置
 
-首次打开后进入右上角「配置」，新建一个 `API 格式` 为 **ComfyUI** 的渠道，填写 ComfyUI 地址（默认 `http://127.0.0.1:8188`）与凭据，即可在画布中使用内置工作流；也可以上传自定义工作流。
+首次打开后进入右上角「配置」，新建一个 `API 格式` 为 **ComfyUI** 的渠道，填写 ComfyUI 地址（如本地默认 `http://127.0.0.1:8188`，或上述云端镜像地址）与凭据，即可在画布中使用内置工作流；也可以上传自定义工作流。
 
+- [云端镜像免本地配置指南](docs/CLOUD_MIRROR_GUIDE.md)：AutoDL / LightCC 官方镜像开机取址与接入步骤。
 - [ComfyUI 工作流配置指南（用户上传工作流必读）](docs/COMFYUI_WORKFLOW_GUIDE.md)：槽位词汇表、`_meta.title` 标注约定、上传与排错。
 - [ComfyUI 渠道说明](docs/comfyui-channel.md)：架构、协议、限制与调试技巧。
 - [工作流标准规范（开发向）](docs/content/docs/development/comfyui-workflow-standard.zh-CN.mdx)：能力矩阵、槽位契约、输入探测规则。

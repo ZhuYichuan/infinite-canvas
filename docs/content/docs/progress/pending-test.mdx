@@ -7,6 +7,15 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Cloud Mirror Setup Verification (云端镜像免本地配置图文与访问验证):
+  - **Mirror Links Accessibility (镜像链接可访问性)**:
+    - 验证 LightCC 与 AutoDL 两个云端镜像公开链接均可正常打开且镜像信息正确；
+  - **Documentation & Image References (文档与图片链接验证)**:
+    - 验证 `README.md` 与 `docs/CLOUD_MIRROR_GUIDE.md` 中的图片引用在 GitHub 和本地文档站均能正常预览，无死链或排版错位；
+  - **Canvas Channel Connection (画布渠道接入流程)**:
+    - 按照文档 3 步流程，在 AutoDL / LightCC 启动镜像后复制 ComfyUI URL 粘贴到画布「渠道设置」；
+    - 执行「测试连接」验证连通性，并在文生图/图生图/视频等节点中选择该渠道测试出图正常。
+
 - Video Node Workflow & Settings Bidirectional Linkage Verification (视频节点工作流选择与视频设置双向联动验证):
   - **Grouped Video Workflow Display (工作流下拉按分类分组展示)**:
     - 打开视频节点（或配置节点切换到「视频」模式），点击工作流下拉框；
