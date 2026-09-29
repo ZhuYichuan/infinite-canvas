@@ -2,7 +2,7 @@
   <img src="web/public/logo.svg" width="96" alt="infinite-canvas logo">
 </p>
 
-<h1 align="center">无限画布 (infinite-canvas)</h1>
+<h1 align="center">无限画布 (infinite-canvas::ComfyUI)</h1>
 
 <p align="center">
   <a href="https://github.com/ZhuYichuan/infinite-canvas"><img src="https://img.shields.io/github/stars/ZhuYichuan/infinite-canvas?style=flat-square&logo=github" alt="GitHub stars"></a>
