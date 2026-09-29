@@ -61,7 +61,7 @@
 
 ### 前置条件
 
-- **方式一（推荐：云端镜像免本地配置）**：直接使用作者在 [LightCC](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) 或 [AutoDL](https://www.autodl.art/app/market/305?v=932) 提供的官方预装镜像一键开机，免去本地显卡、Python、CUDA 与庞大模型下载。详见下方 [使用云端镜像免本地配置](#-使用云端镜像免本地配置)。
+- **方式一（推荐：云端镜像免本地配置）**：直接使用作者在 [LightCC（首选推荐）](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) 或 [AutoDL](https://www.autodl.art/app/market/305?v=932) 提供的官方预装镜像一键开机，免去本地显卡、Python、CUDA 与庞大模型下载。详见下方 [使用云端镜像免本地配置](#-使用云端镜像免本地配置)。
 - **方式二（本地自建 ComfyUI）**：本机（或局域网）已运行 ComfyUI，默认地址 `http://127.0.0.1:8188`，浏览器能访问该地址（CORS / 网络策略需放通，详见渠道文档）。
 
 ### 本地开发
@@ -89,29 +89,29 @@ docker compose up -d
 
 > [!TIP]
 > **🚀 使用云端镜像免本地配置（强烈推荐）**
-> 无需本地高性能独立显卡，免去繁琐配置 Python / CUDA 环境与下载数十 GB 模型文件的漫长等待！本项目已在 **LightCC** 和 **AutoDL** 上架了开箱即用的预装镜像，开机后仅需复制地址填入画布即可直接使用。
+> 无需本地高性能独立显卡，免去繁琐配置 Python / CUDA 环境与下载数十 GB 模型文件的漫长等待！本项目已上架开箱即用的预装镜像，**首选推荐使用 LightCC 平台**（按量计费、极速启动、一键进入应用），同时也支持 AutoDL。开机后仅需复制地址填入画布即可直接使用。
 
-| 平台 | 镜像一键开机地址 | 特点 |
+| 平台 | 镜像一键开机地址 | 推荐度与特点 |
 | :--- | :--- | :--- |
-| **LightCC** | [LightCC 官方镜像入口](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) | 按量计费、极速启动、一键进入应用 |
-| **AutoDL** | [AutoDL 官方镜像入口](https://www.autodl.art/app/market/305?v=932) | 算力丰富、多显卡型号可选、稳定可靠 |
+| **LightCC** | [LightCC 官方镜像入口](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) | **⭐ 首选推荐** · 按量计费、极速启动、一键进入应用 |
+| **AutoDL** | [AutoDL 官方镜像入口](https://www.autodl.art/app/market/305?v=932) | 备选支持 · 算力丰富、多显卡型号可选、稳定可靠 |
 
 📖 **完整图文指南**：[云端镜像免本地配置完整手册 (docs/CLOUD_MIRROR_GUIDE.md)](docs/CLOUD_MIRROR_GUIDE.md)
 
 ### 3 步极速接入流程
 
 #### 1. 到云端找到镜像，选择机器开机并点击访问入口
+- **LightCC（首选推荐）**：开机后在「我的应用」中找到「ComfyUI无限画布」，点击 **「进入应用 →」**。
 - **AutoDL**：开机后在应用实例列表「访问应用服务」一栏点击 **WebUI-6006**。
-- **LightCC**：开机后在「我的应用」中找到「ComfyUI无限画布」，点击 **「进入应用 →」**。
 
 <table width="100%">
   <tr>
+    <td width="50%" align="center"><b>LightCC 开机点击进入应用（推荐）</b></td>
     <td width="50%" align="center"><b>AutoDL 开机点击 WebUI-6006</b></td>
-    <td width="50%" align="center"><b>LightCC 开机点击进入应用</b></td>
   </tr>
   <tr>
-    <td width="50%"><img src="assets/cloud-mirror/autodl-1.png" alt="AutoDL 点击 WebUI-6006"></td>
     <td width="50%"><img src="assets/cloud-mirror/lightcc-1.png" alt="LightCC 进入应用"></td>
+    <td width="50%"><img src="assets/cloud-mirror/autodl-1.png" alt="AutoDL 点击 WebUI-6006"></td>
   </tr>
 </table>
 
@@ -120,12 +120,12 @@ docker compose up -d
 
 <table width="100%">
   <tr>
+    <td width="50%" align="center"><b>复制 LightCC 浏览器访问地址（推荐）</b></td>
     <td width="50%" align="center"><b>复制 AutoDL 浏览器访问地址</b></td>
-    <td width="50%" align="center"><b>复制 LightCC 浏览器访问地址</b></td>
   </tr>
   <tr>
-    <td width="50%"><img src="assets/cloud-mirror/autodl-2.png" alt="复制 AutoDL 浏览器地址"></td>
     <td width="50%"><img src="assets/cloud-mirror/lightcc-2.png" alt="复制 LightCC 浏览器地址"></td>
+    <td width="50%"><img src="assets/cloud-mirror/autodl-2.png" alt="复制 AutoDL 浏览器地址"></td>
   </tr>
 </table>
 

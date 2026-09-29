@@ -8,10 +8,10 @@
 
 ## 镜像地址一览
 
-| 平台 | 镜像一键启动地址 | 平台特点与推荐卡型 |
+| 平台 | 镜像一键启动地址 | 推荐度与平台特点 |
 | :--- | :--- | :--- |
-| **LightCC** | [LightCC 官方镜像入口](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) | 按量计费、极速启动、一键跳转 Web 应用；推荐 RTX 4080 / 4090 等 |
-| **AutoDL** | [AutoDL 官方镜像入口](https://www.autodl.art/app/market/305?v=932) | 算力资源丰富、多卡型可选、稳定可靠；推荐 RTX 4090 / 5090D 等 |
+| **LightCC** | [LightCC 官方镜像入口](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947) | **⭐ 官方首选推荐** · 按量计费、极速启动、一键跳转 Web 应用；推荐 RTX 4080 / 4090 等 |
+| **AutoDL** | [AutoDL 官方镜像入口](https://www.autodl.art/app/market/305?v=932) | 备选支持 · 算力资源丰富、多卡型可选、稳定可靠；推荐 RTX 4090 / 5090D 等 |
 
 ---
 
@@ -21,21 +21,21 @@
 
 ### 步骤 1：到云端平台找到镜像并开机
 
-根据你选择的平台进行操作：
+根据你选择的平台进行操作（首选推荐 LightCC）：
 
-#### 方案 A：AutoDL 平台
-
-1. 点击打开 [AutoDL 镜像页面](https://www.autodl.art/app/market/305?v=932)，选择算力机器并开机。
-2. 待实例状态变为「运行中」后，在「访问应用服务」一栏中，点击 **WebUI-6006** 按钮。
-
-![AutoDL 开机并点击 WebUI-6006](../assets/cloud-mirror/autodl-1.png)
-
-#### 方案 B：LightCC 平台
+#### 方案 A：LightCC 平台（首选推荐）
 
 1. 点击打开 [LightCC 镜像页面](https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947)，选择机器开机。
 2. 在左侧菜单进入「我的应用」，在「ComfyUI无限画布」卡片中点击 **「进入应用 →」**。
 
 ![LightCC 开机并进入应用](../assets/cloud-mirror/lightcc-1.png)
+
+#### 方案 B：AutoDL 平台
+
+1. 点击打开 [AutoDL 镜像页面](https://www.autodl.art/app/market/305?v=932)，选择算力机器并开机。
+2. 待实例状态变为「运行中」后，在「访问应用服务」一栏中，点击 **WebUI-6006** 按钮。
+
+![AutoDL 开机并点击 WebUI-6006](../assets/cloud-mirror/autodl-1.png)
 
 ---
 
@@ -43,15 +43,15 @@
 
 点击进入应用后，浏览器会打开一个新的标签页进入 ComfyUI 界面。请**直接从浏览器顶部地址栏复制完整的访问 URL**：
 
+#### LightCC 地址复制示例（推荐）
+复制形如 `https://ljr6nfbxnmboxxxx.swiftlink54.lightcc.cloud` 的完整地址：
+
+![复制 LightCC 浏览器地址](../assets/cloud-mirror/lightcc-2.png)
+
 #### AutoDL 地址复制示例
 复制形如 `https://u595231-xxxx.weste.seetacloud.com:8443` 的完整地址：
 
 ![复制 AutoDL 浏览器地址](../assets/cloud-mirror/autodl-2.png)
-
-#### LightCC 地址复制示例
-复制形如 `https://ljr6nfbxnmboxxxx.swiftlink54.lightcc.cloud` 的完整地址：
-
-![复制 LightCC 浏览器地址](../assets/cloud-mirror/lightcc-2.png)
 
 ---
 
