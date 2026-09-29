@@ -232,10 +232,20 @@ export default function PricingPage() {
                             <Button
                                 size="large"
                                 className="w-full !h-11 !font-medium"
-                                onClick={() => window.open("https://github.com/ZhuYichuan/infinite-canvas/blob/main/docs/CLOUD_MIRROR_GUIDE.md", "_blank")}
+                                onClick={() => window.open("https://www.lightcc.cloud/imageDetail?id=75064&invitationCode=yKBHXCJF108947", "_blank")}
                             >
                                 查看云端镜像使用教程（限时0元）
                             </Button>
+                            <div className="mt-2 text-center">
+                                <a
+                                    href="https://github.com/ZhuYichuan/infinite-canvas/blob/main/docs/CLOUD_MIRROR_GUIDE.md"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline transition-colors"
+                                >
+                                    查看免配置接入图文文档 →
+                                </a>
+                            </div>
                         </div>
                     </div>
 
