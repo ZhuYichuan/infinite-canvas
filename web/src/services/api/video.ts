@@ -202,7 +202,7 @@ function assertVideoConfig(config: AiConfig, model: string) {
 }
 
 function normalizeVideoSeconds(value: string) {
-    const seconds = Math.floor(Number(value) || 6);
+    const seconds = Math.floor(Number(value) || 5);
     return String(Math.max(1, Math.min(20, seconds)));
 }
 

@@ -193,7 +193,7 @@ function getVideoConfig() {
             model,
             modelName: modelOptionName(model),
             size: config.size || "1280x720",
-            seconds: config.videoSeconds || "6",
+            seconds: config.videoSeconds || "5",
             resolution: config.vquality || "720",
             generateAudio: config.videoGenerateAudio !== "false",
             watermark: config.videoWatermark === "true",

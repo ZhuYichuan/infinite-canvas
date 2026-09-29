@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Video Default Duration Verification (视频默认生成时长对齐验证):
+  - **Default Duration Value Consistency (默认时长值一致性)**:
+    - 新建画布项目，或重置配置后添加视频节点；
+    - 验证底部工具栏设置按钮默认显示「... · 5s」，打开视频设置弹窗，时长滑块与 5s 快捷选项高亮选中；
+    - 在未手动调节时长的情况下直接生成视频，验证提交参数中 `duration` 为 5，实际生成的视频时长对齐后约为 5.17 秒（在播放器中正常显示为 5 秒，不再显示为 7 秒）。
+
 - Cloud Mirror Setup Verification (云端镜像免本地配置图文与访问验证):
   - **Mirror Links Accessibility (镜像链接可访问性)**:
     - 验证 LightCC 与 AutoDL 两个云端镜像公开链接均可正常打开且镜像信息正确；
