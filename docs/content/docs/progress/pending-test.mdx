@@ -11,7 +11,7 @@ The current release needs manual verification in these areas:
   - **ComfyUI 服务崩溃与拒绝连接**:
     - 在画布生成或轮询过程中，关闭或杀死 ComfyUI 进程（如模拟 `Failed to fetch`）；
     - 验证轮询机制在 3~5 次短时缓冲期内提示「服务连接中断，正在重试 (x/5)...」；若服务未恢复，抛出 `ComfyuiNetworkError` 并停止轮询，**不再展示英文 Failed to fetch**；
-    - 验证画布节点卡片紧凑展示「无法连接 ComfyUI ({host:port})」（例如 `无法连接 ComfyUI (192.168.31.188:8188)`），鼠标悬浮 Tooltip 及顶部 Toast 弹出完整排查指引（含检查 ComfyUI 崩溃、端口开放与服务地址）；
+    - 验证画布节点卡片紧凑展示「无法连接 ComfyUI (`{host:port}`)」（例如 `无法连接 ComfyUI (192.168.31.188:8188)`），鼠标悬浮 Tooltip 及顶部 Toast 弹出完整排查指引（含检查 ComfyUI 崩溃、端口开放与服务地址）；
     - 验证节点保留 `jobId`，悬浮条按钮保持为「重新查询」，用户重启 ComfyUI 后可就地点击重新查询恢复。
   - **本地网络断开感知**:
     - 断开电脑 Wi-Fi / 有线网（使 `navigator.onLine === false`）；
