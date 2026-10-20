@@ -48,6 +48,7 @@ export type CanvasNodeImage = {
     seed?: number;
     jobId?: string;
     queuePosition?: number;
+    networkRetryText?: string;
     isTimeout?: boolean;
 };
 
@@ -58,6 +59,7 @@ export type CanvasNodeText = {
     content: string;
     jobId?: string;
     queuePosition?: number;
+    networkRetryText?: string;
     isTimeout?: boolean;
 };
 
@@ -70,6 +72,7 @@ export type CanvasNodeMetadata = {
     generationOriginNodeId?: string;
     jobId?: string;
     queuePosition?: number;
+    networkRetryText?: string;
     isTimeout?: boolean;
     status?: CanvasNodeStatus;
     errorDetails?: string;

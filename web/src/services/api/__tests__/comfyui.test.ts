@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n from "@/i18n";
-import { adaptWorkflowModelPaths, applyBindings, cancelJob, collectVideoAssetIds, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobCancelledError, ComfyuiJobError, ComfyuiJobLostError, ComfyuiJobNotFoundError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollComfyuiVideoJob, pollJob, pollJobRaw, queryComfyuiJobStatus, requestComfyuiImage, submitComfyuiVideoJob, submitJob, validateComfyuiWorkflow } from "@/services/api/comfyui";
+import { adaptWorkflowModelPaths, applyBindings, cancelJob, collectVideoAssetIds, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobCancelledError, ComfyuiJobError, ComfyuiJobLostError, ComfyuiJobNotFoundError, ComfyuiNetworkError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollComfyuiVideoJob, pollJob, pollJobRaw, queryComfyuiJobStatus, requestComfyuiImage, submitComfyuiVideoJob, submitJob, validateComfyuiWorkflow } from "@/services/api/comfyui";
 import type { ComfyuiWorkflowJson } from "@/services/api/comfyui";
 import { defaultConfig, findWorkflow, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { DEFAULT_BUILTIN_COMFYUI_DEPTH_VIDEO_WORKFLOW, DEFAULT_BUILTIN_COMFYUI_FACE_REFINE_WORKFLOW, DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW } from "@/services/api/comfyui-default-workflows";
@@ -381,6 +381,50 @@ describe("pollJob", () => {
         expect(error).toBeInstanceOf(ComfyuiApiError);
         expect(error).toMatchObject({ name: "ComfyuiApiError", status: 502 });
     });
+
+    it("retries on transient network errors in pollJobRaw and succeeds when connection recovers", async () => {
+        vi.useFakeTimers();
+        let attempts = 0;
+        const onProgress = vi.fn();
+        fetchMock.mockImplementation(async () => {
+            attempts++;
+            if (attempts <= 2) {
+                throw new TypeError("Failed to fetch");
+            }
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    job_net: { status: { status_str: "success", completed: true }, outputs: {} },
+                }),
+            };
+        });
+
+        const promise = pollJobRaw("job_net", "http://192.168.31.188:8188", undefined, undefined, undefined, onProgress);
+        // Advance timer for retries
+        await vi.advanceTimersByTimeAsync(3000);
+        await vi.advanceTimersByTimeAsync(3000);
+        const res = await promise;
+        expect(res).toBeDefined();
+        expect(onProgress).toHaveBeenCalledWith("network_retry", expect.objectContaining({ retryCount: 1 }));
+        expect(onProgress).toHaveBeenCalledWith("network_retry", expect.objectContaining({ retryCount: 2 }));
+    });
+
+    it("throws ComfyuiNetworkError when network failure exceeds max retries in pollJobRaw", async () => {
+        vi.useFakeTimers();
+        fetchMock.mockImplementation(async () => {
+            throw new TypeError("Failed to fetch");
+        });
+
+        const promise = pollJobRaw("job_fail", "http://192.168.31.188:8188");
+        // Advance past 5 retries
+        for (let i = 0; i < 6; i++) {
+            await vi.advanceTimersByTimeAsync(3000);
+        }
+        const error: unknown = await promise.catch((err) => err);
+        expect(error).toBeInstanceOf(ComfyuiNetworkError);
+        expect((error as ComfyuiNetworkError).message).toContain("192.168.31.188:8188");
+    });
 });
 
 describe("queryComfyuiJobStatus", () => {
@@ -539,6 +583,26 @@ describe("queryComfyuiJobStatus", () => {
         const res = await queryComfyuiJobStatus("job_123", "http://127.0.0.1:8188");
         expect(res.status).toBe("not_found");
     });
+
+    it("throws ComfyuiNetworkError with clear message on server crash/network failure", async () => {
+        fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+        const error: unknown = await queryComfyuiJobStatus("job_123", "http://192.168.31.188:8188").catch((err) => err);
+        expect(error).toBeInstanceOf(ComfyuiNetworkError);
+        expect((error as ComfyuiNetworkError).message).toContain("无法连接 ComfyUI 服务（http://192.168.31.188:8188）");
+        expect((error as ComfyuiNetworkError).message).toContain("服务可能已崩溃或未启动");
+    });
+
+    it("throws ComfyuiNetworkError with offline message when navigator.onLine is false", async () => {
+        const originalOnLine = navigator.onLine;
+        Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
+        fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+        const error: unknown = await queryComfyuiJobStatus("job_123", "http://192.168.31.188:8188").catch((err) => err);
+        Object.defineProperty(navigator, "onLine", { value: originalOnLine, configurable: true });
+        expect(error).toBeInstanceOf(ComfyuiNetworkError);
+        expect((error as ComfyuiNetworkError).isOffline).toBe(true);
+        expect((error as ComfyuiNetworkError).message).toBe("本地网络连接已断开，请检查网络设置");
+    });
+});
 
 describe("downloadAsset", () => {
     let fetchMock: ReturnType<typeof vi.fn>;

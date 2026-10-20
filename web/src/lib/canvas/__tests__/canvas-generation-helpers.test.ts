@@ -6,13 +6,21 @@ import {
     countInterruptedTasks,
     duplicateIncomingConnections,
     findRetrySourceNode,
+    formatCompactErrorMessage,
+    formatNodeLoadingText,
     generateNextSeed,
     hasInterruptedGeneration,
+    isCancelledGenerationError,
     isGenerationCanceled,
     isInterruptedGenerationError,
+    isJobExecutionError,
+    isLostOrNotFoundGenerationError,
+    isNetworkGenerationError,
+    isTimeoutGenerationError,
     resetInterruptedGeneration,
     restoreGenerationContext,
     shouldMarkGenerationSourceStatus,
+    updateNodeGenerationProgress,
 } from "@/lib/canvas/canvas-generation-helpers";
 import { CanvasNodeType } from "@/types/canvas";
 import type { CanvasConnection, CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
@@ -410,5 +418,92 @@ describe("hasInterruptedGeneration and countInterruptedTasks", () => {
         expect(reset.metadata?.images?.[1].status).toBe("success");
     });
 });
+
+describe("error classification helpers", () => {
+    it("correctly identifies network errors", () => {
+        expect(isNetworkGenerationError(new Error("Failed to fetch"))).toBe(true);
+        expect(isNetworkGenerationError(new Error("无法连接 ComfyUI 服务（http://192.168.31.188:8188）"))).toBe(true);
+        expect(isNetworkGenerationError(new Error("本地网络连接已断开，请检查网络设置"))).toBe(true);
+        expect(isNetworkGenerationError({ name: "ComfyuiNetworkError", message: "foo" })).toBe(true);
+        expect(isNetworkGenerationError(new Error("CUDA out of memory"))).toBe(false);
+    });
+
+    it("correctly identifies lost or not found errors", () => {
+        expect(isLostOrNotFoundGenerationError({ name: "ComfyuiJobLostError", message: "lost" })).toBe(true);
+        expect(isLostOrNotFoundGenerationError({ name: "ComfyuiJobNotFoundError", message: "not found" })).toBe(true);
+        expect(isLostOrNotFoundGenerationError(new Error("ComfyUI 任务已丢失"))).toBe(true);
+        expect(isLostOrNotFoundGenerationError(new Error("ComfyUI 任务不存在"))).toBe(true);
+        expect(isLostOrNotFoundGenerationError(new Error("other error"))).toBe(false);
+    });
+
+    it("correctly identifies cancelled errors without confusing with page refresh", () => {
+        expect(isCancelledGenerationError({ name: "ComfyuiJobCancelledError", message: "cancelled" })).toBe(true);
+        expect(isCancelledGenerationError({ name: "ComfyuiAbortedError", message: "aborted" })).toBe(true);
+        expect(isCancelledGenerationError(new Error("任务已取消"))).toBe(true);
+        expect(isInterruptedGenerationError("任务已取消")).toBe(false);
+        expect(isInterruptedGenerationError("页面刷新后生成已中断，请重新生成。")).toBe(true);
+    });
+
+    it("correctly identifies timeout and job errors", () => {
+        expect(isTimeoutGenerationError({ name: "ComfyuiTimeoutError", message: "timeout" })).toBe(true);
+        expect(isTimeoutGenerationError(new Error("排队超时"))).toBe(true);
+        expect(isJobExecutionError({ name: "ComfyuiJobError", message: "job err" })).toBe(true);
+        expect(isJobExecutionError(new Error("other"))).toBe(false);
+    });
+});
+
+describe("formatCompactErrorMessage", () => {
+    it("extracts host and port from full ComfyUI connection error", () => {
+        const full = "无法连接 ComfyUI 服务（http://192.168.31.188:8188）。服务可能已崩溃或未启动，请检查服务状态与端口";
+        expect(formatCompactErrorMessage(full)).toBe("无法连接 ComfyUI (192.168.31.188:8188)");
+    });
+
+    it("formats offline message concisely", () => {
+        const full = "本地网络连接已断开，请检查网络设置";
+        expect(formatCompactErrorMessage(full)).toBe("本地网络已断开");
+    });
+
+    it("translates raw Failed to fetch into Chinese", () => {
+        expect(formatCompactErrorMessage("Failed to fetch")).toBe("无法连接 ComfyUI 服务");
+    });
+});
+
+describe("formatNodeLoadingText", () => {
+    it("prioritizes network retry text when present", () => {
+        expect(formatNodeLoadingText({ networkRetryText: "服务重连中 (2/5)...", queuePosition: 3 })).toBe("服务重连中 (2/5)...");
+    });
+
+    it("formats queue position when in queue", () => {
+        expect(formatNodeLoadingText({ queuePosition: 4 })).toBe("排队中 (第 4 位)");
+    });
+});
+
+describe("updateNodeGenerationProgress", () => {
+    it("updates target node progress status and transient fields", () => {
+        const node = makeNode(CanvasNodeType.Image, { status: "loading" }, "node-1");
+        const updated1 = updateNodeGenerationProgress([node], "node-1", "pending", { queuePosition: 2 });
+        expect(updated1[0].metadata?.queuePosition).toBe(2);
+
+        const updated2 = updateNodeGenerationProgress(updated1, "node-1", "network_retry", { message: "重连中 (1/5)..." });
+        expect(updated2[0].metadata?.networkRetryText).toBe("重连中 (1/5)...");
+
+        const updated3 = updateNodeGenerationProgress(updated2, "node-1", "running");
+        expect(updated3[0].metadata?.queuePosition).toBeUndefined();
+        expect(updated3[0].metadata?.networkRetryText).toBeUndefined();
+    });
+
+    it("updates target slot image within batch node", () => {
+        const node = makeNode(CanvasNodeType.Image, {
+            status: "loading",
+            images: [
+                { id: "img-1", status: "loading", content: "", storageKey: "", naturalWidth: 100, naturalHeight: 100, bytes: 0, mimeType: "image/png" },
+            ],
+        }, "node-batch");
+
+        const updated = updateNodeGenerationProgress([node], "node-batch", "network_retry", { message: "重连 (1/5)..." }, "img-1");
+        expect(updated[0].metadata?.images?.[0].networkRetryText).toBe("重连 (1/5)...");
+    });
+});
+
 
 

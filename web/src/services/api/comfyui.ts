@@ -629,6 +629,29 @@ export class ComfyuiNoWorkflowError extends ComfyuiError {
     }
 }
 
+/** Thrown when network connection to ComfyUI fails (e.g. server crash, offline, connection refused). */
+export class ComfyuiNetworkError extends ComfyuiError {
+    readonly baseUrl: string;
+    readonly isOffline: boolean;
+    readonly jobId?: string;
+
+    constructor(baseUrl: string, jobId?: string, cause?: unknown) {
+        const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+        const cleanUrl = baseUrl.trim().replace(/\/+$/, "");
+        const message = isOffline
+            ? "本地网络连接已断开，请检查网络设置"
+            : `无法连接 ComfyUI 服务（${cleanUrl}）。服务可能已崩溃或未启动，请检查服务状态与端口`;
+        super(message);
+        this.name = "ComfyuiNetworkError";
+        this.baseUrl = cleanUrl;
+        this.isOffline = isOffline;
+        this.jobId = jobId;
+        if (cause && typeof cause === "object") {
+            (this as { cause?: unknown }).cause = cause;
+        }
+    }
+}
+
 export function isMixedContentHttp(url?: string): boolean {
     if (typeof window === "undefined" || !url) return false;
     return window.location.protocol === "https:" && url.trim().toLowerCase().startsWith("http://");
@@ -654,11 +677,21 @@ async function comfyuiFetch(url: string, init?: RequestInit, baseUrl = url): Pro
     try {
         return await fetch(url, init);
     } catch (error) {
+        if (error instanceof ComfyuiError) {
+            throw error;
+        }
         if (isMixedContentHttp(baseUrl)) {
             notifyMixedContentBlocked(baseUrl);
             throw new ComfyuiMixedContentError(baseUrl);
         }
-        throw error;
+        if (
+            init?.signal?.aborted ||
+            (error instanceof Error && error.name === "AbortError") ||
+            (typeof DOMException !== "undefined" && error instanceof DOMException && error.name === "AbortError")
+        ) {
+            throw error;
+        }
+        throw new ComfyuiNetworkError(baseUrl, undefined, error);
     }
 }
 
@@ -1110,6 +1143,22 @@ export interface ComfyuiTaskStatusResult {
     job?: ComfyuiJobResponse;
 }
 
+function evaluateFinishedJobEntry(jobEntry: ComfyuiJobResponse, isLocallyCancelled?: boolean): ComfyuiTaskStatusResult {
+    if (isComfyuiJobInterrupted(jobEntry) || isLocallyCancelled) {
+        return { status: "cancelled", job: jobEntry };
+    }
+    const statusStr = jobEntry.status?.status_str;
+    if (statusStr === "error") {
+        const msg = Array.isArray(jobEntry.status?.messages) ? JSON.stringify(jobEntry.status?.messages) : statusStr;
+        return { status: "error", error: msg, job: jobEntry };
+    }
+    const outputs = extractOutputsFromComfyuiJob(jobEntry);
+    if (statusStr === "success" || jobEntry.status?.completed || outputs.length > 0) {
+        return { status: "success", outputs, job: jobEntry };
+    }
+    return { status: "running", job: jobEntry };
+}
+
 /**
  * 显式查询任务状态（一次性主动检测，不发起长时间轮询）
  */
@@ -1136,16 +1185,7 @@ export async function queryComfyuiJobStatus(
     const jobEntry = historyData?.[jobId];
 
     if (jobEntry) {
-        if (isComfyuiJobInterrupted(jobEntry) || options?.isLocallyCancelled) {
-            return { status: "cancelled", job: jobEntry };
-        }
-        const statusStr = jobEntry.status?.status_str;
-        if (statusStr === "error") {
-            const msg = Array.isArray(jobEntry.status?.messages) ? JSON.stringify(jobEntry.status?.messages) : statusStr;
-            return { status: "error", error: msg, job: jobEntry };
-        }
-        const outputs = extractOutputsFromComfyuiJob(jobEntry);
-        return { status: "success", outputs, job: jobEntry };
+        return evaluateFinishedJobEntry(jobEntry, options?.isLocallyCancelled);
     }
 
     // 2. /history 为空，查询 /queue
@@ -1170,15 +1210,7 @@ export async function queryComfyuiJobStatus(
         const recheckData = (await recheckResponse.json()) as Record<string, ComfyuiJobResponse>;
         const recheckEntry = recheckData?.[jobId];
         if (recheckEntry) {
-            if (isComfyuiJobInterrupted(recheckEntry) || options?.isLocallyCancelled) {
-                return { status: "cancelled", job: recheckEntry };
-            }
-            if (recheckEntry.status?.status_str === "error") {
-                const msg = Array.isArray(recheckEntry.status?.messages) ? JSON.stringify(recheckEntry.status?.messages) : "error";
-                return { status: "error", error: msg, job: recheckEntry };
-            }
-            const outputs = extractOutputsFromComfyuiJob(recheckEntry);
-            return { status: "success", outputs, job: recheckEntry };
+            return evaluateFinishedJobEntry(recheckEntry, options?.isLocallyCancelled);
         }
     }
 
@@ -1192,6 +1224,8 @@ export async function queryComfyuiJobStatus(
     return { status: "not_found" };
 }
 
+export const MAX_POLL_NETWORK_RETRIES = 5;
+
 export async function pollJobRaw(
     jobId: string,
     baseUrl: string,
@@ -1203,56 +1237,80 @@ export async function pollJobRaw(
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
     const startedAt = Date.now();
+    let consecutiveNetworkErrors = 0;
+
     for (;;) {
         if (signal?.aborted) return undefined;
         if (deadlineMs !== undefined && Date.now() >= deadlineMs) throw new ComfyuiTimeoutError(Math.max(0, deadlineMs - startedAt), jobId);
-        const response = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/history/${jobId}`, { headers }, baseUrl);
-        if (!response.ok) throw new ComfyuiApiError(`Failed to poll ComfyUI history: ${response.status}`, response.status);
-        const data = (await response.json()) as Record<string, ComfyuiJobResponse>;
 
-        const jobEntry = data?.[jobId];
-        if (jobEntry) {
-            if (isComfyuiJobInterrupted(jobEntry)) {
-                throw new ComfyuiJobCancelledError(jobId);
-            }
-            const statusStr = jobEntry.status?.status_str;
-            if (statusStr === "error") {
-                const msg = Array.isArray(jobEntry.status?.messages) ? JSON.stringify(jobEntry.status?.messages) : statusStr;
-                throw new ComfyuiJobError(`ComfyUI 执行失败: ${msg}`, statusStr);
-            }
+        try {
+            const response = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/history/${jobId}`, { headers }, baseUrl);
+            if (!response.ok) throw new ComfyuiApiError(`Failed to poll ComfyUI history: ${response.status}`, response.status);
+            const data = (await response.json()) as Record<string, ComfyuiJobResponse>;
 
-            const outputs = extractOutputsFromComfyuiJob(jobEntry);
-            if (jobEntry.status?.completed || outputs.length > 0) {
-                return { outputs, job: jobEntry };
-            }
-        } else {
-            // /history 中暂无该任务，查询 /queue
-            const queueResponse = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/queue`, { headers }, baseUrl);
-            if (queueResponse.ok) {
-                const queueData = (await queueResponse.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
-                const pendingList = Array.isArray(queueData.queue_pending) ? queueData.queue_pending : [];
-                const runningList = Array.isArray(queueData.queue_running) ? queueData.queue_running : [];
+            const jobEntry = data?.[jobId];
+            if (jobEntry) {
+                consecutiveNetworkErrors = 0;
+                if (isComfyuiJobInterrupted(jobEntry)) {
+                    throw new ComfyuiJobCancelledError(jobId);
+                }
+                const statusStr = jobEntry.status?.status_str;
+                if (statusStr === "error") {
+                    const msg = Array.isArray(jobEntry.status?.messages) ? JSON.stringify(jobEntry.status?.messages) : statusStr;
+                    throw new ComfyuiJobError(`ComfyUI 执行失败: ${msg}`, statusStr);
+                }
 
-                const pendingIndex = pendingList.findIndex((item) => Array.isArray(item) && String(item[1]) === jobId);
-                const isRunning = runningList.some((item) => Array.isArray(item) && String(item[1]) === jobId);
+                const outputs = extractOutputsFromComfyuiJob(jobEntry);
+                if (statusStr === "success" || jobEntry.status?.completed || outputs.length > 0) {
+                    return { outputs, job: jobEntry };
+                }
+            } else {
+                // /history 中暂无该任务，查询 /queue
+                const queueResponse = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/queue`, { headers }, baseUrl);
+                if (queueResponse.ok) {
+                    consecutiveNetworkErrors = 0;
+                    const queueData = (await queueResponse.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
+                    const pendingList = Array.isArray(queueData.queue_pending) ? queueData.queue_pending : [];
+                    const runningList = Array.isArray(queueData.queue_running) ? queueData.queue_running : [];
 
-                if (pendingIndex >= 0) {
-                    onProgress?.("pending", { queuePosition: pendingIndex + 1 });
-                } else if (isRunning) {
-                    onProgress?.("running");
-                } else {
-                    // 防竞态二次核实
-                    const recheckResponse = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/history/${jobId}`, { headers }, baseUrl);
-                    if (recheckResponse.ok) {
-                        const recheckData = (await recheckResponse.json()) as Record<string, ComfyuiJobResponse>;
-                        if (recheckData?.[jobId]) {
-                            continue; // 任务已进入 history，下一次循环提取
+                    const pendingIndex = pendingList.findIndex((item) => Array.isArray(item) && String(item[1]) === jobId);
+                    const isRunning = runningList.some((item) => Array.isArray(item) && String(item[1]) === jobId);
+
+                    if (pendingIndex >= 0) {
+                        onProgress?.("pending", { queuePosition: pendingIndex + 1 });
+                    } else if (isRunning) {
+                        onProgress?.("running");
+                    } else {
+                        // 防竞态二次核实
+                        const recheckResponse = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/history/${jobId}`, { headers }, baseUrl);
+                        if (recheckResponse.ok) {
+                            const recheckData = (await recheckResponse.json()) as Record<string, ComfyuiJobResponse>;
+                            if (recheckData?.[jobId]) {
+                                continue; // 任务已进入 history，下一次循环提取
+                            }
                         }
+                        if (signal?.aborted) return undefined;
+                        throw new ComfyuiJobLostError(jobId);
                     }
-                    if (signal?.aborted) return undefined;
-                    throw new ComfyuiJobLostError(jobId);
                 }
             }
+        } catch (error) {
+            if (signal?.aborted) return undefined;
+            if (error instanceof ComfyuiNetworkError) {
+                consecutiveNetworkErrors++;
+                if (consecutiveNetworkErrors <= MAX_POLL_NETWORK_RETRIES) {
+                    onProgress?.("network_retry", {
+                        retryCount: consecutiveNetworkErrors,
+                        maxRetries: MAX_POLL_NETWORK_RETRIES,
+                        baseUrl,
+                        message: `服务连接中断，正在重试 (${consecutiveNetworkErrors}/${MAX_POLL_NETWORK_RETRIES})...`,
+                    });
+                    await new Promise((resolve) => setTimeout(resolve, JOB_POLL_INTERVAL_MS));
+                    continue;
+                }
+                throw new ComfyuiNetworkError(baseUrl, jobId, error);
+            }
+            throw error;
         }
 
         await new Promise((resolve) => setTimeout(resolve, JOB_POLL_INTERVAL_MS));

@@ -86,11 +86,17 @@ import {
     hasInterruptedGeneration,
     imageExtension,
     isAudioFile,
+    isCancelledGenerationError,
     isGenerationCanceled,
     isInterruptedGenerationError,
+    isJobExecutionError,
+    isLostOrNotFoundGenerationError,
+    isNetworkGenerationError,
+    isTimeoutGenerationError,
     resetInterruptedGeneration,
     restoreGenerationContext,
     shouldMarkGenerationSourceStatus,
+    updateNodeGenerationProgress,
 } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition, isBuiltinNodeType as isBuiltinType, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { registerBuiltinNodes } from "@/components/canvas/nodes/builtin-nodes";
@@ -2518,15 +2524,7 @@ function InfiniteCanvasPage() {
                         workflowId,
                         channelId,
                         seed: generateRandomSeed(),
-                        onProgress: (status, detail) => {
-                            if (status === "submitted" && detail?.jobId) {
-                                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, jobId: detail.jobId } } : item)));
-                            } else if (status === "pending" && typeof detail?.queuePosition === "number") {
-                                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, queuePosition: detail.queuePosition } } : item)));
-                            } else if (status === "running") {
-                                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, queuePosition: undefined } } : item)));
-                            }
-                        },
+                        onProgress: (status, detail) => setNodes((prev) => updateNodeGenerationProgress(prev, childId, status, detail)),
                     },
                 );
 
@@ -2868,15 +2866,7 @@ function InfiniteCanvasPage() {
                         workflowId,
                         channelId,
                         seed: generateRandomSeed(),
-                        onProgress: (status, detail) => {
-                            if (status === "submitted" && detail?.jobId) {
-                                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, jobId: detail.jobId } } : item)));
-                            } else if (status === "pending" && typeof detail?.queuePosition === "number") {
-                                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, queuePosition: detail.queuePosition } } : item)));
-                            } else if (status === "running") {
-                                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, queuePosition: undefined } } : item)));
-                            }
-                        },
+                        onProgress: (status, detail) => setNodes((prev) => updateNodeGenerationProgress(prev, childId, status, detail)),
                     },
                 );
 
@@ -3036,15 +3026,7 @@ function InfiniteCanvasPage() {
                     { id: `${node.id}-mask`, name: "mask.png", type: "image/png", dataUrl: payload.maskDataUrl },
                     {
                         signal: controller.signal,
-                        onProgress: (status, detail) => {
-                            if (status === "submitted" && detail?.jobId) {
-                                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, jobId: detail.jobId } } : item)));
-                            } else if (status === "pending" && typeof detail?.queuePosition === "number") {
-                                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, queuePosition: detail.queuePosition } } : item)));
-                            } else if (status === "running") {
-                                setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, metadata: { ...item.metadata, queuePosition: undefined } } : item)));
-                            }
-                        },
+                        onProgress: (status, detail) => setNodes((prev) => updateNodeGenerationProgress(prev, childId, status, detail)),
                     },
                 ).then((items) => items[0]);
                 const uploaded = await uploadImage(image.dataUrl);
@@ -3578,53 +3560,8 @@ function InfiniteCanvasPage() {
                         imageIds.map(async (imageId, index) => {
                             const slotSeed = (nextSeed + index) % 9007199254740991;
                             try {
-                                const handleBatchProgress = (status: string, detail?: { jobId?: string; queuePosition?: number }) => {
-                                    if (status === "submitted" && detail?.jobId) {
-                                        setNodes((prev) =>
-                                            prev.map((n) =>
-                                                n.id === rootId
-                                                    ? {
-                                                          ...n,
-                                                          metadata: {
-                                                              ...n.metadata,
-                                                              ...(count === 1 ? { jobId: detail.jobId, isTimeout: undefined } : {}),
-                                                              images: n.metadata?.images?.map((item) => (item.id === imageId ? { ...item, jobId: detail.jobId, isTimeout: undefined } : item)),
-                                                          },
-                                                      }
-                                                    : n,
-                                            ),
-                                        );
-                                    } else if (status === "pending" && typeof detail?.queuePosition === "number") {
-                                        setNodes((prev) =>
-                                            prev.map((n) =>
-                                                n.id === rootId
-                                                    ? {
-                                                          ...n,
-                                                          metadata: {
-                                                              ...n.metadata,
-                                                              ...(count === 1 ? { queuePosition: detail.queuePosition } : {}),
-                                                              images: n.metadata?.images?.map((item) => (item.id === imageId ? { ...item, queuePosition: detail.queuePosition } : item)),
-                                                          },
-                                                      }
-                                                    : n,
-                                            ),
-                                        );
-                                    } else if (status === "running") {
-                                        setNodes((prev) =>
-                                            prev.map((n) =>
-                                                n.id === rootId
-                                                    ? {
-                                                          ...n,
-                                                          metadata: {
-                                                              ...n.metadata,
-                                                              ...(count === 1 ? { queuePosition: undefined } : {}),
-                                                              images: n.metadata?.images?.map((item) => (item.id === imageId ? { ...item, queuePosition: undefined } : item)),
-                                                          },
-                                                      }
-                                                    : n,
-                                            ),
-                                        );
-                                    }
+                                const handleBatchProgress = (status: string, detail?: { jobId?: string; queuePosition?: number; message?: string }) => {
+                                    setNodes((prev) => updateNodeGenerationProgress(prev, rootId, status, detail, count === 1 ? undefined : imageId));
                                 };
                                 const image = referenceImages.length
                                     ? await requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, undefined, {
@@ -3683,12 +3620,12 @@ function InfiniteCanvasPage() {
                                 if (isGenerationCanceled(error)) return false;
                                 const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
                                 const errorJobId = (error as { jobId?: string })?.jobId;
-                                const errorName = (error as { name?: string })?.name;
-                                const isLostOrNotFound = errorName === "ComfyuiJobLostError" || errorName === "ComfyuiJobNotFoundError" || errorDetails.includes("丢失") || errorDetails.includes("不存在");
-                                const isCancelled = errorName === "ComfyuiJobCancelledError" || errorName === "ComfyuiAbortedError" || errorDetails.includes("取消") || errorDetails.includes("cancelled");
-                                const isTimeout = errorName === "ComfyuiTimeoutError" || errorDetails.includes("timeout") || errorDetails.includes("超时");
-                                const finalBatchJobId = isLostOrNotFound || isCancelled ? undefined : (errorJobId || node.metadata?.jobId);
-                                const finalImageJobId = isLostOrNotFound || isCancelled ? undefined : (errorJobId || imageId ? errorJobId : undefined);
+                                const isLostOrNotFound = isLostOrNotFoundGenerationError(error);
+                                const isCancelled = isCancelledGenerationError(error);
+                                const isTimeout = isTimeoutGenerationError(error);
+                                const isNetwork = isNetworkGenerationError(error);
+                                const finalBatchJobId = !isLostOrNotFound && !isCancelled && (isNetwork || isTimeout) ? (errorJobId || node.metadata?.jobId) : undefined;
+                                const finalImageJobId = !isLostOrNotFound && !isCancelled && (isNetwork || isTimeout) ? (errorJobId || (imageId ? errorJobId : undefined)) : undefined;
                                 if (!firstError) firstError = errorDetails;
                                 hasFailure = true;
                                 setNodes((prev) =>
@@ -3698,9 +3635,9 @@ function InfiniteCanvasPage() {
                                                   ...node,
                                                   metadata: {
                                                       ...node.metadata,
-                                                      ...(count === 1 ? { jobId: finalBatchJobId, queuePosition: undefined, isTimeout: isTimeout ? true : undefined } : {}),
+                                                      ...(count === 1 ? { jobId: finalBatchJobId, queuePosition: undefined, networkRetryText: undefined, isTimeout: isTimeout ? true : undefined } : {}),
                                                       images: node.metadata?.images?.map((image) =>
-                                                          image.id === imageId ? { ...image, status: NODE_STATUS_ERROR, errorDetails, jobId: isLostOrNotFound || isCancelled ? undefined : (errorJobId || image.jobId), queuePosition: undefined, isTimeout: isTimeout ? true : undefined } : image,
+                                                          image.id === imageId ? { ...image, status: NODE_STATUS_ERROR, errorDetails, jobId: finalImageJobId, queuePosition: undefined, networkRetryText: undefined, isTimeout: isTimeout ? true : undefined } : image,
                                                       ),
                                                   },
                                               }
@@ -4239,11 +4176,11 @@ function InfiniteCanvasPage() {
                 }
                 const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
                 const errorJobId = (error as { jobId?: string })?.jobId;
-                const errorName = (error as { name?: string })?.name;
-                const isLostOrNotFound = errorName === "ComfyuiJobLostError" || errorName === "ComfyuiJobNotFoundError" || errorDetails.includes("丢失") || errorDetails.includes("不存在");
-                const isCancelled = errorName === "ComfyuiJobCancelledError" || errorName === "ComfyuiAbortedError" || errorDetails.includes("取消") || errorDetails.includes("cancelled");
-                const isTimeout = errorName === "ComfyuiTimeoutError" || errorDetails.includes("timeout") || errorDetails.includes("超时");
-                const finalJobId = isLostOrNotFound || isCancelled ? undefined : (errorJobId || node.metadata?.jobId);
+                const isLostOrNotFound = isLostOrNotFoundGenerationError(error);
+                const isCancelled = isCancelledGenerationError(error);
+                const isTimeout = isTimeoutGenerationError(error);
+                const isNetwork = isNetworkGenerationError(error);
+                const finalJobId = !isLostOrNotFound && !isCancelled && (isNetwork || isTimeout) ? (errorJobId || node.metadata?.jobId) : undefined;
                 message.error(errorDetails);
                 setNodes((prev) =>
                     prev.map((node) => {
@@ -4257,6 +4194,7 @@ function InfiniteCanvasPage() {
                                     errorDetails,
                                     jobId: finalJobId,
                                     queuePosition: undefined,
+                                    networkRetryText: undefined,
                                     isTimeout: isTimeout ? true : undefined,
                                 },
                             };
@@ -4355,15 +4293,7 @@ function InfiniteCanvasPage() {
                         {
                             signal: controller.signal,
                             jobId: resumeJobId,
-                            onProgress: (status, detail) => {
-                                if (status === "submitted" && detail?.jobId) {
-                                    setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, jobId: detail.jobId } } : item)));
-                                } else if (status === "pending" && typeof detail?.queuePosition === "number") {
-                                    setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, queuePosition: detail.queuePosition } } : item)));
-                                } else if (status === "running") {
-                                    setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, queuePosition: undefined } } : item)));
-                                }
-                            },
+                            onProgress: (status, detail) => setNodes((prev) => updateNodeGenerationProgress(prev, node.id, status, detail)),
                         },
                     );
                     setNodes((prev) =>
@@ -4383,15 +4313,7 @@ function InfiniteCanvasPage() {
                             referenceVideos: context.referenceVideos,
                             referenceAudios: context.referenceAudios,
                             jobId: resumeJobId,
-                            onProgress: (status, detail) => {
-                                if (status === "submitted" && detail?.jobId) {
-                                    setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, jobId: detail.jobId } } : item)));
-                                } else if (status === "pending" && typeof detail?.queuePosition === "number") {
-                                    setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, queuePosition: detail.queuePosition } } : item)));
-                                } else if (status === "running") {
-                                    setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, queuePosition: undefined } } : item)));
-                                }
-                            },
+                            onProgress: (status, detail) => setNodes((prev) => updateNodeGenerationProgress(prev, node.id, status, detail)),
                         }),
                     );
                     const videoSize = fitNodeSize(video.width || node.width, video.height || node.height, VIDEO_NODE_MAX_WIDTH, VIDEO_NODE_MAX_HEIGHT);
@@ -4450,32 +4372,8 @@ function InfiniteCanvasPage() {
                 } else {
                     const referenceImages = context.referenceImages;
                     const useEdit = saved.generationType === "edit" || referenceImages.length > 0;
-                    const handleRetryProgress = (status: string, detail?: { jobId?: string; queuePosition?: number }) => {
-                        if (status === "submitted" && detail?.jobId) {
-                            setNodes((prev) =>
-                                prev.map((item) => {
-                                    if (item.id !== node.id) return item;
-                                    const images = item.metadata?.images?.map((slot) => (slot.id === imageId ? { ...slot, jobId: detail.jobId } : slot));
-                                    return { ...item, metadata: { ...item.metadata, ...(imageId ? {} : { jobId: detail.jobId }), images } };
-                                }),
-                            );
-                        } else if (status === "pending" && typeof detail?.queuePosition === "number") {
-                            setNodes((prev) =>
-                                prev.map((item) => {
-                                    if (item.id !== node.id) return item;
-                                    const images = item.metadata?.images?.map((slot) => (slot.id === imageId ? { ...slot, queuePosition: detail.queuePosition } : slot));
-                                    return { ...item, metadata: { ...item.metadata, ...(imageId ? {} : { queuePosition: detail.queuePosition }), images } };
-                                }),
-                            );
-                        } else if (status === "running") {
-                            setNodes((prev) =>
-                                prev.map((item) => {
-                                    if (item.id !== node.id) return item;
-                                    const images = item.metadata?.images?.map((slot) => (slot.id === imageId ? { ...slot, queuePosition: undefined } : slot));
-                                    return { ...item, metadata: { ...item.metadata, ...(imageId ? {} : { queuePosition: undefined }), images } };
-                                }),
-                            );
-                        }
+                    const handleRetryProgress = (status: string, detail?: { jobId?: string; queuePosition?: number; message?: string }) => {
+                        setNodes((prev) => updateNodeGenerationProgress(prev, node.id, status, detail, imageId));
                     };
                     const image = useEdit
                         ? await requestEdit(generationConfig, prompt, referenceImages, undefined, {
@@ -4539,11 +4437,12 @@ function InfiniteCanvasPage() {
                 if (isGenerationCanceled(error)) return;
                 const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
                 const errorJobId = (error as { jobId?: string })?.jobId;
-                const errorName = (error as { name?: string })?.name;
-                const isLostOrNotFound = errorName === "ComfyuiJobLostError" || errorName === "ComfyuiJobNotFoundError" || errorDetails.includes("丢失") || errorDetails.includes("不存在");
-                const isCancelled = errorName === "ComfyuiJobCancelledError" || errorName === "ComfyuiAbortedError" || errorDetails.includes("取消") || errorDetails.includes("cancelled");
-                const isTimeout = errorName === "ComfyuiTimeoutError" || errorDetails.includes("timeout") || errorDetails.includes("超时");
-                const keepJobId = !isLostOrNotFound && !isCancelled && (isTimeout || (isResume && errorName !== "ComfyuiJobError")) ? errorJobId || sourceRef.jobId || saved.jobId : undefined;
+                const isLostOrNotFound = isLostOrNotFoundGenerationError(error);
+                const isCancelled = isCancelledGenerationError(error);
+                const isTimeout = isTimeoutGenerationError(error);
+                const isNetwork = isNetworkGenerationError(error);
+                const isJobError = isJobExecutionError(error);
+                const keepJobId = !isLostOrNotFound && !isCancelled && (isNetwork || isTimeout || (isResume && !isJobError)) ? errorJobId || sourceRef.jobId || saved.jobId : undefined;
                 const fresh = nodesRef.current.find((item) => item.id === node.id);
                 const hasSuccessImage = mode === "image" && Boolean(fresh?.metadata?.images?.some((image) => image.id !== imageId && image.status === NODE_STATUS_SUCCESS && image.content));
                 message.error(hasSuccessImage ? t("canvas.projectPage.partialFailed") : errorDetails);
@@ -4556,8 +4455,8 @@ function InfiniteCanvasPage() {
                                 ...item.metadata,
                                 status: hasSuccessImage ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR,
                                 errorDetails: hasSuccessImage ? t("canvas.projectPage.partialFailed") : errorDetails,
-                                ...(imageId ? {} : { jobId: keepJobId, queuePosition: undefined, isTimeout: isTimeout ? true : undefined }),
-                                images: item.metadata?.images?.map((image) => (image.id === imageId ? { ...image, status: NODE_STATUS_ERROR, errorDetails, jobId: keepJobId, queuePosition: undefined, isTimeout: isTimeout ? true : undefined } : image)),
+                                ...(imageId ? {} : { jobId: keepJobId, queuePosition: undefined, networkRetryText: undefined, isTimeout: isTimeout ? true : undefined }),
+                                images: item.metadata?.images?.map((image) => (image.id === imageId ? { ...image, status: NODE_STATUS_ERROR, errorDetails, jobId: keepJobId, queuePosition: undefined, networkRetryText: undefined, isTimeout: isTimeout ? true : undefined } : image)),
                             },
                         };
                     }),

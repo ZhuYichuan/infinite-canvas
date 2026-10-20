@@ -183,17 +183,67 @@ export function isInterruptedGenerationError(errorDetails?: string) {
         errorDetails === "页面刷新后生成已中断，请重新生成。" ||
         errorDetails === "canvas.generation.interrupted" ||
         errorDetails.includes("Generation was interrupted by a page refresh") ||
-        errorDetails.includes("页面刷新后生成已中断") ||
-        errorDetails.includes("已取消") ||
-        errorDetails.includes("cancelled") ||
-        errorDetails.includes("execution_interrupted")
+        errorDetails.includes("页面刷新后生成已中断")
     );
+}
+
+export function isCancelledGenerationError(error: unknown): boolean {
+    if (!error) return false;
+    const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
+    if (name === "ComfyuiJobCancelledError" || name === "ComfyuiAbortedError") return true;
+    const msg = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    return msg.includes("已取消") || msg.toLowerCase().includes("cancelled") || msg.includes("execution_interrupted");
+}
+
+export function isLostOrNotFoundGenerationError(error: unknown): boolean {
+    if (!error) return false;
+    const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
+    if (name === "ComfyuiJobLostError" || name === "ComfyuiJobNotFoundError") return true;
+    const msg = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    return msg.includes("丢失") || msg.includes("不存在") || msg.toLowerCase().includes("job lost") || msg.toLowerCase().includes("not found");
+}
+
+export function isNetworkGenerationError(error: unknown): boolean {
+    if (!error) return false;
+    const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
+    if (name === "ComfyuiNetworkError" || name === "ComfyuiMixedContentError") return true;
+    const msg = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    return (
+        msg.includes("无法连接 ComfyUI") ||
+        msg.includes("本地网络连接已断开") ||
+        msg.includes("Failed to fetch") ||
+        msg.includes("Load failed") ||
+        msg.includes("NetworkError") ||
+        msg.includes("ECONNREFUSED") ||
+        msg.includes("MixedContent")
+    );
+}
+
+export function isTimeoutGenerationError(error: unknown): boolean {
+    if (!error) return false;
+    const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
+    if (name === "ComfyuiTimeoutError") return true;
+    const msg = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    return msg.toLowerCase().includes("timeout") || msg.includes("超时");
+}
+
+export function isJobExecutionError(error: unknown): boolean {
+    if (!error) return false;
+    const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
+    return name === "ComfyuiJobError";
 }
 
 export function localizeErrorDetails(errorDetails?: string): string | undefined {
     if (!errorDetails) return undefined;
     if (isInterruptedGenerationError(errorDetails)) {
         return i18n.t("canvas.generation.interrupted");
+    }
+    if (
+        errorDetails === "Failed to fetch" ||
+        errorDetails === "Load failed" ||
+        errorDetails === "NetworkError"
+    ) {
+        return "无法连接 ComfyUI 服务，请检查服务状态与网络设置";
     }
     if (
         errorDetails === "生成失败" ||
@@ -224,6 +274,40 @@ export function localizeErrorDetails(errorDetails?: string): string | undefined 
         return i18n.t("canvas.projectPage.partialTextFailed");
     }
     return errorDetails;
+}
+
+/**
+ * 针对节点卡片紧凑区域的错误展示文案（如提取主机与端口、精简网络状态）
+ */
+export function formatCompactErrorMessage(errorDetails?: string): string | undefined {
+    if (!errorDetails) return undefined;
+    const localized = localizeErrorDetails(errorDetails);
+    if (!localized) return undefined;
+
+    const match = localized.match(/无法连接 ComfyUI 服务[（(](https?:\/\/([^/]+))[)）]/);
+    if (match?.[2]) {
+        return `无法连接 ComfyUI (${match[2]})`;
+    }
+    if (localized.includes("无法连接 ComfyUI") || localized.includes("Failed to fetch")) {
+        return "无法连接 ComfyUI 服务";
+    }
+    if (localized.includes("本地网络连接已断开")) {
+        return "本地网络已断开";
+    }
+    return localized;
+}
+
+/**
+ * 计算节点加载中文案（排队位次、重连中或常规生成中）
+ */
+export function formatNodeLoadingText(meta?: { queuePosition?: number; networkRetryText?: string }): string {
+    if (meta?.networkRetryText) {
+        return meta.networkRetryText;
+    }
+    if (typeof meta?.queuePosition === "number" && meta.queuePosition > 0) {
+        return `排队中 (第 ${meta.queuePosition} 位)`;
+    }
+    return i18n.t("canvas.node.generating");
 }
 
 export function hasInterruptedGeneration(node: CanvasNodeData): boolean {
@@ -429,4 +513,61 @@ export function buildPastedNodeConnections(
     }
     return result;
 }
+
+/**
+ * 统一更新画布节点在生成生命周期中的进度与瞬态字段（submitted、pending、running、network_retry）
+ */
+export function updateNodeGenerationProgress(
+    nodes: CanvasNodeData[],
+    targetNodeId: string,
+    status: string,
+    detail?: { jobId?: string; queuePosition?: number; message?: string },
+    imageId?: string,
+): CanvasNodeData[] {
+    const isSubmitted = status === "submitted" && Boolean(detail?.jobId);
+    const isPending = status === "pending" && typeof detail?.queuePosition === "number";
+    const isRunning = status === "running";
+    const isRetry = status === "network_retry";
+    const retryText = isRetry ? detail?.message || "服务重连中..." : undefined;
+
+    return nodes.map((item) => {
+        if (item.id !== targetNodeId) return item;
+
+        if (imageId) {
+            const images = item.metadata?.images?.map((img) => {
+                if (img.id !== imageId) return img;
+                return {
+                    ...img,
+                    ...(isSubmitted ? { jobId: detail?.jobId, networkRetryText: undefined } : {}),
+                    ...(isPending ? { queuePosition: detail?.queuePosition, networkRetryText: undefined } : {}),
+                    ...(isRunning ? { queuePosition: undefined, networkRetryText: undefined } : {}),
+                    ...(isRetry ? { networkRetryText: retryText } : {}),
+                };
+            });
+            return {
+                ...item,
+                metadata: {
+                    ...item.metadata,
+                    ...(isSubmitted ? { jobId: detail?.jobId, networkRetryText: undefined } : {}),
+                    ...(isPending ? { queuePosition: detail?.queuePosition, networkRetryText: undefined } : {}),
+                    ...(isRunning ? { queuePosition: undefined, networkRetryText: undefined } : {}),
+                    ...(isRetry ? { networkRetryText: retryText } : {}),
+                    images,
+                },
+            };
+        }
+
+        return {
+            ...item,
+            metadata: {
+                ...item.metadata,
+                ...(isSubmitted ? { jobId: detail?.jobId, networkRetryText: undefined } : {}),
+                ...(isPending ? { queuePosition: detail?.queuePosition, networkRetryText: undefined } : {}),
+                ...(isRunning ? { queuePosition: undefined, networkRetryText: undefined } : {}),
+                ...(isRetry ? { networkRetryText: retryText } : {}),
+            },
+        };
+    });
+}
+
 

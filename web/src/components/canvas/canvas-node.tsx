@@ -14,7 +14,8 @@ import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin"
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasVideoPlayer } from "./canvas-video-player";
 import { useTranslation } from "react-i18next";
-import { localizeErrorDetails } from "@/lib/canvas/canvas-generation-helpers";
+import { Tooltip } from "antd";
+import { formatCompactErrorMessage, formatNodeLoadingText, localizeErrorDetails } from "@/lib/canvas/canvas-generation-helpers";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 const selectionBlue = "#2f80ff";
@@ -528,11 +529,7 @@ function GroupNodeContent({ node, theme, groupChildCount }: NodeContentRendererP
 }
 
 function LoadingContent({ theme, node }: Pick<NodeContentRendererProps, "theme"> & { node?: CanvasNodeData }) {
-    const { t } = useTranslation();
-    const queuePos = node?.metadata?.queuePosition;
-    const loadingText = typeof queuePos === "number" && queuePos > 0
-        ? `排队中 (第 ${queuePos} 位)`
-        : t("canvas.node.generating");
+    const loadingText = formatNodeLoadingText(node?.metadata);
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.activeStroke }}>
             <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />
@@ -544,9 +541,16 @@ function LoadingContent({ theme, node }: Pick<NodeContentRendererProps, "theme">
 function ErrorContent({ node, theme, onRetry }: Pick<NodeContentRendererProps, "node" | "theme" | "onRetry">) {
     const { t } = useTranslation();
     const canResume = Boolean(node.metadata?.jobId);
+    const fullError = localizeErrorDetails(node.metadata?.errorDetails) || t("canvas.node.failed");
+    const compactError = formatCompactErrorMessage(node.metadata?.errorDetails) || t("canvas.node.failed");
+
     return (
         <div className="flex max-w-[260px] flex-col items-center gap-3 px-5 text-center">
-            <div className="text-xs leading-5 text-red-300">{localizeErrorDetails(node.metadata?.errorDetails) || t("canvas.node.failed")}</div>
+            <Tooltip title={fullError} placement="top">
+                <div className="text-xs leading-5 text-red-300 cursor-help line-clamp-3">
+                    {compactError}
+                </div>
+            </Tooltip>
             <button
                 type="button"
                 className="inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition hover:scale-[1.02]"
@@ -707,13 +711,21 @@ function TextSlotStatus({ text }: { text: CanvasNodeText }) {
     const { t } = useTranslation();
     const failed = text.status === "error";
     const loading = text.status === "loading";
-    const queuePos = text.queuePosition;
-    const loadingText = typeof queuePos === "number" && queuePos > 0
-        ? `排队中 (第 ${queuePos} 位)`
-        : t("canvas.node.generating");
+    const loadingText = formatNodeLoadingText(text);
+    const fullError = localizeErrorDetails(text.errorDetails) || t("canvas.node.failed");
+    const compactError = formatCompactErrorMessage(text.errorDetails) || t("canvas.node.failed");
+
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
-            {failed ? <span className="text-xs leading-5">{localizeErrorDetails(text.errorDetails) || t("canvas.node.failed")}</span> : loading ? <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} /> : <span className="text-xs">{t("apiErrors.noContent")}</span>}
+            {failed ? (
+                <Tooltip title={fullError} placement="top">
+                    <span className="text-xs leading-5 text-red-300 cursor-help line-clamp-3">{compactError}</span>
+                </Tooltip>
+            ) : loading ? (
+                <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />
+            ) : (
+                <span className="text-xs">{t("apiErrors.noContent")}</span>
+            )}
             {loading ? <span className="text-[10px] tracking-[0.2em]">{loadingText}</span> : null}
         </div>
     );
@@ -940,14 +952,16 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
     const { t } = useTranslation();
     const failed = image?.status === "error";
     const loading = image?.status === "loading";
-    const queuePos = image?.queuePosition;
-    const loadingText = typeof queuePos === "number" && queuePos > 0
-        ? `排队中 (第 ${queuePos} 位)`
-        : t("canvas.node.generating");
+    const loadingText = formatNodeLoadingText(image);
+    const fullError = localizeErrorDetails(image?.errorDetails) || t("canvas.node.failed");
+    const compactError = formatCompactErrorMessage(image?.errorDetails) || t("canvas.node.failed");
+
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
             {failed ? (
-                <span className="text-xs leading-5">{localizeErrorDetails(image?.errorDetails) || t("canvas.node.failed")}</span>
+                <Tooltip title={fullError} placement="top">
+                    <span className="text-xs leading-5 text-red-300 cursor-help line-clamp-3">{compactError}</span>
+                </Tooltip>
             ) : loading ? (
                 <>
                     <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />
