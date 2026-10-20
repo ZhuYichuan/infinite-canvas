@@ -591,6 +591,36 @@ export class ComfyuiAbortedError extends ComfyuiError {
     }
 }
 
+/** Thrown when the ComfyUI job was lost (e.g. server restart, queue wipe, missing from queue and history). */
+export class ComfyuiJobLostError extends ComfyuiError {
+    readonly jobId: string;
+    constructor(jobId: string, message = "ComfyUI 任务已丢失（服务可能已重启或队列已清空）") {
+        super(message);
+        this.name = "ComfyuiJobLostError";
+        this.jobId = jobId;
+    }
+}
+
+/** Thrown when the ComfyUI job ID does not exist. */
+export class ComfyuiJobNotFoundError extends ComfyuiError {
+    readonly jobId: string;
+    constructor(jobId: string, message = "ComfyUI 任务不存在") {
+        super(message);
+        this.name = "ComfyuiJobNotFoundError";
+        this.jobId = jobId;
+    }
+}
+
+/** Thrown when the ComfyUI job was cancelled or interrupted. */
+export class ComfyuiJobCancelledError extends ComfyuiError {
+    readonly jobId: string;
+    constructor(jobId: string, message = i18n.t("comfyui.cancelled")) {
+        super(message);
+        this.name = "ComfyuiJobCancelledError";
+        this.jobId = jobId;
+    }
+}
+
 /** Thrown when the selected model has no ComfyUI workflow attached. */
 export class ComfyuiNoWorkflowError extends ComfyuiError {
     constructor(message = "No ComfyUI workflow is attached to this model") {
@@ -882,7 +912,294 @@ export type PollJobResult = {
     job: ComfyuiJobResponse;
 };
 
-export async function pollJobRaw(jobId: string, baseUrl: string, token?: string, signal?: AbortSignal, deadlineMs?: number): Promise<PollJobResult | undefined> {
+export function isComfyuiJobInterrupted(jobEntry: ComfyuiJobResponse): boolean {
+    const messages = jobEntry.status?.messages;
+    if (!Array.isArray(messages)) return false;
+    return messages.some((m) => {
+        if (Array.isArray(m) && m[0] === "execution_interrupted") return true;
+        if (typeof m === "object" && m !== null && (m as Record<string, unknown>).type === "execution_interrupted") return true;
+        return typeof m === "string" && m.includes("execution_interrupted");
+    });
+}
+
+export function extractOutputsFromComfyuiJob(jobEntry: ComfyuiJobResponse): PollJobResult["outputs"] {
+    const rawOutputs = jobEntry.outputs || {};
+    const outputs: PollJobResult["outputs"] = [];
+
+    for (const [nodeId, nodeOut] of Object.entries(rawOutputs)) {
+        if (!nodeOut || typeof nodeOut !== "object") continue;
+        const out = nodeOut as {
+            images?: Array<{ filename: string; subfolder?: string; type?: string }>;
+            videos?: Array<{ filename: string; subfolder?: string; type?: string }>;
+            gifs?: Array<{ filename: string; subfolder?: string; type?: string }>;
+            audio?: unknown;
+            text?: string[] | string;
+            string?: string[] | string;
+            animated?: boolean[];
+            ui?: Record<string, unknown>;
+        };
+
+        if (Array.isArray(out.images)) {
+            for (const img of out.images) {
+                if (img?.filename) {
+                    const subfolder = img.subfolder || "";
+                    const itemType = img.type || "output";
+                    const isVideo = /\.(mp4|webm|mov|avi|mkv)$/i.test(img.filename);
+                    const isAnimated = Boolean(Array.isArray(out.animated) && out.animated[0]);
+                    const contentType = isVideo ? "video/mp4" : isAnimated ? "image/gif" : "image/png";
+                    const viewPath = `/api/view?filename=${encodeURIComponent(img.filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
+                    outputs.push({
+                        id: viewPath,
+                        filename: img.filename,
+                        subfolder,
+                        type: isVideo ? "video" : itemType,
+                        output_type: itemType,
+                        content_type: contentType,
+                        node_id: nodeId,
+                    });
+                }
+            }
+        }
+
+        if (Array.isArray(out.videos)) {
+            for (const vid of out.videos) {
+                if (vid?.filename) {
+                    const subfolder = vid.subfolder || "";
+                    const itemType = vid.type || "output";
+                    const viewPath = `/api/view?filename=${encodeURIComponent(vid.filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
+                    outputs.push({
+                        id: viewPath,
+                        filename: vid.filename,
+                        subfolder,
+                        type: "video",
+                        output_type: itemType,
+                        content_type: "video/mp4",
+                        node_id: nodeId,
+                    });
+                }
+            }
+        }
+
+        if (Array.isArray(out.gifs)) {
+            for (const gif of out.gifs) {
+                if (gif?.filename) {
+                    const subfolder = gif.subfolder || "";
+                    const itemType = gif.type || "output";
+                    const viewPath = `/api/view?filename=${encodeURIComponent(gif.filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
+                    outputs.push({
+                        id: viewPath,
+                        filename: gif.filename,
+                        subfolder,
+                        type: "video",
+                        output_type: itemType,
+                        content_type: "video/mp4",
+                        node_id: nodeId,
+                    });
+                }
+            }
+        }
+
+        const rawAudioList = Array.isArray(out.audio)
+            ? out.audio
+            : Array.isArray((out.ui as any)?.audio)
+            ? (out.ui as any).audio
+            : Array.isArray((out as any)?.audios)
+            ? (out as any).audios
+            : Array.isArray((out.ui as any)?.audios)
+            ? (out.ui as any).audios
+            : out.audio && typeof out.audio === "object"
+            ? [out.audio]
+            : (out.ui as any)?.audio && typeof (out.ui as any).audio === "object"
+            ? [(out.ui as any).audio]
+            : [];
+
+        if (rawAudioList.length > 0) {
+            for (const aud of rawAudioList) {
+                const filename = typeof aud === "string" ? aud : aud?.filename || aud?.name || "";
+                if (filename) {
+                    const subfolder = typeof aud === "object" && aud?.subfolder ? aud.subfolder : "";
+                    const itemType = typeof aud === "object" && aud?.type ? aud.type : "output";
+                    const ext = filename.split(".").pop()?.toLowerCase() || "";
+                    const contentType =
+                        ext === "wav" ? "audio/wav" :
+                        ext === "ogg" ? "audio/ogg" :
+                        ext === "flac" ? "audio/flac" :
+                        ext === "opus" ? "audio/opus" :
+                        ext === "m4a" || ext === "aac" ? "audio/mp4" :
+                        "audio/mpeg";
+                    const viewPath = `/api/view?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
+                    outputs.push({
+                        id: viewPath,
+                        filename,
+                        subfolder,
+                        type: "audio",
+                        output_type: itemType,
+                        content_type: contentType,
+                        node_id: nodeId,
+                    });
+                }
+            }
+        } else {
+            const scanObj = (out.ui && typeof out.ui === "object" ? { ...out, ...(out.ui as any) } : out) as Record<string, unknown>;
+            for (const [key, val] of Object.entries(scanObj)) {
+                if (key === "text" || key === "string" || key === "ui") continue;
+                const items = Array.isArray(val) ? val : [val];
+                for (const item of items) {
+                    if (!item) continue;
+                    const fn = typeof item === "string" ? item : typeof item === "object" && "filename" in item ? String((item as any).filename) : typeof item === "object" && "name" in item ? String((item as any).name) : "";
+                    if (fn && /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(fn)) {
+                        const subfolder = typeof item === "object" && "subfolder" in item ? String((item as any).subfolder || "") : "";
+                        const itemType = typeof item === "object" && "type" in item ? String((item as any).type || "output") : "output";
+                        const viewPath = `/api/view?filename=${encodeURIComponent(fn)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
+                        outputs.push({
+                            id: viewPath,
+                            filename: fn,
+                            subfolder,
+                            type: "audio",
+                            output_type: itemType,
+                            content_type: "audio/mpeg",
+                            node_id: nodeId,
+                        });
+                    }
+                }
+            }
+        }
+
+        if (out.text) {
+            const textVal = Array.isArray(out.text) ? out.text.join("\n") : String(out.text);
+            if (textVal.trim()) {
+                outputs.push({
+                    id: `text_${nodeId}`,
+                    text: textVal,
+                    content_type: "text/plain",
+                    node_id: nodeId,
+                });
+            }
+        }
+        if (out.string) {
+            const strVal = Array.isArray(out.string) ? out.string.join("\n") : String(out.string);
+            if (strVal.trim()) {
+                outputs.push({
+                    id: `text_${nodeId}`,
+                    text: strVal,
+                    content_type: "text/plain",
+                    node_id: nodeId,
+                });
+            }
+        }
+    }
+
+    outputs.sort((a, b) => getOutputTypeRank(a.output_type, a.id) - getOutputTypeRank(b.output_type, b.id));
+    return outputs;
+}
+
+export type ComfyuiTaskStatus =
+    | "pending"     // 排队中 (在 queue_pending)
+    | "running"     // 执行中 (在 queue_running)
+    | "success"     // 执行成功 (在 history 且 status_str === "success")
+    | "error"       // 执行出错 (在 history 且 status_str === "error" 且非中断)
+    | "cancelled"   // 任务已取消 (在 history 且 messages 含 execution_interrupted，或本地标记取消)
+    | "lost"        // 任务丢失 (本地在等待，但服务端 /queue 与 /history 均无痕迹)
+    | "not_found";  // 任务不存在 (服务端查无此任务，且无本地等待上下文)
+
+export interface ComfyuiTaskStatusResult {
+    status: ComfyuiTaskStatus;
+    queuePosition?: number;
+    error?: string;
+    outputs?: PollJobResult["outputs"];
+    job?: ComfyuiJobResponse;
+}
+
+/**
+ * 显式查询任务状态（一次性主动检测，不发起长时间轮询）
+ */
+export async function queryComfyuiJobStatus(
+    jobId: string,
+    baseUrl: string,
+    token?: string,
+    options?: { isLocallyActive?: boolean; isLocallyCancelled?: boolean },
+): Promise<ComfyuiTaskStatusResult> {
+    if (!jobId) {
+        return { status: "not_found" };
+    }
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const normalized = normalizeBaseUrl(baseUrl);
+    const historyUrl = `${normalized}/history/${jobId}`;
+    const queueUrl = `${normalized}/queue`;
+
+    // 1. 查询 /history/{jobId}
+    const historyResponse = await comfyuiFetch(historyUrl, { headers }, baseUrl);
+    if (!historyResponse.ok) throw new ComfyuiApiError(`Failed to fetch ComfyUI history: ${historyResponse.status}`, historyResponse.status);
+    const historyData = (await historyResponse.json()) as Record<string, ComfyuiJobResponse>;
+    const jobEntry = historyData?.[jobId];
+
+    if (jobEntry) {
+        if (isComfyuiJobInterrupted(jobEntry) || options?.isLocallyCancelled) {
+            return { status: "cancelled", job: jobEntry };
+        }
+        const statusStr = jobEntry.status?.status_str;
+        if (statusStr === "error") {
+            const msg = Array.isArray(jobEntry.status?.messages) ? JSON.stringify(jobEntry.status?.messages) : statusStr;
+            return { status: "error", error: msg, job: jobEntry };
+        }
+        const outputs = extractOutputsFromComfyuiJob(jobEntry);
+        return { status: "success", outputs, job: jobEntry };
+    }
+
+    // 2. /history 为空，查询 /queue
+    const queueResponse = await comfyuiFetch(queueUrl, { headers }, baseUrl);
+    if (!queueResponse.ok) throw new ComfyuiApiError(`Failed to fetch ComfyUI queue: ${queueResponse.status}`, queueResponse.status);
+    const queueData = (await queueResponse.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
+    const pendingList = Array.isArray(queueData.queue_pending) ? queueData.queue_pending : [];
+    const runningList = Array.isArray(queueData.queue_running) ? queueData.queue_running : [];
+
+    const pendingIndex = pendingList.findIndex((item) => Array.isArray(item) && String(item[1]) === jobId);
+    if (pendingIndex >= 0) {
+        return { status: "pending", queuePosition: pendingIndex + 1 };
+    }
+    const isRunning = runningList.some((item) => Array.isArray(item) && String(item[1]) === jobId);
+    if (isRunning) {
+        return { status: "running" };
+    }
+
+    // 3. 防竞态检查：若队列中无记录，二次拉取 /history（防止刚好完成从 running 移入 history 的瞬间）
+    const recheckResponse = await comfyuiFetch(historyUrl, { headers }, baseUrl);
+    if (recheckResponse.ok) {
+        const recheckData = (await recheckResponse.json()) as Record<string, ComfyuiJobResponse>;
+        const recheckEntry = recheckData?.[jobId];
+        if (recheckEntry) {
+            if (isComfyuiJobInterrupted(recheckEntry) || options?.isLocallyCancelled) {
+                return { status: "cancelled", job: recheckEntry };
+            }
+            if (recheckEntry.status?.status_str === "error") {
+                const msg = Array.isArray(recheckEntry.status?.messages) ? JSON.stringify(recheckEntry.status?.messages) : "error";
+                return { status: "error", error: msg, job: recheckEntry };
+            }
+            const outputs = extractOutputsFromComfyuiJob(recheckEntry);
+            return { status: "success", outputs, job: recheckEntry };
+        }
+    }
+
+    // 4. 队列与历史均查无此任务
+    if (options?.isLocallyCancelled) {
+        return { status: "cancelled" };
+    }
+    if (options?.isLocallyActive) {
+        return { status: "lost" };
+    }
+    return { status: "not_found" };
+}
+
+export async function pollJobRaw(
+    jobId: string,
+    baseUrl: string,
+    token?: string,
+    signal?: AbortSignal,
+    deadlineMs?: number,
+    onProgress?: (status: string, detail?: Record<string, unknown>) => void,
+): Promise<PollJobResult | undefined> {
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
     const startedAt = Date.now();
@@ -891,197 +1208,50 @@ export async function pollJobRaw(jobId: string, baseUrl: string, token?: string,
         if (deadlineMs !== undefined && Date.now() >= deadlineMs) throw new ComfyuiTimeoutError(Math.max(0, deadlineMs - startedAt), jobId);
         const response = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/history/${jobId}`, { headers }, baseUrl);
         if (!response.ok) throw new ComfyuiApiError(`Failed to poll ComfyUI history: ${response.status}`, response.status);
-        const data = (await response.json()) as Record<
-            string,
-            {
-                outputs?: Record<
-                    string,
-                    {
-                        images?: Array<{ filename: string; subfolder?: string; type?: string }>;
-                        videos?: Array<{ filename: string; subfolder?: string; type?: string }>;
-                        gifs?: Array<{ filename: string; subfolder?: string; type?: string }>;
-                        audio?: Array<{ filename: string; subfolder?: string; type?: string }>;
-                        text?: string[] | string;
-                        string?: string[] | string;
-                        animated?: boolean[];
-                        ui?: Record<string, unknown>;
-                    }
-                >;
-                status?: {
-                    status_str?: string;
-                    completed?: boolean;
-                    messages?: unknown[];
-                };
-            }
-        >;
+        const data = (await response.json()) as Record<string, ComfyuiJobResponse>;
 
         const jobEntry = data?.[jobId];
         if (jobEntry) {
+            if (isComfyuiJobInterrupted(jobEntry)) {
+                throw new ComfyuiJobCancelledError(jobId);
+            }
             const statusStr = jobEntry.status?.status_str;
             if (statusStr === "error") {
                 const msg = Array.isArray(jobEntry.status?.messages) ? JSON.stringify(jobEntry.status?.messages) : statusStr;
                 throw new ComfyuiJobError(`ComfyUI 执行失败: ${msg}`, statusStr);
             }
 
-            const rawOutputs = jobEntry.outputs || {};
-            const outputs: PollJobResult["outputs"] = [];
-
-            for (const [nodeId, nodeOut] of Object.entries(rawOutputs)) {
-                if (!nodeOut || typeof nodeOut !== "object") continue;
-
-                if (Array.isArray(nodeOut.images)) {
-                    for (const img of nodeOut.images) {
-                        if (img?.filename) {
-                            const subfolder = img.subfolder || "";
-                            const itemType = img.type || "output";
-                            const isVideo = /\.(mp4|webm|mov|avi|mkv)$/i.test(img.filename);
-                            const isAnimated = Boolean(Array.isArray(nodeOut.animated) && nodeOut.animated[0]);
-                            const contentType = isVideo ? "video/mp4" : isAnimated ? "image/gif" : "image/png";
-                            const viewPath = `/api/view?filename=${encodeURIComponent(img.filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
-                            outputs.push({
-                                id: viewPath,
-                                filename: img.filename,
-                                subfolder,
-                                type: isVideo ? "video" : itemType,
-                                output_type: itemType,
-                                content_type: contentType,
-                                node_id: nodeId,
-                            });
-                        }
-                    }
-                }
-
-                if (Array.isArray(nodeOut.videos)) {
-                    for (const vid of nodeOut.videos) {
-                        if (vid?.filename) {
-                            const subfolder = vid.subfolder || "";
-                            const itemType = vid.type || "output";
-                            const viewPath = `/api/view?filename=${encodeURIComponent(vid.filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
-                            outputs.push({
-                                id: viewPath,
-                                filename: vid.filename,
-                                subfolder,
-                                type: "video",
-                                output_type: itemType,
-                                content_type: "video/mp4",
-                                node_id: nodeId,
-                            });
-                        }
-                    }
-                }
-                if (Array.isArray(nodeOut.gifs)) {
-                    for (const gif of nodeOut.gifs) {
-                        if (gif?.filename) {
-                            const subfolder = gif.subfolder || "";
-                            const itemType = gif.type || "output";
-                            const viewPath = `/api/view?filename=${encodeURIComponent(gif.filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
-                            outputs.push({
-                                id: viewPath,
-                                filename: gif.filename,
-                                subfolder,
-                                type: "video",
-                                output_type: itemType,
-                                content_type: "video/mp4",
-                                node_id: nodeId,
-                            });
-                        }
-                    }
-                }
-
-                const rawAudioList = Array.isArray(nodeOut.audio)
-                    ? nodeOut.audio
-                    : Array.isArray((nodeOut.ui as any)?.audio)
-                    ? (nodeOut.ui as any).audio
-                    : Array.isArray((nodeOut as any)?.audios)
-                    ? (nodeOut as any).audios
-                    : Array.isArray((nodeOut.ui as any)?.audios)
-                    ? (nodeOut.ui as any).audios
-                    : nodeOut.audio && typeof nodeOut.audio === "object"
-                    ? [nodeOut.audio]
-                    : (nodeOut.ui as any)?.audio && typeof (nodeOut.ui as any).audio === "object"
-                    ? [(nodeOut.ui as any).audio]
-                    : [];
-
-                if (rawAudioList.length > 0) {
-                    for (const aud of rawAudioList) {
-                        const filename = typeof aud === "string" ? aud : aud?.filename || aud?.name || "";
-                        if (filename) {
-                            const subfolder = typeof aud === "object" && aud?.subfolder ? aud.subfolder : "";
-                            const itemType = typeof aud === "object" && aud?.type ? aud.type : "output";
-                            const ext = filename.split(".").pop()?.toLowerCase() || "";
-                            const contentType =
-                                ext === "wav" ? "audio/wav" :
-                                ext === "ogg" ? "audio/ogg" :
-                                ext === "flac" ? "audio/flac" :
-                                ext === "opus" ? "audio/opus" :
-                                ext === "m4a" || ext === "aac" ? "audio/mp4" :
-                                "audio/mpeg";
-                            const viewPath = `/api/view?filename=${encodeURIComponent(filename)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
-                            outputs.push({
-                                id: viewPath,
-                                filename,
-                                subfolder,
-                                type: "audio",
-                                output_type: itemType,
-                                content_type: contentType,
-                                node_id: nodeId,
-                            });
-                        }
-                    }
-                } else {
-                    const scanObj = (nodeOut.ui && typeof nodeOut.ui === "object" ? { ...nodeOut, ...(nodeOut.ui as any) } : nodeOut) as Record<string, unknown>;
-                    for (const [key, val] of Object.entries(scanObj)) {
-                        if (key === "text" || key === "string" || key === "ui") continue;
-                        const items = Array.isArray(val) ? val : [val];
-                        for (const item of items) {
-                            if (!item) continue;
-                            const fn = typeof item === "string" ? item : typeof item === "object" && "filename" in item ? String(item.filename) : typeof item === "object" && "name" in item ? String(item.name) : "";
-                            if (fn && /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(fn)) {
-                                const subfolder = typeof item === "object" && "subfolder" in item ? String(item.subfolder || "") : "";
-                                const itemType = typeof item === "object" && "type" in item ? String(item.type || "output") : "output";
-                                const viewPath = `/api/view?filename=${encodeURIComponent(fn)}&type=${encodeURIComponent(itemType)}&subfolder=${encodeURIComponent(subfolder)}`;
-                                outputs.push({
-                                    id: viewPath,
-                                    filename: fn,
-                                    subfolder,
-                                    type: "audio",
-                                    output_type: itemType,
-                                    content_type: "audio/mpeg",
-                                    node_id: nodeId,
-                                    });
-                            }
-                        }
-                    }
-                }
-
-                if (nodeOut.text) {
-                    const textVal = Array.isArray(nodeOut.text) ? nodeOut.text.join("\n") : String(nodeOut.text);
-                    if (textVal.trim()) {
-                        outputs.push({
-                            id: `text_${nodeId}`,
-                            text: textVal,
-                            content_type: "text/plain",
-                            node_id: nodeId,
-                        });
-                    }
-                }
-                if (nodeOut.string) {
-                    const strVal = Array.isArray(nodeOut.string) ? nodeOut.string.join("\n") : String(nodeOut.string);
-                    if (strVal.trim()) {
-                        outputs.push({
-                            id: `text_${nodeId}`,
-                            text: strVal,
-                            content_type: "text/plain",
-                            node_id: nodeId,
-                        });
-                    }
-                }
-            }
-
+            const outputs = extractOutputsFromComfyuiJob(jobEntry);
             if (jobEntry.status?.completed || outputs.length > 0) {
-                // Prioritize outputs: type = "output" (0) > "temp" (1) > "input" / others (2)
-                outputs.sort((a, b) => getOutputTypeRank(a.output_type, a.id) - getOutputTypeRank(b.output_type, b.id));
                 return { outputs, job: jobEntry };
+            }
+        } else {
+            // /history 中暂无该任务，查询 /queue
+            const queueResponse = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/queue`, { headers }, baseUrl);
+            if (queueResponse.ok) {
+                const queueData = (await queueResponse.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
+                const pendingList = Array.isArray(queueData.queue_pending) ? queueData.queue_pending : [];
+                const runningList = Array.isArray(queueData.queue_running) ? queueData.queue_running : [];
+
+                const pendingIndex = pendingList.findIndex((item) => Array.isArray(item) && String(item[1]) === jobId);
+                const isRunning = runningList.some((item) => Array.isArray(item) && String(item[1]) === jobId);
+
+                if (pendingIndex >= 0) {
+                    onProgress?.("pending", { queuePosition: pendingIndex + 1 });
+                } else if (isRunning) {
+                    onProgress?.("running");
+                } else {
+                    // 防竞态二次核实
+                    const recheckResponse = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/history/${jobId}`, { headers }, baseUrl);
+                    if (recheckResponse.ok) {
+                        const recheckData = (await recheckResponse.json()) as Record<string, ComfyuiJobResponse>;
+                        if (recheckData?.[jobId]) {
+                            continue; // 任务已进入 history，下一次循环提取
+                        }
+                    }
+                    if (signal?.aborted) return undefined;
+                    throw new ComfyuiJobLostError(jobId);
+                }
             }
         }
 
@@ -1099,8 +1269,9 @@ export async function pollJob(
     signal?: AbortSignal,
     deadlineMs?: number,
     collector: (outputs: unknown) => string[] = collectImageAssetIds,
+    onProgress?: (status: string, detail?: Record<string, unknown>) => void,
 ): Promise<string[] | undefined> {
-    const res = await pollJobRaw(jobId, baseUrl, token, signal, deadlineMs);
+    const res = await pollJobRaw(jobId, baseUrl, token, signal, deadlineMs, onProgress);
     return res !== undefined ? collector(res.outputs) : undefined;
 }
 
@@ -1367,7 +1538,7 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
             throw new ComfyuiAbortedError();
         }
 
-        const polling = pollJob(jobId, baseUrl, token, signal, startedAt + JOB_TIMEOUT_MS);
+        const polling = pollJob(jobId, baseUrl, token, signal, startedAt + JOB_TIMEOUT_MS, collectImageAssetIds, req.onProgress);
         let waiting: Promise<string[] | undefined> = polling;
         if (signal) {
             // `{ once: true }` keeps the cancel call idempotent across repeated aborts;
@@ -1519,7 +1690,7 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
         }
 
         // 4. Poll job
-        const polling = pollJob(jobId, baseUrl, token, signal, startedAt + JOB_TIMEOUT_MS, (outputs) => prioritizeInpaintOutput(outputs, inpaintWorkflow.json));
+        const polling = pollJob(jobId, baseUrl, token, signal, startedAt + JOB_TIMEOUT_MS, (outputs) => prioritizeInpaintOutput(outputs, inpaintWorkflow.json), req.onProgress);
         let waiting: Promise<string[] | undefined> = polling;
         if (signal) {
             const aborted: Promise<never> = new Promise((_resolve, reject) => {
@@ -1891,7 +2062,7 @@ export async function requestComfyuiText(req: ComfyuiTextRequest): Promise<{ tex
             throw new ComfyuiAbortedError();
         }
 
-        const polling = pollJobRaw(jobId, baseUrl, token, signal, startedAt + JOB_TIMEOUT_MS);
+        const polling = pollJobRaw(jobId, baseUrl, token, signal, startedAt + JOB_TIMEOUT_MS, req.onProgress);
         let waiting: Promise<PollJobResult | undefined> = polling;
         if (signal) {
             const aborted: Promise<never> = new Promise((_resolve, reject) => {
@@ -2517,8 +2688,14 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     return { jobId, baseUrl, token };
 }
 
-export async function pollComfyuiVideoJob(jobId: string, baseUrl: string, token?: string, signal?: AbortSignal): Promise<{ url: string; mimeType: string }> {
-    const assetIds = await pollJob(jobId, baseUrl, token, signal, Date.now() + JOB_TIMEOUT_MS, collectVideoAssetIds);
+export async function pollComfyuiVideoJob(
+    jobId: string,
+    baseUrl: string,
+    token?: string,
+    signal?: AbortSignal,
+    onProgress?: (status: string, detail?: Record<string, unknown>) => void,
+): Promise<{ url: string; mimeType: string }> {
+    const assetIds = await pollJob(jobId, baseUrl, token, signal, Date.now() + JOB_TIMEOUT_MS, collectVideoAssetIds, onProgress);
     if (!assetIds) {
         throw new ComfyuiAbortedError();
     }
@@ -2549,7 +2726,7 @@ export async function requestComfyuiVideo(req: ComfyuiVideoRequest): Promise<{ u
             throw new ComfyuiAbortedError();
         }
 
-        const polling = pollComfyuiVideoJob(jobId, baseUrl, token, signal);
+        const polling = pollComfyuiVideoJob(jobId, baseUrl, token, signal, req.onProgress);
         let waiting: Promise<{ url: string; mimeType: string }> = polling;
         if (signal) {
             // `{ once: true }` keeps the cancel call idempotent across repeated aborts;
@@ -2747,7 +2924,7 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
         }
 
         const startedAt = Date.now();
-        const polling = pollJobRaw(jobId, baseUrl, token, signal, startedAt + JOB_TIMEOUT_MS);
+        const polling = pollJobRaw(jobId, baseUrl, token, signal, startedAt + JOB_TIMEOUT_MS, req.onProgress);
         let waiting: Promise<PollJobResult | undefined> = polling;
         if (signal) {
             const aborted: Promise<never> = new Promise((_resolve, reject) => {

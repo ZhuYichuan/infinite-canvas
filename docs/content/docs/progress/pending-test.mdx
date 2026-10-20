@@ -7,6 +7,21 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- ComfyUI Task Status Query & Queue Lifecycle Verification (ComfyUI 任务状态精准查询与排队生命周期验证):
+  - **排队状态与排队位次感知**:
+    - 在画布中发起一个较耗时的生成任务，或同时提交多个任务使后提交的任务处于排队等待中；
+    - 验证后排任务节点加载区域清晰显示「排队中 (第 N 位)」，当排在前面的任务完成时，位次动态前进；
+    - 轮到当前任务开始在 GPU 上运行时，文字平滑切换为「生成中...」；
+  - **任务已取消 (cancelled) 识别**:
+    - 针对正在排队或正在运行的任务发起取消；
+    - 验证节点迅速终止并正确标记为已取消，不发生无故长时间挂起；
+  - **任务丢失 (lost) 与服务重启熔断**:
+    - 提交任务后直接重启或关闭 ComfyUI 服务（使内存队列清空）；
+    - 验证轮询机制在下一个周期立即检测到任务在 `/queue` 和 `/history` 均无痕迹，即时抛出任务丢失异常并停止轮询，**不再死等 2 小时超时**；
+    - 验证画布节点提示明确报错「ComfyUI 任务已丢失（服务可能已重启或队列已清空）」，并自动清除失效的 `jobId`，工具栏按钮立即由「重新查询」转换为「重新生成 (重试)」；
+  - **独立任务状态查询接口**:
+    - 验证直接调用 `queryComfyuiJobStatus(jobId, baseUrl)` 可单次秒级返回 7 态细分结果（`pending` / `running` / `success` / `error` / `cancelled` / `lost` / `not_found`）。
+
 - Canvas Interrupted Tasks One-Click Batch Resume & Retry Verification (画布刷新中断任务一键恢复与批量重试验证):
   - **刷新后顶部悬浮条展示与一键恢复**:
     - 在画布中同时生成多个节点（例如 3 个图片或视频节点），在生成过程中刷新页面；

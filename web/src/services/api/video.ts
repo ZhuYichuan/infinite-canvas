@@ -91,7 +91,7 @@ export async function pollVideoGenerationTask(config: AiConfig, task: VideoGener
     const baseUrl = (channel.comfyuiProxyUrl || "").trim();
     const token = channel.comfyuiProxyToken;
     try {
-        const result = await pollComfyuiVideoJob(task.id, baseUrl, token, options?.signal);
+        const result = await pollComfyuiVideoJob(task.id, baseUrl, token, options?.signal, options?.onProgress);
         return { status: "completed", result };
     } catch (error) {
         return { status: "failed", error: error instanceof Error ? error.message : String(error) };

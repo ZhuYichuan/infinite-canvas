@@ -183,7 +183,10 @@ export function isInterruptedGenerationError(errorDetails?: string) {
         errorDetails === "页面刷新后生成已中断，请重新生成。" ||
         errorDetails === "canvas.generation.interrupted" ||
         errorDetails.includes("Generation was interrupted by a page refresh") ||
-        errorDetails.includes("页面刷新后生成已中断")
+        errorDetails.includes("页面刷新后生成已中断") ||
+        errorDetails.includes("已取消") ||
+        errorDetails.includes("cancelled") ||
+        errorDetails.includes("execution_interrupted")
     );
 }
 

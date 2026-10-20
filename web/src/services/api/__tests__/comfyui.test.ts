@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n from "@/i18n";
-import { adaptWorkflowModelPaths, applyBindings, cancelJob, collectVideoAssetIds, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollComfyuiVideoJob, pollJob, requestComfyuiImage, submitComfyuiVideoJob, submitJob, validateComfyuiWorkflow } from "@/services/api/comfyui";
+import { adaptWorkflowModelPaths, applyBindings, cancelJob, collectVideoAssetIds, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobCancelledError, ComfyuiJobError, ComfyuiJobLostError, ComfyuiJobNotFoundError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollComfyuiVideoJob, pollJob, pollJobRaw, queryComfyuiJobStatus, requestComfyuiImage, submitComfyuiVideoJob, submitJob, validateComfyuiWorkflow } from "@/services/api/comfyui";
 import type { ComfyuiWorkflowJson } from "@/services/api/comfyui";
 import { defaultConfig, findWorkflow, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { DEFAULT_BUILTIN_COMFYUI_DEPTH_VIDEO_WORKFLOW, DEFAULT_BUILTIN_COMFYUI_FACE_REFINE_WORKFLOW, DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW } from "@/services/api/comfyui-default-workflows";
@@ -261,28 +261,36 @@ describe("pollJob", () => {
 
     it("polls immediately, waits 2s between rounds, and resolves with the image asset ids when the job completes", async () => {
         vi.useFakeTimers();
-        fetchMock
-            .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) })
-            .mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                json: async () => ({
-                    job_1: {
-                        status: { status_str: "success", completed: true },
-                        outputs: {
-                            "9": { images: [{ filename: "asset_1.png", type: "output" }, { filename: "asset_2.png", type: "output" }] },
+        let historyCalls = 0;
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/queue")) {
+                return { ok: true, status: 200, json: async () => ({ queue_running: [[0, "job_1"]], queue_pending: [] }) };
+            }
+            if (url.includes("/history/job_1")) {
+                historyCalls += 1;
+                if (historyCalls === 1) return { ok: true, status: 200, json: async () => ({}) };
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        job_1: {
+                            status: { status_str: "success", completed: true },
+                            outputs: {
+                                "9": { images: [{ filename: "asset_1.png", type: "output" }, { filename: "asset_2.png", type: "output" }] },
+                            },
                         },
-                    },
-                }),
-            });
+                    }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
         const result = pollJob("job_1", "http://10.7.8.12:8188", "tok");
-        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledTimes(2); // history + queue
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
         expect(url).toBe("http://10.7.8.12:8188/history/job_1");
         expect(init.headers.Authorization).toBe("Bearer tok");
         await vi.advanceTimersByTimeAsync(2000);
         await expect(result).resolves.toEqual(["/api/view?filename=asset_1.png&type=output&subfolder=", "/api/view?filename=asset_2.png&type=output&subfolder="]);
-        expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it("throws ComfyuiJobError when the job status is failed", async () => {
@@ -297,21 +305,63 @@ describe("pollJob", () => {
         expect(failed).toBeInstanceOf(ComfyuiJobError);
     });
 
-    it("keeps polling every 2 seconds until the job completes", async () => {
-        vi.useFakeTimers();
-        let polls = 0;
-        fetchMock.mockImplementation(async () => {
-            polls += 1;
-            return {
-                ok: true,
-                status: 200,
-                json: async () => (polls < 3 ? {} : { job_1: { status: { completed: true }, outputs: {} } }),
-            };
+    it("throws ComfyuiJobCancelledError when the job in history contains execution_interrupted", async () => {
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                job_1: { status: { status_str: "error", messages: [["execution_interrupted", { node_id: "3" }]] } },
+            }),
         });
-        const result = pollJob("job_1", "http://10.7.8.12:8188");
+        const error: unknown = await pollJob("job_1", "http://10.7.8.12:8188").catch((reason) => reason);
+        expect(error).toBeInstanceOf(ComfyuiJobCancelledError);
+        expect((error as ComfyuiJobCancelledError).jobId).toBe("job_1");
+    });
+
+    it("throws ComfyuiJobLostError when job is missing from both history and queue", async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/queue")) {
+                return { ok: true, status: 200, json: async () => ({ queue_running: [], queue_pending: [] }) };
+            }
+            if (url.includes("/history/job_1")) {
+                return { ok: true, status: 200, json: async () => ({}) };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+        const error: unknown = await pollJob("job_1", "http://10.7.8.12:8188").catch((reason) => reason);
+        expect(error).toBeInstanceOf(ComfyuiJobLostError);
+        expect((error as ComfyuiJobLostError).jobId).toBe("job_1");
+    });
+
+    it("keeps polling every 2 seconds until the job completes while in queue", async () => {
+        vi.useFakeTimers();
+        let historyPolls = 0;
+        const onProgress = vi.fn();
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/queue")) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        queue_running: [],
+                        queue_pending: [[1, "job_1"]],
+                    }),
+                };
+            }
+            if (url.includes("/history/job_1")) {
+                historyPolls += 1;
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => (historyPolls < 3 ? {} : { job_1: { status: { completed: true }, outputs: {} } }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+        const result = pollJob("job_1", "http://10.7.8.12:8188", undefined, undefined, undefined, undefined, onProgress);
+        expect(onProgress).toHaveBeenCalledWith("pending", { queuePosition: 1 });
         await vi.advanceTimersByTimeAsync(4000);
         await expect(result).resolves.toEqual([]);
-        expect(fetchMock).toHaveBeenCalledTimes(3);
     });
 
     it("resolves undefined without throwing when the signal is aborted", async () => {
@@ -332,6 +382,163 @@ describe("pollJob", () => {
         expect(error).toMatchObject({ name: "ComfyuiApiError", status: 502 });
     });
 });
+
+describe("queryComfyuiJobStatus", () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it("returns 'success' when job completed in history", async () => {
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                job_123: {
+                    status: { status_str: "success", completed: true },
+                    outputs: { "9": { images: [{ filename: "out.png", type: "output" }] } },
+                },
+            }),
+        });
+        const res = await queryComfyuiJobStatus("job_123", "http://127.0.0.1:8188");
+        expect(res.status).toBe("success");
+        expect(res.outputs?.length).toBe(1);
+    });
+
+    it("returns 'error' when job errored in history", async () => {
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                job_123: {
+                    status: { status_str: "error", messages: ["CUDA out of memory"] },
+                },
+            }),
+        });
+        const res = await queryComfyuiJobStatus("job_123", "http://127.0.0.1:8188");
+        expect(res.status).toBe("error");
+        expect(res.error).toContain("CUDA out of memory");
+    });
+
+    it("returns 'cancelled' when job has execution_interrupted in history", async () => {
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                job_123: {
+                    status: { status_str: "error", messages: [["execution_interrupted", { node_id: "3" }]] },
+                },
+            }),
+        });
+        const res = await queryComfyuiJobStatus("job_123", "http://127.0.0.1:8188");
+        expect(res.status).toBe("cancelled");
+    });
+
+    it("returns 'pending' with queuePosition when job is in queue_pending", async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/history/job_123")) {
+                return { ok: true, status: 200, json: async () => ({}) };
+            }
+            if (url.includes("/queue")) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        queue_running: [],
+                        queue_pending: [
+                            [0, "other_job"],
+                            [1, "job_123"],
+                        ],
+                    }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+        const res = await queryComfyuiJobStatus("job_123", "http://127.0.0.1:8188");
+        expect(res.status).toBe("pending");
+        expect(res.queuePosition).toBe(2);
+    });
+
+    it("returns 'running' when job is in queue_running", async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/history/job_123")) {
+                return { ok: true, status: 200, json: async () => ({}) };
+            }
+            if (url.includes("/queue")) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        queue_running: [[0, "job_123"]],
+                        queue_pending: [],
+                    }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+        const res = await queryComfyuiJobStatus("job_123", "http://127.0.0.1:8188");
+        expect(res.status).toBe("running");
+    });
+
+    it("returns 'lost' when missing from both history and queue and isLocallyActive is true", async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/history/job_123")) {
+                return { ok: true, status: 200, json: async () => ({}) };
+            }
+            if (url.includes("/queue")) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ queue_running: [], queue_pending: [] }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+        const res = await queryComfyuiJobStatus("job_123", "http://127.0.0.1:8188", undefined, { isLocallyActive: true });
+        expect(res.status).toBe("lost");
+    });
+
+    it("returns 'cancelled' when missing from both history and queue and isLocallyCancelled is true", async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/history/job_123")) {
+                return { ok: true, status: 200, json: async () => ({}) };
+            }
+            if (url.includes("/queue")) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ queue_running: [], queue_pending: [] }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+        const res = await queryComfyuiJobStatus("job_123", "http://127.0.0.1:8188", undefined, { isLocallyCancelled: true });
+        expect(res.status).toBe("cancelled");
+    });
+
+    it("returns 'not_found' when missing and no local context", async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/history/job_123")) {
+                return { ok: true, status: 200, json: async () => ({}) };
+            }
+            if (url.includes("/queue")) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ queue_running: [], queue_pending: [] }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+        const res = await queryComfyuiJobStatus("job_123", "http://127.0.0.1:8188");
+        expect(res.status).toBe("not_found");
+    });
 
 describe("downloadAsset", () => {
     let fetchMock: ReturnType<typeof vi.fn>;

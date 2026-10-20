@@ -83,6 +83,7 @@ export function cloneNodeMetadata(metadata?: CanvasNodeMetadata, nodeType?: Canv
 
     // 1. 重置瞬时任务与报错标记
     delete cloned.jobId;
+    delete cloned.queuePosition;
     delete cloned.errorDetails;
     delete cloned.isTimeout;
 

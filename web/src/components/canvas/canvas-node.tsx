@@ -488,7 +488,7 @@ function NodeContent(props: NodeContentRendererProps) {
     if (props.node.type === CanvasNodeType.Config && props.renderNodeContent) return props.renderNodeContent(props.node);
     if (props.isBatchRoot && props.node.type === CanvasNodeType.Image) return <ImageNodeContent {...props} />;
     if (props.node.type === CanvasNodeType.Text && props.node.metadata?.texts?.length && (props.node.metadata.status !== "error" || props.node.metadata.texts.some((text) => text.content))) return <TextContent {...props} />;
-    if (props.node.metadata?.status === "loading") return <LoadingContent theme={props.theme} />;
+    if (props.node.metadata?.status === "loading") return <LoadingContent theme={props.theme} node={props.node} />;
     if (props.node.metadata?.status === "error") return <ErrorContent node={props.node} theme={props.theme} onRetry={props.onRetry} />;
 
     const Renderer = nodeContentRenderers[props.node.type as CanvasNodeType];
@@ -527,12 +527,16 @@ function GroupNodeContent({ node, theme, groupChildCount }: NodeContentRendererP
     );
 }
 
-function LoadingContent({ theme }: Pick<NodeContentRendererProps, "theme">) {
+function LoadingContent({ theme, node }: Pick<NodeContentRendererProps, "theme"> & { node?: CanvasNodeData }) {
     const { t } = useTranslation();
+    const queuePos = node?.metadata?.queuePosition;
+    const loadingText = typeof queuePos === "number" && queuePos > 0
+        ? `排队中 (第 ${queuePos} 位)`
+        : t("canvas.node.generating");
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.activeStroke }}>
             <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />
-            <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span>
+            <span className="text-[10px] tracking-[0.2em]">{loadingText}</span>
         </div>
     );
 }
@@ -703,10 +707,14 @@ function TextSlotStatus({ text }: { text: CanvasNodeText }) {
     const { t } = useTranslation();
     const failed = text.status === "error";
     const loading = text.status === "loading";
+    const queuePos = text.queuePosition;
+    const loadingText = typeof queuePos === "number" && queuePos > 0
+        ? `排队中 (第 ${queuePos} 位)`
+        : t("canvas.node.generating");
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
             {failed ? <span className="text-xs leading-5">{localizeErrorDetails(text.errorDetails) || t("canvas.node.failed")}</span> : loading ? <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} /> : <span className="text-xs">{t("apiErrors.noContent")}</span>}
-            {loading ? <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span> : null}
+            {loading ? <span className="text-[10px] tracking-[0.2em]">{loadingText}</span> : null}
         </div>
     );
 }
@@ -932,6 +940,10 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
     const { t } = useTranslation();
     const failed = image?.status === "error";
     const loading = image?.status === "loading";
+    const queuePos = image?.queuePosition;
+    const loadingText = typeof queuePos === "number" && queuePos > 0
+        ? `排队中 (第 ${queuePos} 位)`
+        : t("canvas.node.generating");
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
             {failed ? (
@@ -939,7 +951,7 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
             ) : loading ? (
                 <>
                     <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />
-                    <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span>
+                    <span className="text-[10px] tracking-[0.2em]">{loadingText}</span>
                 </>
             ) : (
                 <div className="flex flex-col items-center justify-center gap-2" style={{ color: theme.node.placeholder }}>

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [新增] 支持 ComfyUI 任务状态精确查询与排队感知：引入 `queryComfyuiJobStatus` 接口与 7 态全景任务生命周期模型（pending/running/success/error/cancelled/lost/not_found），彻底解决排队取消、服务重启或任务丢失时轮询盲等 2 小时超时问题；在排队时实时透传并呈现排队位次，任务丢失或不存在时自动清除失效 jobId 并引导重新生成。
 + [文档] 补充 Nginx 部署踩坑记录：`public/` 目录名与 SPA 路由同名时的 403 问题与 `try_files $uri /index.html;` 修复方式（以 `/workflows` 为例）。
 
 ## v0.19.19 - 2026-10-19
