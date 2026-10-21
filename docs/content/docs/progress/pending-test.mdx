@@ -7,6 +7,18 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- ComfyUI Batch Polling & 18h Timeout Verification (ComfyUI 批量轮询降压与 18 小时超时验证):
+  - **多任务批量查询降压**:
+    - 在画布上同时批量生成多个任务（如框选多个图片/视频节点同时点击生成）；
+    - 打开浏览器 DevTools Network 面板，验证对 ComfyUI 的高频状态轮询已被统一合并为单次 `/queue` 批量请求，不再为每个任务独立发送冗余的 `/history` 请求；
+    - 验证所有任务能正常收到「排队中 (第 N 位)」与「生成中...」的进度分发；
+  - **自适应节拍与出队精准拉取**:
+    - 验证在所有任务均处于排队阶段时，探测节拍放缓为约 3.5 秒；
+    - 验证当有任务进入执行时，节拍恢复为 2.0 秒；
+    - 当任务完成出队时，调度器能精准针对出队任务单次拉取 `/history` 产物并完成节点渲染；
+  - **18 小时超时控制**:
+    - 验证超长耗时任务的最长轮询时间上限已扩展至 18 小时（`64,800,000 ms`），超时报错展示为 `ComfyUI 生成超时 (after 18h)`。
+
 - ComfyUI Network Failure & Service Crash Verification (ComfyUI 网络异常与服务崩溃感知验证):
   - **ComfyUI 服务崩溃与拒绝连接**:
     - 在画布生成或轮询过程中，关闭或杀死 ComfyUI 进程（如模拟 `Failed to fetch`）；

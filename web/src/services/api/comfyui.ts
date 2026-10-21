@@ -835,10 +835,14 @@ export async function submitJob(workflow: ComfyuiWorkflowJson, baseUrl: string, 
     }
 }
 
-/** How often the job status is polled while the job is pending or in progress. */
-const JOB_POLL_INTERVAL_MS = 2_000;
-/** Total window allowed for the job to complete before the request times out (2 hours). */
-const JOB_TIMEOUT_MS = 7_200_000;
+/** How often the job status is polled when running tasks exist (2 seconds). */
+export const JOB_POLL_INTERVAL_RUNNING_MS = 2_000;
+/** How often the job status is polled when all active tasks are in pending/queue (3.5 seconds). */
+export const JOB_POLL_INTERVAL_PENDING_MS = 3_500;
+/** Default poll interval for backward compatibility. */
+export const JOB_POLL_INTERVAL_MS = 2_000;
+/** Total window allowed for the job to complete before the request times out (18 hours). */
+export const JOB_TIMEOUT_MS = 64_800_000;
 
 type ComfyuiJobResponse = {
     status?: {
@@ -1226,7 +1230,349 @@ export async function queryComfyuiJobStatus(
 
 export const MAX_POLL_NETWORK_RETRIES = 5;
 
-export async function pollJobRaw(
+interface TrackedJobSubscription {
+    startedAt: number;
+    deadlineMs?: number;
+    token?: string;
+    signal?: AbortSignal;
+    onProgress?: (status: string, detail?: Record<string, unknown>) => void;
+    resolve: (result: PollJobResult | undefined) => void;
+    reject: (error: unknown) => void;
+    onAbort?: () => void;
+}
+
+interface TrackedJobEntry {
+    jobId: string;
+    token?: string;
+    seenInQueue: boolean;
+    unseenTicks: number;
+    status: "pending" | "running" | "checking_history" | "unknown";
+    queuePosition?: number;
+    subscriptions: TrackedJobSubscription[];
+}
+
+/**
+ * 统一批量轮询调度器 (按 baseUrl 聚合实例)
+ * 多个并发任务共享单次 /queue 批量查询，大幅减轻对 ComfyUI 服务端的请求压力；
+ * 采用自适应节拍：全 pending 时放缓至 3.5s，有 running 时保持 2s，出队时精准拉取 /history。
+ */
+export class ComfyuiJobBatchPoller {
+    readonly baseUrl: string;
+    private jobs = new Map<string, TrackedJobEntry>();
+    private isRunning = false;
+    private hasRunningJobs = false;
+    private consecutiveNetworkErrors = 0;
+
+    constructor(baseUrl: string) {
+        this.baseUrl = normalizeBaseUrl(baseUrl);
+    }
+
+    poll(
+        jobId: string,
+        token?: string,
+        signal?: AbortSignal,
+        deadlineMs?: number,
+        onProgress?: (status: string, detail?: Record<string, unknown>) => void,
+    ): Promise<PollJobResult | undefined> {
+        if (signal?.aborted) return Promise.resolve(undefined);
+
+        const startedAt = Date.now();
+        const effectiveDeadline = deadlineMs ?? (startedAt + JOB_TIMEOUT_MS);
+
+        return new Promise<PollJobResult | undefined>((resolve, reject) => {
+            let entry = this.jobs.get(jobId);
+            if (!entry) {
+                entry = {
+                    jobId,
+                    token,
+                    seenInQueue: false,
+                    unseenTicks: 0,
+                    status: "unknown",
+                    subscriptions: [],
+                };
+                this.jobs.set(jobId, entry);
+            } else if (token && !entry.token) {
+                entry.token = token;
+            }
+
+            const sub: TrackedJobSubscription = {
+                startedAt,
+                deadlineMs: effectiveDeadline,
+                token,
+                signal,
+                onProgress,
+                resolve,
+                reject,
+            };
+
+            if (signal) {
+                const onAbort = () => {
+                    this.removeSubscription(jobId, sub);
+                    resolve(undefined);
+                };
+                sub.onAbort = onAbort;
+                signal.addEventListener("abort", onAbort, { once: true });
+            }
+
+            entry.subscriptions.push(sub);
+
+            // 若已有现成进度状态，立即同步一次
+            if (entry.status === "pending" && entry.queuePosition !== undefined) {
+                onProgress?.("pending", { queuePosition: entry.queuePosition });
+            } else if (entry.status === "running") {
+                onProgress?.("running");
+            }
+
+            this.ensureLoop();
+        });
+    }
+
+    private removeSubscription(jobId: string, sub: TrackedJobSubscription) {
+        if (sub.signal && sub.onAbort) {
+            sub.signal.removeEventListener("abort", sub.onAbort);
+        }
+        const entry = this.jobs.get(jobId);
+        if (!entry) return;
+        const idx = entry.subscriptions.indexOf(sub);
+        if (idx >= 0) {
+            entry.subscriptions.splice(idx, 1);
+        }
+        if (entry.subscriptions.length === 0) {
+            this.jobs.delete(jobId);
+        }
+    }
+
+    private ensureLoop() {
+        if (this.isRunning || this.jobs.size === 0) return;
+        this.isRunning = true;
+        void this.loop();
+    }
+
+    private async loop() {
+        while (this.isRunning && this.jobs.size > 0) {
+            await this.tick();
+            if (!this.isRunning || this.jobs.size === 0) break;
+            const interval = this.hasRunningJobs ? JOB_POLL_INTERVAL_RUNNING_MS : JOB_POLL_INTERVAL_PENDING_MS;
+            await new Promise((resolve) => setTimeout(resolve, interval));
+        }
+        this.isRunning = false;
+    }
+
+    private async tick() {
+        const now = Date.now();
+
+        // 1. 检查各任务的所有订阅是否超时
+        for (const [jobId, entry] of Array.from(this.jobs.entries())) {
+            const timedOutSubs: TrackedJobSubscription[] = [];
+            for (const sub of entry.subscriptions) {
+                if (sub.deadlineMs !== undefined && now >= sub.deadlineMs) {
+                    timedOutSubs.push(sub);
+                }
+            }
+            for (const sub of timedOutSubs) {
+                this.removeSubscription(jobId, sub);
+                sub.reject(new ComfyuiTimeoutError(Math.max(0, (sub.deadlineMs || now) - sub.startedAt), jobId));
+            }
+        }
+        if (this.jobs.size === 0) return;
+
+        // 2. 尝试批量单次请求 /queue
+        const anyToken = Array.from(this.jobs.values()).find((e) => e.token)?.token;
+        const headers: Record<string, string> = {};
+        if (anyToken) headers.Authorization = `Bearer ${anyToken}`;
+
+        let queueData: { queue_running?: unknown[]; queue_pending?: unknown[] } | null = null;
+        let fallbackToHistory = false;
+
+        try {
+            const queueRes = await comfyuiFetch(`${this.baseUrl}/queue`, { headers }, this.baseUrl);
+            if (queueRes.ok) {
+                queueData = (await queueRes.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
+                this.consecutiveNetworkErrors = 0;
+            } else {
+                fallbackToHistory = true;
+            }
+        } catch (error) {
+            if (error instanceof ComfyuiNetworkError) {
+                this.consecutiveNetworkErrors++;
+                if (this.consecutiveNetworkErrors <= MAX_POLL_NETWORK_RETRIES) {
+                    for (const entry of this.jobs.values()) {
+                        for (const sub of entry.subscriptions) {
+                            sub.onProgress?.("network_retry", {
+                                retryCount: this.consecutiveNetworkErrors,
+                                maxRetries: MAX_POLL_NETWORK_RETRIES,
+                                baseUrl: this.baseUrl,
+                                message: `服务连接中断，正在重试 (${this.consecutiveNetworkErrors}/${MAX_POLL_NETWORK_RETRIES})...`,
+                            });
+                        }
+                    }
+                    return;
+                }
+                const entries = Array.from(this.jobs.values());
+                this.jobs.clear();
+                for (const entry of entries) {
+                    for (const sub of entry.subscriptions) {
+                        if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
+                        sub.reject(new ComfyuiNetworkError(this.baseUrl, entry.jobId, error));
+                    }
+                }
+                return;
+            }
+            throw error;
+        }
+
+        if (fallbackToHistory || !queueData) {
+            await this.checkHistoryForEntries(Array.from(this.jobs.values()));
+            return;
+        }
+
+        // 3. 解析 /queue 列表
+        const pendingList = Array.isArray(queueData.queue_pending) ? queueData.queue_pending : [];
+        const runningList = Array.isArray(queueData.queue_running) ? queueData.queue_running : [];
+
+        const pendingMap = new Map<string, number>();
+        pendingList.forEach((item, index) => {
+            if (Array.isArray(item) && item[1]) {
+                pendingMap.set(String(item[1]), index + 1);
+            }
+        });
+
+        const runningSet = new Set<string>();
+        runningList.forEach((item) => {
+            if (Array.isArray(item) && item[1]) {
+                runningSet.add(String(item[1]));
+            }
+        });
+
+        this.hasRunningJobs = runningSet.size > 0;
+
+        const entriesToCheckHistory: TrackedJobEntry[] = [];
+
+        for (const [jobId, entry] of Array.from(this.jobs.entries())) {
+            if (pendingMap.has(jobId)) {
+                entry.seenInQueue = true;
+                entry.unseenTicks = 0;
+                const pos = pendingMap.get(jobId)!;
+                entry.status = "pending";
+                entry.queuePosition = pos;
+                for (const sub of entry.subscriptions) {
+                    sub.onProgress?.("pending", { queuePosition: pos });
+                }
+            } else if (runningSet.has(jobId)) {
+                entry.seenInQueue = true;
+                entry.unseenTicks = 0;
+                entry.status = "running";
+                entry.queuePosition = undefined;
+                for (const sub of entry.subscriptions) {
+                    sub.onProgress?.("running");
+                }
+            } else {
+                entry.unseenTicks++;
+                entriesToCheckHistory.push(entry);
+            }
+        }
+
+        if (entriesToCheckHistory.length > 0) {
+            await this.checkHistoryForEntries(entriesToCheckHistory);
+        }
+    }
+
+    private async checkHistoryForEntries(entries: TrackedJobEntry[]) {
+        for (const entry of entries) {
+            if (!this.jobs.has(entry.jobId)) continue;
+            const headers: Record<string, string> = {};
+            if (entry.token) headers.Authorization = `Bearer ${entry.token}`;
+
+            try {
+                const res = await comfyuiFetch(`${this.baseUrl}/history/${entry.jobId}`, { headers }, this.baseUrl);
+                if (!res.ok) {
+                    throw new ComfyuiApiError(`Failed to poll ComfyUI history: ${res.status}`, res.status);
+                }
+                const data = (await res.json()) as Record<string, ComfyuiJobResponse>;
+                const jobEntry = data?.[entry.jobId];
+
+                if (jobEntry) {
+                    this.jobs.delete(entry.jobId);
+                    if (isComfyuiJobInterrupted(jobEntry)) {
+                        for (const sub of entry.subscriptions) {
+                            if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
+                            sub.reject(new ComfyuiJobCancelledError(entry.jobId));
+                        }
+                        continue;
+                    }
+                    const statusStr = jobEntry.status?.status_str;
+                    if (statusStr === "error") {
+                        const msg = Array.isArray(jobEntry.status?.messages) ? JSON.stringify(jobEntry.status?.messages) : statusStr;
+                        for (const sub of entry.subscriptions) {
+                            if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
+                            sub.reject(new ComfyuiJobError(`ComfyUI 执行失败: ${msg}`, statusStr));
+                        }
+                        continue;
+                    }
+                    const outputs = extractOutputsFromComfyuiJob(jobEntry);
+                    if (statusStr === "success" || jobEntry.status?.completed || outputs.length > 0) {
+                        for (const sub of entry.subscriptions) {
+                            if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
+                            sub.resolve({ outputs, job: jobEntry });
+                        }
+                        continue;
+                    }
+                } else {
+                    const isLost = entry.seenInQueue ? entry.unseenTicks >= 2 : entry.unseenTicks >= 3;
+                    if (isLost) {
+                        this.jobs.delete(entry.jobId);
+                        for (const sub of entry.subscriptions) {
+                            if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
+                            sub.reject(new ComfyuiJobLostError(entry.jobId));
+                        }
+                    }
+                }
+            } catch (error) {
+                if (error instanceof ComfyuiNetworkError) {
+                    continue;
+                }
+                this.jobs.delete(entry.jobId);
+                for (const sub of entry.subscriptions) {
+                    if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
+                    sub.reject(error);
+                }
+            }
+        }
+    }
+
+    clear() {
+        this.isRunning = false;
+        this.hasRunningJobs = false;
+        this.consecutiveNetworkErrors = 0;
+        for (const entry of this.jobs.values()) {
+            for (const sub of entry.subscriptions) {
+                if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
+            }
+        }
+        this.jobs.clear();
+    }
+}
+
+const batchPollers = new Map<string, ComfyuiJobBatchPoller>();
+
+export function getBatchPoller(baseUrl: string): ComfyuiJobBatchPoller {
+    const normalized = normalizeBaseUrl(baseUrl);
+    let poller = batchPollers.get(normalized);
+    if (!poller) {
+        poller = new ComfyuiJobBatchPoller(normalized);
+        batchPollers.set(normalized, poller);
+    }
+    return poller;
+}
+
+export function resetComfyuiBatchPollers() {
+    for (const poller of batchPollers.values()) {
+        poller.clear();
+    }
+    batchPollers.clear();
+}
+
+export function pollJobRaw(
     jobId: string,
     baseUrl: string,
     token?: string,
@@ -1234,87 +1580,8 @@ export async function pollJobRaw(
     deadlineMs?: number,
     onProgress?: (status: string, detail?: Record<string, unknown>) => void,
 ): Promise<PollJobResult | undefined> {
-    const headers: Record<string, string> = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
-    const startedAt = Date.now();
-    let consecutiveNetworkErrors = 0;
-
-    for (;;) {
-        if (signal?.aborted) return undefined;
-        if (deadlineMs !== undefined && Date.now() >= deadlineMs) throw new ComfyuiTimeoutError(Math.max(0, deadlineMs - startedAt), jobId);
-
-        try {
-            const response = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/history/${jobId}`, { headers }, baseUrl);
-            if (!response.ok) throw new ComfyuiApiError(`Failed to poll ComfyUI history: ${response.status}`, response.status);
-            const data = (await response.json()) as Record<string, ComfyuiJobResponse>;
-
-            const jobEntry = data?.[jobId];
-            if (jobEntry) {
-                consecutiveNetworkErrors = 0;
-                if (isComfyuiJobInterrupted(jobEntry)) {
-                    throw new ComfyuiJobCancelledError(jobId);
-                }
-                const statusStr = jobEntry.status?.status_str;
-                if (statusStr === "error") {
-                    const msg = Array.isArray(jobEntry.status?.messages) ? JSON.stringify(jobEntry.status?.messages) : statusStr;
-                    throw new ComfyuiJobError(`ComfyUI 执行失败: ${msg}`, statusStr);
-                }
-
-                const outputs = extractOutputsFromComfyuiJob(jobEntry);
-                if (statusStr === "success" || jobEntry.status?.completed || outputs.length > 0) {
-                    return { outputs, job: jobEntry };
-                }
-            } else {
-                // /history 中暂无该任务，查询 /queue
-                const queueResponse = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/queue`, { headers }, baseUrl);
-                if (queueResponse.ok) {
-                    consecutiveNetworkErrors = 0;
-                    const queueData = (await queueResponse.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
-                    const pendingList = Array.isArray(queueData.queue_pending) ? queueData.queue_pending : [];
-                    const runningList = Array.isArray(queueData.queue_running) ? queueData.queue_running : [];
-
-                    const pendingIndex = pendingList.findIndex((item) => Array.isArray(item) && String(item[1]) === jobId);
-                    const isRunning = runningList.some((item) => Array.isArray(item) && String(item[1]) === jobId);
-
-                    if (pendingIndex >= 0) {
-                        onProgress?.("pending", { queuePosition: pendingIndex + 1 });
-                    } else if (isRunning) {
-                        onProgress?.("running");
-                    } else {
-                        // 防竞态二次核实
-                        const recheckResponse = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/history/${jobId}`, { headers }, baseUrl);
-                        if (recheckResponse.ok) {
-                            const recheckData = (await recheckResponse.json()) as Record<string, ComfyuiJobResponse>;
-                            if (recheckData?.[jobId]) {
-                                continue; // 任务已进入 history，下一次循环提取
-                            }
-                        }
-                        if (signal?.aborted) return undefined;
-                        throw new ComfyuiJobLostError(jobId);
-                    }
-                }
-            }
-        } catch (error) {
-            if (signal?.aborted) return undefined;
-            if (error instanceof ComfyuiNetworkError) {
-                consecutiveNetworkErrors++;
-                if (consecutiveNetworkErrors <= MAX_POLL_NETWORK_RETRIES) {
-                    onProgress?.("network_retry", {
-                        retryCount: consecutiveNetworkErrors,
-                        maxRetries: MAX_POLL_NETWORK_RETRIES,
-                        baseUrl,
-                        message: `服务连接中断，正在重试 (${consecutiveNetworkErrors}/${MAX_POLL_NETWORK_RETRIES})...`,
-                    });
-                    await new Promise((resolve) => setTimeout(resolve, JOB_POLL_INTERVAL_MS));
-                    continue;
-                }
-                throw new ComfyuiNetworkError(baseUrl, jobId, error);
-            }
-            throw error;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, JOB_POLL_INTERVAL_MS));
-    }
+    const poller = getBatchPoller(baseUrl);
+    return poller.poll(jobId, token, signal, deadlineMs, onProgress);
 }
 
 /**

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n from "@/i18n";
-import { adaptWorkflowModelPaths, applyBindings, cancelJob, collectVideoAssetIds, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobCancelledError, ComfyuiJobError, ComfyuiJobLostError, ComfyuiJobNotFoundError, ComfyuiNetworkError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollComfyuiVideoJob, pollJob, pollJobRaw, queryComfyuiJobStatus, requestComfyuiImage, submitComfyuiVideoJob, submitJob, validateComfyuiWorkflow } from "@/services/api/comfyui";
+import { adaptWorkflowModelPaths, applyBindings, cancelJob, collectVideoAssetIds, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobCancelledError, ComfyuiJobError, ComfyuiJobLostError, ComfyuiJobNotFoundError, ComfyuiNetworkError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollComfyuiVideoJob, pollJob, pollJobRaw, queryComfyuiJobStatus, requestComfyuiImage, resetComfyuiBatchPollers, submitComfyuiVideoJob, submitJob, validateComfyuiWorkflow } from "@/services/api/comfyui";
 import type { ComfyuiWorkflowJson } from "@/services/api/comfyui";
 import { defaultConfig, findWorkflow, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { DEFAULT_BUILTIN_COMFYUI_DEPTH_VIDEO_WORKFLOW, DEFAULT_BUILTIN_COMFYUI_FACE_REFINE_WORKFLOW, DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW } from "@/services/api/comfyui-default-workflows";
@@ -255,20 +255,20 @@ describe("pollJob", () => {
     });
 
     afterEach(() => {
+        resetComfyuiBatchPollers();
         vi.useRealTimers();
         vi.unstubAllGlobals();
     });
 
     it("polls immediately, waits 2s between rounds, and resolves with the image asset ids when the job completes", async () => {
         vi.useFakeTimers();
-        let historyCalls = 0;
+        let rounds = 0;
         fetchMock.mockImplementation(async (url: string) => {
             if (url.includes("/queue")) {
-                return { ok: true, status: 200, json: async () => ({ queue_running: [[0, "job_1"]], queue_pending: [] }) };
+                rounds += 1;
+                return { ok: true, status: 200, json: async () => ({ queue_running: rounds === 1 ? [[0, "job_1"]] : [], queue_pending: [] }) };
             }
             if (url.includes("/history/job_1")) {
-                historyCalls += 1;
-                if (historyCalls === 1) return { ok: true, status: 200, json: async () => ({}) };
                 return {
                     ok: true,
                     status: 200,
@@ -285,9 +285,9 @@ describe("pollJob", () => {
             return { ok: true, status: 200, json: async () => ({}) };
         });
         const result = pollJob("job_1", "http://10.7.8.12:8188", "tok");
-        expect(fetchMock).toHaveBeenCalledTimes(2); // history + queue
+        expect(fetchMock).toHaveBeenCalled();
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
-        expect(url).toBe("http://10.7.8.12:8188/history/job_1");
+        expect(url).toBe("http://10.7.8.12:8188/queue");
         expect(init.headers.Authorization).toBe("Bearer tok");
         await vi.advanceTimersByTimeAsync(2000);
         await expect(result).resolves.toEqual(["/api/view?filename=asset_1.png&type=output&subfolder=", "/api/view?filename=asset_2.png&type=output&subfolder="]);
@@ -328,40 +328,77 @@ describe("pollJob", () => {
             }
             return { ok: true, status: 200, json: async () => ({}) };
         });
-        const error: unknown = await pollJob("job_1", "http://10.7.8.12:8188").catch((reason) => reason);
+        const promise = pollJob("job_1", "http://10.7.8.12:8188");
+        // 推进让其超过未在 queue 出现的宽限轮次
+        await vi.advanceTimersByTimeAsync(8000);
+        const error: unknown = await promise.catch((reason) => reason);
         expect(error).toBeInstanceOf(ComfyuiJobLostError);
         expect((error as ComfyuiJobLostError).jobId).toBe("job_1");
     });
 
-    it("keeps polling every 2 seconds until the job completes while in queue", async () => {
+    it("keeps polling until the job completes while in queue", async () => {
         vi.useFakeTimers();
-        let historyPolls = 0;
+        let queueCalls = 0;
         const onProgress = vi.fn();
         fetchMock.mockImplementation(async (url: string) => {
             if (url.includes("/queue")) {
+                queueCalls += 1;
                 return {
                     ok: true,
                     status: 200,
                     json: async () => ({
                         queue_running: [],
-                        queue_pending: [[1, "job_1"]],
+                        queue_pending: queueCalls < 2 ? [[1, "job_1"]] : [],
                     }),
                 };
             }
             if (url.includes("/history/job_1")) {
-                historyPolls += 1;
                 return {
                     ok: true,
                     status: 200,
-                    json: async () => (historyPolls < 3 ? {} : { job_1: { status: { completed: true }, outputs: {} } }),
+                    json: async () => ({ job_1: { status: { completed: true }, outputs: {} } }),
                 };
             }
             return { ok: true, status: 200, json: async () => ({}) };
         });
         const result = pollJob("job_1", "http://10.7.8.12:8188", undefined, undefined, undefined, undefined, onProgress);
+        await vi.advanceTimersByTimeAsync(100);
         expect(onProgress).toHaveBeenCalledWith("pending", { queuePosition: 1 });
         await vi.advanceTimersByTimeAsync(4000);
         await expect(result).resolves.toEqual([]);
+    });
+
+    it("batches multiple concurrent jobs into a single /queue request and dispatches progress", async () => {
+        vi.useFakeTimers();
+        let queueHits = 0;
+        const progress1 = vi.fn();
+        const progress2 = vi.fn();
+
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/queue")) {
+                queueHits++;
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        queue_running: [[0, "job_run"]],
+                        queue_pending: [[1, "job_pend"]],
+                    }),
+                };
+            }
+            if (url.includes("/history/job_run")) {
+                return { ok: true, status: 200, json: async () => ({ job_run: { status: { completed: true }, outputs: {} } }) };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+
+        pollJob("job_run", "http://10.7.8.12:8188", undefined, undefined, undefined, undefined, progress1);
+        pollJob("job_pend", "http://10.7.8.12:8188", undefined, undefined, undefined, undefined, progress2);
+
+        await vi.advanceTimersByTimeAsync(50);
+        expect(queueHits).toBe(1);
+        expect(progress1).toHaveBeenCalledWith("running");
+        expect(progress2).toHaveBeenCalledWith("pending", { queuePosition: 1 });
     });
 
     it("resolves undefined without throwing when the signal is aborted", async () => {
@@ -769,6 +806,7 @@ describe("requestComfyuiImage", () => {
     });
 
     afterEach(() => {
+        resetComfyuiBatchPollers();
         vi.useRealTimers();
         vi.unstubAllGlobals();
     });
@@ -812,13 +850,14 @@ describe("requestComfyuiImage", () => {
         expect((interruptCall?.[1] as RequestInit).method).toBe("POST");
     });
 
-    it("throws ComfyuiTimeoutError after the 2 hour deadline without calling the cancel endpoint", async () => {
+    it("throws ComfyuiTimeoutError after the 18 hour deadline without calling the cancel endpoint", async () => {
         vi.useFakeTimers();
         fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = String(input);
             const method = init?.method || "GET";
             if (method === "POST" && url.endsWith("/prompt")) return { ok: true, status: 200, json: async () => ({ prompt_id: "job_1" }) };
             if (method === "GET" && url.endsWith("/history/job_1")) return { ok: true, status: 200, json: async () => ({}) };
+            if (method === "GET" && url.endsWith("/queue")) return { ok: true, status: 200, json: async () => ({ queue_running: [], queue_pending: [[0, "job_1"]] }) };
             return { ok: false, status: 500, json: async () => ({}) };
         });
         let resolveSubmitted: () => void = () => undefined;
@@ -836,9 +875,9 @@ describe("requestComfyuiImage", () => {
         // Attach the rejection handler before the clock advances so the rejection is never unhandled.
         const settled = result.catch((reason: unknown) => reason);
         await submitted;
-        await vi.advanceTimersByTimeAsync(7_200_000);
+        await vi.advanceTimersByTimeAsync(64_800_000);
         await expect(settled).resolves.toBeInstanceOf(ComfyuiTimeoutError);
-        expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/queue") || String(url).endsWith("/interrupt"))).toBe(false);
+        expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/interrupt"))).toBe(false);
     });
 
     it("reports the timeout window in the ComfyuiTimeoutError message", async () => {
@@ -848,6 +887,7 @@ describe("requestComfyuiImage", () => {
             const method = init?.method || "GET";
             if (method === "POST" && url.endsWith("/prompt")) return { ok: true, status: 200, json: async () => ({ prompt_id: "job_1" }) };
             if (method === "GET" && url.endsWith("/history/job_1")) return { ok: true, status: 200, json: async () => ({}) };
+            if (method === "GET" && url.endsWith("/queue")) return { ok: true, status: 200, json: async () => ({ queue_running: [], queue_pending: [[0, "job_1"]] }) };
             return { ok: false, status: 500, json: async () => ({}) };
         });
         let resolveSubmitted: () => void = () => undefined;
@@ -865,11 +905,11 @@ describe("requestComfyuiImage", () => {
         // Attach the rejection handler before the clock advances so the rejection is never unhandled.
         const settled = result.catch((reason: unknown) => reason);
         await submitted;
-        await vi.advanceTimersByTimeAsync(7_200_000);
+        await vi.advanceTimersByTimeAsync(64_800_000);
         const error: unknown = await settled;
         expect(error).toBeInstanceOf(ComfyuiTimeoutError);
-        expect(error).toMatchObject({ name: "ComfyuiTimeoutError", timeoutMs: 7_200_000 });
-        expect((error as Error).message).toMatch(/2h|7200/);
+        expect(error).toMatchObject({ name: "ComfyuiTimeoutError", timeoutMs: 64_800_000 });
+        expect((error as Error).message).toMatch(/18h|64800/);
     });
 
     it("completes the request without ever calling the cancel endpoint", async () => {
