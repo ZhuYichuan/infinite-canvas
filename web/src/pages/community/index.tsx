@@ -19,6 +19,7 @@ import {
     type ComfyWorkflowItem,
     type WorkflowCategory,
 } from "@/stores/use-config-store";
+import { useThemeStore } from "@/stores/use-theme-store";
 
 interface CommunityWorkflowItem {
     id: string;
@@ -58,6 +59,9 @@ export default function CommunityPage() {
     const { message } = App.useApp();
     const { t } = useTranslation();
     const navigate = useNavigate();
+
+    const theme = useThemeStore((state) => state.theme);
+    const isDark = theme === "dark";
 
     const [activeFilter, setActiveFilter] = useState("all");
     const [searchKeyword, setSearchKeyword] = useState("");
@@ -150,20 +154,44 @@ export default function CommunityPage() {
                     <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         {/* 模态分类胶囊 */}
                         <div className="hide-scrollbar flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                            {MODALITY_FILTERS.map((f) => (
-                                <button
-                                    key={f.key}
-                                    type="button"
-                                    onClick={() => setActiveFilter(f.key)}
-                                    className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                                        activeFilter === f.key
-                                            ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
-                                            : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
-                                    }`}
-                                >
-                                    {f.label}
-                                </button>
-                            ))}
+                            {MODALITY_FILTERS.map((f) => {
+                                const active = activeFilter === f.key;
+                                return (
+                                    <button
+                                        key={f.key}
+                                        type="button"
+                                        onClick={() => setActiveFilter(f.key)}
+                                        className={`rounded-full px-3.5 py-1 text-xs font-medium transition cursor-pointer select-none shrink-0 ${
+                                            active
+                                                ? isDark
+                                                    ? "bg-white text-stone-950 font-semibold shadow-xs"
+                                                    : "bg-stone-900 text-white font-semibold shadow-xs"
+                                                : isDark
+                                                    ? "bg-stone-800/80 text-stone-400 hover:bg-stone-700 hover:text-stone-200"
+                                                    : "bg-stone-100 text-stone-600 hover:bg-stone-200/80 hover:text-stone-900"
+                                        }`}
+                                        style={
+                                            active
+                                                ? isDark
+                                                    ? { backgroundColor: "#ffffff", color: "#0c0a09" }
+                                                    : { backgroundColor: "#1c1917", color: "#ffffff" }
+                                                : undefined
+                                        }
+                                    >
+                                        <span
+                                            style={
+                                                active
+                                                    ? isDark
+                                                        ? { color: "#0c0a09" }
+                                                        : { color: "#ffffff" }
+                                                    : undefined
+                                            }
+                                        >
+                                            {f.label}
+                                        </span>
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {/* 搜索框 */}
