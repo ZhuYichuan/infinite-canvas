@@ -7,6 +7,17 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Community & Workflow Adaptation Studio (开源社区与工作流转换工坊):
+  - **Navigation & Routing Entry**: 点击顶部主导航栏的「开源社区」进入 `/community` 社区中心，点击「进入工作流适配工坊」进入 `/community/studio`。
+  - **Community Workflow Marketplace (社区市场)**:
+    - 验证 9 大模态胶囊筛选（全部模态、文生图、图生图、局部重绘、全能视频、首尾帧视频、音乐音频、人脸精修、深度视频）与名称/作者关键词实时搜索过滤；
+    - 点击「一键安装到画布」，验证工作流成功写入本地 `useConfigStore`，按钮变为「已安装」，且在画布对应模态节点和工作流中心即时可用。
+  - **Workflow Adaptation Studio (工作流转换工坊)**:
+    - **全格式文件拖拽导入**: 拖拽或上传外部 ComfyUI API JSON、带 `nodes`/`links` 的 UI 界面流程图 JSON、以及包含工作流元数据的生成原图（PNG/WebP），验证能否正确解析并提取工作流；
+    - **模态自适应与置信度呈现**: 验证是否精准识别模态并展示置信度百分比与插槽统计（提示词、随机种子、输出节点、模型选择器数量）；
+    - **交互式流图与槽位覆盖 (Slot Override)**: 在工作台流图中点击任意节点打开抽屉，在「画布槽位指派」下拉框中将节点重设为其他槽位（如设为 `prompt`、`seed`、`first_frame` 或清除），验证流图上的徽章、类名以及顶部插槽统计是否即时同步更新；
+    - **导出与保存**: 验证「保存到我的画布」是否正常写入配置；验证「导出标准化工作流 (JSON)」是否成功下载标准 API 工作流；验证「导出社区分享包 (ZIP)」是否成功生成包含 `manifest.json`、`workflow.json` 和 `README.md` 的规范 ZIP 分发包。
+
 - ComfyUI Workflow Ingestion Adapter (ComfyUI 工作流智能接入适配器):
   - **Full-format & unlabeled workflow adaptation**: Directly upload community-exported ComfyUI API JSON or UI graph JSON (containing `nodes` and `links`) without manual node renaming in ComfyUI; verify automatic normalization into execution graphs.
   - **9 Modality DAG Topology Classification & Auto-Tagging**: Verify automatic classification and slot mapping for Text-to-Image, Image-to-Image, Inpainting, Text generation, Omni Video, Frame Video, Audio/Music, Face Refine, and Depth Video.

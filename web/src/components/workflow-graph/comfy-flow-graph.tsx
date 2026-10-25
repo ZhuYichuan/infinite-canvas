@@ -29,6 +29,7 @@ interface ComfyFlowCanvasProps {
     modelsMap?: Record<string, { loading: boolean; error?: string; items: ComfyuiModelItem[] }>;
     onModelChange?: (nodeId: string, inputKey: string, nextValue: string) => void;
     onReloadModels?: (category: string, force?: boolean) => void;
+    onSlotOverride?: (nodeId: string, slotTitle: string) => void;
     className?: string;
     isFullscreen: boolean;
     onToggleFullscreen: () => void;
@@ -39,6 +40,7 @@ function ComfyFlowCanvas({
     modelsMap,
     onModelChange,
     onReloadModels,
+    onSlotOverride,
     className = "",
     isFullscreen,
     onToggleFullscreen,
@@ -569,6 +571,7 @@ function ComfyFlowCanvas({
                 modelsMap={modelsMap}
                 onModelChange={onModelChange}
                 onReloadModels={onReloadModels}
+                onSlotOverride={onSlotOverride}
             />
         </div>
     );
@@ -579,6 +582,7 @@ export interface ComfyFlowGraphProps {
     modelsMap?: Record<string, { loading: boolean; error?: string; items: ComfyuiModelItem[] }>;
     onModelChange?: (nodeId: string, inputKey: string, nextValue: string) => void;
     onReloadModels?: (category: string, force?: boolean) => void;
+    onSlotOverride?: (nodeId: string, slotTitle: string) => void;
     className?: string;
 }
 
@@ -587,6 +591,7 @@ export function ComfyFlowGraph({
     modelsMap,
     onModelChange,
     onReloadModels,
+    onSlotOverride,
     className = "",
 }: ComfyFlowGraphProps) {
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -599,6 +604,7 @@ export function ComfyFlowGraph({
                 modelsMap={modelsMap}
                 onModelChange={onModelChange}
                 onReloadModels={onReloadModels}
+                onSlotOverride={onSlotOverride}
                 className={className}
                 isFullscreen={false}
                 onToggleFullscreen={() => setIsFullscreen(true)}
@@ -633,6 +639,7 @@ export function ComfyFlowGraph({
                         modelsMap={modelsMap}
                         onModelChange={onModelChange}
                         onReloadModels={onReloadModels}
+                        onSlotOverride={onSlotOverride}
                         className="size-full"
                         isFullscreen={true}
                         onToggleFullscreen={() => setIsFullscreen(false)}

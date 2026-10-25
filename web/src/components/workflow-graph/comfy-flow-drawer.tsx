@@ -14,7 +14,60 @@ interface ComfyFlowDrawerProps {
     modelsMap?: Record<string, { loading: boolean; error?: string; items: ComfyuiModelItem[] }>;
     onModelChange?: (nodeId: string, inputKey: string, nextValue: string) => void;
     onReloadModels?: (category: string, force?: boolean) => void;
+    onSlotOverride?: (nodeId: string, slotTitle: string) => void;
 }
+
+const COMMON_SLOT_OPTIONS = [
+    { value: "", label: "普通节点 (无保留槽位)" },
+    {
+        label: "提示词与文本输入",
+        options: [
+            { value: "prompt", label: "正向提示词 (prompt)" },
+            { value: "negative_prompt", label: "负向提示词 (negative_prompt)" },
+            { value: "text", label: "通用文本输入 (text)" },
+        ],
+    },
+    {
+        label: "采样与尺寸控制",
+        options: [
+            { value: "seed", label: "采样种子 (seed)" },
+            { value: "width", label: "画布宽度 (width)" },
+            { value: "height", label: "画布高度 (height)" },
+            { value: "duration", label: "视频时长 (duration)" },
+        ],
+    },
+    {
+        label: "参考资源与垫图",
+        options: [
+            { value: "ref_image_01", label: "参考图 01 (ref_image_01)" },
+            { value: "ref_image_02", label: "参考图 02 (ref_image_02)" },
+            { value: "ref_image_03", label: "参考图 03 (ref_image_03)" },
+            { value: "ref_mask", label: "局部重绘遮罩 (ref_mask)" },
+            { value: "first_frame", label: "视频首帧 (first_frame)" },
+            { value: "last_frame", label: "视频尾帧 (last_frame)" },
+        ],
+    },
+    {
+        label: "模型与选择器",
+        options: [
+            { value: "select_models_diffusion_models", label: "Diffusion 模型库 (select_models_diffusion_models)" },
+            { value: "select_models_checkpoints", label: "Checkpoint 大模型 (select_models_checkpoints)" },
+            { value: "select_models_unet", label: "UNet 权重库 (select_models_unet)" },
+            { value: "select_models_loras", label: "LoRA 权重库 (select_models_loras)" },
+            { value: "select_models_clip", label: "CLIP 文本编码器 (select_models_clip)" },
+            { value: "select_models_vae", label: "VAE 变分编码器 (select_models_vae)" },
+        ],
+    },
+    {
+        label: "最终生成产物输出",
+        options: [
+            { value: "output_image", label: "输出图片 (output_image)" },
+            { value: "output_video", label: "输出视频 (output_video)" },
+            { value: "output_audio", label: "输出音频 (output_audio)" },
+            { value: "output_text", label: "输出文本 (output_text)" },
+        ],
+    },
+];
 
 export function ComfyFlowDrawer({
     node,
@@ -26,6 +79,7 @@ export function ComfyFlowDrawer({
     modelsMap,
     onModelChange,
     onReloadModels,
+    onSlotOverride,
 }: ComfyFlowDrawerProps) {
     if (!node) return null;
 
@@ -85,6 +139,20 @@ export function ComfyFlowDrawer({
 
     const currentModelValue = targetModelInputKey ? String(node.inputs[targetModelInputKey] || "") : "";
 
+    const slotOptions = useMemo(() => {
+        if (!node.slotTitle) return COMMON_SLOT_OPTIONS;
+        const exists = COMMON_SLOT_OPTIONS.some((group) =>
+            "options" in group ? group.options.some((opt) => opt.value === node.slotTitle) : group.value === node.slotTitle,
+        );
+        if (!exists) {
+            return [
+                { value: node.slotTitle, label: `当前自定义标记: ${node.slotTitle}` },
+                ...COMMON_SLOT_OPTIONS,
+            ];
+        }
+        return COMMON_SLOT_OPTIONS;
+    }, [node.slotTitle]);
+
     return (
         <Drawer
             title={
@@ -132,6 +200,31 @@ export function ComfyFlowDrawer({
                         </>
                     )}
                 </div>
+
+                {/* 交互式插槽指派 (若提供了 onSlotOverride) */}
+                {onSlotOverride && (
+                    <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-3.5 space-y-2.5 dark:border-blue-900/60 dark:bg-blue-950/20">
+                        <div className="flex items-center justify-between">
+                            <span className="font-semibold text-xs text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                                <Sparkles className="size-3.5 text-blue-500" />
+                                画布槽位指派 (Slot Override)
+                            </span>
+                        </div>
+                        <div className="space-y-1">
+                            <div className="text-[11px] text-stone-500">
+                                覆盖当前节点的画布保留槽位角色：
+                            </div>
+                            <Select
+                                className="w-full"
+                                showSearch
+                                value={node.slotTitle || ""}
+                                placeholder="选择分配给画布的槽位"
+                                options={slotOptions}
+                                onChange={(val) => onSlotOverride(node.id, val)}
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* 动态大模型切换 (若为 select_models_* 节点) */}
                 {isModelSelector && targetModelInputKey && (
