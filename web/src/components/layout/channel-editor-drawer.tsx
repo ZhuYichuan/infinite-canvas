@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ShieldAlert, Plus, Trash2, Check, RotateCcw, Upload, FileCode, CheckCircle2 } from "lucide-react";
 import { nanoid } from "nanoid";
 
-import { checkComfyuiConnection, isMixedContentHttp, notifyMixedContentBlocked, validateComfyuiWorkflow } from "@/services/api/comfyui";
+import { checkComfyuiConnection, ingestWorkflow, isMixedContentHttp, notifyMixedContentBlocked, validateComfyuiWorkflow } from "@/services/api/comfyui";
 import {
     normalizeChannelModels,
     type ComfyWorkflowItem,
@@ -96,10 +96,9 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         if (!file || !category) return;
         try {
             const text = await file.text();
-            const parsed: unknown = JSON.parse(text);
-            const validation = validateComfyuiWorkflow(parsed, category);
-            if (!validation.ok) {
-                message.error(`工作流协议校验失败: ${validation.error}`);
+            const ingested = ingestWorkflow(text, { categoryHint: category });
+            if (!ingested.ok || !ingested.workflow) {
+                message.error(`工作流适配失败: ${ingested.error || "未知原因"}`);
                 return;
             }
 
@@ -108,15 +107,16 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
             const newWorkflow: ComfyWorkflowItem = {
                 id: nanoid(),
                 name: rawName || `${category}-workflow-${existingInCat.length + 1}`,
-                category,
-                json: parsed as Record<string, unknown>,
+                category: ingested.detectedCategory || category,
+                json: ingested.workflow as Record<string, unknown>,
                 createdAt: Date.now(),
                 isBuiltin: false,
                 isDefault: existingInCat.length === 0,
             };
 
             setWorkflows([...currentWorkflows, newWorkflow]);
-            message.success(`成功添加工作流 "${newWorkflow.name}"！`);
+            const autoSlotsMsg = ingested.detectedSlots.length > 0 ? `（已自动识别并绑定 ${ingested.detectedSlots.length} 个插槽）` : "";
+            message.success(`成功添加工作流 "${newWorkflow.name}"${autoSlotsMsg}！`);
         } catch {
             message.error("解析文件失败，请确保上传的是有效的 JSON 格式工作流");
         }
