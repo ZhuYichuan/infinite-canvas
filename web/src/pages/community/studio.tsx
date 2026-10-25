@@ -1,19 +1,13 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { App, Button, Input, Select, Tag, Tooltip } from "antd";
+import { useCallback, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { App, Button, Input, Select, Tag } from "antd";
 import {
     ArrowLeft,
     CheckCircle2,
-    Download,
-    FileCode,
     FileJson,
     FolderDown,
-    HelpCircle,
     Info,
-    Layers,
-    Plus,
     RefreshCw,
-    Sparkles,
     UploadCloud,
     Workflow as WorkflowIcon,
 } from "lucide-react";
@@ -55,7 +49,6 @@ const MODALITY_OPTIONS: { value: WorkflowCategory; label: string }[] = [
 export default function CommunityStudioPage() {
     const { message } = App.useApp();
     const { t } = useTranslation();
-    const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [rawInput, setRawInput] = useState<unknown | null>(null);
@@ -122,7 +115,7 @@ export default function CommunityStudioPage() {
                 setIsParsing(false);
             }
         },
-        [handleFile, message, processInput, t],
+        [message, processInput, t],
     );
 
     // 拖拽导入监听

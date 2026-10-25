@@ -1,18 +1,13 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { App, Button, Card, Empty, Input, Tag } from "antd";
+import { Link } from "react-router-dom";
+import { App, Button, Empty, Input, Tag } from "antd";
 import {
     ArrowRight,
     Check,
     Cpu,
-    Download,
-    ExternalLink,
     FolderPlus,
-    Layers,
     Search,
-    Sparkles,
     Users,
-    Workflow as WorkflowIcon,
     Wrench,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -144,7 +139,6 @@ const MODALITY_FILTERS: { key: string; label: string }[] = [
 export default function CommunityPage() {
     const { message } = App.useApp();
     const { t } = useTranslation();
-    const navigate = useNavigate();
 
     const [activeFilter, setActiveFilter] = useState("all");
     const [searchKeyword, setSearchKeyword] = useState("");
