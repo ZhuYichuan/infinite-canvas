@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ShieldAlert, Plus, Trash2, Check, RotateCcw, Upload, FileCode, CheckCircle2 } from "lucide-react";
 import { nanoid } from "nanoid";
 
-import { checkComfyuiConnection, ingestWorkflow, isMixedContentHttp, notifyMixedContentBlocked, validateComfyuiWorkflow } from "@/services/api/comfyui";
+import { checkComfyuiConnection, formatIngestSuccessMessage, ingestWorkflow, isMixedContentHttp, notifyMixedContentBlocked, validateComfyuiWorkflow } from "@/services/api/comfyui";
 import {
     normalizeChannelModels,
     type ComfyWorkflowItem,
@@ -107,7 +107,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
             const newWorkflow: ComfyWorkflowItem = {
                 id: nanoid(),
                 name: rawName || `${category}-workflow-${existingInCat.length + 1}`,
-                category: ingested.detectedCategory || category,
+                category,
                 json: ingested.workflow as Record<string, unknown>,
                 createdAt: Date.now(),
                 isBuiltin: false,
@@ -115,8 +115,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
             };
 
             setWorkflows([...currentWorkflows, newWorkflow]);
-            const autoSlotsMsg = ingested.detectedSlots.length > 0 ? `（已自动识别并绑定 ${ingested.detectedSlots.length} 个插槽）` : "";
-            message.success(`成功添加工作流 "${newWorkflow.name}"${autoSlotsMsg}！`);
+            message.success(formatIngestSuccessMessage(`成功添加工作流 "${newWorkflow.name}"`, ingested.detectedSlots.length));
         } catch {
             message.error("解析文件失败，请确保上传的是有效的 JSON 格式工作流");
         }

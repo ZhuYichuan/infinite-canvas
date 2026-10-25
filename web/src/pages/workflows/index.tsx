@@ -34,6 +34,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import {
     fetchComfyuiModels,
     findWorkflowSelectNodes,
+    formatIngestSuccessMessage,
     ingestWorkflow,
     updateWorkflowNodeInput,
     type ComfyuiModelItem,
@@ -288,8 +289,7 @@ export default function WorkflowsPage() {
                 }
                 setCurrentJson(ingested.workflow);
                 setIsDirty(true);
-                const autoSlotsMsg = ingested.detectedSlots.length > 0 ? `（已自动识别并绑定 ${ingested.detectedSlots.length} 个插槽）` : "";
-                message.success(`${t("workflowsPage.importSuccess", { name: file.name })}${autoSlotsMsg}`);
+                message.success(formatIngestSuccessMessage(t("workflowsPage.importSuccess", { name: file.name }), ingested.detectedSlots.length));
             } catch (err) {
                 message.error(err instanceof Error ? err.message : t("workflowsPage.parseJsonFailed"));
             }

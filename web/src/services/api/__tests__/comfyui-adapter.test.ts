@@ -103,10 +103,10 @@ describe("WorkflowIngestionAdapter (Candidate 1 Seam)", () => {
         expect(workflow["20"]?._meta?.title?.toLowerCase()).toBe("prompt");
         // 保存节点应被自动打标为 output_image
         expect(workflow["60"]?._meta?.title?.toLowerCase()).toBe("output_image");
-        // UNETLoader 节点应被自动挂载 select_models_diffusion_models
-        expect(workflow["10"]?._meta?.title?.toLowerCase()).toContain("select_models_diffusion_models");
+        // UNETLoader 节点应被自动挂载 select_models_diffusion_models，且严格以 select_models_ 开头以适配 findWorkflowSelectNodes
+        expect(workflow["10"]?._meta?.title).toBe("select_models_diffusion_models");
         // CLIPLoader 节点应被自动挂载 select_models_clip
-        expect(workflow["11"]?._meta?.title?.toLowerCase()).toContain("select_models_clip");
+        expect(workflow["11"]?._meta?.title).toBe("select_models_clip");
     });
 
     // 3. UI 流程图格式 JSON（包含 nodes 和 links）自动编译为 API 格式并适配
@@ -242,8 +242,8 @@ describe("WorkflowIngestionAdapter (Candidate 1 Seam)", () => {
         const maskNodeEntry = Object.entries(wf).find(([_, n]) => n._meta?.title?.toLowerCase() === "ref_mask");
         expect(maskNodeEntry).toBeDefined();
         const [maskNodeId] = maskNodeEntry!;
-        // 下游 InpaintModelConditioning 的 mask 连线应已被重写为指向新分流出的 ref_mask 节点
-        expect(wf["3"]?.inputs?.mask).toEqual([maskNodeId, 0]);
+        // 下游 InpaintModelConditioning 的 mask 连线应已被重写为指向新分流出的 ref_mask 节点（pin 1 为 MASK 单通道掩码输出）
+        expect(wf["3"]?.inputs?.mask).toEqual([maskNodeId, 1]);
     });
 
     // 6. 首尾帧视频 (Frame Video)：自动识别并按时序分配 first_frame / last_frame
@@ -398,7 +398,86 @@ describe("WorkflowIngestionAdapter (Candidate 1 Seam)", () => {
         expect(wf["5"]?._meta?.title?.toLowerCase()).toBe("output_video");
     });
 
-    // 10. 异常输入校验 (Fail-loud)
+    // 10. 文本与大语言模型工作流 (LLM / VLM)
+    it("auto-detects local LLM text workflow and maps prompt and output_text", () => {
+        const textWf: ComfyuiWorkflowJson = {
+            "1": {
+                class_type: "PrimitiveStringMultiline",
+                inputs: { value: "expand this prompt into cinematic detail" },
+                _meta: { title: "Instruction" },
+            },
+            "2": {
+                class_type: "KkLLMNode",
+                inputs: { prompt: ["1", 0], model: "qwen3.5-4b" },
+                _meta: { title: "Qwen LLM" },
+            },
+            "3": {
+                class_type: "SaveText",
+                inputs: { text: ["2", 0] },
+                _meta: { title: "Save Text Output" },
+            },
+        };
+
+        const result = ingestWorkflow(textWf);
+        expect(result.ok).toBe(true);
+        expect(result.detectedCategory).toBe("text");
+        const wf = result.workflow as Record<string, { _meta?: { title?: string } }>;
+        expect(wf["1"]?._meta?.title?.toLowerCase()).toBe("prompt");
+        expect(wf["3"]?._meta?.title?.toLowerCase()).toBe("output_text");
+    });
+
+    // 11. 全能参考视频 (Omni Video)：多模态参考图片、参考视频与参考音频分组归集
+    it("auto-detects omni video and sequences multimodal reference pools", () => {
+        const omniWf: ComfyuiWorkflowJson = {
+            "1": {
+                class_type: "LoadImage",
+                inputs: { image: "character_ref.png" },
+                _meta: { title: "Character Ref" },
+            },
+            "2": {
+                class_type: "VHS_LoadVideo",
+                inputs: { video: "motion_ref.mp4" },
+                _meta: { title: "Motion Video Ref" },
+            },
+            "3": {
+                class_type: "LoadAudio",
+                inputs: { audio: "bgm_ref.mp3" },
+                _meta: { title: "Voice Audio Ref" },
+            },
+            "4": {
+                class_type: "CLIPTextEncode",
+                inputs: { text: "epic battle scene with cinematic lighting" },
+                _meta: { title: "Prompt" },
+            },
+            "5": {
+                class_type: "GetVideoComponents",
+                inputs: {
+                    image: ["1", 0],
+                    video: ["2", 0],
+                    audio: ["3", 0],
+                    prompt: ["4", 0],
+                },
+                _meta: { title: "MiniMax H3 Omni" },
+            },
+            "6": {
+                class_type: "VHS_VideoCombine",
+                inputs: { images: ["5", 0] },
+                _meta: { title: "Render Video" },
+            },
+        };
+
+        const result = ingestWorkflow(omniWf);
+        expect(result.ok).toBe(true);
+        expect(result.detectedCategory).toBe("omniVideo");
+        const wf = result.workflow as Record<string, { _meta?: { title?: string } }>;
+        expect(wf["1"]?._meta?.title?.toLowerCase()).toBe("ref_image_01");
+        expect(wf["2"]?._meta?.title?.toLowerCase()).toBe("ref_video_01");
+        expect(wf["3"]?._meta?.title?.toLowerCase()).toBe("ref_audio_01");
+        expect(wf["4"]?._meta?.title?.toLowerCase()).toBe("prompt");
+        expect(wf["6"]?._meta?.title?.toLowerCase()).toBe("output_video");
+    });
+
+    // 12. 异常输入校验 (Fail-loud)
     it("fails loud on invalid or empty JSON", () => {
         expect(ingestWorkflow("not a json").ok).toBe(false);
         expect(ingestWorkflow(null).ok).toBe(false);

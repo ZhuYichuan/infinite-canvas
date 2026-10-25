@@ -3,7 +3,6 @@ import { validateComfyuiWorkflow, type ComfyuiWorkflowJson } from "./comfyui";
 
 export interface IngestOptions {
     categoryHint?: WorkflowCategory;
-    autoFixAmbiguities?: boolean;
 }
 
 export interface DetectedSlotInfo {
@@ -41,6 +40,22 @@ const RESERVED_SLOT_REGEX =
 function isStandardSlot(title?: string): boolean {
     if (!title) return false;
     return RESERVED_SLOT_REGEX.test(title.trim().toLowerCase());
+}
+
+const MODEL_LOADER_PATTERNS: Array<{ pattern: RegExp; category: string }> = [
+    { pattern: /(unet|diffusionmodel|fluxmodel)/i, category: "diffusion_models" },
+    { pattern: /(cliploader|dualcliploader|textencoder)/i, category: "clip" },
+    { pattern: /checkpointloader/i, category: "checkpoints" },
+    { pattern: /vaeloader/i, category: "vae" },
+    { pattern: /loraloader/i, category: "loras" },
+    { pattern: /controlnetloader/i, category: "controlnet" },
+];
+
+/**
+ * 格式化工作流适配成功通知文案
+ */
+export function formatIngestSuccessMessage(baseMessage: string, slotCount: number): string {
+    return slotCount > 0 ? `${baseMessage}（已自动识别并绑定 ${slotCount} 个插槽）` : baseMessage;
 }
 
 /**
@@ -138,6 +153,58 @@ function extractExistingSlots(workflow: ComfyuiWorkflowJson): DetectedSlotInfo[]
 }
 
 /**
+ * 逆向回溯 Conditioning DAG 查找正向文本节点
+ */
+function tracePositivePromptNode(adapted: Record<string, NodeRecord>, samplerNodeId?: string): string | undefined {
+    if (!samplerNodeId || !adapted[samplerNodeId]?.inputs?.positive) return undefined;
+
+    let currentId: string | undefined = String((adapted[samplerNodeId].inputs!.positive as [string, number])[0]);
+    const visited = new Set<string>();
+
+    while (currentId && adapted[currentId] && !visited.has(currentId)) {
+        visited.add(currentId);
+        const currentNode = adapted[currentId];
+        const cls = (currentNode.class_type || "").toLowerCase();
+
+        if (cls.includes("cliptextencode") || cls.includes("textencode") || cls.includes("primitivestring")) {
+            if (Array.isArray(currentNode.inputs?.text) && adapted[String(currentNode.inputs.text[0])]) {
+                return String(currentNode.inputs.text[0]);
+            }
+            return currentId;
+        }
+
+        if (Array.isArray(currentNode.inputs?.positive)) {
+            currentId = String(currentNode.inputs.positive[0]);
+        } else if (Array.isArray(currentNode.inputs?.conditioning)) {
+            currentId = String(currentNode.inputs.conditioning[0]);
+        } else {
+            break;
+        }
+    }
+    return undefined;
+}
+
+/**
+ * 自动为模型 Loader 挂载 select_models_* 标签，严格适配 findWorkflowSelectNodes 契约
+ */
+function injectModelSelectors(adapted: Record<string, NodeRecord>, detectedSlots: DetectedSlotInfo[]) {
+    for (const [nodeId, node] of Object.entries(adapted)) {
+        const cls = (node.class_type || "").toLowerCase();
+        for (const item of MODEL_LOADER_PATTERNS) {
+            if (item.pattern.test(cls)) {
+                const currentTitle = node._meta?.title || "";
+                if (!currentTitle.toLowerCase().startsWith("select_models_") && !currentTitle.toLowerCase().startsWith("select_")) {
+                    const tag = `select_models_${item.category}`;
+                    node._meta = { ...node._meta, title: tag };
+                    detectedSlots.push({ slot: tag, nodeId, confidence: 0.95 });
+                }
+                break;
+            }
+        }
+    }
+}
+
+/**
  * 工作流智能摄取与自适应适配引擎 (Workflow Ingestion Adapter)
  * 对外暴露单一高杠杆接口，自动完成格式标准化、拓扑推断、插槽自动补全与模型挂载。
  */
@@ -229,7 +296,6 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
         const cls = (node.class_type || "").toLowerCase();
         const title = (node._meta?.title || "").toLowerCase();
 
-        // 识别输入节点
         if (cls.includes("loadimage") || cls === "imageload") {
             imageLoaders.push(nodeId);
         } else if (cls.includes("loadvideo") || cls.includes("getvideocomponents")) {
@@ -238,7 +304,6 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
             audioLoaders.push(nodeId);
         }
 
-        // 识别输出节点
         if (cls === "saveimage" || cls === "previewimage" || title.includes("output_image")) {
             imageOutputId = nodeId;
         } else if (cls === "vhs_videocombine" || cls === "savevideo" || title.includes("output_video")) {
@@ -249,7 +314,6 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
             textOutputId = nodeId;
         }
 
-        // 识别特征算子
         if (cls.includes("videodepthanything") || cls.includes("depthanything") || cls.includes("depthcrafter") || cls.includes("marigold")) {
             hasDepthNode = true;
         }
@@ -328,9 +392,6 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
     if (detectedCategory === "t2i" || detectedCategory === "i2i" || detectedCategory === "inpaint") {
         if (imageOutputId) {
             const outNode = adapted[imageOutputId];
-            if (outNode.class_type === "PreviewImage") {
-                outNode.class_type = "SaveImage";
-            }
             outNode._meta = { ...outNode._meta, title: "output_image" };
             detectedSlots.push({ slot: "output_image", nodeId: imageOutputId, confidence: 0.98 });
         }
@@ -378,41 +439,8 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
                 }
             }
         } else {
-            let positiveNodeId: string | undefined;
+            let positiveNodeId = tracePositivePromptNode(adapted, samplerNodeId);
 
-            // 从 sampler 逆向回溯 positive 连线
-            if (samplerNodeId && adapted[samplerNodeId]?.inputs?.positive) {
-                let currentId: string | undefined = String((adapted[samplerNodeId].inputs!.positive as [string, number])[0]);
-                const visited = new Set<string>();
-
-                while (currentId && adapted[currentId] && !visited.has(currentId)) {
-                    visited.add(currentId);
-                    const currentNode: NodeRecord = adapted[currentId];
-                    const cls = (currentNode.class_type || "").toLowerCase();
-
-                    // 若是最终的文本节点
-                    if (cls.includes("cliptextencode") || cls.includes("textencode") || cls.includes("primitivestring")) {
-                        // 检查其 text 属性是否来自前置 PrimitiveString
-                        if (Array.isArray(currentNode.inputs?.text) && adapted[String(currentNode.inputs.text[0])]) {
-                            positiveNodeId = String(currentNode.inputs.text[0]);
-                        } else {
-                            positiveNodeId = currentId;
-                        }
-                        break;
-                    }
-
-                    // 若是中间 Conditioning 处理节点（如 InpaintModelConditioning, FluxGuidance 等），继续逆向深入 positive
-                    if (Array.isArray(currentNode.inputs?.positive)) {
-                        currentId = String(currentNode.inputs.positive[0]);
-                    } else if (Array.isArray(currentNode.inputs?.conditioning)) {
-                        currentId = String(currentNode.inputs.conditioning[0]);
-                    } else {
-                        break;
-                    }
-                }
-            }
-
-            // 若回溯未直接命中，搜索所有非 negative 的文本编码节点
             if (!positiveNodeId) {
                 const candidates: string[] = [];
                 for (const [nodeId, node] of Object.entries(adapted)) {
@@ -454,27 +482,48 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
                 detectedSlots.push({ slot: "seed", nodeId: seedNodeId, confidence: 0.95 });
             }
         } else if (typeof sNode.inputs?.seed === "number" || typeof sNode.inputs?.noise_seed === "number") {
-            sNode._meta = { ...sNode._meta, title: sNode._meta?.title || "seed" };
+            sNode._meta = { ...sNode._meta, title: "seed" };
             detectedSlots.push({ slot: "seed", nodeId: samplerNodeId, confidence: 0.9 });
         }
     }
 
-    // 4.4 尺寸 Width & Height 自动识别
+    // 4.4 尺寸 Width & Height 自动识别（支持已连接 Primitive 或字面量注入）
     for (const [nodeId, node] of Object.entries(adapted)) {
         const cls = (node.class_type || "").toLowerCase();
         if (cls.includes("emptylatent") || cls.includes("sd3latent") || cls.includes("fluxlatent")) {
             if (Array.isArray(node.inputs?.width) && adapted[String(node.inputs.width[0])]) {
                 adapted[String(node.inputs.width[0])]._meta = { ...adapted[String(node.inputs.width[0])]._meta, title: "width" };
                 detectedSlots.push({ slot: "width", nodeId: String(node.inputs.width[0]), confidence: 0.9 });
+            } else if (typeof node.inputs?.width === "number") {
+                const numericIds = Object.keys(adapted).map((k) => parseInt(k, 10)).filter((n) => !isNaN(n));
+                const widthId = String((numericIds.length > 0 ? Math.max(...numericIds) : 1000) + 1);
+                adapted[widthId] = {
+                    class_type: "PrimitiveInt",
+                    inputs: { value: node.inputs.width },
+                    _meta: { title: "width" },
+                };
+                node.inputs.width = [widthId, 0];
+                detectedSlots.push({ slot: "width", nodeId: widthId, confidence: 0.9 });
             }
+
             if (Array.isArray(node.inputs?.height) && adapted[String(node.inputs.height[0])]) {
                 adapted[String(node.inputs.height[0])]._meta = { ...adapted[String(node.inputs.height[0])]._meta, title: "height" };
                 detectedSlots.push({ slot: "height", nodeId: String(node.inputs.height[0]), confidence: 0.9 });
+            } else if (typeof node.inputs?.height === "number") {
+                const numericIds = Object.keys(adapted).map((k) => parseInt(k, 10)).filter((n) => !isNaN(n));
+                const heightId = String((numericIds.length > 0 ? Math.max(...numericIds) : 1000) + 1);
+                adapted[heightId] = {
+                    class_type: "PrimitiveInt",
+                    inputs: { value: node.inputs.height },
+                    _meta: { title: "height" },
+                };
+                node.inputs.height = [heightId, 0];
+                detectedSlots.push({ slot: "height", nodeId: heightId, confidence: 0.9 });
             }
         }
     }
 
-    // 4.5 局部重绘 (Inpaint) Mask AST 自动分流重构
+    // 4.5 局部重绘 (Inpaint) Mask AST 自动分流重构（严格指向 LoadImage 的 pin 1 MASK 输出）
     if (detectedCategory === "inpaint") {
         if (singleNodeMaskUsage) {
             const { origNodeId, downstreamNodeId, downstreamKey } = singleNodeMaskUsage;
@@ -491,8 +540,9 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
             };
             detectedSlots.push({ slot: "ref_mask", nodeId: newMaskId, confidence: 0.95 });
 
+            // LoadImage 的 pin 1 才是 MASK 单通道掩码张量，下游 mask 输入端口必须指向 pin 1
             if (adapted[downstreamNodeId]?.inputs) {
-                adapted[downstreamNodeId].inputs[downstreamKey] = [newMaskId, 0];
+                adapted[downstreamNodeId].inputs[downstreamKey] = [newMaskId, 1];
             }
         } else {
             if (imageLoaders.length >= 2) {
@@ -504,19 +554,44 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
         }
     }
 
-    // 4.6 首尾帧 (Frame Video) 自动识别
+    // 4.6 首尾帧 (Frame Video) 自动识别（优先检查端口引脚路由）
     if (detectedCategory === "frameVideo") {
-        if (imageLoaders.length >= 2) {
-            adapted[imageLoaders[0]]._meta = { ...adapted[imageLoaders[0]]._meta, title: "first_frame" };
-            adapted[imageLoaders[1]]._meta = { ...adapted[imageLoaders[1]]._meta, title: "last_frame" };
-            detectedSlots.push({ slot: "first_frame", nodeId: imageLoaders[0], confidence: 0.95 });
-            detectedSlots.push({ slot: "last_frame", nodeId: imageLoaders[1], confidence: 0.95 });
+        let assignedFirst = false;
+        let assignedLast = false;
+
+        if (frameConditioningNodeId && adapted[frameConditioningNodeId]?.inputs) {
+            const inputs = adapted[frameConditioningNodeId].inputs!;
+            for (const [key, val] of Object.entries(inputs)) {
+                if (Array.isArray(val) && val.length > 0) {
+                    const targetId = String(val[0]);
+                    const lk = key.toLowerCase();
+                    if ((lk.includes("first") || lk.includes("start") || lk.includes("frame1")) && adapted[targetId]) {
+                        adapted[targetId]._meta = { ...adapted[targetId]._meta, title: "first_frame" };
+                        detectedSlots.push({ slot: "first_frame", nodeId: targetId, confidence: 0.95 });
+                        assignedFirst = true;
+                    } else if ((lk.includes("last") || lk.includes("end") || lk.includes("frame2")) && adapted[targetId]) {
+                        adapted[targetId]._meta = { ...adapted[targetId]._meta, title: "last_frame" };
+                        detectedSlots.push({ slot: "last_frame", nodeId: targetId, confidence: 0.95 });
+                        assignedLast = true;
+                    }
+                }
+            }
+        }
+
+        if ((!assignedFirst || !assignedLast) && imageLoaders.length >= 2) {
+            if (!assignedFirst) {
+                adapted[imageLoaders[0]]._meta = { ...adapted[imageLoaders[0]]._meta, title: "first_frame" };
+                detectedSlots.push({ slot: "first_frame", nodeId: imageLoaders[0], confidence: 0.95 });
+            }
+            if (!assignedLast) {
+                adapted[imageLoaders[1]]._meta = { ...adapted[imageLoaders[1]]._meta, title: "last_frame" };
+                detectedSlots.push({ slot: "last_frame", nodeId: imageLoaders[1], confidence: 0.95 });
+            }
         }
     }
 
-    // 4.7 图生图与多图参考 (I2I & OmniVideo) 自动排序
+    // 4.7 图生图与多模态参考 (I2I & OmniVideo) 自动排序
     if (detectedCategory === "i2i" || detectedCategory === "omniVideo") {
-        // 对 imageLoaders 按照拓扑深度排序：连接至 VAEEncode 的优先作为主参考底图 ref_image_01
         imageLoaders.sort((a, b) => {
             const aFeedsVae = Object.values(adapted).some(
                 (n) => n.class_type === "VAEEncode" && Array.isArray(n.inputs?.pixels) && String(n.inputs.pixels[0]) === a,
@@ -538,6 +613,28 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
                 idx++;
             }
         }
+
+        if (detectedCategory === "omniVideo") {
+            let vIdx = 1;
+            for (const vidId of videoLoaders) {
+                if (!isStandardSlot(adapted[vidId]._meta?.title)) {
+                    const slotKey = `ref_video_${String(vIdx).padStart(2, "0")}`;
+                    adapted[vidId]._meta = { ...adapted[vidId]._meta, title: slotKey };
+                    detectedSlots.push({ slot: slotKey, nodeId: vidId, confidence: 0.9 });
+                    vIdx++;
+                }
+            }
+
+            let aIdx = 1;
+            for (const audId of audioLoaders) {
+                if (!isStandardSlot(adapted[audId]._meta?.title)) {
+                    const slotKey = `ref_audio_${String(aIdx).padStart(2, "0")}`;
+                    adapted[audId]._meta = { ...adapted[audId]._meta, title: slotKey };
+                    detectedSlots.push({ slot: slotKey, nodeId: audId, confidence: 0.9 });
+                    aIdx++;
+                }
+            }
+        }
     }
 
     // 4.8 视频输入识别 (Face Refine / Depth Video)
@@ -549,33 +646,7 @@ export function ingestWorkflow(rawInput: unknown, options?: IngestOptions): Inge
     }
 
     // 4.9 大模型动态挂载标签自动注入 (select_models_*)
-    for (const [nodeId, node] of Object.entries(adapted)) {
-        const cls = (node.class_type || "").toLowerCase();
-        let modelCategory: string | undefined;
-
-        if (cls.includes("unet") || cls.includes("diffusionmodel") || cls.includes("fluxmodel")) {
-            modelCategory = "diffusion_models";
-        } else if (cls.includes("cliploader") || cls.includes("dualcliploader") || cls.includes("textencoder")) {
-            modelCategory = "clip";
-        } else if (cls.includes("checkpointloader")) {
-            modelCategory = "checkpoints";
-        } else if (cls.includes("vaeloader")) {
-            modelCategory = "vae";
-        } else if (cls.includes("loraloader")) {
-            modelCategory = "loras";
-        } else if (cls.includes("controlnetloader")) {
-            modelCategory = "controlnet";
-        }
-
-        if (modelCategory) {
-            const currentTitle = node._meta?.title || "";
-            if (!currentTitle.toLowerCase().includes("select_models_")) {
-                const tag = `select_models_${modelCategory}`;
-                node._meta = { ...node._meta, title: currentTitle ? `${currentTitle} [${tag}]` : tag };
-                detectedSlots.push({ slot: tag, nodeId, confidence: 0.95 });
-            }
-        }
-    }
+    injectModelSelectors(adapted, detectedSlots);
 
     // 5. 校验适配后工作流完整性
     const finalValidation = validateComfyuiWorkflow(adapted, detectedCategory);
