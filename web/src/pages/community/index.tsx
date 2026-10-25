@@ -218,7 +218,7 @@ export default function CommunityPage() {
                                     return (
                                         <div
                                             key={item.id}
-                                            className="group flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white p-4.5 shadow-xs transition-all hover:border-stone-400 hover:shadow-md dark:border-stone-800 dark:bg-stone-900/90 dark:hover:border-stone-700"
+                                            className="group flex flex-col justify-between overflow-hidden rounded-xl border border-stone-200/90 bg-white p-4.5 shadow-xs transition-all hover:border-stone-400 hover:shadow-md dark:border-stone-800 dark:bg-stone-900/90 dark:hover:border-stone-700"
                                         >
                                             <div>
                                                 {/* 头部元信息 */}
@@ -257,26 +257,11 @@ export default function CommunityPage() {
 
                                             {/* 底部操作栏 */}
                                             <div className="mt-5 border-t border-stone-100 pt-3 dark:border-stone-800">
-                                                <div className="flex items-center justify-between text-xs text-stone-400 mb-3">
-                                                    <span>作者: {item.author}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Button
-                                                        className="flex-1"
-                                                        type={isInstalled ? "default" : "primary"}
-                                                        icon={
-                                                            isInstalled ? (
-                                                                <Check className="size-3.5 text-green-600" />
-                                                            ) : (
-                                                                <FolderPlus className="size-3.5" />
-                                                            )
-                                                        }
-                                                        onClick={() => handleInstall(item)}
-                                                    >
-                                                        {isInstalled ? t("community.installed") : t("community.installToCanvas")}
-                                                    </Button>
-                                                    <Button
-                                                        icon={<Wrench className="size-3.5" />}
+                                                <div className="flex items-center justify-between text-xs text-stone-400 mb-2.5">
+                                                    <span className="truncate mr-2">作者: {item.author}</span>
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex items-center gap-1 shrink-0 text-xs text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 transition-colors cursor-pointer"
                                                         onClick={() =>
                                                             navigate("/community/studio", {
                                                                 state: {
@@ -286,9 +271,24 @@ export default function CommunityPage() {
                                                             })
                                                         }
                                                     >
-                                                        {t("community.inspectInStudio")}
-                                                    </Button>
+                                                        <Wrench className="size-3" />
+                                                        <span>{t("community.inspectInStudio")}</span>
+                                                    </button>
                                                 </div>
+                                                <Button
+                                                    block
+                                                    type={isInstalled ? "default" : "primary"}
+                                                    icon={
+                                                        isInstalled ? (
+                                                            <Check className="size-3.5 text-green-600" />
+                                                        ) : (
+                                                            <FolderPlus className="size-3.5" />
+                                                        )
+                                                    }
+                                                    onClick={() => handleInstall(item)}
+                                                >
+                                                    {isInstalled ? t("community.installed") : t("community.installToCanvas")}
+                                                </Button>
                                             </div>
                                         </div>
                                     );
