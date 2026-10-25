@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { App, Button, Empty, Input, Tag } from "antd";
 import {
     ArrowRight,
@@ -13,16 +13,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { nanoid } from "nanoid";
 
-import {
-    DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW,
-    DEFAULT_BUILTIN_COMFYUI_DEPTH_VIDEO_WORKFLOW,
-    DEFAULT_BUILTIN_COMFYUI_FACE_REFINE_WORKFLOW,
-    DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW,
-    DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW,
-    DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW,
-    DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW,
-    DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW,
-} from "@/services/api/comfyui-default-workflows";
+import { getDefaultComfyWorkflowItems } from "@/services/api/comfyui-default-workflows";
 import {
     useConfigStore,
     type ComfyWorkflowItem,
@@ -40,89 +31,16 @@ interface CommunityWorkflowItem {
     workflowJson: Record<string, unknown>;
 }
 
-// 社区初始精选推荐工作流集合（开箱即用，纯客户端无需中心后端）
-const CURATED_COMMUNITY_WORKFLOWS: CommunityWorkflowItem[] = [
-    {
-        id: "wan2-1-speed-omni",
-        name: "Wan2.1 极速文生视频 (720P)",
-        category: "omniVideo",
-        author: "ComfyOrg & Community",
-        description: "基于 Wan2.1 蒸馏加速的超流畅 720P 电影感文生视频管线，带高动态运镜增强与自然物理惯性。",
-        tags: ["Wan2.1", "720P", "Turbo", "Cinematic"],
-        minVram: "12 GB",
-        workflowJson: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW.json,
-    },
-    {
-        id: "flux-turbo-t2i",
-        name: "FLUX.1-Dev 电影感人像写真",
-        category: "t2i",
-        author: "BlackForest & ComfyLabs",
-        description: "顶尖画质 FLUX.1 结构，带自然微距景深、皮肤毛孔写性质感与精细光影重构。",
-        tags: ["FLUX.1", "Photorealism", "Portrait"],
-        minVram: "16 GB",
-        workflowJson: DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW.json,
-    },
-    {
-        id: "qwen-image-21-multiref",
-        name: "Qwen-Image 2.1 多图参考图生图",
-        category: "i2i",
-        author: "Alibaba Tongyi Lab",
-        description: "基于 Qwen-Image 2.1 的多参考图融合管线，支持保持主体一致性并融合指定艺术画风。",
-        tags: ["Qwen-Image", "I2I", "Multi-Ref"],
-        minVram: "8 GB",
-        workflowJson: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW.json,
-    },
-    {
-        id: "minimax-h3-frame-video",
-        name: "MiniMax H3 首尾帧运镜视频",
-        category: "frameVideo",
-        author: "MiniMax & KJNodes",
-        description: "精准锁定第一帧与最后一帧，生成平滑过渡的电影机位航拍与推拉运镜。",
-        tags: ["MiniMax", "FrameVideo", "FirstLastFrame"],
-        minVram: "16 GB",
-        workflowJson: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW.json,
-    },
-    {
-        id: "inpaint-brush-magic",
-        name: "Qwen 智能涂抹重绘与局部消除",
-        category: "inpaint",
-        author: "ComfyUI LayerStyle Team",
-        description: "支持任意形状画笔遮罩的高保真局部重绘，自动保持背景边界柔和自然羽化。",
-        tags: ["Inpaint", "Mask", "Seamless"],
-        minVram: "8 GB",
-        workflowJson: DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW.json,
-    },
-    {
-        id: "minimax-music3-studio",
-        name: "MiniMax Music3 电影配乐生成",
-        category: "audio",
-        author: "MiniMax Audio Group",
-        description: "输入情感和场景文本，生成具备多乐器层次感与动态起伏的高品质立体声配乐。",
-        tags: ["Audio", "Music", "Cinematic"],
-        minVram: "8 GB",
-        workflowJson: DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW.json,
-    },
-    {
-        id: "face-refine-highres",
-        name: "人脸高清微距精修与五官增强",
-        category: "faceRefine",
-        author: "FaceDetailer Community",
-        description: "自动识别画幅内所有人脸并进行 4K 细节重采样，彻底修复远景人脸崩坏缺陷。",
-        tags: ["FaceDetailer", "HighRes", "Enhance"],
-        minVram: "10 GB",
-        workflowJson: DEFAULT_BUILTIN_COMFYUI_FACE_REFINE_WORKFLOW.json,
-    },
-    {
-        id: "depth-anything-v2-video",
-        name: "Depth Anything 空间深度视频",
-        category: "depthVideo",
-        author: "DepthLab Team",
-        description: "实时提取视频序列的相对物理深度图，适用于裸眼 3D 与空间视频二次合成。",
-        tags: ["Depth", "Spatial", "3D"],
-        minVram: "8 GB",
-        workflowJson: DEFAULT_BUILTIN_COMFYUI_DEPTH_VIDEO_WORKFLOW.json,
-    },
-];
+// 社区工作流集合：直接复用系统出厂官方内置真实工作流
+const SYSTEM_COMMUNITY_WORKFLOWS: CommunityWorkflowItem[] = getDefaultComfyWorkflowItems().map((item) => ({
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    author: "系统官方",
+    description: item.description || "无限画布出厂原生标准 ComfyUI 工作流",
+    tags: [item.category, item.isDefault ? "默认推荐" : "扩展规格", "出厂预置"],
+    workflowJson: item.json,
+}));
 
 const MODALITY_FILTERS: { key: string; label: string }[] = [
     { key: "all", label: "全部模态" },
@@ -139,6 +57,7 @@ const MODALITY_FILTERS: { key: string; label: string }[] = [
 export default function CommunityPage() {
     const { message } = App.useApp();
     const { t } = useTranslation();
+    const navigate = useNavigate();
 
     const [activeFilter, setActiveFilter] = useState("all");
     const [searchKeyword, setSearchKeyword] = useState("");
@@ -146,7 +65,7 @@ export default function CommunityPage() {
 
     // 过滤工作流列表
     const filteredWorkflows = useMemo(() => {
-        return CURATED_COMMUNITY_WORKFLOWS.filter((item) => {
+        return SYSTEM_COMMUNITY_WORKFLOWS.filter((item) => {
             if (activeFilter !== "all" && item.category !== activeFilter) {
                 return false;
             }
@@ -315,7 +234,7 @@ export default function CommunityPage() {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Button
-                                                        block
+                                                        className="flex-1"
                                                         type={isInstalled ? "default" : "primary"}
                                                         icon={
                                                             isInstalled ? (
@@ -327,6 +246,19 @@ export default function CommunityPage() {
                                                         onClick={() => handleInstall(item)}
                                                     >
                                                         {isInstalled ? t("community.installed") : t("community.installToCanvas")}
+                                                    </Button>
+                                                    <Button
+                                                        icon={<Wrench className="size-3.5" />}
+                                                        onClick={() =>
+                                                            navigate("/community/studio", {
+                                                                state: {
+                                                                    workflowJson: item.workflowJson,
+                                                                    name: item.name,
+                                                                },
+                                                            })
+                                                        }
+                                                    >
+                                                        {t("community.inspectInStudio")}
                                                     </Button>
                                                 </div>
                                             </div>

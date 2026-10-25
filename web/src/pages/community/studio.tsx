@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { App, Button, Input, Select, Tag } from "antd";
 import {
     ArrowLeft,
@@ -23,10 +23,7 @@ import {
     type WorkflowIngestionResult,
 } from "@/services/api/comfyui-adapter";
 import { extractComfyMetadataFromImage } from "@/services/api/comfyui-image-parser";
-import {
-    DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW,
-    DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW,
-} from "@/services/api/comfyui-default-workflows";
+import { getDefaultComfyWorkflowItems } from "@/services/api/comfyui-default-workflows";
 import {
     useConfigStore,
     type ComfyWorkflowItem,
@@ -86,6 +83,21 @@ export default function CommunityStudioPage() {
         },
         [message, metaName],
     );
+
+    const location = useLocation();
+
+    // 获取系统官方出厂预置的默认工作流
+    const defaultSystemSamples = useMemo(() => {
+        return getDefaultComfyWorkflowItems().filter((w) => w.isDefault);
+    }, []);
+
+    // 支持从外部（如社区市场）直接携带工作流进入工坊审查
+    useEffect(() => {
+        const state = location.state as { workflowJson?: unknown; name?: string } | null;
+        if (state?.workflowJson) {
+            processInput(state.workflowJson, state.name);
+        }
+    }, [location.state, processInput]);
 
     // 处理文件导入 (JSON 或 PNG/WebP)
     const handleFile = useCallback(
@@ -317,28 +329,21 @@ export default function CommunityStudioPage() {
                                 </Button>
                             </div>
 
-                            {/* 示例体验快捷方式 */}
-                            <div className="mt-8 border-t border-stone-200/80 pt-6 dark:border-stone-800">
+                            {/* 示例体验快捷方式：系统官方出厂预置 */}
+                            <div className="mt-8 w-full border-t border-stone-200/80 pt-6 dark:border-stone-800">
                                 <div className="text-xs font-medium text-stone-400">
-                                    {t("community.trySample")}：
+                                    {t("community.trySample")}（{defaultSystemSamples.length} 大核心模态官方出厂预置）：
                                 </div>
                                 <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
-                                    <Button
-                                        size="small"
-                                        onClick={() =>
-                                            processInput(DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW.json, "示例-文生图")
-                                        }
-                                    >
-                                        {t("community.sampleT2i")}
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        onClick={() =>
-                                            processInput(DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW.json, "示例-全能视频")
-                                        }
-                                    >
-                                        {t("community.sampleVideo")}
-                                    </Button>
+                                    {defaultSystemSamples.map((sample) => (
+                                        <Button
+                                            key={sample.id}
+                                            size="small"
+                                            onClick={() => processInput(sample.json, sample.name)}
+                                        >
+                                            {sample.name}
+                                        </Button>
+                                    ))}
                                 </div>
                             </div>
                         </div>
