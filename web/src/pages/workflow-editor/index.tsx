@@ -29,6 +29,8 @@ import {
 import {
     fetchComfyuiModels,
     findWorkflowSelectNodes,
+    formatIngestSuccessMessage,
+    ingestWorkflow,
     updateWorkflowNodeInput,
     type ComfyuiModelItem,
     type ComfyuiWorkflowJson,
@@ -226,13 +228,14 @@ export default function WorkflowEditorPage() {
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
-                const parsed = JSON.parse(event.target?.result as string);
-                if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-                    throw new Error(t("workflowEditor.invalidJson"));
+                const text = event.target?.result as string;
+                const ingested = ingestWorkflow(text, { categoryHint: sourceWorkflow?.category });
+                if (!ingested.ok || !ingested.workflow) {
+                    throw new Error(ingested.error || t("workflowEditor.parseJsonFailed"));
                 }
-                setWorkflowJson(parsed as ComfyuiWorkflowJson);
+                setWorkflowJson(ingested.workflow);
                 setIsDirty(true);
-                message.success(t("workflowEditor.importSuccess", { name: file.name }));
+                message.success(formatIngestSuccessMessage(t("workflowEditor.importSuccess", { name: file.name }), ingested.detectedSlots.length));
             } catch (err) {
                 message.error(err instanceof Error ? err.message : t("workflowEditor.parseJsonFailed"));
             }

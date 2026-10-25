@@ -34,6 +34,8 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import {
     fetchComfyuiModels,
     findWorkflowSelectNodes,
+    formatIngestSuccessMessage,
+    ingestWorkflow,
     updateWorkflowNodeInput,
     type ComfyuiModelItem,
     type ComfyuiWorkflowJson,
@@ -280,13 +282,14 @@ export default function WorkflowsPage() {
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
-                const parsed = JSON.parse(event.target?.result as string);
-                if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-                    throw new Error(t("workflowsPage.invalidJson"));
+                const text = event.target?.result as string;
+                const ingested = ingestWorkflow(text, { categoryHint: activeWorkflow?.category });
+                if (!ingested.ok || !ingested.workflow) {
+                    throw new Error(ingested.error || t("workflowsPage.parseJsonFailed"));
                 }
-                setCurrentJson(parsed as ComfyuiWorkflowJson);
+                setCurrentJson(ingested.workflow);
                 setIsDirty(true);
-                message.success(t("workflowsPage.importSuccess", { name: file.name }));
+                message.success(formatIngestSuccessMessage(t("workflowsPage.importSuccess", { name: file.name }), ingested.detectedSlots.length));
             } catch (err) {
                 message.error(err instanceof Error ? err.message : t("workflowsPage.parseJsonFailed"));
             }

@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- ComfyUI Workflow Ingestion Adapter (ComfyUI 工作流智能接入适配器):
+  - **Full-format & unlabeled workflow adaptation**: Directly upload community-exported ComfyUI API JSON or UI graph JSON (containing `nodes` and `links`) without manual node renaming in ComfyUI; verify automatic normalization into execution graphs.
+  - **9 Modality DAG Topology Classification & Auto-Tagging**: Verify automatic classification and slot mapping for Text-to-Image, Image-to-Image, Inpainting, Text generation, Omni Video, Frame Video, Audio/Music, Face Refine, and Depth Video.
+  - **Inpaint Mask Auto-Splitting**: For workflows with single-node mask pins, verify automatic injection of dedicated `ref_mask` nodes and downstream rewire.
+  - **Dynamic Model Selector Hooks**: Verify automatic injection of `select_models_*` tags on model loaders.
+
 - ComfyUI Batch Polling & 18h Timeout Verification (ComfyUI 批量轮询降压与 18 小时超时验证):
   - **多任务批量查询降压**:
     - 在画布上同时批量生成多个任务（如框选多个图片/视频节点同时点击生成）；
