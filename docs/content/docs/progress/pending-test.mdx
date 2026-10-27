@@ -15,7 +15,7 @@ The current release needs manual verification in these areas:
   - **VideoModelPicker Cascader & Clean Canvas Display (视频模型级联选择器与画布干净展示)**:
     - 验证画布视频节点不再使用扁平单选下拉框，而是使用级联选择器（第一级为「API 提供商/主机」，hover 展开第二级为对应支持的「4 款精品 FP8 模型」）；
     - 验证空视频节点在画布上不再渲染 `video_minimax_h3_omni` 等底层原始 ID，保持极简无杂质的占位图标与文案；
-    - 验证模型选择器中展示 8G / 16G 显存阶梯标签，并明确展示推荐分镜时长（3~5s / 5~8s）；
+    - 验证模型选择器与触发器保持极简干净，仅展示类型图标与纯净模型名称，不再展示显存标签与分镜时长后缀；
     - 验证视频参数浮层的时长滑块配套 `[5s, 10s, 15s]` 快捷胶囊，点击可即时切换。
   - **Host Capability Guard & Friendly Missing-Plugin Alerts (主机支持防呆与缺失插件友好提示)**:
     - 验证当主机配置中未启用目标模型时，视频模型选择器上实时展示 `⚠️ 未就绪` 警告标记；

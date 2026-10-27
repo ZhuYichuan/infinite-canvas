@@ -57,14 +57,11 @@ export function VideoModelPicker({
             children: BUILTIN_WORKFLOW_MODELS.map((model) => {
                 const isFrame = model.category === "frameVideo";
                 const isSupported = isModelSupportedByHost(channel, model.id);
-                const vramLabel = `${model.vramTier || "8GB"} 显存`;
-                const durationDesc = model.capabilityConfig.vram?.recommendedDuration.description || "";
-                const shortDuration = durationDesc.includes("3~5") ? "分镜 3~5s" : "分镜 5~8s";
 
                 return {
                     value: model.id,
                     label: (
-                        <div className="flex items-center justify-between gap-3 py-0.5 min-w-[210px]">
+                        <div className="flex items-center justify-between gap-2 py-0.5 min-w-[180px]">
                             <div className="flex items-center gap-1.5 truncate">
                                 {isFrame ? (
                                     <Sparkles className="size-3.5 shrink-0 text-purple-500" />
@@ -72,9 +69,6 @@ export function VideoModelPicker({
                                     <Film className="size-3.5 shrink-0 text-emerald-500" />
                                 )}
                                 <span className="font-medium text-xs truncate">{model.name}</span>
-                                <span className="text-[10px] bg-stone-500/10 text-stone-600 dark:text-stone-300 px-1 py-0.5 rounded font-mono shrink-0">
-                                    {vramLabel}
-                                </span>
                                 {!isSupported && (
                                     <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-medium shrink-0">
                                         <AlertTriangle className="size-3" />
@@ -82,7 +76,6 @@ export function VideoModelPicker({
                                     </span>
                                 )}
                             </div>
-                            <span className="text-[10px] text-stone-400 shrink-0">{shortDuration}</span>
                         </div>
                     ),
                     model,
@@ -126,7 +119,6 @@ export function VideoModelPicker({
                 const modelOpt = selectedOptions?.[1] as { value?: string } | undefined;
                 const profile = getModelProfile(String(modelOpt?.value)) || activeProfile;
                 const isFrame = profile.category === "frameVideo";
-                const vram = profile.vramTier ? `${profile.vramTier} 显存` : "8GB 显存";
                 const channelName = channelOpt?.rawName || activeChannel?.name || "ComfyUI";
 
                 return (
@@ -142,7 +134,6 @@ export function VideoModelPicker({
                             <Film className="size-3.5 shrink-0 text-emerald-500" />
                         )}
                         <span className="truncate font-medium">{profile.name}</span>
-                        <span className="text-[10px] opacity-60 font-mono shrink-0">{vram}</span>
                         {!isActiveSupported && (
                             <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-medium shrink-0">
                                 <AlertTriangle className="size-3" />
