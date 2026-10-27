@@ -24,11 +24,23 @@ export interface WorkflowDurationConfig {
     default: number;
 }
 
+export type VideoVramTier = "8GB" | "16GB" | "24GB" | "32GB";
+
+export interface WorkflowVramConfig {
+    tier: VideoVramTier;
+    recommendedDuration: {
+        min: number;
+        max: number;
+        description: string;
+    };
+}
+
 export interface WorkflowCapabilityConfig {
     version: 1;
     references: WorkflowReferencesConfig;
     size?: WorkflowSizeConfig;
     duration?: WorkflowDurationConfig;
+    vram?: WorkflowVramConfig;
     features?: Record<string, { supported: boolean; default?: boolean }>;
 }
 
@@ -54,6 +66,9 @@ export interface WorkflowModelProfile {
     capability: ModelCapabilityType;
     protocol: "comfyui";
     category: ModelCategoryType;
+    steps?: number;
+    precision?: "fp8" | "bf16";
+    vramTier?: VideoVramTier;
     capabilityConfig: WorkflowCapabilityConfig;
     slotMapping: Record<string, string>;
     description?: string;

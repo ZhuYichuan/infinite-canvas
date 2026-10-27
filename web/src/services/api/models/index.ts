@@ -4,19 +4,30 @@ import type {
     WorkflowCapabilityConfig,
     WorkflowModelProfile,
 } from "./types";
-import { videoMinimaxH3OmniProfile, MINIMAX_H3_SIZES } from "./video-minimax-h3-omni";
-import { videoMinimaxH3FrameProfile } from "./video-minimax-h3-frame";
+import {
+    videoMinimaxH3OmniFp8PdmdProfile,
+    videoMinimaxH3OmniFp8Profile,
+    videoMinimaxH3OmniProfile,
+    MINIMAX_H3_SIZES,
+} from "./video-minimax-h3-omni";
+import {
+    videoMinimaxH3FrameFp8PdmdProfile,
+    videoMinimaxH3FrameFp8Profile,
+    videoMinimaxH3FrameProfile,
+} from "./video-minimax-h3-frame";
 
 export * from "./types";
 export * from "./video-minimax-h3-omni";
 export * from "./video-minimax-h3-frame";
 
 /**
- * 系统内置工作流模型清单注册表
+ * 系统内置工作流模型清单注册表（全量收敛为 4 款精品 FP8 模型）
  */
 export const BUILTIN_WORKFLOW_MODELS: WorkflowModelProfile[] = [
-    videoMinimaxH3OmniProfile,
-    videoMinimaxH3FrameProfile,
+    videoMinimaxH3OmniFp8PdmdProfile,
+    videoMinimaxH3OmniFp8Profile,
+    videoMinimaxH3FrameFp8PdmdProfile,
+    videoMinimaxH3FrameFp8Profile,
 ];
 
 /**
@@ -30,18 +41,28 @@ export function getModelProfile(modelIdOrCategory?: string): WorkflowModelProfil
     const directMatch = BUILTIN_WORKFLOW_MODELS.find((m) => m.id === clean);
     if (directMatch) return directMatch;
 
-    // 2. 匹配分类别名 (omni / frame / omniVideo / frameVideo)
-    if (clean === "omniVideo" || clean === "omni" || clean.includes("omni")) {
-        return videoMinimaxH3OmniProfile;
+    // 2. 匹配历史别名
+    if (clean === "video_minimax_h3_omni") return videoMinimaxH3OmniFp8PdmdProfile;
+    if (clean === "video_minimax_h3_frame") return videoMinimaxH3FrameFp8PdmdProfile;
+
+    // 3. 匹配分类名称或简短别名
+    const lower = clean.toLowerCase();
+    if (lower === "omni" || lower === "omnivideo" || lower === "omni 4" || lower === "omni_4") {
+        return videoMinimaxH3OmniFp8PdmdProfile;
     }
-    if (clean === "frameVideo" || clean === "frame" || clean.includes("frame")) {
-        return videoMinimaxH3FrameProfile;
+    if (lower === "omni 20" || lower === "omni_20") {
+        return videoMinimaxH3OmniFp8Profile;
+    }
+    if (lower === "frame" || lower === "framevideo" || lower === "frame 4" || lower === "frame_4") {
+        return videoMinimaxH3FrameFp8PdmdProfile;
+    }
+    if (lower === "frame 20" || lower === "frame_20") {
+        return videoMinimaxH3FrameFp8Profile;
     }
 
-    // 3. 模糊匹配名称
-    const lower = clean.toLowerCase();
+    // 4. 模糊匹配已知模型的名称
     return BUILTIN_WORKFLOW_MODELS.find(
-        (m) => m.name.toLowerCase().includes(lower) || lower.includes(m.id.toLowerCase())
+        (m) => m.name.toLowerCase() === lower || m.name.toLowerCase().includes(lower)
     );
 }
 

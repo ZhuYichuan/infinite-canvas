@@ -1,111 +1,168 @@
 import { describe, expect, it } from "vitest";
 import {
+    BUILTIN_WORKFLOW_MODELS,
     dispatchComfyuiModelWorkflow,
     getModelProfile,
     listModelsByCapability,
     validateModelExecution,
+    videoMinimaxH3FrameFp8PdmdProfile,
+    videoMinimaxH3FrameFp8Profile,
     videoMinimaxH3FrameProfile,
+    videoMinimaxH3OmniFp8PdmdProfile,
+    videoMinimaxH3OmniFp8Profile,
     videoMinimaxH3OmniProfile,
     MINIMAX_H3_SIZES,
 } from "../index";
 
-describe("Workflow Model Profiles", () => {
-    it("registers video_minimax_h3_omni with correct DSL capability config", () => {
-        const profile = getModelProfile("video_minimax_h3_omni");
+describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
+    it("registers exactly 4 FP8 models and excludes BF16", () => {
+        expect(BUILTIN_WORKFLOW_MODELS.length).toBe(4);
+        expect(BUILTIN_WORKFLOW_MODELS.every((m) => m.precision === "fp8")).toBe(true);
+
+        // BF16 models should be completely purged
+        expect(getModelProfile("omni-video-minimax-h3-bf16-turbo")).toBeUndefined();
+        expect(getModelProfile("omni-video-minimax-h3-bf16-20step")).toBeUndefined();
+        expect(getModelProfile("frame-video-minimax-h3-bf16-turbo")).toBeUndefined();
+        expect(getModelProfile("frame-video-minimax-h3-bf16-20step")).toBeUndefined();
+    });
+
+    it("registers omni-video-minimax-h3-fp8-4step-pdmd with 4 steps and 8GB VRAM tier", () => {
+        const profile = getModelProfile("omni-video-minimax-h3-fp8-4step-pdmd");
         expect(profile).toBeDefined();
         expect(profile?.capability).toBe("video");
         expect(profile?.category).toBe("omniVideo");
+        expect(profile?.steps).toBe(4);
+        expect(profile?.precision).toBe("fp8");
+        expect(profile?.vramTier).toBe("8GB");
+        expect(profile?.capabilityConfig.vram?.recommendedDuration).toEqual({
+            min: 3,
+            max: 5,
+            description: "推荐 8G/16G 显存，极速分镜 3~5 秒",
+        });
         expect(profile?.capabilityConfig.references.maxImages).toBe(9);
         expect(profile?.capabilityConfig.references.maxVideos).toBe(3);
         expect(profile?.capabilityConfig.references.maxAudios).toBe(3);
         expect(profile?.capabilityConfig.size?.values).toEqual(MINIMAX_H3_SIZES);
-        expect(profile?.capabilityConfig.size?.allowCustom).toBe(false);
-        expect(profile?.capabilityConfig.duration).toEqual({
-            selection: "range",
-            min: 1,
-            max: 15,
-            step: 1,
-            tags: [5, 10, 15],
-            default: 5,
+        expect(profile?.capabilityConfig.duration?.tags).toEqual([5, 10, 15]);
+    });
+
+    it("registers omni-video-minimax-h3-fp8 with 20 steps and 16GB VRAM tier", () => {
+        const profile = getModelProfile("omni-video-minimax-h3-fp8");
+        expect(profile).toBeDefined();
+        expect(profile?.steps).toBe(20);
+        expect(profile?.precision).toBe("fp8");
+        expect(profile?.vramTier).toBe("16GB");
+        expect(profile?.capabilityConfig.vram?.recommendedDuration).toEqual({
+            min: 5,
+            max: 8,
+            description: "推荐 16G/24G 显存，标准分镜 5~8 秒",
         });
     });
 
-    it("registers video_minimax_h3_frame with strictly 2 frames quota", () => {
-        const profile = getModelProfile("video_minimax_h3_frame");
+    it("registers frame-video-minimax-h3-fp8-4step-pdmd with 4 steps and strictly 2 frames quota", () => {
+        const profile = getModelProfile("frame-video-minimax-h3-fp8-4step-pdmd");
         expect(profile).toBeDefined();
         expect(profile?.capability).toBe("video");
         expect(profile?.category).toBe("frameVideo");
+        expect(profile?.steps).toBe(4);
+        expect(profile?.precision).toBe("fp8");
+        expect(profile?.vramTier).toBe("8GB");
         expect(profile?.capabilityConfig.references.minImages).toBe(2);
         expect(profile?.capabilityConfig.references.maxImages).toBe(2);
         expect(profile?.capabilityConfig.references.maxVideos).toBe(0);
         expect(profile?.capabilityConfig.references.maxAudios).toBe(0);
-        expect(profile?.capabilityConfig.duration?.tags).toEqual([5, 10, 15]);
+        expect(profile?.capabilityConfig.vram?.recommendedDuration).toEqual({
+            min: 3,
+            max: 5,
+            description: "推荐 8G/16G 显存，极速插值 3~5 秒",
+        });
     });
 
-    it("resolves model profile by category keyword fallback", () => {
-        expect(getModelProfile("omniVideo")?.id).toBe("video_minimax_h3_omni");
-        expect(getModelProfile("frameVideo")?.id).toBe("video_minimax_h3_frame");
+    it("registers frame-video-minimax-h3-fp8 with 20 steps and 16GB VRAM tier", () => {
+        const profile = getModelProfile("frame-video-minimax-h3-fp8");
+        expect(profile).toBeDefined();
+        expect(profile?.steps).toBe(20);
+        expect(profile?.precision).toBe("fp8");
+        expect(profile?.vramTier).toBe("16GB");
+        expect(profile?.capabilityConfig.vram?.recommendedDuration).toEqual({
+            min: 5,
+            max: 8,
+            description: "推荐 16G/24G 显存，标准平滑插值 5~8 秒",
+        });
+    });
+
+    it("resolves model profile by category keyword and legacy aliases", () => {
+        expect(getModelProfile("video_minimax_h3_omni")?.id).toBe("omni-video-minimax-h3-fp8-4step-pdmd");
+        expect(getModelProfile("video_minimax_h3_frame")?.id).toBe("frame-video-minimax-h3-fp8-4step-pdmd");
+        expect(getModelProfile("omniVideo")?.id).toBe("omni-video-minimax-h3-fp8-4step-pdmd");
+        expect(getModelProfile("omni 20")?.id).toBe("omni-video-minimax-h3-fp8");
+        expect(getModelProfile("frameVideo")?.id).toBe("frame-video-minimax-h3-fp8-4step-pdmd");
+        expect(getModelProfile("frame 20")?.id).toBe("frame-video-minimax-h3-fp8");
     });
 
     it("lists models by capability", () => {
         const videoModels = listModelsByCapability("video");
-        expect(videoModels.length).toBeGreaterThanOrEqual(2);
-        expect(videoModels.some((m) => m.id === "video_minimax_h3_omni")).toBe(true);
-        expect(videoModels.some((m) => m.id === "video_minimax_h3_frame")).toBe(true);
+        expect(videoModels.length).toBe(4);
+        expect(videoModels.map((m) => m.id)).toEqual([
+            "omni-video-minimax-h3-fp8-4step-pdmd",
+            "omni-video-minimax-h3-fp8",
+            "frame-video-minimax-h3-fp8-4step-pdmd",
+            "frame-video-minimax-h3-fp8",
+        ]);
     });
 });
 
 describe("validateModelExecution (Fail-loud validation)", () => {
     it("rejects frame video when image count is not exactly 2", () => {
         expect(() =>
-            validateModelExecution(videoMinimaxH3FrameProfile, { imagesCount: 1 })
+            validateModelExecution(videoMinimaxH3FrameFp8PdmdProfile, { imagesCount: 1 })
         ).toThrow("至少需要 2 张参考图片");
 
         expect(() =>
-            validateModelExecution(videoMinimaxH3FrameProfile, { imagesCount: 3 })
+            validateModelExecution(videoMinimaxH3FrameFp8PdmdProfile, { imagesCount: 3 })
         ).toThrow("最多支持 2 张参考图片");
     });
 
     it("rejects omni video when resource limits are exceeded", () => {
         expect(() =>
-            validateModelExecution(videoMinimaxH3OmniProfile, { imagesCount: 10 })
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { imagesCount: 10 })
         ).toThrow("最多支持 9 张参考图片");
 
         expect(() =>
-            validateModelExecution(videoMinimaxH3OmniProfile, { videosCount: 4 })
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { videosCount: 4 })
         ).toThrow("最多支持 3 个参考视频");
 
         expect(() =>
-            validateModelExecution(videoMinimaxH3OmniProfile, { audiosCount: 4 })
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { audiosCount: 4 })
         ).toThrow("最多支持 3 个参考音频");
     });
 
     it("rejects sizes outside the 9 hardware-aligned tiers", () => {
         expect(() =>
-            validateModelExecution(videoMinimaxH3OmniProfile, { size: "1000x500" })
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "1000x500" })
         ).toThrow("不支持尺寸 1000x500");
 
         // Valid size should not throw
         expect(() =>
-            validateModelExecution(videoMinimaxH3OmniProfile, { size: "1280x736" })
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "1280x736" })
         ).not.toThrow();
 
         expect(() =>
-            validateModelExecution(videoMinimaxH3OmniProfile, { size: "736x1280" })
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "736x1280" })
         ).not.toThrow();
     });
 
     it("rejects duration outside the 1-15s range", () => {
         expect(() =>
-            validateModelExecution(videoMinimaxH3OmniProfile, { duration: 0 })
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { duration: 0 })
         ).toThrow("必须在 1 ~ 15 秒之间");
 
         expect(() =>
-            validateModelExecution(videoMinimaxH3OmniProfile, { duration: 16 })
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { duration: 16 })
         ).toThrow("必须在 1 ~ 15 秒之间");
 
         expect(() =>
-            validateModelExecution(videoMinimaxH3OmniProfile, { duration: 8 })
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { duration: 8 })
         ).not.toThrow();
     });
 });
@@ -136,7 +193,7 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
         };
 
         // Pass 2 reference images and 0 videos
-        const dispatched = dispatchComfyuiModelWorkflow(videoMinimaxH3OmniProfile, rawWorkflow, {
+        const dispatched = dispatchComfyuiModelWorkflow(videoMinimaxH3OmniFp8PdmdProfile, rawWorkflow, {
             prompt: "宇宙战舰对轰",
             width: 1280,
             height: 736,
@@ -173,7 +230,7 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
             "11": { inputs: { image: "last.png" }, class_type: "LoadImage", _meta: { title: "last_frame" } },
         };
 
-        const dispatched = dispatchComfyuiModelWorkflow(videoMinimaxH3FrameProfile, rawWorkflow, {
+        const dispatched = dispatchComfyuiModelWorkflow(videoMinimaxH3FrameFp8PdmdProfile, rawWorkflow, {
             prompt: "从破损空间站飞向恒星",
             firstFrameAssetId: "asset_first.png",
             lastFrameAssetId: "asset_last.png",
