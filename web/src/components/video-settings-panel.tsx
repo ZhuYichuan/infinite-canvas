@@ -12,24 +12,23 @@ import {
 } from "@/services/api/models";
 
 export type MiniMaxVideoTier = {
-    mp: string;
     landscapeW: number;
     landscapeH: number;
 };
 
 /**
- * MiniMax H3 官方支持的 32 整数倍尺寸档位（最大支持到 0.98 MP）
+ * MiniMax H3 官方支持的 32 整数倍尺寸档位
  */
 export const MINIMAX_VIDEO_SIZE_TIERS: MiniMaxVideoTier[] = [
-    { mp: "0.2M", landscapeW: 608, landscapeH: 352 },
-    { mp: "0.3M", landscapeW: 736, landscapeH: 416 },
-    { mp: "0.4M", landscapeW: 864, landscapeH: 480 },
-    { mp: "0.5M", landscapeW: 960, landscapeH: 544 },
-    { mp: "0.6M", landscapeW: 1056, landscapeH: 608 },
-    { mp: "0.7M", landscapeW: 1152, landscapeH: 640 },
-    { mp: "0.8M", landscapeW: 1216, landscapeH: 672 },
-    { mp: "0.9M", landscapeW: 1280, landscapeH: 736 },
-    { mp: "0.98M", landscapeW: 1344, landscapeH: 768 },
+    { landscapeW: 608, landscapeH: 352 },
+    { landscapeW: 736, landscapeH: 416 },
+    { landscapeW: 864, landscapeH: 480 },
+    { landscapeW: 960, landscapeH: 544 },
+    { landscapeW: 1056, landscapeH: 608 },
+    { landscapeW: 1152, landscapeH: 640 },
+    { landscapeW: 1216, landscapeH: 672 },
+    { landscapeW: 1280, landscapeH: 736 },
+    { landscapeW: 1344, landscapeH: 768 },
 ];
 
 export const quickSecondOptions = [5, 10, 15];
@@ -37,8 +36,8 @@ export const quickSecondOptions = [5, 10, 15];
 export const videoSecondOptions = quickSecondOptions.map((value) => String(value));
 export const videoResolutionOptions = [{ value: "720", label: "720p" }];
 export const videoSizeOptions = MINIMAX_VIDEO_SIZE_TIERS.flatMap((tier) => [
-    { value: `${tier.landscapeW}x${tier.landscapeH}`, label: `16:9 · ${tier.landscapeW}×${tier.landscapeH} (${tier.mp})`, width: tier.landscapeW, height: tier.landscapeH },
-    { value: `${tier.landscapeH}x${tier.landscapeW}`, label: `9:16 · ${tier.landscapeH}×${tier.landscapeW} (${tier.mp})`, width: tier.landscapeH, height: tier.landscapeW },
+    { value: `${tier.landscapeW}x${tier.landscapeH}`, label: `16:9 · ${tier.landscapeW}×${tier.landscapeH}`, width: tier.landscapeW, height: tier.landscapeH },
+    { value: `${tier.landscapeH}x${tier.landscapeW}`, label: `9:16 · ${tier.landscapeH}×${tier.landscapeW}`, width: tier.landscapeH, height: tier.landscapeW },
 ]);
 
 export type VideoSettingsPanelProps = {
@@ -227,7 +226,7 @@ export function VideoSettingsPanel({
                                 <button
                                     key={`${tier.landscapeW}x${tier.landscapeH}`}
                                     type="button"
-                                    className="flex h-[54px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl border transition hover:opacity-80"
+                                    className="flex h-10 cursor-pointer items-center justify-center rounded-xl border transition hover:opacity-80"
                                     style={{
                                         borderColor: isSelected ? theme.node.text : theme.node.stroke,
                                         background: isSelected ? (theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)") : "transparent",
@@ -238,9 +237,6 @@ export function VideoSettingsPanel({
                                 >
                                     <span className="text-xs font-semibold leading-tight tracking-tight">
                                         {itemW} × {itemH}
-                                    </span>
-                                    <span className="text-[10px] leading-none opacity-55">
-                                        {tier.mp}
                                     </span>
                                 </button>
                             );
@@ -294,9 +290,7 @@ export function extractVideoSizeTiers(values?: string[]): MiniMaxVideoTier[] {
         const landscapeH = Math.min(w, h);
         const key = `${landscapeW}x${landscapeH}`;
         if (!tierMap.has(key)) {
-            const pixels = landscapeW * landscapeH;
-            const mp = pixels >= 1_000_000 && pixels <= 1_050_000 ? "0.98M" : `${(pixels / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-            tierMap.set(key, { mp, landscapeW, landscapeH });
+            tierMap.set(key, { landscapeW, landscapeH });
         }
     }
     return Array.from(tierMap.values()).sort((a, b) => (a.landscapeW * a.landscapeH) - (b.landscapeW * b.landscapeH));

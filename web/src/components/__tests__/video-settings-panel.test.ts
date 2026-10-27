@@ -16,8 +16,8 @@ describe("Video Settings Panel DSL & Sizing Helpers", () => {
     it("extractVideoSizeTiers dynamically parses discrete dimension pairs into sorted landscape tiers", () => {
         const tiers = extractVideoSizeTiers(videoMinimaxH3OmniProfile.capabilityConfig.size?.values);
         expect(tiers).toHaveLength(9);
-        expect(tiers[0]).toEqual({ mp: "0.2M", landscapeW: 608, landscapeH: 352 });
-        expect(tiers[tiers.length - 1]).toEqual({ mp: "0.98M", landscapeW: 1344, landscapeH: 768 });
+        expect(tiers[0]).toEqual({ landscapeW: 608, landscapeH: 352 });
+        expect(tiers[tiers.length - 1]).toEqual({ landscapeW: 1344, landscapeH: 768 });
     });
 
     it("extractVideoSizeTiers falls back to default tiers when no values provided", () => {
@@ -30,7 +30,8 @@ describe("Video Settings Panel DSL & Sizing Helpers", () => {
         expect(result.aspect).toBe("16:9");
         expect(result.width).toBe(1280);
         expect(result.height).toBe(736);
-        expect(result.tier.mp).toBe("0.9M");
+        expect(result.tier.landscapeW).toBe(1280);
+        expect(result.tier.landscapeH).toBe(736);
     });
 
     it("parseVideoSize correctly resolves 9:16 portrait dimensions symmetrically", () => {
@@ -38,7 +39,8 @@ describe("Video Settings Panel DSL & Sizing Helpers", () => {
         expect(result.aspect).toBe("9:16");
         expect(result.width).toBe(736);
         expect(result.height).toBe(1280);
-        expect(result.tier.mp).toBe("0.9M");
+        expect(result.tier.landscapeW).toBe(1280);
+        expect(result.tier.landscapeH).toBe(736);
     });
 
     it("normalizeVideoSizeValue validates against model DSL allowed values", () => {
