@@ -137,13 +137,12 @@ export function VideoSettingsPanel({
                 {showTitle ? (
                     <div className="flex items-center justify-between">
                         <span className="text-base font-semibold">{t("settingsPanels.video.title")}</span>
-                        <span className="rounded bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[11px] font-mono opacity-60">
-                            {profile.id}
+                        <span className="rounded bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[11px] font-medium opacity-70">
+                            {profile.name}
                         </span>
                     </div>
                 ) : (
-                    <div className="flex items-center justify-between px-0.5 text-[11px] font-mono opacity-60">
-                        <span>模型: {profile.id}</span>
+                    <div className="flex items-center justify-between px-0.5 text-[11px] font-medium opacity-70">
                         <span>{profile.name}</span>
                     </div>
                 )}
