@@ -27,6 +27,16 @@ describe("VideoModelPicker Data Contract & Hierarchy", () => {
         });
     });
 
+    it("all 4 video models define tags: [5, 10, 15] in capabilityConfig.duration for quick presets", () => {
+        BUILTIN_WORKFLOW_MODELS.forEach((model) => {
+            expect(model.capabilityConfig.duration).toBeDefined();
+            expect(model.capabilityConfig.duration?.tags).toEqual([5, 10, 15]);
+            expect(model.capabilityConfig.duration?.default).toBe(5);
+            expect(model.capabilityConfig.duration?.min).toBe(1);
+            expect(model.capabilityConfig.duration?.max).toBe(15);
+        });
+    });
+
     it("isModelSupportedByHost correctly flags supported vs unsupported models for hosts", () => {
         const hostWithOmniOnly: ModelChannel = {
             id: "host-rtx3060",
