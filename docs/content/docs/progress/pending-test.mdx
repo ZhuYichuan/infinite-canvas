@@ -7,6 +7,19 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Workflow Model DSL Architecture & Multimodal Connection Guards (工作流模型 DSL 架构与多模态连线防呆):
+  - **Model DSL & Parameter Engine (工作流模型 DSL 与通用参数调度)**:
+    - 验证基于 `WorkflowModelProfile` DSL 统一驱动视频模型能力，包括 MiniMax H3 全能参考视频 (`video_minimax_h3_omni`) 与首尾帧视频 (`video_minimax_h3_frame`)；
+    - 验证通用 ComfyUI 协议调度器自动级联修剪未连满的参考资源插槽（`ref_image_01..09` 等）及上游无用桥接节点（`GetVideoComponents`）。
+  - **Model-Driven Canvas Node UI & Dynamic Settings Popover (模型驱动画布节点与参数浮层)**:
+    - 验证画布视频节点显式绑定 `modelId`，空视频节点居中清晰展示当前绑定的模型 ID；
+    - 验证视频参数浮层完全由模型 DSL 驱动：9 档硬件对齐尺寸卡片支持 16:9 与 9:16 对称对调，时长支持 1-15 秒连续滑动及 5s、10s、15s 快捷胶囊切换；
+    - 验证切换「全能参考 (Omni)」与「首尾帧 (Frame)」模式时，节点即时同步更新模型能力与可用参数。
+  - **Interactive Port Connection Validation & Visual Feedback (交互式端口连线校验与视觉防呆)**:
+    - 验证首尾帧视频节点严格限制最多连接 2 张图片，连接第 3 张图片或拖入视频/音频时呈现红色高亮并阻断连线；
+    - 验证全能参考视频节点严格限制最多 9 图、3 视频、3 音频，超出配额时实时阻断；
+    - 验证当包含较多参考资源的节点切换至低配额模型时（如从全能参考切换至首尾帧），超额的既有连线以红色虚线高亮警示。
+
 - Community & Workflow Adaptation Studio (开源社区与工作流转换工坊):
   - **Navigation & Routing Entry**: 点击顶部主导航栏的「开源社区」进入 `/community` 社区中心，点击「进入工作流适配工坊」进入 `/community/studio`。
   - **Community Workflow Marketplace (社区市场)**:
