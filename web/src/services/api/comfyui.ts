@@ -15,6 +15,7 @@ import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
 export { formatIngestSuccessMessage, ingestWorkflow, type IngestOptions, type IngestResult, type DetectedSlotInfo, type AmbiguityInfo } from "./comfyui-adapter";
+export * from "./models";
 
 export type ComfyuiSize = {
     width: number;
@@ -2914,6 +2915,17 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const videoAssetIds: string[] = [];
     const audioAssetIds: string[] = [];
 
+    const modelProfile = getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel || videoMode);
+    if (modelProfile) {
+        validateModelExecution(modelProfile, {
+            imagesCount: (req.references?.length || 0) + (req.firstFrame ? 1 : 0) + (req.lastFrame ? 1 : 0),
+            videosCount: req.referenceVideos?.length || 0,
+            audiosCount: req.referenceAudios?.length || 0,
+            size: req.config.size,
+            duration: req.config.videoSeconds ? Number(req.config.videoSeconds) : undefined,
+        });
+    }
+
     if (videoMode === "frame") {
         // 首尾帧模式 - 严格校验（Fail-loud）：在任何上传之前先构建去重后的参考图并校验数量/类型
         const frameCandidates: Array<ReferenceImage | undefined> = [req.firstFrame, req.lastFrame, ...(req.references || [])];
@@ -2997,19 +3009,32 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const duration = req.config.videoSeconds ? Number(req.config.videoSeconds) : 5;
 
     const seed = req.seed !== undefined ? req.seed : generateRandomSeed() % 1_000_000_000;
-    const boundWorkflow = applyVideoBindings(videoWorkflow.json, {
-        prompt: req.prompt,
-        assetIds,
-        videoAssetIds,
-        audioAssetIds,
-        firstFrameAssetId,
-        lastFrameAssetId,
-        videoMode,
-        seed,
-        width,
-        height,
-        duration,
-    });
+    const boundWorkflow = modelProfile
+        ? dispatchComfyuiModelWorkflow(modelProfile, videoWorkflow.json, {
+              prompt: req.prompt,
+              width,
+              height,
+              duration,
+              seed,
+              firstFrameAssetId,
+              lastFrameAssetId,
+              assetIds,
+              videoAssetIds,
+              audioAssetIds,
+          })
+        : applyVideoBindings(videoWorkflow.json, {
+              prompt: req.prompt,
+              assetIds,
+              videoAssetIds,
+              audioAssetIds,
+              firstFrameAssetId,
+              lastFrameAssetId,
+              videoMode,
+              seed,
+              width,
+              height,
+              duration,
+          });
 
     const jobId = await submitJob(boundWorkflow, baseUrl, token);
     return { jobId, baseUrl, token };
