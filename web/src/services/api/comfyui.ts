@@ -765,6 +765,52 @@ export function adaptWorkflowModelPaths(
     return modified ? cloned : workflow;
 }
 
+export const COMFYUI_CORE_PLUGINS = [
+    {
+        name: "ComfyUI-KJNodes",
+        url: "https://github.com/kijai/ComfyUI-KJNodes",
+        keywords: ["getvideocomponents", "kjnodes", "colormatch"],
+        desc: "全能参考视频及组件处理",
+    },
+    {
+        name: "ComfyLiterals",
+        url: "https://github.com/M1kep/ComfyLiterals",
+        keywords: ["comfyliterals", "int", "float", "primitivestring", "primitiveint"],
+        desc: "首尾帧/全能视频字面量与基础常数",
+    },
+    {
+        name: "Comfyui-kktools",
+        url: "https://github.com/zhiwendesign/Comfyui-kktools",
+        keywords: ["kktools", "prompt_expansion", "vision_llm"],
+        desc: "文本生成与提示词反推",
+    },
+    {
+        name: "ComfyUI-UniversalToolkit",
+        url: "https://github.com/whmc76/ComfyUI-UniversalToolkit",
+        keywords: ["universaltoolkit", "toolkit"],
+        desc: "通用工具与参数解析",
+    },
+    {
+        name: "ComfyUI_LayerStyle",
+        url: "https://github.com/chflame163/ComfyUI_LayerStyle",
+        keywords: ["layerstyle", "mask"],
+        desc: "遮罩处理与图层合成",
+    },
+];
+
+export function translateComfyuiValidationError(errMsg: string): string {
+    const lower = errMsg.toLowerCase();
+    for (const plugin of COMFYUI_CORE_PLUGINS) {
+        if (plugin.keywords.some((kw) => lower.includes(kw))) {
+            return `缺少核心依赖插件「${plugin.name}」(${plugin.desc})。请在 ComfyUI 的 custom_nodes 目录安装：git clone ${plugin.url}`;
+        }
+    }
+    if (lower.includes("prompt outputs failed validation") || lower.includes("class not found")) {
+        return `ComfyUI 节点校验失败，请检查是否已在 ComfyUI 安装所需的核心插件（如 ComfyUI-KJNodes、ComfyLiterals 等）。\n原始错误: ${errMsg}`;
+    }
+    return errMsg;
+}
+
 async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string, token?: string): Promise<string> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -786,11 +832,13 @@ async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string,
         } catch {
             // ignore
         }
-        throw new ComfyuiApiError(`ComfyUI 任务提交失败: ${errDetail}`, response.status);
+        const friendlyDetail = translateComfyuiValidationError(errDetail);
+        throw new ComfyuiApiError(`ComfyUI 任务提交失败: ${friendlyDetail}`, response.status);
     }
     const data = (await response.json()) as { prompt_id?: unknown; node_errors?: Record<string, unknown> };
     if (data?.node_errors && Object.keys(data.node_errors).length > 0) {
-        throw new ComfyuiApiError(`ComfyUI 工作流校验报错: ${JSON.stringify(data.node_errors)}`);
+        const friendly = translateComfyuiValidationError(JSON.stringify(data.node_errors));
+        throw new ComfyuiApiError(`ComfyUI 工作流校验报错: ${friendly}`);
     }
     if (typeof data?.prompt_id !== "string") throw new ComfyuiApiError("ComfyUI /prompt 响应未返回 prompt_id");
     return data.prompt_id;

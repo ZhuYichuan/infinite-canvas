@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 
 import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
 import { VideoModelPicker } from "@/components/video-model-picker";
-import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, isModelSupportedByHost, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { getModelProfile } from "@/services/api/models";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -90,6 +91,23 @@ export function CanvasNodePromptPanel({
     const submit = (intent: CanvasGenerationIntent = canRepeat ? "repeat" : "new") => {
         const text = prompt.trim();
         if ((!text && intent !== "repeat") || isGenerating) return;
+
+        // 视频生成前校验当前主机是否启用了目标模型
+        if (mode === "video") {
+            const effectiveModelId = node.metadata?.modelId || (node.metadata?.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd");
+            const activeChannel = globalConfig.channels.find((c) => c.id === globalConfig.channelId) || globalConfig.channels[0];
+            if (activeChannel && !isModelSupportedByHost(activeChannel, effectiveModelId)) {
+                const profile = getModelProfile(effectiveModelId);
+                Modal.warning({
+                    title: "当前主机未就绪该模型",
+                    content: `当前选中的 ComfyUI 主机「${activeChannel.name}」未开启对「${profile?.name || effectiveModelId}」的支持。\n\n请在设置中为主机启用该模型，或切换至支持该模型的算力主机。`,
+                    okText: "前往设置",
+                    onOk: () => openConfigDialog(false, "channels"),
+                });
+                return;
+            }
+        }
+
         onGenerate(node.id, mode, text, intent);
     };
 

@@ -1,5 +1,5 @@
 import { Select } from "antd";
-import { Film, Sparkles } from "lucide-react";
+import { AlertTriangle, Film, Sparkles } from "lucide-react";
 import { useMemo } from "react";
 
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/services/api/models";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { isModelSupportedByHost, useEffectiveConfig } from "@/stores/use-config-store";
 
 export type VideoModelPickerProps = {
     modelId?: string;
@@ -24,6 +25,10 @@ export function VideoModelPicker({
     disabled = false,
 }: VideoModelPickerProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const config = useEffectiveConfig();
+    const activeChannel = useMemo(() => {
+        return config.channels.find((c) => c.id === config.channelId) || config.channels[0];
+    }, [config.channels, config.channelId]);
 
     // 默认模型为全能 4 步极速版
     const activeProfile = useMemo(() => {
@@ -39,6 +44,7 @@ export function VideoModelPicker({
             const vramLabel = `${m.vramTier || "8GB"} 显存`;
             const durationDesc = m.capabilityConfig.vram?.recommendedDuration.description || "";
             const shortDuration = durationDesc.includes("3~5") ? "分镜 3~5s" : "分镜 5~8s";
+            const isSupported = isModelSupportedByHost(activeChannel, m.id);
 
             return {
                 value: m.id,
@@ -54,6 +60,12 @@ export function VideoModelPicker({
                             <span className="text-[10px] bg-stone-500/10 text-stone-600 dark:text-stone-300 px-1 py-0.5 rounded font-mono">
                                 {vramLabel}
                             </span>
+                            {!isSupported && (
+                                <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-medium shrink-0">
+                                    <AlertTriangle className="size-3" />
+                                    <span>未就绪</span>
+                                </span>
+                            )}
                         </div>
                         <span className="text-[10px] text-stone-400 shrink-0">{shortDuration}</span>
                     </div>
@@ -79,7 +91,7 @@ export function VideoModelPicker({
                 options: frameModels.map((m) => renderOption(m, true)),
             },
         ];
-    }, []);
+    }, [activeChannel]);
 
     const handleChange = (nextId: string) => {
         const found = getModelProfile(nextId);
@@ -87,6 +99,8 @@ export function VideoModelPicker({
             onChange(found.id, found);
         }
     };
+
+    const isActiveSupported = isModelSupportedByHost(activeChannel, activeProfile.id);
 
     return (
         <Select
@@ -120,6 +134,12 @@ export function VideoModelPicker({
                         )}
                         <span className="truncate font-medium">{profile.name}</span>
                         <span className="text-[10px] opacity-60 font-mono shrink-0">{vram}</span>
+                        {!isActiveSupported && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-medium shrink-0">
+                                <AlertTriangle className="size-3" />
+                                <span>未就绪</span>
+                            </span>
+                        )}
                     </div>
                 );
             }}
