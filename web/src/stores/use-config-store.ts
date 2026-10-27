@@ -92,6 +92,7 @@ export type ModelChannel = {
     models: ChannelModel[];
     comfyuiProxyUrl?: string;
     comfyuiProxyToken?: string;
+    supportedModelIds?: string[];
     workflows?: ComfyWorkflowItem[];
     comfyuiT2iWorkflow?: ComfyuiWorkflow;
     comfyuiI2iWorkflow?: ComfyuiWorkflow;
@@ -177,6 +178,34 @@ export const COMFYUI_LOCAL_DEFAULT_MODELS: ChannelModel[] = COMFYUI_BUILTIN_DEFA
 export const COMFYUI_CLOUD_DEFAULT_MODELS: ChannelModel[] = COMFYUI_BUILTIN_DEFAULT_MODELS;
 export const COMFYUI_DEFAULT_MODELS: ChannelModel[] = COMFYUI_BUILTIN_DEFAULT_MODELS;
 
+/**
+ * 默认主机支持的视频模型 ID 清单（开箱即用支持全部 4 款 MiniMax H3 FP8 模型）
+ */
+export const DEFAULT_SUPPORTED_VIDEO_MODEL_IDS: string[] = [
+    "omni-video-minimax-h3-fp8-4step-pdmd",
+    "omni-video-minimax-h3-fp8",
+    "frame-video-minimax-h3-fp8-4step-pdmd",
+    "frame-video-minimax-h3-fp8",
+];
+
+/**
+ * 校验指定渠道/主机是否支持运行目标工作流模型
+ * 若 supportedModelIds 为空或未设置，则依据开箱即用原则默认全支持
+ */
+export function isModelSupportedByHost(channel: ModelChannel | undefined, modelId: string): boolean {
+    if (!channel) return false;
+    if (!channel.supportedModelIds || channel.supportedModelIds.length === 0) {
+        return true;
+    }
+    // 兼容历史模型别名映射
+    const normalizedId = modelId === "video_minimax_h3_omni"
+        ? "omni-video-minimax-h3-fp8-4step-pdmd"
+        : modelId === "video_minimax_h3_frame"
+        ? "frame-video-minimax-h3-fp8-4step-pdmd"
+        : modelId;
+    return channel.supportedModelIds.includes(normalizedId) || channel.supportedModelIds.includes(modelId);
+}
+
 export const defaultConfig: AiConfig = {
     channelMode: "local",
     baseUrl: "",
@@ -191,6 +220,7 @@ export const defaultConfig: AiConfig = {
             apiFormat: "comfyui",
             comfyuiProxyUrl: "http://127.0.0.1:8188",
             comfyuiProxyToken: "",
+            supportedModelIds: [...DEFAULT_SUPPORTED_VIDEO_MODEL_IDS],
             workflows: getDefaultComfyWorkflowItems({ id: "builtin" }),
             comfyuiT2iWorkflow: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW,
             comfyuiI2iWorkflow: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW,
@@ -263,6 +293,7 @@ type ConfigStore = {
     saveWorkflowGlobally: (workflow: ComfyWorkflowItem) => void;
     setChannelDefaultWorkflow: (channelId: string, category: WorkflowCategory, workflowId: string) => void;
     resetChannelWorkflowToBuiltin: (channelId: string, workflowId: string) => void;
+    updateChannelSupportedModels: (channelId: string, supportedModelIds: string[]) => void;
 };
 
 const VIDEO_KEYWORDS = ["video", "sora", "veo", "kling", "wan", "hailuo", "视频", "minimax"];
@@ -527,6 +558,15 @@ export const useConfigStore = create<ConfigStore>()(
                         },
                     };
                 }),
+            updateChannelSupportedModels: (channelId: string, supportedModelIds: string[]) =>
+                set((state) => ({
+                    config: {
+                        ...state.config,
+                        channels: state.config.channels.map((channel) =>
+                            channel.id === channelId ? { ...channel, supportedModelIds } : channel
+                        ),
+                    },
+                })),
         }),
         {
             name: CONFIG_STORE_KEY,
@@ -686,6 +726,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>, options?: { 
         models: models.length ? models : options?.preprovisionComfyuiModels !== false ? [...defaultModels] : [],
         comfyuiProxyUrl: channel?.comfyuiProxyUrl !== undefined ? channel.comfyuiProxyUrl : isCloud ? "" : "http://127.0.0.1:8188",
         comfyuiProxyToken: channel?.comfyuiProxyToken !== undefined ? channel.comfyuiProxyToken : "",
+        supportedModelIds: channel?.supportedModelIds !== undefined ? channel.supportedModelIds : [...DEFAULT_SUPPORTED_VIDEO_MODEL_IDS],
         workflows: mergeBuiltinWorkflows(channel?.workflows, defaultWorkflowItems),
         comfyuiT2iWorkflow: channel?.comfyuiT2iWorkflow !== undefined ? channel.comfyuiT2iWorkflow : workflows.t2i,
         comfyuiI2iWorkflow: channel?.comfyuiI2iWorkflow !== undefined ? channel.comfyuiI2iWorkflow : workflows.i2i,
