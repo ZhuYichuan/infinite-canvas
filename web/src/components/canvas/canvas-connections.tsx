@@ -9,6 +9,7 @@ export function ConnectionPath({
     from,
     to,
     active,
+    invalid = false,
     onSelect,
     onContextMenu,
 }: {
@@ -16,6 +17,7 @@ export function ConnectionPath({
     from: CanvasNodeData;
     to: CanvasNodeData;
     active: boolean;
+    invalid?: boolean;
     onSelect: () => void;
     onContextMenu?: (event: ReactMouseEvent<SVGPathElement>) => void;
 }) {
@@ -27,6 +29,9 @@ export function ConnectionPath({
     const dx = Math.abs(endX - startX);
     const curvature = Math.max(dx * 0.5, 50);
     const pathD = `M ${startX} ${startY} C ${startX + curvature} ${startY}, ${endX - curvature} ${endY}, ${endX} ${endY}`;
+
+    const strokeColor = invalid ? "#ef4444" : active ? theme.node.activeStroke : theme.node.muted;
+    const strokeWidth = invalid ? 2.5 : active ? 3 : 2;
 
     return (
         <g>
@@ -49,11 +54,19 @@ export function ConnectionPath({
             />
             <path
                 d={pathD}
-                stroke={active ? theme.node.activeStroke : theme.node.muted}
-                strokeWidth={active ? 3 : 2}
-                strokeOpacity={active ? 1 : 0.82}
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                strokeDasharray={invalid ? "6,4" : undefined}
+                strokeOpacity={invalid ? 1 : active ? 1 : 0.82}
                 fill="none"
-                style={{ filter: active ? `drop-shadow(0 0 8px ${theme.node.activeStroke}66)` : undefined, pointerEvents: "none" }}
+                style={{
+                    filter: invalid
+                        ? "drop-shadow(0 0 6px rgba(239, 68, 68, 0.6))"
+                        : active
+                          ? `drop-shadow(0 0 8px ${theme.node.activeStroke}66)`
+                          : undefined,
+                    pointerEvents: "none",
+                }}
             />
         </g>
     );

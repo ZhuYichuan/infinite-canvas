@@ -1,4 +1,7 @@
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type ConnectionHandle } from "@/types/canvas";
+import { getModelProfile, videoMinimaxH3OmniProfile } from "@/services/api/models";
+import { getGroupResourceNodes } from "@/lib/canvas/canvas-resource-references";
+import { getNodeDefinition } from "@/lib/canvas/node-registry";
 
 export function nodeBounds(nodes: CanvasNodeData[]) {
     return nodes.reduce(
@@ -63,6 +66,40 @@ export function getConnectionTargetAnchor(node: CanvasNodeData, current: Connect
     };
 }
 
+export type NodeResourceCounts = {
+    images: number;
+    videos: number;
+    audios: number;
+};
+
+export function getNodeResourceCounts(node: CanvasNodeData, allNodes: CanvasNodeData[]): NodeResourceCounts {
+    if (node.type === CanvasNodeType.Group) {
+        const children = getGroupResourceNodes(node.id, allNodes);
+        return children.reduce(
+            (acc, child) => {
+                const c = getNodeResourceCounts(child, allNodes);
+                return {
+                    images: acc.images + c.images,
+                    videos: acc.videos + c.videos,
+                    audios: acc.audios + c.audios,
+                };
+            },
+            { images: 0, videos: 0, audios: 0 },
+        );
+    }
+
+    if (node.type === CanvasNodeType.Image) return { images: 1, videos: 0, audios: 0 };
+    if (node.type === CanvasNodeType.Video) return { images: 0, videos: 1, audios: 0 };
+    if (node.type === CanvasNodeType.Audio) return { images: 0, videos: 0, audios: 1 };
+
+    const res = getNodeDefinition(node.type)?.resource?.(node);
+    if (res?.kind === "image") return { images: 1, videos: 0, audios: 0 };
+    if (res?.kind === "video") return { images: 0, videos: 1, audios: 0 };
+    if (res?.kind === "audio") return { images: 0, videos: 0, audios: 1 };
+
+    return { images: 0, videos: 0, audios: 0 };
+}
+
 export function validateInputConnection(
     fromNodeId: string,
     toNodeId: string,
@@ -76,7 +113,135 @@ export function validateInputConnection(
     if (toNode.type === CanvasNodeType.Group) return null;
     if (fromNode.type === CanvasNodeType.Config) return null;
     if (connections.some((connection) => connection.fromNodeId === fromNodeId && connection.toNodeId === toNodeId)) return null;
+
+    // 针对绑定了模型 DSL 的节点进行配额与多模态类型边界校验
+    const modelId = toNode.metadata?.modelId || toNode.metadata?.videoMode || toNode.metadata?.model;
+    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : undefined);
+
+    if (profile?.capabilityConfig.references) {
+        const refs = profile.capabilityConfig.references;
+        const incoming = getNodeResourceCounts(fromNode, nodes);
+
+        // 严格拦截当前模型不支持的媒体类型
+        if ((refs.maxImages ?? 0) === 0 && incoming.images > 0) return null;
+        if ((refs.maxVideos ?? 0) === 0 && incoming.videos > 0) return null;
+        if ((refs.maxAudios ?? 0) === 0 && incoming.audios > 0) return null;
+
+        // 统计当前节点既有连线占用的资源配额
+        const existingConnections = connections.filter(
+            (c) => c.toNodeId === toNodeId && c.kind === "input" && c.fromNodeId !== fromNodeId,
+        );
+        let existingImages = 0;
+        let existingVideos = 0;
+        let existingAudios = 0;
+
+        for (const conn of existingConnections) {
+            const src = nodes.find((n) => n.id === conn.fromNodeId);
+            if (!src) continue;
+            const counts = getNodeResourceCounts(src, nodes);
+            existingImages += counts.images;
+            existingVideos += counts.videos;
+            existingAudios += counts.audios;
+        }
+
+        if (refs.maxImages !== undefined && existingImages + incoming.images > refs.maxImages) {
+            return null;
+        }
+        if (refs.maxVideos !== undefined && existingVideos + incoming.videos > refs.maxVideos) {
+            return null;
+        }
+        if (refs.maxAudios !== undefined && existingAudios + incoming.audios > refs.maxAudios) {
+            return null;
+        }
+    }
+
     return { fromNodeId, toNodeId };
+}
+
+/**
+ * 探测指定节点当前输入连线中超出模型 DSL 配额或类型不兼容的既有连线 ID 集合
+ */
+export function findInvalidNodeConnections(
+    toNodeId: string,
+    nodes: CanvasNodeData[],
+    connections: CanvasConnection[],
+): Set<string> {
+    const invalidIds = new Set<string>();
+    const toNode = nodes.find((n) => n.id === toNodeId);
+    if (!toNode) return invalidIds;
+
+    const modelId = toNode.metadata?.modelId || toNode.metadata?.videoMode || toNode.metadata?.model;
+    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : undefined);
+    if (!profile?.capabilityConfig.references) return invalidIds;
+
+    const refs = profile.capabilityConfig.references;
+    const incomingConnections = connections.filter((c) => c.toNodeId === toNodeId && c.kind === "input");
+
+    let imagesCount = 0;
+    let videosCount = 0;
+    let audiosCount = 0;
+
+    for (const conn of incomingConnections) {
+        const fromNode = nodes.find((n) => n.id === conn.fromNodeId);
+        if (!fromNode) {
+            invalidIds.add(conn.id);
+            continue;
+        }
+
+        const counts = getNodeResourceCounts(fromNode, nodes);
+        let isInvalid = false;
+
+        // 校验图片配额
+        if (counts.images > 0) {
+            if ((refs.maxImages ?? 0) === 0 || imagesCount + counts.images > (refs.maxImages ?? Infinity)) {
+                isInvalid = true;
+            } else {
+                imagesCount += counts.images;
+            }
+        }
+
+        // 校验视频配额
+        if (counts.videos > 0) {
+            if ((refs.maxVideos ?? 0) === 0 || videosCount + counts.videos > (refs.maxVideos ?? Infinity)) {
+                isInvalid = true;
+            } else {
+                videosCount += counts.videos;
+            }
+        }
+
+        // 校验音频配额
+        if (counts.audios > 0) {
+            if ((refs.maxAudios ?? 0) === 0 || audiosCount + counts.audios > (refs.maxAudios ?? Infinity)) {
+                isInvalid = true;
+            } else {
+                audiosCount += counts.audios;
+            }
+        }
+
+        if (isInvalid) {
+            invalidIds.add(conn.id);
+        }
+    }
+
+    return invalidIds;
+}
+
+/**
+ * 汇总全画布所有输入连线中超出模型 DSL 配额或类型不合规的连线集合
+ */
+export function getAllInvalidConnectionIds(
+    nodes: CanvasNodeData[],
+    connections: CanvasConnection[],
+): Set<string> {
+    const allInvalid = new Set<string>();
+    const targetNodeIds = new Set(connections.filter((c) => c.kind === "input").map((c) => c.toNodeId));
+    for (const targetId of targetNodeIds) {
+        const invalidForTarget = findInvalidNodeConnections(targetId, nodes, connections);
+        for (const id of invalidForTarget) {
+            allInvalid.add(id);
+        }
+    }
+    return allInvalid;
 }
 
 export function normalizeConnection(

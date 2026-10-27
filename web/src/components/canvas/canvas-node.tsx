@@ -27,6 +27,8 @@ type CanvasNodeProps = {
     isRelated: boolean;
     isFocusRelated: boolean;
     isConnectionTarget: boolean;
+    isConnectionRejected?: boolean;
+    hasInvalidConnections?: boolean;
     isConnecting: boolean;
     referenceSelectionState?: "target" | "disabled" | "available";
     showPanel: boolean;
@@ -97,6 +99,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     isRelated,
     isFocusRelated,
     isConnectionTarget,
+    isConnectionRejected = false,
+    hasInvalidConnections = false,
     isConnecting,
     referenceSelectionState,
     showPanel,
@@ -384,9 +388,33 @@ export const CanvasNode = React.memo(function CanvasNode({
                 className="relative h-full w-full overflow-visible rounded-3xl border-2"
                 style={{
                     background: isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
-                    borderColor: isGroup ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? imageBorderColor : isActive ? selectionBlue : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
-                    borderStyle: isGroup ? "dashed" : "solid",
-                    boxShadow: isGroupDropTarget ? `0 0 0 2px ${selectionBlue}66, inset 0 0 0 999px ${selectionBlue}10` : isActive ? `0 0 0 1px ${selectionBlue}55` : isRelated ? `0 0 0 1px ${theme.node.muted}55, 0 18px 48px rgba(0,0,0,.14)` : undefined,
+                    borderColor: isConnectionRejected
+                        ? "#ef4444"
+                        : isGroup
+                          ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke)
+                          : hasImageContent
+                            ? imageBorderColor
+                            : isActive
+                              ? selectionBlue
+                              : isRelated
+                                ? theme.node.muted
+                                : hasInvalidConnections
+                                  ? "#f59e0b"
+                                  : transparentBg
+                                    ? "transparent"
+                                    : theme.node.stroke,
+                    borderStyle: isGroup ? "dashed" : hasInvalidConnections && !isActive ? "dashed" : "solid",
+                    boxShadow: isConnectionRejected
+                        ? "0 0 0 2px #ef4444, 0 0 20px rgba(239, 68, 68, 0.45)"
+                        : isGroupDropTarget
+                          ? `0 0 0 2px ${selectionBlue}66, inset 0 0 0 999px ${selectionBlue}10`
+                          : isActive
+                            ? `0 0 0 1px ${selectionBlue}55`
+                            : hasInvalidConnections
+                              ? "0 0 0 1px #f59e0b55"
+                              : isRelated
+                                ? `0 0 0 1px ${theme.node.muted}55, 0 18px 48px rgba(0,0,0,.14)`
+                                : undefined,
                 }}
                 onMouseDown={(event) => {
                     if (!referenceSelectionState) onMouseDown(event, data.id);

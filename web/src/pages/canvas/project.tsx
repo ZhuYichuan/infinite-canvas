@@ -63,6 +63,7 @@ import {
     findContainingGroupId,
     findGroupDropTarget,
     fitGroupToEnclosedChildren,
+    getAllInvalidConnectionIds,
     getConnectionTargetAnchor,
     isNodeEnclosedInGroup,
     normalizeConnection,
@@ -136,6 +137,7 @@ type CanvasClipboard = {
 type ConnectionDropTarget = {
     nodeId: string | null;
     isNearNode: boolean;
+    rejectedNodeId?: string | null;
 };
 
 type CanvasHistoryEntry = Pick<CanvasClipboard, "nodes" | "connections"> & {
@@ -268,6 +270,7 @@ function InfiniteCanvasPage() {
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
     const [connectingParams, setConnectingParams] = useState<ConnectionHandle | null>(null);
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string | null>(null);
+    const [connectionRejectedNodeId, setConnectionRejectedNodeId] = useState<string | null>(null);
     const [pendingConnectionCreate, setPendingConnectionCreate] = useState<PendingConnectionCreate | null>(null);
     const [mouseWorld, setMouseWorld] = useState<Position>({ x: 0, y: 0 });
     const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
@@ -315,6 +318,7 @@ function InfiniteCanvasPage() {
     const generateNodeRef = useRef<((nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, intent?: CanvasGenerationIntent) => Promise<void>) | null>(null);
     const connectingParamsRef = useRef(connectingParams);
     const connectionTargetNodeIdRef = useRef(connectionTargetNodeId);
+    const connectionRejectedNodeIdRef = useRef(connectionRejectedNodeId);
     const selectionBoxRef = useRef(selectionBox);
     const pendingConnectionCreateRef = useRef(pendingConnectionCreate);
     const generationRequestsRef = useRef(new Map<string, CanvasGenerationRequest>());
@@ -717,6 +721,8 @@ function InfiniteCanvasPage() {
         if (!next) {
             connectionTargetNodeIdRef.current = null;
             setConnectionTargetNodeId(null);
+            connectionRejectedNodeIdRef.current = null;
+            setConnectionRejectedNodeId(null);
         }
     }, []);
 
@@ -814,6 +820,7 @@ function InfiniteCanvasPage() {
             const handleRadius = CONNECTION_HANDLE_HIT_RADIUS / scale;
             let isNearNode = false;
             let bestNodeId: string | null = null;
+            let bestRejectedNodeId: string | null = null;
             let bestPriority = Number.POSITIVE_INFINITY;
             const selected = selectedNodeIdsRef.current;
             const isBatch = selected.has(current.nodeId) && selected.size > 1;
@@ -834,7 +841,12 @@ function InfiniteCanvasPage() {
                     const canConnect = candidateSourceIds.some(
                         (sourceId) => sourceId !== node.id && normalizeConnection(sourceId, node.id, nodesRef.current, current.handleType, connectionsRef.current),
                     );
-                    if (!canConnect) return;
+                    if (!canConnect) {
+                        if (candidateSourceIds.some((sourceId) => sourceId !== node.id)) {
+                            bestRejectedNodeId = node.id;
+                        }
+                        return;
+                    }
 
                     const priority = hitsInside ? 0 : hitsHandle ? 1 : 2;
                     if (priority < bestPriority) {
@@ -843,7 +855,7 @@ function InfiniteCanvasPage() {
                     }
                 });
 
-            return { nodeId: bestNodeId, isNearNode };
+            return { nodeId: bestNodeId, isNearNode, rejectedNodeId: bestNodeId ? null : bestRejectedNodeId };
         },
         [screenToCanvas],
     );
@@ -862,6 +874,7 @@ function InfiniteCanvasPage() {
     }, [nodes, size.height, size.width, viewport.k, viewport.x, viewport.y]);
 
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
+    const invalidConnectionIds = useMemo(() => getAllInvalidConnectionIds(nodes, connections), [nodes, connections]);
     // The toolbar follows a single selected node selected by click, creation, marquee, or keyboard.
     // It stays hidden for multi-selection and while isNodeDragging is true.
     const singleSelectedNodeId = selectedNodeIds.size === 1 ? Array.from(selectedNodeIds)[0] : null;
@@ -1771,6 +1784,8 @@ function InfiniteCanvasPage() {
                 const dropTarget = getConnectionDropTarget(event.clientX, event.clientY, connectingParamsRef.current);
                 connectionTargetNodeIdRef.current = dropTarget.nodeId;
                 setConnectionTargetNodeId(dropTarget.nodeId);
+                connectionRejectedNodeIdRef.current = dropTarget.rejectedNodeId || null;
+                setConnectionRejectedNodeId(dropTarget.rejectedNodeId || null);
                 setMouseWorld(screenToCanvas(event.clientX, event.clientY));
             }
         },
@@ -1825,8 +1840,14 @@ function InfiniteCanvasPage() {
                 if (dropTarget.nodeId) {
                     connectNodes(currentConnection, dropTarget.nodeId);
                     setConnecting(null);
+                    setConnectionRejectedNodeId(null);
+                } else if (dropTarget.rejectedNodeId) {
+                    message.warning(t("canvas.projectPage.connectionQuotaExceeded") || "连接被拒绝：超出模型允许的输入配额或媒体类型不兼容");
+                    setConnecting(null);
+                    setConnectionRejectedNodeId(null);
                 } else if (dropTarget.isNearNode) {
                     setConnecting(null);
+                    setConnectionRejectedNodeId(null);
                 } else {
                     const selected = selectedNodeIdsRef.current;
                     const isBatch = selected.has(currentConnection.nodeId) && selected.size > 1;
@@ -4748,6 +4769,7 @@ function InfiniteCanvasPage() {
                                         from={from}
                                         to={to}
                                         active={selectedConnectionId === connection.id || relatedHighlight.connectionIds.has(connection.id)}
+                                        invalid={invalidConnectionIds.has(connection.id)}
                                         onSelect={() => {
                                             setSelectedConnectionId(connection.id);
                                             setSelectedNodeIds(new Set());
@@ -4787,6 +4809,8 @@ function InfiniteCanvasPage() {
                             isRelated={relatedHighlight.nodeIds.has(node.id)}
                             isFocusRelated={activeNodeId === node.id}
                             isConnectionTarget={connectionTargetNodeId === node.id}
+                            isConnectionRejected={connectionRejectedNodeId === node.id}
+                            hasInvalidConnections={connections.some((c) => c.toNodeId === node.id && invalidConnectionIds.has(c.id))}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node, nodes) ? "disabled" : "available"}
                             showPanel={!isNodeResizing && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
