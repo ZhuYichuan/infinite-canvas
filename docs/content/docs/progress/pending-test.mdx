@@ -7,6 +7,20 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Workflow Model & Host Decoupling with 4 FP8 Models (工作流模型与主机解耦及 4 大 FP8 模型支持):
+  - **Host & Model Architecture Decoupling (主机与工作流模型架构解耦)**:
+    - 验证 `ModelChannel` 仅保存 `baseUrl`、`apiKey` 与 `supportedModelIds`，不再冗余深拷贝工作流 JSON；
+    - 验证 ComfyUI 视频工作流全量收敛为 4 款 MiniMax H3 FP8 模型（全能 4步极速/20步标准 + 首尾帧 4步极速/20步标准），BF16 模型已彻底移除；
+    - 验证生图（T2I/I2I/Inpaint）与音频模块仍正常运行，零功能倒退。
+  - **VideoModelPicker & Hardware-Neutral VRAM Duration Guidance (视频模型选择器与显存分镜时长指引)**:
+    - 验证画布视频节点不再使用复杂的两级穿透 ChannelWorkflowPicker，而是使用专属的扁平 `VideoModelPicker` 卡片选择器；
+    - 验证模型选择器中展示 8G / 16G 显存阶梯标签，并明确展示推荐分镜时长（3~5s / 5~8s）；
+    - 验证视频参数浮层的时长滑块配套 `[5s, 10s, 15s]` 快捷胶囊，点击可即时切换。
+  - **Host Capability Guard & Friendly Missing-Plugin Alerts (主机支持防呆与缺失插件友好提示)**:
+    - 验证当主机配置中未启用目标模型时，视频模型选择器上实时展示 `⚠️ 未就绪` 警告标记；
+    - 验证点击生成时若模型未被当前主机支持，弹出中文 Fail-loud 弹窗引导切换主机或前往设置开启；
+    - 验证当 ComfyUI 报错 `Prompt outputs failed validation`（如缺少 `GetVideoComponents` 等节点）时，前端精准拦截并翻译为具体的 5 大核心插件安装指引弹窗。
+
 - Workflow Model DSL Architecture & Multimodal Connection Guards (工作流模型 DSL 架构与多模态连线防呆):
   - **Model DSL & Parameter Engine (工作流模型 DSL 与通用参数调度)**:
     - 验证基于 `WorkflowModelProfile` DSL 统一驱动视频模型能力，包括 MiniMax H3 全能参考视频 (`video_minimax_h3_omni`) 与首尾帧视频 (`video_minimax_h3_frame`)；
