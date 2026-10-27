@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
+import { VideoModelPicker } from "@/components/video-model-picker";
 import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -162,24 +163,18 @@ export function CanvasNodePromptPanel({
                         </>
                     ) : mode === "video" ? (
                         <>
-                            <ChannelWorkflowPicker
-                                category={["omniVideo", "frameVideo", "faceRefine"]}
-                                preferredCategory={findWorkflow(globalConfig, node.metadata?.channelId, node.metadata?.workflowId)?.category || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frameVideo" : "omniVideo")}
-                                channelId={node.metadata?.channelId}
-                                workflowId={node.metadata?.workflowId}
-                                onChange={(channelId, workflowId, workflow) => {
-                                    const nextVideoMode = workflow?.category === "frameVideo" ? "frame" : workflow?.category === "omniVideo" ? "omni" : (node.metadata?.videoMode || config.videoMode);
-                                    const nextModelId = nextVideoMode === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni";
+                            <VideoModelPicker
+                                modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
+                                onChange={(nextModelId, profile) => {
+                                    const nextVideoMode = profile.category === "frameVideo" ? "frame" : "omni";
                                     onConfigChange(node.id, {
-                                        channelId,
-                                        workflowId,
-                                        videoMode: nextVideoMode,
                                         modelId: nextModelId,
+                                        videoMode: nextVideoMode,
                                     });
                                 }}
                             />
                             <CanvasVideoSettingsPopover
-                                modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni")}
+                                modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
                                 size={node.metadata?.size || config.size}
                                 duration={node.metadata?.seconds || config.videoSeconds}
                                 videoMode={(node.metadata?.videoMode as "omni" | "frame") || (config.videoMode as "omni" | "frame")}

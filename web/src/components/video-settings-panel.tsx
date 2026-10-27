@@ -98,7 +98,10 @@ export function VideoSettingsPanel({
     const secondsNum = Math.min(maxDuration, Math.max(minDuration, Number.isFinite(rawSeconds) && rawSeconds > 0 ? rawSeconds : defaultDuration));
 
     const handleSelectMode = (nextMode: "omni" | "frame") => {
-        const nextModelId = nextMode === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni";
+        const is20Step = profile.steps === 20;
+        const nextModelId = nextMode === "frame"
+            ? (is20Step ? "frame-video-minimax-h3-fp8" : "frame-video-minimax-h3-fp8-4step-pdmd")
+            : (is20Step ? "omni-video-minimax-h3-fp8" : "omni-video-minimax-h3-fp8-4step-pdmd");
         onParamChange?.({
             modelId: nextModelId,
             videoMode: nextMode,
