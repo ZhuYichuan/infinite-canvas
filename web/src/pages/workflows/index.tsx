@@ -15,7 +15,6 @@ import {
     Save,
     Sparkles,
     Star,
-    Upload,
     Workflow as WorkflowIcon,
 } from "lucide-react";
 import { App, Button, Empty, Input, Segmented, Select, Tag, Tooltip } from "antd";
@@ -34,8 +33,6 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import {
     fetchComfyuiModels,
     findWorkflowSelectNodes,
-    formatIngestSuccessMessage,
-    ingestWorkflow,
     updateWorkflowNodeInput,
     type ComfyuiModelItem,
     type ComfyuiWorkflowJson,
@@ -67,7 +64,6 @@ export default function WorkflowsPage() {
     const { t } = useTranslation();
     const { message } = App.useApp();
     const copyText = useCopyText();
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const [searchParams] = useSearchParams();
 
     const categoryTabs = useMemo(
@@ -272,30 +268,6 @@ export default function WorkflowsPage() {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         message.success(t("workflowsPage.copySuccess"));
-    };
-
-    // 导入外部 JSON
-    const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const text = event.target?.result as string;
-                const ingested = ingestWorkflow(text, { categoryHint: activeWorkflow?.category });
-                if (!ingested.ok || !ingested.workflow) {
-                    throw new Error(ingested.error || t("workflowsPage.parseJsonFailed"));
-                }
-                setCurrentJson(ingested.workflow);
-                setIsDirty(true);
-                message.success(formatIngestSuccessMessage(t("workflowsPage.importSuccess", { name: file.name }), ingested.detectedSlots.length));
-            } catch (err) {
-                message.error(err instanceof Error ? err.message : t("workflowsPage.parseJsonFailed"));
-            }
-        };
-        reader.readAsText(file);
-        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     const isCustom = activeWorkflow && !activeWorkflow.isBuiltin;
@@ -726,20 +698,6 @@ export default function WorkflowsPage() {
                                         </div>
 
                                         <div className="flex items-center gap-1.5">
-                                            <input
-                                                ref={fileInputRef}
-                                                type="file"
-                                                accept=".json"
-                                                className="hidden"
-                                                onChange={handleImportJson}
-                                            />
-                                            <Button
-                                                size="small"
-                                                icon={<Upload className="size-3.5" />}
-                                                onClick={() => fileInputRef.current?.click()}
-                                            >
-                                                {t("workflowsPage.importReplace")}
-                                            </Button>
                                             <Button
                                                 size="small"
                                                 icon={<Download className="size-3.5" />}

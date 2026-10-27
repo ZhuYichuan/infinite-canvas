@@ -260,7 +260,6 @@ type ConfigStore = {
     openConfigDialog: (shouldPromptContinue?: boolean, tab?: ConfigTabKey) => void;
     setConfigDialogOpen: (isOpen: boolean) => void;
     clearPromptContinue: () => void;
-    saveChannelWorkflow: (channelId: string, workflow: ComfyWorkflowItem) => void;
     saveWorkflowGlobally: (workflow: ComfyWorkflowItem) => void;
     setChannelDefaultWorkflow: (channelId: string, category: WorkflowCategory, workflowId: string) => void;
     resetChannelWorkflowToBuiltin: (channelId: string, workflowId: string) => void;
@@ -406,52 +405,6 @@ export const useConfigStore = create<ConfigStore>()(
             openConfigDialog: (shouldPromptContinue = false, configTab = "channels") => set({ isConfigOpen: true, shouldPromptContinue, configTab }),
             setConfigDialogOpen: (isConfigOpen) => set({ isConfigOpen }),
             clearPromptContinue: () => set({ shouldPromptContinue: false }),
-            saveChannelWorkflow: (channelId: string, workflow: ComfyWorkflowItem) =>
-                set((state) => {
-                    const channels = state.config.channels.map((channel) => {
-                        if (channel.id !== channelId) return channel;
-                        const currentWorkflows = getChannelWorkflows(channel);
-                        const existsIndex = currentWorkflows.findIndex((wf) => wf.id === workflow.id);
-                        const updatedWorkflow: ComfyWorkflowItem = {
-                            ...workflow,
-                            isBuiltin: false,
-                            createdAt: Date.now(),
-                        };
-                        let nextWorkflows: ComfyWorkflowItem[];
-                        if (existsIndex >= 0) {
-                            nextWorkflows = [...currentWorkflows];
-                            nextWorkflows[existsIndex] = updatedWorkflow;
-                        } else {
-                            nextWorkflows = [...currentWorkflows, updatedWorkflow];
-                        }
-
-                        const updatedChannel: ModelChannel = {
-                            ...channel,
-                            workflows: nextWorkflows,
-                        };
-
-                        const channelField = WORKFLOW_CATEGORY_TO_CHANNEL_FIELD[workflow.category];
-                        if (channelField) {
-                            const currentBound = channel[channelField] as ComfyuiWorkflow | undefined;
-                            if (!currentBound || currentBound.name === workflow.name || workflow.isDefault) {
-                                (updatedChannel as any)[channelField] = {
-                                    name: workflow.name,
-                                    json: workflow.json,
-                                    createdAt: Date.now(),
-                                    isBuiltin: false,
-                                };
-                            }
-                        }
-                        return updatedChannel;
-                    });
-
-                    return {
-                        config: {
-                            ...state.config,
-                            channels,
-                        },
-                    };
-                }),
             resetChannelWorkflowToBuiltin: (channelId: string, workflowId: string) =>
                 set((state) => {
                     const channels = state.config.channels.map((channel) => {

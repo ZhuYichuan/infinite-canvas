@@ -28,6 +28,7 @@ describe("COMFYUI_DEFAULT_MODELS", () => {
             "Qwen3.5 4B",
             "MiniMax H3 全能视频",
             "MiniMax H3 首尾帧视频",
+            "MiniMax Music 03",
         ]);
     });
 });
@@ -380,15 +381,16 @@ describe("default built-in ComfyUI channel", () => {
             "Qwen3.5 4B",
             "MiniMax H3 全能视频",
             "MiniMax H3 首尾帧视频",
+            "MiniMax Music 03",
         ]);
-        expect(defaultConfig.channels[0].workflows?.length).toBe(12);
+        expect(defaultConfig.channels[0].workflows?.length).toBe(17);
     });
 
     it("creates custom channel with builtin models and workflows", () => {
         const customChannel = createModelChannel({ id: "my-custom", name: "自定义 ComfyUI" });
         expect(customChannel.name).toBe("自定义 ComfyUI");
-        expect(customChannel.models.length).toBe(7);
-        expect(customChannel.workflows?.length).toBe(12);
+        expect(customChannel.models.length).toBe(8);
+        expect(customChannel.workflows?.length).toBe(17);
         expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
         expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);
