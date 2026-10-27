@@ -93,7 +93,7 @@ export function CanvasVideoSettingsPopover({
         };
     }, [open]);
 
-    const effectiveModelId = modelId || (videoMode === "frame" ? "video_minimax_h3_frame" : videoMode === "omni" ? "video_minimax_h3_omni" : undefined) || config?.videoModel || config?.model;
+    const effectiveModelId = modelId || (videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : videoMode === "omni" ? "omni-video-minimax-h3-fp8-4step-pdmd" : undefined) || config?.videoModel || config?.model;
     const profile = getModelProfile(effectiveModelId) || videoMinimaxH3OmniProfile;
     const currentMode = videoMode || (profile.category === "frameVideo" ? "frame" : (config?.videoMode === "frame" ? "frame" : "omni"));
     const currentSize = size || config?.size;

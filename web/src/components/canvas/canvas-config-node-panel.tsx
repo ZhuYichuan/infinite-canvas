@@ -125,7 +125,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         if (mode === "video") {
                             const nextVideoMode = workflow?.category === "frameVideo" ? "frame" : workflow?.category === "omniVideo" ? "omni" : (node.metadata?.videoMode || config.videoMode);
                             patch.videoMode = nextVideoMode;
-                            patch.modelId = nextVideoMode === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni";
+                            patch.modelId = nextVideoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd";
                         }
                         onConfigChange(node.id, patch);
                     }}
@@ -133,7 +133,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 />
                 {mode === "video" ? (
                     <CanvasVideoSettingsPopover
-                        modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni")}
+                        modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
                         size={node.metadata?.size || config.size}
                         duration={node.metadata?.seconds || config.videoSeconds}
                         videoMode={(node.metadata?.videoMode as "omni" | "frame") || (config.videoMode as "omni" | "frame")}
@@ -242,7 +242,7 @@ function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig)
     if (key === "videoMode") {
         const patch: Record<string, unknown> = {
             videoMode: value,
-            modelId: value === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni",
+            modelId: value === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd",
         };
         if (config) {
             const channel = resolveModelChannel(config, config.model || config.videoModel);

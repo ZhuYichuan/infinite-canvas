@@ -182,10 +182,12 @@ export function CanvasNodePromptPanel({
                     ) : mode === "video" ? (
                         <>
                             <VideoModelPicker
+                                channelId={node.metadata?.channelId || config.channelId}
                                 modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
-                                onChange={(nextModelId, profile) => {
+                                onChange={(nextChannelId, nextModelId, profile) => {
                                     const nextVideoMode = profile.category === "frameVideo" ? "frame" : "omni";
                                     onConfigChange(node.id, {
+                                        channelId: nextChannelId,
                                         modelId: nextModelId,
                                         videoMode: nextVideoMode,
                                     });
@@ -351,8 +353,8 @@ function defaultMode(type: CanvasNodeData["type"]): CanvasNodeGenerationMode {
 function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: CanvasNodeGenerationMode): AiConfig {
     const rawModel = node.metadata?.modelId || node.metadata?.model;
     const model = resolveModelForCapability(globalConfig, rawModel, mode);
-    const isFrame = node.metadata?.modelId === "video_minimax_h3_frame" || model.toLowerCase().includes("frame") || model.includes("首尾帧");
-    const isOmni = node.metadata?.modelId === "video_minimax_h3_omni" || model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
+    const isFrame = node.metadata?.modelId === "video_minimax_h3_frame" || node.metadata?.modelId?.includes("frame") || model.toLowerCase().includes("frame") || model.includes("首尾帧");
+    const isOmni = node.metadata?.modelId === "video_minimax_h3_omni" || node.metadata?.modelId?.includes("omni") || model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
     let videoMode = node.metadata?.videoMode;
     if (mode === "video" && node.metadata?.workflowId) {
         const wf = findWorkflow(globalConfig, node.metadata.channelId, node.metadata.workflowId);
@@ -395,7 +397,7 @@ function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig)
     if (key === "videoMode") {
         const patch: Record<string, unknown> = {
             videoMode: value,
-            modelId: value === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni",
+            modelId: value === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd",
         };
         if (config) {
             const channel = resolveModelChannel(config, config.model || config.videoModel);

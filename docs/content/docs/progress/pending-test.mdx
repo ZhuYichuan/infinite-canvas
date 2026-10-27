@@ -12,8 +12,9 @@ The current release needs manual verification in these areas:
     - 验证 `ModelChannel` 仅保存 `baseUrl`、`apiKey` 与 `supportedModelIds`，不再冗余深拷贝工作流 JSON；
     - 验证 ComfyUI 视频工作流全量收敛为 4 款 MiniMax H3 FP8 模型（全能 4步极速/20步标准 + 首尾帧 4步极速/20步标准），BF16 模型已彻底移除；
     - 验证生图（T2I/I2I/Inpaint）与音频模块仍正常运行，零功能倒退。
-  - **VideoModelPicker & Hardware-Neutral VRAM Duration Guidance (视频模型选择器与显存分镜时长指引)**:
-    - 验证画布视频节点不再使用复杂的两级穿透 ChannelWorkflowPicker，而是使用专属的扁平 `VideoModelPicker` 卡片选择器；
+  - **VideoModelPicker Cascader & Clean Canvas Display (视频模型级联选择器与画布干净展示)**:
+    - 验证画布视频节点不再使用扁平单选下拉框，而是使用级联选择器（第一级为「API 提供商/主机」，hover 展开第二级为对应支持的「4 款精品 FP8 模型」）；
+    - 验证空视频节点在画布上不再渲染 `video_minimax_h3_omni` 等底层原始 ID，保持极简无杂质的占位图标与文案；
     - 验证模型选择器中展示 8G / 16G 显存阶梯标签，并明确展示推荐分镜时长（3~5s / 5~8s）；
     - 验证视频参数浮层的时长滑块配套 `[5s, 10s, 15s]` 快捷胶囊，点击可即时切换。
   - **Host Capability Guard & Friendly Missing-Plugin Alerts (主机支持防呆与缺失插件友好提示)**:
