@@ -3787,6 +3787,7 @@ function InfiniteCanvasPage() {
                             await requestVideoGeneration(generationConfig, effectivePrompt, generationContext.referenceImages, {
                                 signal: controller.signal,
                                 videoMode: generationConfig.videoMode === "frame" ? "frame" : "omni",
+                                model: sourceNode?.metadata?.modelId,
                                 firstFrame: generationContext.referenceImages[0],
                                 lastFrame: generationContext.referenceImages[1],
                                 referenceVideos: generationContext.referenceVideos,
@@ -4308,6 +4309,7 @@ function InfiniteCanvasPage() {
                         await requestVideoGeneration(generationConfig, prompt, context.referenceImages, {
                             signal: controller.signal,
                             videoMode: generationConfig.videoMode === "frame" ? "frame" : "omni",
+                            model: node.metadata?.modelId,
                             firstFrame: context.referenceImages[0],
                             lastFrame: context.referenceImages[1],
                             referenceVideos: context.referenceVideos,

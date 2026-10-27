@@ -21,6 +21,7 @@ export type VideoRequestOptions = {
     firstFrame?: ReferenceImage;
     lastFrame?: ReferenceImage;
     videoMode?: "omni" | "frame";
+    model?: string;
     channelId?: string;
     workflowId?: string;
     seed?: number;
@@ -48,7 +49,7 @@ function aiHeaders(config: AiConfig, contentType?: string) {
 }
 
 export async function requestVideoGeneration(config: AiConfig, prompt: string, references: ReferenceImage[] = [], options?: VideoRequestOptions): Promise<VideoGenerationResult> {
-    const rawModel = config.videoModel || config.model;
+    const rawModel = options?.model || config.videoModel || config.model;
     const res = await requestComfyuiVideo({
         config,
         model: rawModel,
@@ -70,7 +71,7 @@ export async function requestVideoGeneration(config: AiConfig, prompt: string, r
 }
 
 export async function createVideoGenerationTask(config: AiConfig, prompt: string, references: ReferenceImage[] = [], options?: VideoRequestOptions): Promise<VideoGenerationTask> {
-    const rawModel = config.videoModel || config.model;
+    const rawModel = options?.model || config.videoModel || config.model;
     const { jobId } = await submitComfyuiVideoJob({
         config,
         model: rawModel,

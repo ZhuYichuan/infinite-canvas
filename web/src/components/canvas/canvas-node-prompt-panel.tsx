@@ -164,19 +164,28 @@ export function CanvasNodePromptPanel({
                         <>
                             <ChannelWorkflowPicker
                                 category={["omniVideo", "frameVideo", "faceRefine"]}
-                                preferredCategory={findWorkflow(globalConfig, node.metadata?.channelId, node.metadata?.workflowId)?.category || (config.videoMode === "frame" ? "frameVideo" : "omniVideo")}
+                                preferredCategory={findWorkflow(globalConfig, node.metadata?.channelId, node.metadata?.workflowId)?.category || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frameVideo" : "omniVideo")}
                                 channelId={node.metadata?.channelId}
                                 workflowId={node.metadata?.workflowId}
                                 onChange={(channelId, workflowId, workflow) => {
-                                    const nextVideoMode = workflow?.category === "frameVideo" ? "frame" : workflow?.category === "omniVideo" ? "omni" : config.videoMode;
+                                    const nextVideoMode = workflow?.category === "frameVideo" ? "frame" : workflow?.category === "omniVideo" ? "omni" : (node.metadata?.videoMode || config.videoMode);
+                                    const nextModelId = nextVideoMode === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni";
                                     onConfigChange(node.id, {
                                         channelId,
                                         workflowId,
                                         videoMode: nextVideoMode,
+                                        modelId: nextModelId,
                                     });
                                 }}
                             />
                             <CanvasVideoSettingsPopover
+                                modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni")}
+                                size={node.metadata?.size || config.size}
+                                duration={node.metadata?.seconds || config.videoSeconds}
+                                videoMode={(node.metadata?.videoMode as "omni" | "frame") || (config.videoMode as "omni" | "frame")}
+                                onParamChange={(patch) => {
+                                    onConfigChange(node.id, patch);
+                                }}
                                 config={config}
                                 buttonClassName="!h-10 min-w-0 !max-w-[160px] !justify-start !rounded-full !px-3"
                                 onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, config))}
@@ -327,10 +336,10 @@ function defaultMode(type: CanvasNodeData["type"]): CanvasNodeGenerationMode {
 }
 
 function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: CanvasNodeGenerationMode): AiConfig {
-    const rawModel = node.metadata?.model;
+    const rawModel = node.metadata?.modelId || node.metadata?.model;
     const model = resolveModelForCapability(globalConfig, rawModel, mode);
-    const isFrame = model.toLowerCase().includes("frame") || model.includes("首尾帧");
-    const isOmni = model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
+    const isFrame = node.metadata?.modelId === "video_minimax_h3_frame" || model.toLowerCase().includes("frame") || model.includes("首尾帧");
+    const isOmni = node.metadata?.modelId === "video_minimax_h3_omni" || model.toLowerCase().endsWith("comfyui video") || model.toLowerCase().includes("omni");
     let videoMode = node.metadata?.videoMode;
     if (mode === "video" && node.metadata?.workflowId) {
         const wf = findWorkflow(globalConfig, node.metadata.channelId, node.metadata.workflowId);
@@ -371,7 +380,10 @@ function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig)
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     if (key === "videoMode") {
-        const patch: Record<string, unknown> = { videoMode: value };
+        const patch: Record<string, unknown> = {
+            videoMode: value,
+            modelId: value === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni",
+        };
         if (config) {
             const channel = resolveModelChannel(config, config.model || config.videoModel);
             if (value === "frame") {

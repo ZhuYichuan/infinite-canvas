@@ -2,10 +2,14 @@ import { Slider } from "antd";
 import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import i18n from "@/i18n";
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { type AiConfig } from "@/stores/use-config-store";
+import {
+    getModelProfile,
+    type WorkflowModelProfile,
+    videoMinimaxH3OmniProfile,
+} from "@/services/api/models";
 
 export type MiniMaxVideoTier = {
     mp: string;
@@ -28,7 +32,7 @@ export const MINIMAX_VIDEO_SIZE_TIERS: MiniMaxVideoTier[] = [
     { mp: "0.98M", landscapeW: 1344, landscapeH: 768 },
 ];
 
-const quickSecondOptions = [5, 10, 15];
+export const quickSecondOptions = [5, 10, 15];
 
 export const videoSecondOptions = quickSecondOptions.map((value) => String(value));
 export const videoResolutionOptions = [{ value: "720", label: "720p" }];
@@ -37,39 +41,109 @@ export const videoSizeOptions = MINIMAX_VIDEO_SIZE_TIERS.flatMap((tier) => [
     { value: `${tier.landscapeH}x${tier.landscapeW}`, label: `9:16 · ${tier.landscapeH}×${tier.landscapeW} (${tier.mp})`, width: tier.landscapeH, height: tier.landscapeW },
 ]);
 
-type VideoSettingsPanelProps = {
-    config: AiConfig;
-    onConfigChange: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoMode", value: string) => void;
+export type VideoSettingsPanelProps = {
+    modelId?: string;
+    size?: string;
+    duration?: number | string;
+    videoMode?: "omni" | "frame";
+    onParamChange?: (patch: {
+        modelId?: string;
+        videoMode?: "omni" | "frame";
+        size?: string;
+        seconds?: string;
+        duration?: number;
+    }) => void;
+    config?: AiConfig;
+    onConfigChange?: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoMode", value: string) => void;
     theme: CanvasTheme;
     showTitle?: boolean;
     className?: string;
 };
 
-export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5" }: VideoSettingsPanelProps) {
+export function VideoSettingsPanel({
+    modelId,
+    size,
+    duration,
+    videoMode,
+    onParamChange,
+    config,
+    onConfigChange,
+    theme,
+    showTitle = true,
+    className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5",
+}: VideoSettingsPanelProps) {
     const { t } = useTranslation();
-    const videoMode = config.videoMode === "frame" ? "frame" : "omni";
-    const rawSeconds = Number(config.videoSeconds);
-    const secondsNum = Math.min(15, Math.max(1, Number.isFinite(rawSeconds) && rawSeconds > 0 ? rawSeconds : 5));
-    const currentSize = normalizeVideoSizeValue(config.size);
-    const { width: currentW, height: currentH, aspect, tier: selectedTier } = parseVideoSize(currentSize);
+
+    // 动态解析绑定的工作流模型 Profile
+    const effectiveModelId = modelId || (videoMode === "frame" ? "video_minimax_h3_frame" : videoMode === "omni" ? "video_minimax_h3_omni" : undefined) || config?.videoModel || config?.model;
+    const profile = getModelProfile(effectiveModelId) || videoMinimaxH3OmniProfile;
+
+    const currentMode: "omni" | "frame" = videoMode || (profile.category === "frameVideo" ? "frame" : (config?.videoMode === "frame" ? "frame" : "omni"));
+
+    // 动态尺寸能力配置
+    const sizeConfig = profile.capabilityConfig.size;
+    const sizeTiers = extractVideoSizeTiers(sizeConfig?.values);
+    const rawSize = size || config?.size;
+    const currentSize = normalizeVideoSizeValue(rawSize, profile);
+    const { width: currentW, height: currentH, aspect, tier: selectedTier } = parseVideoSize(currentSize, sizeTiers);
+
+    // 动态时长能力配置
+    const durationConfig = profile.capabilityConfig.duration;
+    const minDuration = durationConfig?.min ?? 1;
+    const maxDuration = durationConfig?.max ?? 15;
+    const stepDuration = durationConfig?.step ?? 1;
+    const quickTags = durationConfig?.tags ?? [5, 10, 15];
+    const defaultDuration = durationConfig?.default ?? 5;
+    const rawSeconds = duration !== undefined ? Number(duration) : Number(config?.videoSeconds);
+    const secondsNum = Math.min(maxDuration, Math.max(minDuration, Number.isFinite(rawSeconds) && rawSeconds > 0 ? rawSeconds : defaultDuration));
+
+    const handleSelectMode = (nextMode: "omni" | "frame") => {
+        const nextModelId = nextMode === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni";
+        onParamChange?.({
+            modelId: nextModelId,
+            videoMode: nextMode,
+        });
+        onConfigChange?.("videoMode", nextMode);
+    };
 
     const handleSelectTier = (tier: MiniMaxVideoTier) => {
         const nextW = aspect === "16:9" ? tier.landscapeW : tier.landscapeH;
         const nextH = aspect === "16:9" ? tier.landscapeH : tier.landscapeW;
-        onConfigChange("size", `${nextW}x${nextH}`);
+        const nextSize = `${nextW}x${nextH}`;
+        onParamChange?.({ size: nextSize });
+        onConfigChange?.("size", nextSize);
     };
 
     const handleSwitchAspect = (nextAspect: "16:9" | "9:16") => {
         if (nextAspect === aspect) return;
         const nextW = nextAspect === "16:9" ? selectedTier.landscapeW : selectedTier.landscapeH;
         const nextH = nextAspect === "16:9" ? selectedTier.landscapeH : selectedTier.landscapeW;
-        onConfigChange("size", `${nextW}x${nextH}`);
+        const nextSize = `${nextW}x${nextH}`;
+        onParamChange?.({ size: nextSize });
+        onConfigChange?.("size", nextSize);
+    };
+
+    const handleDurationChange = (val: number) => {
+        onParamChange?.({ seconds: String(val), duration: val });
+        onConfigChange?.("videoSeconds", String(val));
     };
 
     return (
         <ImageSettingsTheme theme={theme}>
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
-                {showTitle ? <div className="text-lg font-semibold">{t("settingsPanels.video.title")}</div> : null}
+                {showTitle ? (
+                    <div className="flex items-center justify-between">
+                        <span className="text-base font-semibold">{t("settingsPanels.video.title")}</span>
+                        <span className="rounded bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[11px] font-mono opacity-60">
+                            {profile.id}
+                        </span>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-between px-0.5 text-[11px] font-mono opacity-60">
+                        <span>模型: {profile.id}</span>
+                        <span>{profile.name}</span>
+                    </div>
+                )}
 
                 {/* 0. 生成模式切换：全能参考 vs 首尾帧 */}
                 <SettingGroup title="生成模式" color={theme.node.muted}>
@@ -78,12 +152,12 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             type="button"
                             className="flex h-10 cursor-pointer flex-col items-center justify-center rounded-xl border text-xs font-medium transition hover:opacity-85"
                             style={{
-                                borderColor: videoMode === "omni" ? theme.node.text : theme.node.stroke,
-                                background: videoMode === "omni" ? (theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)") : "transparent",
+                                borderColor: currentMode === "omni" ? theme.node.text : theme.node.stroke,
+                                background: currentMode === "omni" ? (theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)") : "transparent",
                                 color: theme.node.text,
                             }}
                             onMouseDown={(event) => event.stopPropagation()}
-                            onClick={() => onConfigChange("videoMode", "omni")}
+                            onClick={() => handleSelectMode("omni")}
                         >
                             <span className="font-semibold">全能参考 (Omni)</span>
                             <span className="text-[10px] leading-none opacity-55">多模态 (图/音/视频)</span>
@@ -92,12 +166,12 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             type="button"
                             className="flex h-10 cursor-pointer flex-col items-center justify-center rounded-xl border text-xs font-medium transition hover:opacity-85"
                             style={{
-                                borderColor: videoMode === "frame" ? theme.node.text : theme.node.stroke,
-                                background: videoMode === "frame" ? (theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)") : "transparent",
+                                borderColor: currentMode === "frame" ? theme.node.text : theme.node.stroke,
+                                background: currentMode === "frame" ? (theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)") : "transparent",
                                 color: theme.node.text,
                             }}
                             onMouseDown={(event) => event.stopPropagation()}
-                            onClick={() => onConfigChange("videoMode", "frame")}
+                            onClick={() => handleSelectMode("frame")}
                         >
                             <span className="font-semibold">首尾帧 (Frame)</span>
                             <span className="text-[10px] leading-none opacity-55">首帧 / 首尾帧插帧</span>
@@ -139,17 +213,17 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     </div>
                 </SettingGroup>
 
-                {/* 2. 尺寸清晰度档位：直接显示当前比例下的真实宽高像素，副显档位说明 */}
+                {/* 2. 尺寸清晰度档位：动态呈现硬件对齐规格 */}
                 <SettingGroup title={`生成尺寸规格 (${aspect === "16:9" ? "横屏" : "竖屏"}，当前: ${currentW} × ${currentH})`} color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2">
-                        {MINIMAX_VIDEO_SIZE_TIERS.map((tier) => {
+                        {sizeTiers.map((tier) => {
                             const itemW = aspect === "16:9" ? tier.landscapeW : tier.landscapeH;
                             const itemH = aspect === "16:9" ? tier.landscapeH : tier.landscapeW;
-                            const isSelected = selectedTier.mp === tier.mp;
+                            const isSelected = selectedTier.landscapeW === tier.landscapeW && selectedTier.landscapeH === tier.landscapeH;
 
                             return (
                                 <button
-                                    key={tier.mp}
+                                    key={`${tier.landscapeW}x${tier.landscapeH}`}
                                     type="button"
                                     className="flex h-[54px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl border transition hover:opacity-80"
                                     style={{
@@ -175,12 +249,12 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                 {/* 3. 视频时长 */}
                 <SettingGroup title={`视频时长: ${secondsNum} 秒`} color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2">
-                        {quickSecondOptions.map((value) => (
+                        {quickTags.map((value) => (
                             <OptionPill
                                 key={value}
                                 selected={secondsNum === value}
                                 theme={theme}
-                                onClick={() => onConfigChange("videoSeconds", String(value))}
+                                onClick={() => handleDurationChange(value)}
                             >
                                 {value} 秒
                             </OptionPill>
@@ -188,12 +262,12 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     </div>
                     <div className="px-1 pt-1">
                         <Slider
-                            min={1}
-                            max={15}
-                            step={1}
+                            min={minDuration}
+                            max={maxDuration}
+                            step={stepDuration}
                             value={secondsNum}
                             tooltip={{ formatter: (v) => `${v} 秒` }}
-                            onChange={(val) => onConfigChange("videoSeconds", String(val))}
+                            onChange={(val) => handleDurationChange(val)}
                         />
                     </div>
                 </SettingGroup>
@@ -206,43 +280,78 @@ export function videoResolutionLabel(_value: string) {
     return "720p";
 }
 
-export function videoSizeLabel(value: string) {
-    const size = normalizeVideoSizeValue(value);
-    const { width, height, aspect } = parseVideoSize(size);
+export function extractVideoSizeTiers(values?: string[]): MiniMaxVideoTier[] {
+    if (!values || values.length === 0) return MINIMAX_VIDEO_SIZE_TIERS;
+    const tierMap = new Map<string, MiniMaxVideoTier>();
+    for (const val of values) {
+        const match = val.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
+        if (!match) continue;
+        const w = Number(match[1]);
+        const h = Number(match[2]);
+        const landscapeW = Math.max(w, h);
+        const landscapeH = Math.min(w, h);
+        const key = `${landscapeW}x${landscapeH}`;
+        if (!tierMap.has(key)) {
+            const pixels = landscapeW * landscapeH;
+            const mp = pixels >= 1_000_000 && pixels <= 1_050_000 ? "0.98M" : `${(pixels / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+            tierMap.set(key, { mp, landscapeW, landscapeH });
+        }
+    }
+    return Array.from(tierMap.values()).sort((a, b) => (a.landscapeW * a.landscapeH) - (b.landscapeW * b.landscapeH));
+}
+
+export function videoSizeLabel(value?: string, profile?: WorkflowModelProfile) {
+    const tiers = extractVideoSizeTiers(profile?.capabilityConfig.size?.values);
+    const size = normalizeVideoSizeValue(value, profile);
+    const { width, height, aspect } = parseVideoSize(size, tiers);
     return `${width}×${height} (${aspect})`;
 }
 
-export function videoSecondsLabel(value: string) {
+export function videoSecondsLabel(value?: string | number, profile?: WorkflowModelProfile) {
+    const durationConfig = profile?.capabilityConfig.duration;
+    const min = durationConfig?.min ?? 1;
+    const max = durationConfig?.max ?? 15;
+    const def = durationConfig?.default ?? 5;
     const raw = Number(value);
-    const s = Math.min(15, Math.max(1, Number.isFinite(raw) && raw > 0 ? raw : 5));
+    const s = Number.isFinite(raw) ? Math.min(max, Math.max(min, raw)) : def;
     return `${s}s`;
 }
 
-export function normalizeVideoSizeValue(value?: string) {
-    if (!value) return "544x960";
+export function normalizeVideoSizeValue(value?: string, profile?: WorkflowModelProfile) {
+    const allowed = profile?.capabilityConfig.size?.values;
+    const defaultVal = profile?.capabilityConfig.size?.default || "1280x736";
+    if (!value) return defaultVal;
+    if (allowed && allowed.length > 0) {
+        const clean = value.toLowerCase().replace(/\s+/g, "");
+        const matched = allowed.find((v) => v.toLowerCase().replace(/\s+/g, "") === clean);
+        return matched || defaultVal;
+    }
     const isValid = videoSizeOptions.some((option) => option.value === value);
-    return isValid ? value : "544x960";
+    return isValid ? value : defaultVal;
 }
 
-export function normalizeVideoResolutionValue(value?: string) {
+export function normalizeVideoResolutionValue(_value?: string) {
     return "720";
 }
 
-export function parseVideoSize(sizeStr?: string): { width: number; height: number; aspect: "16:9" | "9:16"; tier: MiniMaxVideoTier } {
+export function parseVideoSize(
+    sizeStr?: string,
+    tiers: MiniMaxVideoTier[] = MINIMAX_VIDEO_SIZE_TIERS,
+): { width: number; height: number; aspect: "16:9" | "9:16"; tier: MiniMaxVideoTier } {
     const raw = (sizeStr || "").trim().toLowerCase();
     const match = raw.match(/^(\d+)\s*[x×]\s*(\d+)$/);
-    const w = Number(match?.[1]) || 544;
-    const h = Number(match?.[2]) || 960;
+    const w = Number(match?.[1]) || 1280;
+    const h = Number(match?.[2]) || 736;
 
     const isLandscape = w >= h;
     const aspect: "16:9" | "9:16" = isLandscape ? "16:9" : "9:16";
     const longSide = Math.max(w, h);
     const shortSide = Math.min(w, h);
 
-    // 寻找最接近的 tier（默认 0.5M）
-    let matchedTier = MINIMAX_VIDEO_SIZE_TIERS[3]; // 0.5M
+    const availableTiers = tiers.length > 0 ? tiers : MINIMAX_VIDEO_SIZE_TIERS;
+    let matchedTier = availableTiers[0] || MINIMAX_VIDEO_SIZE_TIERS[0];
     let minDiff = Infinity;
-    for (const t of MINIMAX_VIDEO_SIZE_TIERS) {
+    for (const t of availableTiers) {
         const diff = Math.abs(t.landscapeW - longSide) + Math.abs(t.landscapeH - shortSide);
         if (diff < minDiff) {
             minDiff = diff;
@@ -258,7 +367,18 @@ export function parseVideoSize(sizeStr?: string): { width: number; height: numbe
 
 function OptionPill({ selected, disabled = false, theme, onClick, children }: { selected: boolean; disabled?: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {
     return (
-        <button type="button" disabled={disabled} className="h-9 cursor-pointer rounded-xl border px-2 text-xs font-medium transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-35" style={{ background: selected ? (theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)") : "transparent", borderColor: selected ? theme.node.text : theme.node.stroke, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()} onClick={onClick}>
+        <button
+            type="button"
+            disabled={disabled}
+            className="h-9 cursor-pointer rounded-xl border px-2 text-xs font-medium transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-35"
+            style={{
+                background: selected ? (theme.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)") : "transparent",
+                borderColor: selected ? theme.node.text : theme.node.stroke,
+                color: theme.node.text,
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={onClick}
+        >
             {children}
         </button>
     );

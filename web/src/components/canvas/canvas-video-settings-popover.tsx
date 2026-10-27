@@ -3,20 +3,50 @@ import { createPortal } from "react-dom";
 import { Settings2 } from "lucide-react";
 import { Button } from "antd";
 
-import { VideoSettingsPanel, videoResolutionLabel, videoSecondsLabel, videoSizeLabel } from "@/components/video-settings-panel";
+import {
+    VideoSettingsPanel,
+    videoSecondsLabel,
+    videoSizeLabel,
+} from "@/components/video-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
+import {
+    getModelProfile,
+    videoMinimaxH3OmniProfile,
+} from "@/services/api/models";
 
-type CanvasVideoSettingsPopoverProps = {
-    config: AiConfig;
-    onConfigChange: (key: keyof AiConfig, value: string) => void;
+export type CanvasVideoSettingsPopoverProps = {
+    modelId?: string;
+    size?: string;
+    duration?: number | string;
+    videoMode?: "omni" | "frame";
+    onParamChange?: (patch: {
+        modelId?: string;
+        videoMode?: "omni" | "frame";
+        size?: string;
+        seconds?: string;
+        duration?: number;
+    }) => void;
+    config?: AiConfig;
+    onConfigChange?: (key: keyof AiConfig, value: string) => void;
     onOpenChange?: (open: boolean) => void;
     buttonClassName?: string;
     placement?: "topLeft" | "top" | "topRight" | "bottomLeft" | "bottom" | "bottomRight";
 };
 
-export function CanvasVideoSettingsPopover({ config, onConfigChange, onOpenChange, buttonClassName, placement = "topLeft" }: CanvasVideoSettingsPopoverProps) {
+export function CanvasVideoSettingsPopover({
+    modelId,
+    size,
+    duration,
+    videoMode,
+    onParamChange,
+    config,
+    onConfigChange,
+    onOpenChange,
+    buttonClassName,
+    placement = "topLeft",
+}: CanvasVideoSettingsPopoverProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const buttonRef = useRef<HTMLSpanElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
@@ -63,14 +93,34 @@ export function CanvasVideoSettingsPopover({ config, onConfigChange, onOpenChang
         };
     }, [open]);
 
-    const panel = open && buttonRect ? <VideoSettingsPortal buttonRect={buttonRect} panelRef={panelRef} placement={placement} theme={theme} config={config} onConfigChange={onConfigChange} /> : null;
+    const effectiveModelId = modelId || (videoMode === "frame" ? "video_minimax_h3_frame" : videoMode === "omni" ? "video_minimax_h3_omni" : undefined) || config?.videoModel || config?.model;
+    const profile = getModelProfile(effectiveModelId) || videoMinimaxH3OmniProfile;
+    const currentMode = videoMode || (profile.category === "frameVideo" ? "frame" : (config?.videoMode === "frame" ? "frame" : "omni"));
+    const currentSize = size || config?.size;
+    const currentDuration = duration !== undefined ? duration : config?.videoSeconds;
+
+    const panel = open && buttonRect ? (
+        <VideoSettingsPortal
+            buttonRect={buttonRect}
+            panelRef={panelRef}
+            placement={placement}
+            theme={theme}
+            modelId={effectiveModelId}
+            size={currentSize}
+            duration={currentDuration}
+            videoMode={currentMode}
+            onParamChange={onParamChange}
+            config={config}
+            onConfigChange={onConfigChange}
+        />
+    ) : null;
 
     return (
         <>
             <span ref={buttonRef} className="inline-flex min-w-0" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                 <Button size="small" type="text" className={buttonClassName || "!h-8 !max-w-[230px] !justify-start !rounded-full !px-2.5"} style={{ background: theme.node.fill, color: theme.node.text }} icon={<Settings2 className="size-3.5" />} onClick={() => updateOpen(!open)}>
                     <span className="truncate">
-                        {config.videoMode === "frame" ? "首尾帧" : "全能参考"} · {videoSizeLabel(config.size)} · {videoSecondsLabel(config.videoSeconds)}
+                        {currentMode === "frame" ? "首尾帧" : "全能参考"} · {videoSizeLabel(currentSize, profile)} · {videoSecondsLabel(currentDuration, profile)}
                     </span>
                 </Button>
             </span>
@@ -84,6 +134,11 @@ function VideoSettingsPortal({
     panelRef,
     placement,
     theme,
+    modelId,
+    size,
+    duration,
+    videoMode,
+    onParamChange,
     config,
     onConfigChange,
 }: {
@@ -91,8 +146,13 @@ function VideoSettingsPortal({
     panelRef: RefObject<HTMLDivElement | null>;
     placement: CanvasVideoSettingsPopoverProps["placement"];
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
-    config: AiConfig;
-    onConfigChange: (key: keyof AiConfig, value: string) => void;
+    modelId?: string;
+    size?: string;
+    duration?: number | string;
+    videoMode?: "omni" | "frame";
+    onParamChange?: CanvasVideoSettingsPopoverProps["onParamChange"];
+    config?: AiConfig;
+    onConfigChange?: (key: keyof AiConfig, value: string) => void;
 }) {
     const width = 356;
     const gap = 8;
@@ -130,7 +190,17 @@ function VideoSettingsPortal({
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
         >
-            <VideoSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-4" />
+            <VideoSettingsPanel
+                modelId={modelId}
+                size={size}
+                duration={duration}
+                videoMode={videoMode}
+                onParamChange={onParamChange}
+                config={config}
+                onConfigChange={onConfigChange as any}
+                theme={theme}
+                className="space-y-4"
+            />
         </div>,
         document.body,
     );

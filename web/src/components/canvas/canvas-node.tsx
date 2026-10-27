@@ -763,13 +763,16 @@ function EmptyImageContent({ theme }: NodeContentRendererProps) {
 
 function VideoNodeContent({ node, theme, onViewMedia }: NodeContentRendererProps) {
     const { t } = useTranslation();
-    if (!node.metadata?.content)
+    if (!node.metadata?.content) {
+        const boundModel = node.metadata?.modelId || (node.metadata?.videoMode === "frame" ? "video_minimax_h3_frame" : "video_minimax_h3_omni");
         return (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.placeholder }}>
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5" style={{ color: theme.node.placeholder }}>
                 <Video className="size-7 opacity-35" />
                 <span className="text-sm">{t("canvas.node.emptyVideo")}</span>
+                <span className="rounded bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[11px] font-mono opacity-50">{boundModel}</span>
             </div>
         );
+    }
     return <CanvasVideoPlayer nodeId={node.id} src={node.metadata.content} onPreview={onViewMedia} />;
 }
 

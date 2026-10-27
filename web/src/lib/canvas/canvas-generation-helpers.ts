@@ -133,11 +133,15 @@ export function getInputSummary(inputs: NodeGenerationInput[]) {
 }
 
 export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasNodeGenerationMode): AiConfig {
-    const model = resolveModelForCapability(config, node?.metadata?.model, mode);
+    const rawModel = node?.metadata?.modelId || node?.metadata?.model;
+    const model = resolveModelForCapability(config, rawModel, mode);
     const channelId = node?.metadata?.channelId || config.channelId;
     const workflowId = node?.metadata?.workflowId || config.workflowId;
     let videoMode = node?.metadata?.videoMode;
-    if (mode === "video" && workflowId) {
+    if (mode === "video" && node?.metadata?.modelId) {
+        videoMode = node.metadata.modelId.includes("frame") ? "frame" : "omni";
+    }
+    if (mode === "video" && workflowId && !videoMode) {
         const wf = findWorkflow(config, channelId, workflowId);
         if (wf?.category === "frameVideo") videoMode = "frame";
         else if (wf?.category === "omniVideo" || wf?.category === "faceRefine") videoMode = "omni";
