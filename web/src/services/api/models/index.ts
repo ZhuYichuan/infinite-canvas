@@ -19,6 +19,7 @@ import {
 export * from "./types";
 export * from "./video-minimax-h3-omni";
 export * from "./video-minimax-h3-frame";
+export * from "./constraint-engine";
 
 /**
  * 系统内置工作流模型清单注册表（全量收敛为 4 款精品 FP8 模型）
