@@ -49,6 +49,10 @@ const BUILTIN_WORKFLOW_IDENTIFIERS = new Set([
     "Qwen-Image-2.1 文生图",
     "Qwen-Image-2.1 多图参考图生图",
     "Qwen-Image-2.1 全能生图",
+    "qwen_image_21_int8_api.json",
+    "Qwen-Image-2.1 文生图 (Int8)",
+    "Qwen-Image-2.1 多图参考图生图 (Int8)",
+    "Qwen-Image-2.1 全能生图 (Int8)",
 ]);
 
 export type ComfyuiWorkflowEditorProps = {

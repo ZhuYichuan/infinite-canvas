@@ -1303,6 +1303,42 @@ describe("Qwen-Image-2.1 and submitJob validation", () => {
         expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(false);
     });
 
+    it("safely binds Qwen-Image-2.1 Int8 for text-to-image and image-to-image", async () => {
+        const qwenInt8Json = (await import("@/assets/workflows/qwen_image_21_int8_api.json")).default;
+
+        // Text-to-image (no ref images)
+        const t2iBound = applyBindings(qwenInt8Json as unknown as ComfyuiWorkflowJson, {
+            prompt: "a majestic golden dragon",
+            width: 1024,
+            height: 1024,
+            seed: 1234,
+        });
+        expect(t2iBound["1"]).toBeDefined(); // SaveImage
+        expect((t2iBound["24"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
+        expect((t2iBound["26"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toBeUndefined();
+
+        // Image-to-image with 1 reference image and custom size
+        const i2iBound = applyBindings(qwenInt8Json as unknown as ComfyuiWorkflowJson, {
+            prompt: "character redesign",
+            width: 1024,
+            height: 1024,
+            seed: 1234,
+            refImages: ["uploaded_int8_asset.png"],
+        });
+        expect(i2iBound["1"]).toBeDefined();
+        expect((i2iBound["24"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
+        expect((i2iBound["26"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toEqual(["10", 0]);
+        expect((i2iBound["26"]?.inputs as Record<string, unknown>)?.["images.image_2"]).toBeUndefined();
+
+        // Image-to-image without custom size (fallback to reference latent)
+        const fallbackBound = applyBindings(qwenInt8Json as unknown as ComfyuiWorkflowJson, {
+            prompt: "character redesign",
+            seed: 1234,
+            refImages: ["uploaded_int8_asset.png"],
+        });
+        expect((fallbackBound["24"]?.inputs as Record<string, unknown>)?.switch).toBe(false);
+    });
+
     it("rejects empty workflow in submitJob", async () => {
         await expect(submitJob({}, "http://127.0.0.1:8188")).rejects.toThrow(ComfyuiNoWorkflowError);
     });

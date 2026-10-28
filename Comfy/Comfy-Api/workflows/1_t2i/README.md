@@ -9,10 +9,13 @@
 | 工作流名称 | 对应文件 | 核心模型 | 采样步数 | 核心特性 |
 | :--- | :--- | :--- | :---: | :--- |
 | **Z-Image-Turbo 文生图 (默认)** | [`z_image_turbo_api.json`](./z_image_turbo_api.json) | `Z-Image-Turbo` (BF16) | 4~8 步 | 蒸馏极速推理、Qwen3-4B 文本编码、秒级出图 |
-| **Qwen-Image-2.1 文生图** | [`qwen_image_21_api.json`](./qwen_image_21_api.json) | `Qwen-Image-2.1` (BF16) | 25 步 | Qwen3-VL 8B 视觉语言大模型引导、深度多模态理解、超写实画质、天然两栖（无参考图时纯文生图） |
+| **Qwen-Image-2.1 文生图 (BF16)** | [`qwen_image_21_api.json`](./qwen_image_21_api.json) | `Qwen-Image-2.1` (BF16) | 25 步 | Qwen3-VL 8B 视觉语言大模型引导、深度多模态理解、超写实画质、天然两栖（无参考图时纯文生图） |
+| **Qwen-Image-2.1 文生图 (Int8)** | [`qwen_image_21_int8_api.json`](./qwen_image_21_int8_api.json) | `Qwen-Image-2.1` (Int8) | 25 步 | Qwen3-VL 8B (Int8) 视觉语言大模型引导、显存占用节省近半、消费级单卡流畅运行、天然两栖 |
 
 可视化工程文件：
 - [`z_image_turbo_workflow.json`](./z_image_turbo_workflow.json)：ComfyUI 可视化拖拽查看编辑图
+- [`qwen_image_21_workflow.json`](./qwen_image_21_workflow.json)：Qwen-Image-2.1 BF16 可视化工作流图
+- [`qwen_image_21_int8_workflow.json`](./qwen_image_21_int8_workflow.json)：Qwen-Image-2.1 Int8 可视化工作流图
 
 ---
 
@@ -42,3 +45,21 @@
   2. **内置加速缓存**：采用 `QwenImage21Cache` 专用加速机制，25 步即可获得饱满收敛的成图质量；
   3. **天然两栖架构**：内置 10 个参考图槽位（`ref_image_01` ~ `ref_image_10`）；当画布节点**未连接任何参考图**时，系统自动剪除参考图分支，无缝作为**纯文生图**工作流运行；
   4. **标准槽位**：动态绑定 `prompt`、`seed`、`width`、`height`，输出槽位为标准 `output_image`（SaveImageAdvanced 节点）。
+
+---
+
+## 模型三：Qwen-Image-2.1 (Int8 轻量大模型版)
+
+- **模型名称**: `Qwen-Image-2.1 (Int8)`
+- **适用场景**: 追求高水准提示词遵循与超写实画质，但显卡显存有限（如 12GB~16GB 消费级单卡）的文生图场景。
+- **工作流文件**: [`qwen_image_21_int8_api.json`](./qwen_image_21_int8_api.json)
+- **可视化工程文件**: [`qwen_image_21_int8_workflow.json`](./qwen_image_21_int8_workflow.json)
+- **必要权重文件（存放在 ComfyUI `models/` 目录）**:
+  - `diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors`（UNet 主干扩散模型 Int8 量化版）
+  - `clip/qwen3vl_8b_int8_convrot.safetensors`（Qwen3-VL 8B 多模态视觉语言大模型 Int8 量化版，加载器类型 `qwen_image`）
+  - `vae/qwen_image_2.1_vae_bf16.safetensors`（专用 VAE 潜空间编解码器）
+- **核心技术特点**:
+  1. **低显存消费级友好**：UNet 与 CLIP 均采用 Int8 权重量化，相比 BF16 显存占用大幅下降（降低约 40%~50%），消费级显卡也能流畅推理；
+  2. **内置加速缓存**：采用 `QwenImage21Cache` 专用加速机制，25 步快速收敛成图；
+  3. **天然两栖架构**：内置 10 个参考图槽位（`ref_image_01` ~ `ref_image_10`）；当画布节点**未连接任何参考图**时，系统自动剪除参考图分支，无缝作为**纯文生图**工作流运行；
+  4. **标准槽位**：动态绑定 `prompt`、`seed`、`width`、`height`，输出槽位为标准 `out_image`。
