@@ -503,6 +503,36 @@ describe("updateNodeGenerationProgress", () => {
         const updated = updateNodeGenerationProgress([node], "node-batch", "network_retry", { message: "重连 (1/5)..." }, "img-1");
         expect(updated[0].metadata?.images?.[0].networkRetryText).toBe("重连 (1/5)...");
     });
+
+    it("syncs jobId across node metadata and images when imageId is not specified", () => {
+        const node = makeNode(CanvasNodeType.Image, {
+            status: "loading",
+            images: [
+                { id: "img-1", status: "loading", content: "", storageKey: "", naturalWidth: 100, naturalHeight: 100, bytes: 0, mimeType: "image/png" },
+            ],
+        }, "node-single");
+
+        const updated = updateNodeGenerationProgress([node], "node-single", "submitted", { jobId: "job-123" });
+        expect(updated[0].metadata?.jobId).toBe("job-123");
+        expect(updated[0].metadata?.images?.[0].jobId).toBe("job-123");
+    });
+});
+
+describe("resetInterruptedGeneration with jobId persistence", () => {
+    it("inherits root jobId to interrupted images if image jobId was missing", () => {
+        const node = makeNode(CanvasNodeType.Image, {
+            status: "loading",
+            jobId: "job-456",
+            images: [
+                { id: "img-1", status: "loading", content: "", storageKey: "", naturalWidth: 100, naturalHeight: 100, bytes: 0, mimeType: "image/png" },
+            ],
+        }, "node-interrupted");
+
+        const [reset] = resetInterruptedGeneration([node]);
+        expect(reset.metadata?.status).toBe("error");
+        expect(reset.metadata?.jobId).toBe("job-456");
+        expect(reset.metadata?.images?.[0].jobId).toBe("job-456");
+    });
 });
 
 

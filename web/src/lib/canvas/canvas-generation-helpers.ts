@@ -133,11 +133,15 @@ export function getInputSummary(inputs: NodeGenerationInput[]) {
 }
 
 export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasNodeGenerationMode): AiConfig {
-    const model = resolveModelForCapability(config, node?.metadata?.model, mode);
+    const rawModel = node?.metadata?.modelId || node?.metadata?.model;
+    const model = resolveModelForCapability(config, rawModel, mode);
     const channelId = node?.metadata?.channelId || config.channelId;
     const workflowId = node?.metadata?.workflowId || config.workflowId;
     let videoMode = node?.metadata?.videoMode;
-    if (mode === "video" && workflowId) {
+    if (mode === "video" && node?.metadata?.modelId) {
+        videoMode = node.metadata.modelId.includes("frame") ? "frame" : "omni";
+    }
+    if (mode === "video" && workflowId && !videoMode) {
         const wf = findWorkflow(config, channelId, workflowId);
         if (wf?.category === "frameVideo") videoMode = "frame";
         else if (wf?.category === "omniVideo" || wf?.category === "faceRefine") videoMode = "omni";
@@ -347,6 +351,7 @@ export function resetInterruptedGeneration(nodes: CanvasNodeData[]) {
         );
         const isInterrupted = node.metadata?.status === "loading" || isInterruptedGenerationError(node.metadata?.errorDetails) || hasInterruptedImages || hasInterruptedTexts;
         if (isInterrupted) {
+            const rootJobId = node.metadata?.jobId;
             return {
                 ...node,
                 metadata: {
@@ -355,7 +360,12 @@ export function resetInterruptedGeneration(nodes: CanvasNodeData[]) {
                     errorDetails: i18n.t("canvas.generation.interrupted"),
                     images: node.metadata.images?.map((image) =>
                         image.status === "loading" || isInterruptedGenerationError(image.errorDetails)
-                            ? { ...image, status: "error" as const, errorDetails: i18n.t("canvas.generation.interrupted") }
+                            ? {
+                                  ...image,
+                                  status: "error" as const,
+                                  errorDetails: i18n.t("canvas.generation.interrupted"),
+                                  ...(image.jobId || rootJobId ? { jobId: image.jobId || rootJobId } : {}),
+                              }
                             : image,
                     ),
                     texts: node.metadata.texts?.map((text) =>
@@ -557,6 +567,14 @@ export function updateNodeGenerationProgress(
             };
         }
 
+        const images = item.metadata?.images?.map((img) => ({
+            ...img,
+            ...(isSubmitted ? { jobId: detail?.jobId, networkRetryText: undefined } : {}),
+            ...(isPending ? { queuePosition: detail?.queuePosition, networkRetryText: undefined } : {}),
+            ...(isRunning ? { queuePosition: undefined, networkRetryText: undefined } : {}),
+            ...(isRetry ? { networkRetryText: retryText } : {}),
+        }));
+
         return {
             ...item,
             metadata: {
@@ -565,6 +583,7 @@ export function updateNodeGenerationProgress(
                 ...(isPending ? { queuePosition: detail?.queuePosition, networkRetryText: undefined } : {}),
                 ...(isRunning ? { queuePosition: undefined, networkRetryText: undefined } : {}),
                 ...(isRetry ? { networkRetryText: retryText } : {}),
+                ...(images ? { images } : {}),
             },
         };
     });

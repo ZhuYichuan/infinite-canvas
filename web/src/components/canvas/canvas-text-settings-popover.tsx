@@ -4,14 +4,19 @@ import { Settings2 } from "lucide-react";
 import { Button, InputNumber } from "antd";
 import { useTranslation } from "react-i18next";
 
-import { reasoningEffortLabel, TextSettingsPanel } from "@/components/text-settings-panel";
+import { TextSettingsPanel } from "@/components/text-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig, ReasoningEffort } from "@/stores/use-config-store";
+import { getModelProfile } from "@/services/api/models";
 
 type CanvasTextSettingsPopoverProps = {
+    modelId?: string;
+    maxLength?: number;
+    thinking?: boolean;
+    onParamChange?: (patch: { maxLength?: number; thinking?: boolean }) => void;
     config: AiConfig;
-    onConfigChange: (key: "reasoningEffort", value: ReasoningEffort) => void;
+    onConfigChange?: (key: "reasoningEffort", value: ReasoningEffort) => void;
     onOpenChange?: (open: boolean) => void;
     count?: number;
     onCountChange?: (count: number) => void;
@@ -19,13 +24,32 @@ type CanvasTextSettingsPopoverProps = {
     placement?: "topLeft" | "top" | "topRight" | "bottomLeft" | "bottom" | "bottomRight";
 };
 
-export function CanvasTextSettingsPopover({ config, onConfigChange, onOpenChange, count, onCountChange, buttonClassName, placement = "topLeft" }: CanvasTextSettingsPopoverProps) {
+export function CanvasTextSettingsPopover({
+    modelId,
+    maxLength,
+    thinking,
+    onParamChange,
+    config,
+    onConfigChange,
+    onOpenChange,
+    count,
+    onCountChange,
+    buttonClassName,
+    placement = "topLeft",
+}: CanvasTextSettingsPopoverProps) {
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const buttonRef = useRef<HTMLSpanElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
     const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
+
+    const profile = getModelProfile(modelId || "text-qwen-35");
+    const textConfig = profile?.capabilityConfig?.textConfig;
+    const hasConfig = Boolean(textConfig?.maxLength || textConfig?.thinkingSupported);
+
+    const currentMaxLength = maxLength ?? textConfig?.maxLength?.default ?? 512;
+    const currentThinking = thinking ?? true;
 
     const updateOpen = (nextOpen: boolean) => {
         setOpen(nextOpen);
@@ -67,13 +91,30 @@ export function CanvasTextSettingsPopover({ config, onConfigChange, onOpenChange
         };
     }, [open]);
 
-    const panel = open && buttonRect ? <TextSettingsPortal buttonRect={buttonRect} panelRef={panelRef} placement={placement} theme={theme} config={config} count={count} onConfigChange={onConfigChange} onCountChange={onCountChange} /> : null;
+    if (!hasConfig) return null;
+
+    const panel = open && buttonRect ? (
+        <TextSettingsPortal
+            buttonRect={buttonRect}
+            panelRef={panelRef}
+            placement={placement}
+            theme={theme}
+            modelId={modelId}
+            maxLength={currentMaxLength}
+            thinking={currentThinking}
+            onParamChange={onParamChange}
+            config={config}
+            count={count}
+            onConfigChange={onConfigChange}
+            onCountChange={onCountChange}
+        />
+    ) : null;
 
     return (
         <>
             <span ref={buttonRef} className="inline-flex min-w-0" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                 <Button size="small" type="text" className={buttonClassName || "!h-8 !max-w-[170px] !justify-start !rounded-full !px-2.5"} style={{ background: theme.node.fill, color: theme.node.text }} icon={<Settings2 className="size-3.5" />} onClick={() => updateOpen(!open)}>
-                    <span className="truncate">{t("canvas.controls.reasoning")} · {reasoningEffortLabel(config.reasoningEffort)}{onCountChange ? ` · ${t("canvas.controls.generations", { count })}` : ""}</span>
+                    <span className="truncate">{currentMaxLength} 词{currentThinking ? " · 思考" : ""}{onCountChange ? ` · ${t("canvas.controls.generations", { count })}` : ""}</span>
                 </Button>
             </span>
             {panel}
@@ -81,14 +122,31 @@ export function CanvasTextSettingsPopover({ config, onConfigChange, onOpenChange
     );
 }
 
-function TextSettingsPortal({ buttonRect, panelRef, placement, theme, config, count, onConfigChange, onCountChange }: {
+function TextSettingsPortal({
+    buttonRect,
+    panelRef,
+    placement,
+    theme,
+    modelId,
+    maxLength,
+    thinking,
+    onParamChange,
+    config,
+    count,
+    onConfigChange,
+    onCountChange,
+}: {
     buttonRect: DOMRect;
     panelRef: RefObject<HTMLDivElement | null>;
     placement: CanvasTextSettingsPopoverProps["placement"];
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
+    modelId?: string;
+    maxLength?: number;
+    thinking?: boolean;
+    onParamChange?: (patch: { maxLength?: number; thinking?: boolean }) => void;
     config: AiConfig;
     count?: number;
-    onConfigChange: CanvasTextSettingsPopoverProps["onConfigChange"];
+    onConfigChange?: CanvasTextSettingsPopoverProps["onConfigChange"];
     onCountChange?: (count: number) => void;
 }) {
     const { t } = useTranslation();
@@ -128,7 +186,15 @@ function TextSettingsPortal({ buttonRect, panelRef, placement, theme, config, co
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
         >
-            <TextSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} />
+            <TextSettingsPanel
+                modelId={modelId}
+                maxLength={maxLength}
+                thinking={thinking}
+                onParamChange={onParamChange}
+                config={config}
+                onConfigChange={onConfigChange}
+                theme={theme}
+            />
             {onCountChange ? (
                 <div className="mt-4 space-y-2.5">
                     <div className="text-sm font-medium" style={{ color: theme.node.muted }}>{t("settingsPanels.text.count")}</div>

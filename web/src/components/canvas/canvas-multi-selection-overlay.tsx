@@ -104,7 +104,8 @@ export function CanvasMultiSelectionOverlay({
                 style={{
                     left: plusX,
                     top: plusY,
-                    transform: "translate(-50%, -50%)",
+                    transform: `translate(-50%, -50%) scale(${1 / (scale > 0 ? scale : 1)})`,
+                    transformOrigin: "center center",
                 }}
             >
                 <button

@@ -77,6 +77,7 @@ export function ComfyuiWorkflowEditor({
     const { t } = useTranslation();
     const { message } = App.useApp();
     const setChannelDefaultWorkflow = useConfigStore((state) => state.setChannelDefaultWorkflow);
+    const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
 
     // 获取当前渠道在该分类下的所有可用工作流
     const categoryWorkflows = channel && category ? getChannelWorkflows(channel, category) : [];
@@ -157,6 +158,7 @@ export function ComfyuiWorkflowEditor({
                         to={`/workflows?id=${encodeURIComponent(targetWorkflowId || "")}&channelId=${encodeURIComponent(channelId)}&category=${encodeURIComponent(category || "")}`}
                         className="inline-flex shrink-0 items-center gap-1.5 rounded border border-stone-200/80 bg-white px-2 py-1 text-xs font-medium text-stone-700 shadow-xs transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-750"
                         title="前往工作流管理页面进行大模型与参数配置"
+                        onClick={() => setConfigDialogOpen(false)}
                     >
                         <Sliders className="size-3 text-stone-500" />
                         <span>配置工作流</span>
@@ -193,6 +195,7 @@ export function ComfyuiWorkflowEditor({
                     to={`/workflows?id=${encodeURIComponent(targetWorkflowId || "")}&channelId=${encodeURIComponent(channelId)}&category=${encodeURIComponent(category || "")}`}
                     className="inline-flex items-center gap-1.5 rounded border border-stone-200/80 bg-white px-2 py-1 text-xs font-medium text-stone-700 shadow-xs transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-750"
                     title="配置与编辑工作流参数"
+                    onClick={() => setConfigDialogOpen(false)}
                 >
                     <Sliders className="size-3 text-stone-500" />
                     <span>配置工作流</span>

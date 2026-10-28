@@ -82,6 +82,7 @@ export type CanvasNodeMetadata = {
     channelId?: string;
     workflowId?: string;
     model?: string;
+    modelId?: string;
     reasoningEffort?: "auto" | "low" | "medium" | "high" | "xhigh";
     size?: string;
     quality?: string;

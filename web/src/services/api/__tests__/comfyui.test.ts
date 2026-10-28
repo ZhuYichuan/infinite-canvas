@@ -26,27 +26,28 @@ describe("parseSize", () => {
         expect(parseSize(" 1536 x 1024 ")).toEqual({ width: 1536, height: 1024 });
     });
 
-    it("parses aspect ratios with a 1024 base edge", () => {
-        expect(parseSize("1:1")).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("3:4")).toEqual({ width: 1024, height: 1366 });
-        expect(parseSize("4:3")).toEqual({ width: 1366, height: 1024 });
-        expect(parseSize("16:9")).toEqual({ width: 1820, height: 1024 });
+    it("parses aspect ratios with 1k/512 base edge", () => {
+        expect(parseSize("1:1")).toEqual({ width: 512, height: 512 });
+        expect(parseSize("3:4")).toEqual({ width: 448, height: 576 });
+        expect(parseSize("4:3")).toEqual({ width: 576, height: 448 });
+        expect(parseSize("16:9")).toEqual({ width: 640, height: 384 });
     });
 
-    it("falls back to 1024x1024 for empty or auto input", () => {
-        expect(parseSize()).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("")).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("   ")).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("auto")).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("AUTO")).toEqual({ width: 1024, height: 1024 });
+    it("falls back to 512x512 for empty or auto input", () => {
+        expect(parseSize()).toEqual({ width: 512, height: 512 });
+        expect(parseSize("")).toEqual({ width: 512, height: 512 });
+        expect(parseSize("   ")).toEqual({ width: 512, height: 512 });
+        expect(parseSize("auto")).toEqual({ width: 512, height: 512 });
+        expect(parseSize("AUTO")).toEqual({ width: 512, height: 512 });
     });
 
-    it("parses 2k/4k ratio tiers with a long-edge base", () => {
-        expect(parseSize("1:1-2k")).toEqual({ width: 2048, height: 2048 });
-        expect(parseSize("16:9-2k")).toEqual({ width: 2048, height: 1152 });
-        expect(parseSize("9:16-2k")).toEqual({ width: 1152, height: 2048 });
-        expect(parseSize("16:9-4k")).toEqual({ width: 3840, height: 2160 });
-        expect(parseSize("9:16-4k")).toEqual({ width: 2160, height: 3840 });
+    it("parses 2k/4k ratio tiers aligned with resolution presets", () => {
+        expect(parseSize("1:1-2k")).toEqual({ width: 1024, height: 1024 });
+        expect(parseSize("16:9-2k")).toEqual({ width: 1344, height: 768 });
+        expect(parseSize("9:16-2k")).toEqual({ width: 768, height: 1344 });
+        expect(parseSize("1:1-4k")).toEqual({ width: 2048, height: 2048 });
+        expect(parseSize("16:9-4k")).toEqual({ width: 2688, height: 1536 });
+        expect(parseSize("9:16-4k")).toEqual({ width: 1536, height: 2688 });
     });
 
     it("rounds explicit pixel sizes to even and rejects oversized input", () => {
@@ -1071,6 +1072,30 @@ describe("native ComfyUI video validation", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it("submits video job with model profile and default workflow successfully", async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (String(url).includes("/prompt")) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ prompt_id: "job_video_123" }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+
+        const result = await submitComfyuiVideoJob({
+            config: { ...buildFrameVideoConfig(), size: "1280x736" },
+            prompt: "生成一段超酷动画",
+            model: "omni-video-minimax-h3-fp8-4step-pdmd",
+            videoMode: "omni",
+        });
+
+        expect(result.jobId).toBe("job_video_123");
+        expect(result.baseUrl).toBe("http://10.7.8.12:8188");
+        expect(fetchMock).toHaveBeenCalled();
+    });
+
     it("reports a completed job without video output as no-video-output rather than cancellation", async () => {
         fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ job_1: { status: { status_str: "success", completed: true }, outputs: {} } }) });
         const error: unknown = await pollComfyuiVideoJob("job_1", "http://10.7.8.12:8188").catch((reason) => reason);
@@ -1243,8 +1268,8 @@ describe("Qwen-Image-2.1 and submitJob validation", () => {
 
         expect(Object.keys(bound).length).toBe(14);
         expect(bound["481"]).toBeDefined(); // SaveImageAdvanced
-        expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
-        expect((bound["480:474"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toBeUndefined();
+        expect((bound["510"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
+        expect((bound["512"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toBeUndefined();
     });
 
     it("safely binds Qwen-Image-2.1 for image-to-image with reference image and custom size (honoring EmptyLatentImage)", async () => {
@@ -1260,9 +1285,9 @@ describe("Qwen-Image-2.1 and submitJob validation", () => {
         expect(Object.keys(bound).length).toBe(15);
         expect(bound["481"]).toBeDefined();
         // 指定了宽高尺寸时，保持 switch = true 走 EmptyLatentImage 遵循指定尺寸
-        expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
-        expect((bound["480:474"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toEqual(["495", 0]);
-        expect((bound["480:474"]?.inputs as Record<string, unknown>)?.["images.image_2"]).toBeUndefined();
+        expect((bound["510"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
+        expect((bound["512"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toEqual(["495", 0]);
+        expect((bound["512"]?.inputs as Record<string, unknown>)?.["images.image_2"]).toBeUndefined();
     });
 
     it("safely binds Qwen-Image-2.1 for image-to-image without custom size (falling back to reference latent)", async () => {
@@ -1276,7 +1301,7 @@ describe("Qwen-Image-2.1 and submitJob validation", () => {
         expect(Object.keys(bound).length).toBe(15);
         expect(bound["481"]).toBeDefined();
         // 未指定尺寸时，切到 switch = false 走参考图 Latent
-        expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(false);
+        expect((bound["510"]?.inputs as Record<string, unknown>)?.switch).toBe(false);
     });
 
     it("rejects empty workflow in submitJob", async () => {

@@ -10,27 +10,33 @@ import {
     DEFAULT_COMFYUI_T2I_WORKFLOW,
     DEFAULT_COMFYUI_TEXT_WORKFLOW,
     DEFAULT_COMFYUI_VIDEO_WORKFLOW,
+    getWorkflowForModelProfile,
 } from "./comfyui-default-workflows";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
 export { formatIngestSuccessMessage, ingestWorkflow, type IngestOptions, type IngestResult, type DetectedSlotInfo, type AmbiguityInfo } from "./comfyui-adapter";
+import {
+    dispatchComfyuiModelWorkflow,
+    getModelProfile,
+    validateModelExecution,
+    IMAGE_RESOLUTION_PRESETS,
+    type ImageResolutionTier,
+    type ImageAspectRatio,
+} from "./models";
+export * from "./models";
 
 export type ComfyuiSize = {
     width: number;
     height: number;
 };
 
-const DEFAULT_SIZE: ComfyuiSize = { width: 1024, height: 1024 };
-/** Short-edge base (px) used to materialize a plain aspect ratio into pixel dimensions. */
-const SIZE_BASE = 1024;
-/** Long-edge base (px) for the "2k"/"4k" ratio tiers exposed by the image settings panel. */
-const SIZE_TIER_BASE: Record<string, number> = { "2k": 2048, "4k": 3840 };
+const DEFAULT_SIZE: ComfyuiSize = { width: 512, height: 512 };
 /** Hard ceiling per side for explicit pixel sizes; beyond this the input is treated as invalid. */
 const MAX_PIXEL = 8192;
 
 const PIXEL_SIZE_PATTERN = /^(\d+)\s*[x×]\s*(\d+)$/;
-const RATIO_PATTERN = /^(\d+)\s*:\s*(\d+)(?:\s*[-_]\s*(2k|4k))?$/i;
+const RATIO_PATTERN = /^(\d+)\s*:\s*(\d+)(?:\s*[-_]\s*(1k|2k|4k))?$/i;
 
 function roundToEven(value: number) {
     return Math.max(2, Math.round(value / 2) * 2);
@@ -38,12 +44,9 @@ function roundToEven(value: number) {
 
 /**
  * Parse an image size setting into pixel dimensions.
- * Accepts "auto"/empty (falls back to 1024x1024), pixel sizes ("1024x1024", rounded to
- * even, each side capped at 8192px), and aspect ratios ("3:4", shorter edge at 1024px,
- * or "16:9-2k"/"9:16-4k" tiers with the longer edge at 2048/3840px to match the
- * image-settings-panel presets). Note the ratio materialization (short edge 1024) may
- * differ by a few pixels from the OpenAI-side preset the UI advertises for the same
- * ratio value (e.g. 4:3 → 1366x1024 here vs 1360x1024 for OpenAI). Anything else throws.
+ * Accepts "auto"/empty (falls back to 512x512 1K), pixel sizes ("512x512", "1024x1024"),
+ * and standard aspect ratios ("1:1", "16:9", "16:9-2k", "9:16-4k" matching 64px-aligned presets).
+ * Anything else throws.
  */
 export function parseSize(size?: string): ComfyuiSize {
     const value = (size || "").trim();
@@ -63,16 +66,16 @@ export function parseSize(size?: string): ComfyuiSize {
         const a = Number(ratioMatch[1]);
         const b = Number(ratioMatch[2]);
         if (a <= 0 || b <= 0) throw new Error(`Invalid image size: ${value}`);
-        const tier = ratioMatch[3]?.toLowerCase();
-        if (tier) {
-            const base = SIZE_TIER_BASE[tier];
-            return a >= b
-                ? { width: base, height: roundToEven((base * b) / a) }
-                : { width: roundToEven((base * a) / b), height: base };
+        const tier = (ratioMatch[3]?.toLowerCase() || "1k") as ImageResolutionTier;
+        const ratioKey = `${a}:${b}` as ImageAspectRatio;
+        const preset = IMAGE_RESOLUTION_PRESETS[tier]?.[ratioKey];
+        if (preset) {
+            return { width: preset.width, height: preset.height };
         }
+        const base = tier === "4k" ? 2048 : tier === "2k" ? 1024 : 512;
         return a >= b
-            ? { width: roundToEven((SIZE_BASE * a) / b), height: SIZE_BASE }
-            : { width: SIZE_BASE, height: roundToEven((SIZE_BASE * b) / a) };
+            ? { width: roundToEven((base * a) / b), height: base }
+            : { width: base, height: roundToEven((base * b) / a) };
     }
     throw new Error(`Invalid image size: ${value}`);
 }
@@ -764,6 +767,52 @@ export function adaptWorkflowModelPaths(
     return modified ? cloned : workflow;
 }
 
+export const COMFYUI_CORE_PLUGINS = [
+    {
+        name: "ComfyUI-KJNodes",
+        url: "https://github.com/kijai/ComfyUI-KJNodes",
+        keywords: ["getvideocomponents", "kjnodes", "colormatch"],
+        desc: "全能参考视频及组件处理",
+    },
+    {
+        name: "ComfyLiterals",
+        url: "https://github.com/M1kep/ComfyLiterals",
+        keywords: ["comfyliterals", "int", "float", "primitivestring", "primitiveint"],
+        desc: "首尾帧/全能视频字面量与基础常数",
+    },
+    {
+        name: "Comfyui-kktools",
+        url: "https://github.com/zhiwendesign/Comfyui-kktools",
+        keywords: ["kktools", "prompt_expansion", "vision_llm"],
+        desc: "文本生成与提示词反推",
+    },
+    {
+        name: "ComfyUI-UniversalToolkit",
+        url: "https://github.com/whmc76/ComfyUI-UniversalToolkit",
+        keywords: ["universaltoolkit", "toolkit"],
+        desc: "通用工具与参数解析",
+    },
+    {
+        name: "ComfyUI_LayerStyle",
+        url: "https://github.com/chflame163/ComfyUI_LayerStyle",
+        keywords: ["layerstyle", "mask"],
+        desc: "遮罩处理与图层合成",
+    },
+];
+
+export function translateComfyuiValidationError(errMsg: string): string {
+    const lower = errMsg.toLowerCase();
+    for (const plugin of COMFYUI_CORE_PLUGINS) {
+        if (plugin.keywords.some((kw) => lower.includes(kw))) {
+            return `缺少核心依赖插件「${plugin.name}」(${plugin.desc})。请在 ComfyUI 的 custom_nodes 目录安装：git clone ${plugin.url}`;
+        }
+    }
+    if (lower.includes("prompt outputs failed validation") || lower.includes("class not found")) {
+        return `ComfyUI 节点校验失败，请检查是否已在 ComfyUI 安装所需的核心插件（如 ComfyUI-KJNodes、ComfyLiterals 等）。\n原始错误: ${errMsg}`;
+    }
+    return errMsg;
+}
+
 async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string, token?: string): Promise<string> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -785,14 +834,28 @@ async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string,
         } catch {
             // ignore
         }
-        throw new ComfyuiApiError(`ComfyUI 任务提交失败: ${errDetail}`, response.status);
+        const friendlyDetail = translateComfyuiValidationError(errDetail);
+        throw new ComfyuiApiError(`ComfyUI 任务提交失败: ${friendlyDetail}`, response.status);
     }
     const data = (await response.json()) as { prompt_id?: unknown; node_errors?: Record<string, unknown> };
     if (data?.node_errors && Object.keys(data.node_errors).length > 0) {
-        throw new ComfyuiApiError(`ComfyUI 工作流校验报错: ${JSON.stringify(data.node_errors)}`);
+        const friendly = translateComfyuiValidationError(JSON.stringify(data.node_errors));
+        throw new ComfyuiApiError(`ComfyUI 工作流校验报错: ${friendly}`);
     }
     if (typeof data?.prompt_id !== "string") throw new ComfyuiApiError("ComfyUI /prompt 响应未返回 prompt_id");
     return data.prompt_id;
+}
+
+function workflowHasYoloPaths(workflow: ComfyuiWorkflowJson): boolean {
+    for (const node of Object.values(workflow)) {
+        if (!node || typeof node !== "object" || !node.inputs || typeof node.inputs !== "object") continue;
+        for (const val of Object.values(node.inputs)) {
+            if (typeof val === "string" && /(?:^|[\\/])(bbox|segm)[\\/]/i.test(val)) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 /**
@@ -804,7 +867,11 @@ export async function submitJob(workflow: ComfyuiWorkflowJson, baseUrl: string, 
         throw new ComfyuiNoWorkflowError("工作流拓扑为空，请检查当前渠道工作流配置或重新选择有效的工作流");
     }
 
-    // 1. 探测主机操作系统并自适应转换路径
+    // 1. 若工作流包含 segm/bbox 路径，探测主机操作系统并自适应转换路径
+    if (!workflowHasYoloPaths(workflow)) {
+        return await submitJobInternal(workflow, baseUrl, token);
+    }
+
     const targetOs = await detectComfyuiHostOs(baseUrl, token);
     const adaptedWorkflow = adaptWorkflowModelPaths(workflow, targetOs);
 
@@ -1833,28 +1900,52 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
             : Array.isArray(channel.workflows)
               ? getDefaultWorkflow(channel, category)
               : undefined;
-        const workflow = targetWorkflowItem
-            ? { json: targetWorkflowItem.json }
-            : isI2i
+        const channelWorkflow = isI2i
             ? (channelModel && isI2iWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiI2iWorkflow ||
               channel.models.find((m) => isI2iWorkflowModel(m))?.comfyuiWorkflow
             : (channelModel && isT2iWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiT2iWorkflow ||
               channel.models.find((m) => isT2iWorkflowModel(m))?.comfyuiWorkflow;
+
+        const modelProfile = getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel);
+        if (modelProfile) {
+            validateModelExecution(modelProfile, {
+                imagesCount: references.length,
+                size: req.size,
+            });
+        }
+        const profileWorkflow = modelProfile ? getWorkflowForModelProfile(modelProfile.id) : undefined;
+        const workflow = targetWorkflowItem
+            ? { json: targetWorkflowItem.json }
+            : channelWorkflow
+            ? { json: channelWorkflow.json }
+            : profileWorkflow
+            ? { json: profileWorkflow.json }
+            : undefined;
         if (!workflow) throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noWorkflow", { model: requestModel }));
         const baseUrl = (channel.comfyuiProxyUrl || "").trim();
         const token = channel.comfyuiProxyToken;
 
         if (!jobId) {
-            const referenceSlots = imageReferenceSlots(workflow.json);
-            if (references.length && !referenceSlots.length) throw new ComfyuiError(i18n.t("comfyui.noImageReferenceSlot"));
-            if (references.length > referenceSlots.length) throw new ComfyuiError(i18n.t("comfyui.imageReferenceLimit", { count: referenceSlots.length }));
+            if (!modelProfile) {
+                const referenceSlots = imageReferenceSlots(workflow.json);
+                if (references.length && !referenceSlots.length) throw new ComfyuiError(i18n.t("comfyui.noImageReferenceSlot"));
+                if (references.length > referenceSlots.length) throw new ComfyuiError(i18n.t("comfyui.imageReferenceLimit", { count: referenceSlots.length }));
+            }
 
             const size = parseSize(req.size);
             if (seed === undefined) seed = generateRandomSeed();
             const refImages = await Promise.all(references.map((image, index) => uploadComfyuiAsset(baseUrl, token, image.dataUrl, image.name || `ref_image_${index + 1}.png`, req.signal)));
-            const boundWorkflow = applyBindings(workflow.json, { prompt: req.prompt, width: size.width, height: size.height, seed, refImages });
+            const boundWorkflow = modelProfile
+                ? dispatchComfyuiModelWorkflow(modelProfile, workflow.json, {
+                      prompt: req.prompt,
+                      width: size.width,
+                      height: size.height,
+                      seed,
+                      assetIds: refImages,
+                  })
+                : applyBindings(workflow.json, { prompt: req.prompt, width: size.width, height: size.height, seed, refImages });
             jobId = await submitJob(boundWorkflow, baseUrl, token);
             req.onProgress?.("submitted", { jobId });
         }
@@ -1977,9 +2068,13 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
             : Array.isArray(channel.workflows)
               ? getDefaultWorkflow(channel, "inpaint")
               : undefined;
+        const modelProfile = getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel || "inpaint");
+        const profileWorkflow = modelProfile ? getWorkflowForModelProfile(modelProfile.id) : undefined;
         const inpaintWorkflow =
             targetWorkflowItem
                 ? { json: targetWorkflowItem.json }
+                : profileWorkflow
+                ? { json: profileWorkflow.json }
                 : (channelModel && isInpaintWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
                   channel.comfyuiInpaintWorkflow ||
                   channel.models.find((m) => isInpaintWorkflowModel(m))?.comfyuiWorkflow;
@@ -1998,12 +2093,19 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
 
             // 2. Bind parameters into workflow
             if (seed === undefined) seed = generateRandomSeed();
-            const boundWorkflow = applyBindings(inpaintWorkflow.json, {
-                prompt: req.prompt,
-                seed,
-                refImages: [refAssetId],
-                refMask: maskAssetId,
-            });
+            const boundWorkflow = modelProfile
+                ? dispatchComfyuiModelWorkflow(modelProfile, inpaintWorkflow.json, {
+                      prompt: req.prompt,
+                      seed,
+                      assetIds: [refAssetId],
+                      maskAssetId,
+                  })
+                : applyBindings(inpaintWorkflow.json, {
+                      prompt: req.prompt,
+                      seed,
+                      refImages: [refAssetId],
+                      refMask: maskAssetId,
+                  });
 
             // 3. Submit job
             jobId = await submitJob(boundWorkflow, baseUrl, token);
@@ -2159,7 +2261,13 @@ export const FALLBACK_COMFYUI_TEXT_WORKFLOW_JSON: ComfyuiWorkflowJson = {
  */
 export function applyTextBindings(
     workflow: ComfyuiWorkflowJson,
-    params: { prompt: string; assetId?: string; seed?: number },
+    params: {
+        prompt: string;
+        assetId?: string;
+        seed?: number;
+        maxLength?: number;
+        thinking?: boolean;
+    },
 ): ComfyuiWorkflowJson {
     const cloned = structuredClone(workflow);
     type NodeRecord = {
@@ -2180,9 +2288,18 @@ export function applyTextBindings(
         const title = rawTitle.trim().toLowerCase();
 
         if (title === "prompt" && record.inputs) {
-            if ("value" in record.inputs) record.inputs.value = params.prompt;
-            else if ("text" in record.inputs) record.inputs.text = params.prompt;
-            else if ("prompt" in record.inputs) record.inputs.prompt = params.prompt;
+            const defaultVlmPrompt =
+                "请根据参考图片反推一段适合用于 AI 生图的提示词。\n\n要求：\n1. 只输出提示词正文，不要解释。\n2. 覆盖主体、构图、风格、光线、色彩、材质、镜头和氛围。\n3. 尽量写成可直接用于生图模型的完整提示词。";
+            const promptVal = params.prompt && params.prompt.trim()
+                ? params.prompt
+                : params.assetId
+                ? (typeof record.inputs.value === "string" && record.inputs.value && record.inputs.value.includes("反推")
+                    ? record.inputs.value
+                    : defaultVlmPrompt)
+                : params.prompt;
+            if ("value" in record.inputs) record.inputs.value = promptVal;
+            else if ("text" in record.inputs) record.inputs.text = promptVal;
+            else if ("prompt" in record.inputs) record.inputs.prompt = promptVal;
         } else if (title === "image" || title === "ref_image_01" || title === "ref_image") {
             imageNodeId = nodeId;
         } else if (title === "seed" && params.seed !== undefined && record.inputs) {
@@ -2230,6 +2347,19 @@ export function applyTextBindings(
             } else if ("seed" in record.inputs && !Array.isArray(record.inputs.seed)) {
                 record.inputs.seed = params.seed;
             }
+        }
+    }
+
+    // 4. Handle text generator parameters: max_length, thinking
+    for (const node of Object.values(cloned)) {
+        if (typeof node !== "object" || node === null) continue;
+        const record = node as NodeRecord;
+        if (!record.inputs) continue;
+        if (params.maxLength !== undefined && "max_length" in record.inputs && typeof record.inputs.max_length === "number") {
+            record.inputs.max_length = params.maxLength;
+        }
+        if (params.thinking !== undefined && "thinking" in record.inputs && typeof record.inputs.thinking === "boolean") {
+            record.inputs.thinking = params.thinking;
         }
     }
 
@@ -2331,6 +2461,8 @@ export interface ComfyuiTextRequest {
     channelId?: string;
     workflowId?: string;
     seed?: number;
+    maxLength?: number;
+    thinking?: boolean;
     jobId?: string;
     signal?: AbortSignal;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
@@ -2377,6 +2509,8 @@ export async function requestComfyuiText(req: ComfyuiTextRequest): Promise<{ tex
                 prompt: req.prompt,
                 assetId,
                 seed,
+                maxLength: req.maxLength,
+                thinking: req.thinking,
             });
 
             jobId = await submitJob(boundWorkflow, baseUrl, token);
@@ -2882,24 +3016,35 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
         : Array.isArray(channel.workflows)
           ? getDefaultWorkflow(channel, initialVideoMode === "frame" ? "frameVideo" : "omniVideo")
           : undefined;
+    const modelProfile = getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel || initialVideoMode);
     const isFrameWorkflow = targetWorkflowItem?.category === "frameVideo";
-    const isOmniOrRefineWorkflow = targetWorkflowItem?.category === "omniVideo" || targetWorkflowItem?.category === "faceRefine" || targetWorkflowItem?.category === "depthVideo";
-    const hasReferenceVideos = Boolean(req.referenceVideos && req.referenceVideos.length > 0);
-    const videoMode = isFrameWorkflow
-        ? "frame"
-        : isOmniOrRefineWorkflow || hasReferenceVideos
-        ? "omni"
-        : initialVideoMode;
+    const isFrameMode = modelProfile?.category === "frameVideo" || isFrameWorkflow || initialVideoMode === "frame";
+    const videoMode = isFrameMode ? "frame" : "omni";
+    if (modelProfile) {
+        validateModelExecution(modelProfile, {
+            imagesCount: (req.references?.length || 0) + (req.firstFrame ? 1 : 0) + (req.lastFrame ? 1 : 0),
+            videosCount: req.referenceVideos?.length || 0,
+            audiosCount: req.referenceAudios?.length || 0,
+            size: req.config.size,
+            duration: req.config.videoSeconds ? Number(req.config.videoSeconds) : undefined,
+        });
+    }
+
+    const profileWorkflow = modelProfile ? getWorkflowForModelProfile(modelProfile.id) : undefined;
     const videoWorkflow =
         targetWorkflowItem
             ? { json: targetWorkflowItem.json }
+            : profileWorkflow
+            ? { json: profileWorkflow.json }
             : videoMode === "frame"
             ? (channelModel && isFrameVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiFrameVideoWorkflow ||
-              channel.models.find((m) => isFrameVideoWorkflowModel(m))?.comfyuiWorkflow
+              channel.models.find((m) => isFrameVideoWorkflowModel(m))?.comfyuiWorkflow ||
+              DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW
             : (channelModel && isOmniVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiVideoWorkflow ||
-              channel.models.find((m) => isOmniVideoWorkflowModel(m))?.comfyuiWorkflow;
+              channel.models.find((m) => isOmniVideoWorkflowModel(m))?.comfyuiWorkflow ||
+              DEFAULT_COMFYUI_VIDEO_WORKFLOW;
 
     if (!videoWorkflow) {
         throw new ComfyuiNoWorkflowError(i18n.t(videoMode === "frame" ? "comfyui.noFrameVideoWorkflow" : "comfyui.noVideoWorkflow"));
@@ -2997,19 +3142,32 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const duration = req.config.videoSeconds ? Number(req.config.videoSeconds) : 5;
 
     const seed = req.seed !== undefined ? req.seed : generateRandomSeed() % 1_000_000_000;
-    const boundWorkflow = applyVideoBindings(videoWorkflow.json, {
-        prompt: req.prompt,
-        assetIds,
-        videoAssetIds,
-        audioAssetIds,
-        firstFrameAssetId,
-        lastFrameAssetId,
-        videoMode,
-        seed,
-        width,
-        height,
-        duration,
-    });
+    const boundWorkflow = modelProfile
+        ? dispatchComfyuiModelWorkflow(modelProfile, videoWorkflow.json, {
+              prompt: req.prompt,
+              width,
+              height,
+              duration,
+              seed,
+              firstFrameAssetId,
+              lastFrameAssetId,
+              assetIds,
+              videoAssetIds,
+              audioAssetIds,
+          })
+        : applyVideoBindings(videoWorkflow.json, {
+              prompt: req.prompt,
+              assetIds,
+              videoAssetIds,
+              audioAssetIds,
+              firstFrameAssetId,
+              lastFrameAssetId,
+              videoMode,
+              seed,
+              width,
+              height,
+              duration,
+          });
 
     const jobId = await submitJob(boundWorkflow, baseUrl, token);
     return { jobId, baseUrl, token };
@@ -3468,4 +3626,291 @@ export async function fetchComfyuiModels(
     }
     return [];
 }
+
+/**
+ * ComfyUI 内存与模型卸载请求参数
+ * 对应 POST /free 与 POST /api/free 端点
+ */
+export type ComfyuiFreeRequest = {
+    /**
+     * 是否卸载显存中已缓存的模型权重 (Checkpoint, UNET, CLIP, VAE, LoRA 等)
+     * 若为 true，底层执行 model_management.unload_all_models()
+     */
+    unload_models?: boolean;
+    /**
+     * 是否释放 PyTorch 显存缓存与系统内存垃圾回收
+     * 若为 true，底层执行 model_management.soft_empty_cache() (torch.cuda.empty_cache / gc.collect)
+     */
+    free_memory?: boolean;
+};
+
+/**
+ * ComfyUI 宿主机 CPU 运行指标
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeCpu = {
+    /** CPU 当前整体使用率百分比，取值范围 0.0 ~ 100.0 */
+    percent: number;
+    /** CPU 逻辑处理器总核心数 */
+    logical_cores: number;
+};
+
+/**
+ * ComfyUI 宿主机系统物理内存 (RAM) 运行指标
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeMemory = {
+    /** 宿主机物理内存总容量，单位：字节 (Bytes) */
+    total: number;
+    /** 宿主机当前可用空闲物理内存，单位：字节 (Bytes) */
+    available: number;
+    /** 宿主机当前已使用物理内存，单位：字节 (Bytes) */
+    used: number;
+    /** 宿主机物理内存使用率百分比，取值范围 0.0 ~ 100.0 */
+    percent: number;
+};
+
+/**
+ * ComfyUI 服务进程自身资源占用与生命周期
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeProcess = {
+    /** ComfyUI 后端 Python 进程当前占用的物理内存 (RSS)，单位：字节 (Bytes) */
+    memory_used: number;
+    /** ComfyUI 服务进程自启动以来的累计运行秒数 (Seconds) */
+    uptime_seconds: number;
+};
+
+/**
+ * 单个 GPU/加速设备运行状态指标
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeDevice = {
+    /** 设备名称与内存分配器描述 (例如 "cuda:0 NVIDIA GeForce RTX 3090 Ti : cudaMallocAsync") */
+    name: string;
+    /** 设备类型，通常为 "cuda"、"mps"、"cpu" 等 */
+    type: string;
+    /** 设备在系统中的物理序号索引 (0, 1, ...) */
+    index: number;
+    /** GPU 计算核心实时利用率百分比，取值范围 0.0 ~ 100.0 */
+    utilization: number;
+    /** GPU 物理显存总容量 (VRAM Total)，单位：字节 (Bytes) */
+    memory_total: number;
+    /** GPU 物理显存当前空闲剩余量 (VRAM Free)，单位：字节 (Bytes) */
+    memory_free: number;
+    /** GPU 物理显存当前已占用量 (VRAM Used)，单位：字节 (Bytes) */
+    memory_used: number;
+    /** GPU 显存占用率百分比，取值范围 0.0 ~ 100.0 */
+    memory_percent: number;
+};
+
+/**
+ * ComfyUI 运行时监控指标整体响应数据结构
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeStats = {
+    /** 请求是否成功 */
+    ok: boolean;
+    /** 运行状态核心监控数据 */
+    data: {
+        /** CPU 负载指标 */
+        cpu: ComfyuiRuntimeCpu;
+        /** 宿主机系统内存 (RAM) 负载指标 */
+        memory: ComfyuiRuntimeMemory;
+        /** ComfyUI 服务进程自身指标 */
+        process: ComfyuiRuntimeProcess;
+        /** 各 GPU / 计算加速设备状态列表 */
+        devices: ComfyuiRuntimeDevice[];
+    };
+};
+
+/**
+ * ComfyUI 官方原生系统设备信息
+ * 来源于 GET /system_stats
+ */
+export type ComfyuiSystemDevice = {
+    /** 设备名称与分配器信息 (例如 "cuda:0 NVIDIA GeForce RTX 3090 Ti : cudaMallocAsync") */
+    name: string;
+    /** 设备类型 (例如 "cuda", "mps", "cpu") */
+    type: string;
+    /** 设备序号 */
+    index: number;
+    /** 显存总容量，单位：字节 (Bytes) */
+    vram_total: number;
+    /** 显存剩余容量，单位：字节 (Bytes) */
+    vram_free: number;
+    /** PyTorch 显存保留总量，单位：字节 (Bytes) */
+    torch_vram_total?: number;
+    /** PyTorch 显存空闲可用量，单位：字节 (Bytes) */
+    torch_vram_free?: number;
+};
+
+/**
+ * ComfyUI 官方原生环境与系统统计响应
+ * 来源于 GET /system_stats
+ */
+export type ComfyuiSystemStats = {
+    /** 系统与运行环境详情 */
+    system: {
+        /** 操作系统平台 (例如 "win32", "linux", "darwin") */
+        os?: string;
+        /** 系统总内存 (RAM)，单位：字节 (Bytes) */
+        ram_total?: number;
+        /** 系统可用空闲内存 (RAM)，单位：字节 (Bytes) */
+        ram_free?: number;
+        /** ComfyUI 核心版本号 */
+        comfyui_version?: string;
+        /** Python 运行环境版本及编译详情 */
+        python_version?: string;
+        /** PyTorch 与 CUDA/ROCm 版本号 */
+        pytorch_version?: string;
+        /** 是否使用便携嵌入式 Python 环境 */
+        embedded_python?: boolean;
+        /** 启动命令行参数数组 */
+        argv?: string[];
+        [key: string]: unknown;
+    };
+    /** 加速设备列表 */
+    devices: ComfyuiSystemDevice[];
+};
+
+/**
+ * 请求 ComfyUI 执行清理动作，卸载已加载的模型并释放系统与显存缓存
+ * 优先调用 /api/free，降级兼容 /free
+ * @param baseUrl ComfyUI 服务基础 URL
+ * @param token 可选鉴权 Bearer Token
+ * @param options 清理选项，默认两者皆为 true
+ * @returns 是否成功释放
+ */
+export async function freeComfyuiMemory(
+    baseUrl: string,
+    token?: string,
+    options: ComfyuiFreeRequest = { unload_models: true, free_memory: true }
+): Promise<boolean> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "*/*",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const body = JSON.stringify({
+        unload_models: options.unload_models !== false,
+        free_memory: options.free_memory !== false,
+    });
+
+    try {
+        // 优先打 /api/free
+        let res = await comfyuiFetch(`${normalized}/api/free`, { method: "POST", headers, body }, baseUrl);
+        if (res.status === 404) {
+            // 降级回退至 /free
+            res = await comfyuiFetch(`${normalized}/free`, { method: "POST", headers, body }, baseUrl);
+        }
+        return res.ok;
+    } catch (error) {
+        if (error instanceof ComfyuiError) throw error;
+        return false;
+    }
+}
+
+/**
+ * 获取 ComfyUI 硬件实时运行状态 (基于 Comfyui-kktools 插件)
+ * @param baseUrl ComfyUI 服务基础 URL
+ * @param token 可选鉴权 Bearer Token
+ * @returns 实时监控数据对象，若端点不可用或报错返回 null
+ */
+export async function getComfyuiRuntimeStats(
+    baseUrl: string,
+    token?: string
+): Promise<ComfyuiRuntimeStats | null> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    const headers: Record<string, string> = {
+        Accept: "*/*",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    try {
+        const res = await comfyuiFetch(`${normalized}/api/kktools/runtime_stats?t=${Date.now()}`, { headers }, baseUrl);
+        if (!res.ok) return null;
+        const json = (await res.json()) as ComfyuiRuntimeStats;
+        if (json && json.ok && json.data) {
+            return json;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * 获取 ComfyUI 原生系统统计与设备信息 (基于官方原生 /system_stats)
+ * @param baseUrl ComfyUI 服务基础 URL
+ * @param token 可选鉴权 Bearer Token
+ * @returns 系统统计数据对象，若端点不可用或报错返回 null
+ */
+export async function getComfyuiSystemStats(
+    baseUrl: string,
+    token?: string
+): Promise<ComfyuiSystemStats | null> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    const headers: Record<string, string> = {
+        Accept: "*/*",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    try {
+        const res = await comfyuiFetch(`${normalized}/system_stats`, { headers }, baseUrl);
+        if (!res.ok) return null;
+        return (await res.json()) as ComfyuiSystemStats;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * ComfyUI 队列统计数据
+ * 来源于 GET /queue
+ */
+export type ComfyuiQueueStats = {
+    /** 当前正在 GPU 上计算执行的任务数 */
+    runningCount: number;
+    /** 在队列中排队等待执行的任务数 */
+    pendingCount: number;
+    /** 总活跃任务数 (running + pending) */
+    totalActive: number;
+};
+
+/**
+ * 获取 ComfyUI 任务队列状态 (基于官方原生 /queue)
+ * @param baseUrl ComfyUI 服务基础 URL
+ * @param token 可选鉴权 Bearer Token
+ * @returns 队列统计对象，若请求失败或服务离线返回 null
+ */
+export async function getComfyuiQueueStats(
+    baseUrl: string,
+    token?: string
+): Promise<ComfyuiQueueStats | null> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    const headers: Record<string, string> = {
+        Accept: "*/*",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    try {
+        const res = await comfyuiFetch(`${normalized}/queue`, { headers }, baseUrl);
+        if (!res.ok) return null;
+        const data = (await res.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
+        const runningCount = Array.isArray(data.queue_running) ? data.queue_running.length : 0;
+        const pendingCount = Array.isArray(data.queue_pending) ? data.queue_pending.length : 0;
+        return {
+            runningCount,
+            pendingCount,
+            totalActive: runningCount + pendingCount,
+        };
+    } catch {
+        return null;
+    }
+}
+
+
 

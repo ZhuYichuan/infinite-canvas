@@ -117,13 +117,15 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                             ? "audio"
                             : "text"
                     }
-                    preferredCategory={mode === "video" ? (findWorkflow(globalConfig, node.metadata?.channelId, node.metadata?.workflowId)?.category || (config.videoMode === "frame" ? "frameVideo" : "omniVideo")) : undefined}
+                    preferredCategory={mode === "video" ? (findWorkflow(globalConfig, node.metadata?.channelId, node.metadata?.workflowId)?.category || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frameVideo" : "omniVideo")) : undefined}
                     channelId={node.metadata?.channelId}
                     workflowId={node.metadata?.workflowId}
                     onChange={(channelId, workflowId, workflow) => {
                         const patch: Partial<CanvasNodeMetadata> = { channelId, workflowId };
                         if (mode === "video") {
-                            patch.videoMode = workflow?.category === "frameVideo" ? "frame" : workflow?.category === "omniVideo" ? "omni" : config.videoMode;
+                            const nextVideoMode = workflow?.category === "frameVideo" ? "frame" : workflow?.category === "omniVideo" ? "omni" : (node.metadata?.videoMode || config.videoMode);
+                            patch.videoMode = nextVideoMode;
+                            patch.modelId = nextVideoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd";
                         }
                         onConfigChange(node.id, patch);
                     }}
@@ -131,6 +133,13 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 />
                 {mode === "video" ? (
                     <CanvasVideoSettingsPopover
+                        modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
+                        size={node.metadata?.size || config.size}
+                        duration={node.metadata?.seconds || config.videoSeconds}
+                        videoMode={(node.metadata?.videoMode as "omni" | "frame") || (config.videoMode as "omni" | "frame")}
+                        onParamChange={(patch) => {
+                            onConfigChange(node.id, patch);
+                        }}
                         config={config}
                         placement="topRight"
                         buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2"
@@ -146,7 +155,17 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         onConfigChange={(key, value) => onConfigChange(node.id, { seconds: value, audioSeconds: value })}
                     />
                 ) : (
-                    <CanvasTextSettingsPopover config={config} count={node.metadata?.textCount || 1} placement="topRight" buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })} onCountChange={(textCount) => onConfigChange(node.id, { textCount })} />
+                    <CanvasTextSettingsPopover
+                        modelId={node.metadata?.modelId}
+                        maxLength={node.metadata?.maxLength}
+                        thinking={node.metadata?.thinking}
+                        onParamChange={(patch) => onConfigChange(node.id, patch)}
+                        config={config}
+                        count={node.metadata?.textCount || 1}
+                        placement="topRight"
+                        buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2"
+                        onCountChange={(textCount) => onConfigChange(node.id, { textCount })}
+                    />
                 )}
             </div>
 
@@ -231,7 +250,10 @@ function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig)
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     if (key === "videoMode") {
-        const patch: Record<string, unknown> = { videoMode: value };
+        const patch: Record<string, unknown> = {
+            videoMode: value,
+            modelId: value === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd",
+        };
         if (config) {
             const channel = resolveModelChannel(config, config.model || config.videoModel);
             if (value === "frame") {

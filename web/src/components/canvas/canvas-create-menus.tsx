@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { listNodeDefinitions, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
-import { CanvasNodeType, type ConnectionHandle, type Position } from "@/types/canvas";
+import { CanvasNodeType, type ConnectionHandle, type Position, type ViewportTransform } from "@/types/canvas";
 
 export type PendingConnectionCreate = {
     connection: ConnectionHandle;
@@ -15,22 +15,37 @@ export type PendingConnectionCreate = {
 
 export function ConnectionCreateMenu({
     pending,
+    viewport,
     onCreate,
     onClose,
 }: {
     pending: PendingConnectionCreate;
+    viewport?: ViewportTransform;
     onCreate: (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio) => void;
     onClose: () => void;
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const { t } = useTranslation();
+
+    const screenWidth = typeof window !== "undefined" ? window.innerWidth : 1920;
+    const screenHeight = typeof window !== "undefined" ? window.innerHeight : 1080;
+    const menuWidth = 300;
+    const menuEstimatedHeight = 360;
+
+    const screenX = viewport ? viewport.x + pending.position.x * viewport.k : pending.position.x;
+    const screenY = viewport ? viewport.y + pending.position.y * viewport.k : pending.position.y;
+
+    const left = viewport ? Math.max(16, Math.min(screenWidth - menuWidth - 16, screenX)) : pending.position.x;
+    const top = viewport ? Math.max(16, Math.min(screenHeight - menuEstimatedHeight - 16, screenY)) : pending.position.y;
+
     return (
         <div
-            className="absolute z-[120] w-[300px] rounded-[18px] border p-3 shadow-2xl backdrop-blur"
+            className="absolute z-[120] w-[300px] rounded-[18px] border p-3 shadow-2xl backdrop-blur pointer-events-auto"
             data-connection-create-menu
-            style={{ left: pending.position.x, top: pending.position.y, background: theme.node.panel, borderColor: theme.node.stroke, color: theme.node.text }}
+            style={{ left, top, background: theme.node.panel, borderColor: theme.node.stroke, color: theme.node.text }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
+            onWheel={(event) => event.stopPropagation()}
         >
             <div className="mb-2 flex items-center justify-between px-1">
                 <span className="text-sm font-medium" style={{ color: theme.node.muted }}>
@@ -76,12 +91,23 @@ export function ConnectionCreateOption({ theme, icon, title, description, onClic
     );
 }
 
-export function NodeCreateMenu({ position, onCreate, onClose }: { position: Position; onCreate: (type: string) => void; onClose: () => void }) {
+export function NodeCreateMenu({
+    position,
+    viewport,
+    onCreate,
+    onClose,
+}: {
+    position: Position;
+    viewport?: ViewportTransform;
+    onCreate: (type: string) => void;
+    onClose: () => void;
+}) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const { t } = useTranslation();
     useNodeRegistryVersion();
     const menuRef = useRef<HTMLDivElement>(null);
     const definitions = listNodeDefinitions().filter((def) => def.showInCreateMenu !== false);
+
     // Close automatically when clicking outside the menu.
     useEffect(() => {
         const handlePointerDown = (event: PointerEvent) => {
@@ -90,13 +116,27 @@ export function NodeCreateMenu({ position, onCreate, onClose }: { position: Posi
         document.addEventListener("pointerdown", handlePointerDown, true);
         return () => document.removeEventListener("pointerdown", handlePointerDown, true);
     }, [onClose]);
+
+    const screenWidth = typeof window !== "undefined" ? window.innerWidth : 1920;
+    const screenHeight = typeof window !== "undefined" ? window.innerHeight : 1080;
+    const menuWidth = 300;
+    const menuMaxHeight = Math.min(480, screenHeight * 0.7);
+
+    const screenX = viewport ? viewport.x + position.x * viewport.k : position.x;
+    const screenY = viewport ? viewport.y + position.y * viewport.k : position.y;
+
+    const left = viewport ? Math.max(16, Math.min(screenWidth - menuWidth - 16, screenX)) : position.x;
+    const top = viewport ? Math.max(16, Math.min(screenHeight - menuMaxHeight - 16, screenY)) : position.y;
+
     return (
         <div
             ref={menuRef}
-            className="absolute z-[120] max-h-[70vh] w-[300px] overflow-y-auto rounded-[18px] border p-3 shadow-2xl backdrop-blur thin-scrollbar"
+            className="absolute z-[120] max-h-[70vh] w-[300px] overflow-y-auto rounded-[18px] border p-3 shadow-2xl backdrop-blur thin-scrollbar pointer-events-auto"
             data-canvas-no-zoom
-            style={{ left: position.x, top: position.y, background: theme.node.panel, borderColor: theme.node.stroke, color: theme.node.text }}
+            style={{ left, top, background: theme.node.panel, borderColor: theme.node.stroke, color: theme.node.text }}
+            onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
+            onWheel={(event) => event.stopPropagation()}
         >
             <div className="mb-2 flex items-center justify-between px-1">
                 <span className="text-sm font-medium" style={{ color: theme.node.muted }}>

@@ -27,14 +27,14 @@ type CanvasNodeProps = {
     isRelated: boolean;
     isFocusRelated: boolean;
     isConnectionTarget: boolean;
+    isConnectionRejected?: boolean;
+    hasInvalidConnections?: boolean;
     isConnecting: boolean;
     referenceSelectionState?: "target" | "disabled" | "available";
-    showPanel: boolean;
     showImageInfo: boolean;
     mentionReferences?: CanvasResourceReference[];
     pluginHost?: CanvasPluginHost;
     registryVersion?: number;
-    renderPanel?: (node: CanvasNodeData) => ReactNode;
     renderNodeContent?: (node: CanvasNodeData) => ReactNode;
     groupChildCount?: number;
     isGroupDropTarget?: boolean;
@@ -88,6 +88,7 @@ type NodeContentRendererProps = {
     onViewBatchImage?: (imageId: string) => void;
     onViewMedia?: () => void;
     groupChildCount: number;
+    scale?: number;
 };
 
 export const CanvasNode = React.memo(function CanvasNode({
@@ -97,13 +98,13 @@ export const CanvasNode = React.memo(function CanvasNode({
     isRelated,
     isFocusRelated,
     isConnectionTarget,
+    isConnectionRejected = false,
+    hasInvalidConnections = false,
     isConnecting,
     referenceSelectionState,
-    showPanel,
     showImageInfo,
     mentionReferences = [],
     pluginHost,
-    renderPanel,
     renderNodeContent,
     groupChildCount = 0,
     isGroupDropTarget = false,
@@ -135,6 +136,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 }: CanvasNodeProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const { t } = useTranslation();
+    const safeScale = scale > 0 ? scale : 1;
     const activeRoomId = useCollabStore((state) => state.activeRoomId);
     const collabRole = useCollabStore((state) => state.role);
     const isViewer = Boolean(activeRoomId && collabRole === "viewer");
@@ -345,7 +347,16 @@ export const CanvasNode = React.memo(function CanvasNode({
             }}
         >
             {!referenceSelectionState && (isSelected || hovered || isEditingTitle) && (
-                <div className="absolute left-3 top-[-28px] z-[65] max-w-[calc(100%-24px)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+                <div
+                    className="absolute left-3 bottom-full z-[65] origin-bottom-left"
+                    style={{
+                        transform: `scale(${1 / safeScale})`,
+                        paddingBottom: 6,
+                        maxWidth: `${Math.max(160, (data.width - 24) * safeScale)}px`,
+                    }}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onPointerDown={(event) => event.stopPropagation()}
+                >
                     {isEditingTitle ? (
                         <input
                             ref={titleInputRef}
@@ -384,9 +395,33 @@ export const CanvasNode = React.memo(function CanvasNode({
                 className="relative h-full w-full overflow-visible rounded-3xl border-2"
                 style={{
                     background: isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
-                    borderColor: isGroup ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? imageBorderColor : isActive ? selectionBlue : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
-                    borderStyle: isGroup ? "dashed" : "solid",
-                    boxShadow: isGroupDropTarget ? `0 0 0 2px ${selectionBlue}66, inset 0 0 0 999px ${selectionBlue}10` : isActive ? `0 0 0 1px ${selectionBlue}55` : isRelated ? `0 0 0 1px ${theme.node.muted}55, 0 18px 48px rgba(0,0,0,.14)` : undefined,
+                    borderColor: isConnectionRejected
+                        ? "#ef4444"
+                        : isGroup
+                          ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke)
+                          : hasImageContent
+                            ? imageBorderColor
+                            : isActive
+                              ? selectionBlue
+                              : isRelated
+                                ? theme.node.muted
+                                : hasInvalidConnections
+                                  ? "#f59e0b"
+                                  : transparentBg
+                                    ? "transparent"
+                                    : theme.node.stroke,
+                    borderStyle: isGroup ? "dashed" : hasInvalidConnections && !isActive ? "dashed" : "solid",
+                    boxShadow: isConnectionRejected
+                        ? "0 0 0 2px #ef4444, 0 0 20px rgba(239, 68, 68, 0.45)"
+                        : isGroupDropTarget
+                          ? `0 0 0 2px ${selectionBlue}66, inset 0 0 0 999px ${selectionBlue}10`
+                          : isActive
+                            ? `0 0 0 1px ${selectionBlue}55`
+                            : hasInvalidConnections
+                              ? "0 0 0 1px #f59e0b55"
+                              : isRelated
+                                ? `0 0 0 1px ${theme.node.muted}55, 0 18px 48px rgba(0,0,0,.14)`
+                                : undefined,
                 }}
                 onMouseDown={(event) => {
                     if (!referenceSelectionState) onMouseDown(event, data.id);
@@ -451,6 +486,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onViewBatchImage={(imageId) => onViewImage?.(data, imageId)}
                         onViewMedia={() => onViewImage?.(data)}
                         groupChildCount={groupChildCount}
+                        scale={safeScale}
                     />
                 </div>
 
@@ -470,17 +506,23 @@ export const CanvasNode = React.memo(function CanvasNode({
                 {!referenceSelectionState && !isViewer ? <ResizeHandle corner="bottom-right" onMouseDown={handleResizeMouseDown} /> : null}
             </div>
 
-            {!referenceSelectionState && !isGroup && !isViewer ? <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "target")} /> : null}
+            {!referenceSelectionState && !isGroup && !isViewer ? (
+                <ConnectionHandleDot
+                    side="left"
+                    visible={hovered || isSelected || isConnecting}
+                    scale={safeScale}
+                    onMouseDown={(event) => onConnectStart(event, data.id, "target")}
+                />
+            ) : null}
             {!referenceSelectionState && !isViewer && (definition?.hasSourceHandle ?? true) && data.type !== CanvasNodeType.Config && !(hasMultipleSelected && isSelected) ? (
                 <ConnectionHandleDot
                     side="right"
                     visible={hovered || isSelected || isConnecting}
+                    scale={safeScale}
                     onMouseDown={(event) => onConnectStart(event, data.id, "source")}
                     onClick={(event) => onConnectClick?.(event, data.id, "source")}
                 />
             ) : null}
-
-            {showPanel && !isGroup && !isViewer && renderPanel ? <div className="absolute left-1/2 top-full z-[70] w-[720px] -translate-x-1/2 pt-4">{renderPanel(data)}</div> : null}
         </div>
     );
 });
@@ -513,11 +555,18 @@ const nodeContentRenderers = {
     [CanvasNodeType.Group]: GroupNodeContent,
 } satisfies Record<CanvasNodeType, (props: NodeContentRendererProps) => ReactNode>;
 
-function GroupNodeContent({ node, theme, groupChildCount }: NodeContentRendererProps) {
+function GroupNodeContent({ node, theme, groupChildCount, scale }: NodeContentRendererProps) {
     const { t } = useTranslation();
+    const safeScale = scale && scale > 0 ? scale : 1;
     return (
         <div className="pointer-events-none flex h-full w-full p-3">
-            <div className="flex h-7 max-w-full items-center gap-2 px-1 text-xs font-medium" style={{ color: theme.node.text }}>
+            <div
+                className="flex h-7 max-w-full origin-top-left items-center gap-2 px-1 text-xs font-medium"
+                style={{
+                    color: theme.node.text,
+                    transform: `scale(${1 / safeScale})`,
+                }}
+            >
                 <Group className="size-3.5 shrink-0" style={{ color: theme.node.muted }} />
                 <span className="truncate">{node.title || t("canvas.node.group")}</span>
                 <span className="shrink-0 text-[11px] font-normal" style={{ color: theme.node.muted }}>
@@ -763,13 +812,16 @@ function EmptyImageContent({ theme }: NodeContentRendererProps) {
 
 function VideoNodeContent({ node, theme, onViewMedia }: NodeContentRendererProps) {
     const { t } = useTranslation();
-    if (!node.metadata?.content)
+    if (!node.metadata?.content) {
         return (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.placeholder }}>
-                <Video className="size-7 opacity-35" />
-                <span className="text-sm">{t("canvas.node.emptyVideo")}</span>
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2" style={{ color: theme.node.placeholder }}>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5">
+                    <Video className="size-6 opacity-30" />
+                </div>
+                <span className="text-[10px] tracking-[0.18em] opacity-50">{t("canvas.node.emptyVideo")}</span>
             </div>
         );
+    }
     return <CanvasVideoPlayer nodeId={node.id} src={node.metadata.content} onPreview={onViewMedia} />;
 }
 
@@ -1034,16 +1086,19 @@ function ResizeHandle({ corner, onMouseDown }: { corner: ResizeCorner; onMouseDo
 function ConnectionHandleDot({
     side,
     visible,
+    scale = 1,
     onMouseDown,
     onClick,
 }: {
     side: "left" | "right";
     visible: boolean;
+    scale?: number;
     onMouseDown: (event: React.MouseEvent) => void;
     onClick?: (event: React.MouseEvent) => void;
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+    const safeScale = scale > 0 ? scale : 1;
 
     const handleMouseDown = (event: React.MouseEvent) => {
         dragStartPosRef.current = { x: event.clientX, y: event.clientY };
@@ -1064,9 +1119,15 @@ function ConnectionHandleDot({
         return (
             <div
                 data-connection-handle
-                className={`absolute top-1/2 z-30 flex size-12 -translate-y-1/2 cursor-crosshair items-center justify-center transition-opacity duration-150 -right-6 ${
+                className={`absolute z-30 flex size-12 cursor-crosshair items-center justify-center transition-opacity duration-150 ${
                     visible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
                 }`}
+                style={{
+                    left: "100%",
+                    top: "50%",
+                    transform: `translate(-50%, -50%) scale(${1 / safeScale})`,
+                    transformOrigin: "center center",
+                }}
                 onMouseDown={handleMouseDown}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={handleClick}
@@ -1090,9 +1151,15 @@ function ConnectionHandleDot({
     return (
         <div
             data-connection-handle
-            className={`absolute top-1/2 z-30 flex size-12 -translate-y-1/2 cursor-crosshair items-center justify-center transition-opacity duration-150 -left-6 ${
+            className={`absolute z-30 flex size-12 cursor-crosshair items-center justify-center transition-opacity duration-150 ${
                 visible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
             }`}
+            style={{
+                left: "0%",
+                top: "50%",
+                transform: `translate(-50%, -50%) scale(${1 / safeScale})`,
+                transformOrigin: "center center",
+            }}
             onMouseDown={onMouseDown}
             onPointerDown={(e) => e.stopPropagation()}
         >

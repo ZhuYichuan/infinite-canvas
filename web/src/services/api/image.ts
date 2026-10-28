@@ -15,6 +15,8 @@ type RequestOptions = {
     jobId?: string;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
     seed?: number;
+    maxLength?: number;
+    thinking?: boolean;
 };
 
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
@@ -117,6 +119,8 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
         channelId: config.channelId,
         workflowId: config.workflowId,
         seed: options?.seed,
+        maxLength: options?.maxLength,
+        thinking: options?.thinking,
         signal: options?.signal,
         jobId: options?.jobId,
         onProgress: options?.onProgress,

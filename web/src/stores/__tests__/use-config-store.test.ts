@@ -5,6 +5,7 @@ import {
     createModelChannel,
     defaultConfig,
     isAiConfigReady,
+    isModelSupportedByHost,
     modelOptionLabel,
     modelOptionsFromChannels,
     normalizeApiFormat,
@@ -28,6 +29,7 @@ describe("COMFYUI_DEFAULT_MODELS", () => {
             "Qwen3.5 4B",
             "MiniMax H3 全能视频",
             "MiniMax H3 首尾帧视频",
+            "MiniMax Music 03",
         ]);
     });
 });
@@ -380,15 +382,28 @@ describe("default built-in ComfyUI channel", () => {
             "Qwen3.5 4B",
             "MiniMax H3 全能视频",
             "MiniMax H3 首尾帧视频",
+            "MiniMax Music 03",
         ]);
-        expect(defaultConfig.channels[0].workflows?.length).toBe(12);
+        expect(defaultConfig.channels[0].workflows?.length).toBe(13);
+        expect(defaultConfig.channels[0].supportedModelIds).toEqual([
+            "omni-video-minimax-h3-fp8-4step-pdmd",
+            "omni-video-minimax-h3-fp8",
+            "frame-video-minimax-h3-fp8-4step-pdmd",
+            "frame-video-minimax-h3-fp8",
+            "image-qwen-2.1",
+            "image-z-turbo",
+            "image-flux2-dev",
+            "image-qwen-inpaint",
+            "text-qwen-35",
+        ]);
     });
 
-    it("creates custom channel with builtin models and workflows", () => {
+    it("creates custom channel with builtin models, workflows and supportedModelIds", () => {
         const customChannel = createModelChannel({ id: "my-custom", name: "自定义 ComfyUI" });
         expect(customChannel.name).toBe("自定义 ComfyUI");
-        expect(customChannel.models.length).toBe(7);
-        expect(customChannel.workflows?.length).toBe(12);
+        expect(customChannel.models.length).toBe(8);
+        expect(customChannel.workflows?.length).toBe(13);
+        expect(customChannel.supportedModelIds?.length).toBe(9);
         expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
         expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);
@@ -396,6 +411,49 @@ describe("default built-in ComfyUI channel", () => {
         expect(customChannel.comfyuiTextWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiVideoWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiFrameVideoWorkflow?.isBuiltin).toBe(true);
+    });
+});
+
+describe("isModelSupportedByHost & updateChannelSupportedModels", () => {
+    it("returns true when supportedModelIds contains the model", () => {
+        const channel = createModelChannel();
+        expect(isModelSupportedByHost(channel, "omni-video-minimax-h3-fp8-4step-pdmd")).toBe(true);
+        expect(isModelSupportedByHost(channel, "video_minimax_h3_omni")).toBe(true);
+        expect(isModelSupportedByHost(channel, "frame-video-minimax-h3-fp8")).toBe(true);
+    });
+
+    it("returns true when supportedModelIds is empty or undefined (open-by-default rule)", () => {
+        const openChannel = createModelChannel({ supportedModelIds: [] });
+        expect(isModelSupportedByHost(openChannel, "any-model-id")).toBe(true);
+    });
+
+    it("returns false when model is excluded from supportedModelIds", () => {
+        const restrictedChannel = createModelChannel({
+            supportedModelIds: ["omni-video-minimax-h3-fp8-4step-pdmd"],
+        });
+        expect(isModelSupportedByHost(restrictedChannel, "omni-video-minimax-h3-fp8-4step-pdmd")).toBe(true);
+        expect(isModelSupportedByHost(restrictedChannel, "omni-video-minimax-h3-fp8")).toBe(false);
+        expect(isModelSupportedByHost(restrictedChannel, "frame-video-minimax-h3-fp8")).toBe(false);
+    });
+
+    it("allows image models by default when channel has only legacy video supportedModelIds", () => {
+        const legacyVideoOnlyChannel = createModelChannel({
+            supportedModelIds: ["omni-video-minimax-h3-fp8-4step-pdmd", "frame-video-minimax-h3-fp8"],
+        });
+        // Video model not in whitelist is blocked
+        expect(isModelSupportedByHost(legacyVideoOnlyChannel, "omni-video-minimax-h3-fp8")).toBe(false);
+        // Image models are permitted by default for legacy channels that never configured image whitelist
+        expect(isModelSupportedByHost(legacyVideoOnlyChannel, "image-qwen-2.1")).toBe(true);
+        expect(isModelSupportedByHost(legacyVideoOnlyChannel, "image-z-turbo")).toBe(true);
+    });
+
+    it("updates channel supported models in store", () => {
+        useConfigStore.setState({ config: defaultConfig });
+        useConfigStore.getState().updateChannelSupportedModels("builtin", ["frame-video-minimax-h3-fp8"]);
+        const channel = useConfigStore.getState().config.channels.find((c) => c.id === "builtin");
+        expect(channel?.supportedModelIds).toEqual(["frame-video-minimax-h3-fp8"]);
+        expect(isModelSupportedByHost(channel, "frame-video-minimax-h3-fp8")).toBe(true);
+        expect(isModelSupportedByHost(channel, "omni-video-minimax-h3-fp8-4step-pdmd")).toBe(false);
     });
 });
 

@@ -42,7 +42,7 @@ export function CanvasCollabModal({
         if (!shareUrl) return;
         navigator.clipboard.writeText(shareUrl).then(() => {
             setCopied(true);
-            message.success(isLocalhost ? "已复制内网协同链接！同局域网成员打开即可加入" : "已复制协同链接！分享给协作者打开即可加入");
+            message.success(isLocalhost ? t("canvas.collab.modal.copiedLan") : t("canvas.collab.modal.copiedPublic"));
             setTimeout(() => setCopied(false), 2000);
         });
     };
@@ -57,7 +57,7 @@ export function CanvasCollabModal({
             title={
                 <div className="flex items-center gap-2 text-base font-semibold">
                     <Share2 className="size-4 text-blue-500" />
-                    <span>{isLocalhost ? "局域网多人协同" : "多人实时协同"}</span>
+                    <span>{isLocalhost ? t("canvas.collab.modal.titleLan") : t("canvas.collab.modal.titlePublic")}</span>
                 </div>
             }
             open={open}
@@ -76,7 +76,7 @@ export function CanvasCollabModal({
                         {nickname.slice(0, 1).toUpperCase()}
                     </div>
                     <div className="flex-1 space-y-1">
-                        <div className="text-xs text-stone-500">我的协同昵称</div>
+                        <div className="text-xs text-stone-500">{t("canvas.collab.modal.myNickname")}</div>
                         <Input
                             size="small"
                             value={nickname}
@@ -92,14 +92,14 @@ export function CanvasCollabModal({
                     <div className="space-y-4 text-center py-2">
                         <div className="rounded-xl border border-dashed border-stone-200 p-4 text-left text-xs leading-relaxed text-stone-500 dark:border-stone-800 dark:text-stone-400">
                             <p className="font-medium text-stone-700 dark:text-stone-200 mb-1">
-                                {isLocalhost ? "💡 内网协同说明" : "💡 多人协同说明"}
+                                {isLocalhost ? t("canvas.collab.modal.descTitleLan") : t("canvas.collab.modal.descTitlePublic")}
                             </p>
                             <p>
                                 {isLocalhost
-                                    ? "• 开启后生成专属局域网协同链接，发送给同 WiFi / 局域网下的伙伴即可加入。"
-                                    : "• 开启后生成专属协同链接，发送给任何在线协作者即可加入。"}
+                                    ? t("canvas.collab.modal.descBodyLan")
+                                    : t("canvas.collab.modal.descBodyPublic")}
                             </p>
-                            <p>• <strong>权限规则</strong>：你是房主，独占编辑与 AI 生成权限；协作者可实时同步观看你的操作与成果，并随时下载高清物料。</p>
+                            <p>• <strong>{t("canvas.collab.modal.permissionRules")}</strong>：{t("canvas.collab.modal.permissionDesc")}</p>
                         </div>
                         <Button
                             type="primary"
@@ -107,7 +107,7 @@ export function CanvasCollabModal({
                             className="!h-10 !w-full !rounded-xl !font-medium"
                             onClick={handleStart}
                         >
-                            {isLocalhost ? "开启内网协同" : "开启实时协同"}
+                            {isLocalhost ? t("canvas.collab.modal.startLan") : t("canvas.collab.modal.startPublic")}
                         </Button>
                     </div>
                 ) : (
@@ -135,11 +135,11 @@ export function CanvasCollabModal({
                                     />
                                 </span>
                                 <span>
-                                    {role === "host" ? "协同进行中（房主特权：可编辑与生成）" : "协同观看模式（只读观看与下载）"}
+                                    {role === "host" ? t("canvas.collab.modal.statusHost") : t("canvas.collab.modal.statusViewer")}
                                 </span>
                             </div>
                             <span className="opacity-70">
-                                {status === "connected" ? "已连接" : "连接中..."}
+                                {status === "connected" ? t("canvas.collab.modal.connected") : t("canvas.collab.modal.connecting")}
                             </span>
                         </div>
 
@@ -147,7 +147,7 @@ export function CanvasCollabModal({
                         {role === "host" ? (
                             <div className="space-y-1.5">
                                 <div className="text-xs text-stone-500">
-                                    {isLocalhost ? "内网分享链接（发给同局域网成员即可）：" : "协同分享链接（发给协作者即可加入）："}
+                                    {isLocalhost ? t("canvas.collab.modal.shareUrlLan") : t("canvas.collab.modal.shareUrlPublic")}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Input
@@ -160,16 +160,16 @@ export function CanvasCollabModal({
                                         onClick={handleCopy}
                                         className="!h-8 !rounded-xl"
                                     >
-                                        {copied ? "已复制" : "复制"}
+                                        {copied ? t("common.copied") : t("common.copy")}
                                     </Button>
                                 </div>
                             </div>
                         ) : (
                             <div className="rounded-xl border border-stone-200/80 bg-stone-50/50 p-3 text-xs text-stone-500 dark:border-stone-800 dark:bg-stone-900/50">
                                 {hostOnline ? (
-                                    <p className="text-emerald-600 dark:text-emerald-400">🟢 房主在线中，画布变动将实时同步至你的屏幕。</p>
+                                    <p className="text-emerald-600 dark:text-emerald-400">{t("canvas.collab.modal.hostOnlineTip")}</p>
                                 ) : (
-                                    <p className="text-amber-600 dark:text-amber-400">🟡 房主暂时离线，你可继续浏览当前画布与下载资源。</p>
+                                    <p className="text-amber-600 dark:text-amber-400">{t("canvas.collab.modal.hostOfflineTip")}</p>
                                 )}
                             </div>
                         )}
@@ -179,12 +179,12 @@ export function CanvasCollabModal({
                             <div className="flex items-center justify-between text-xs text-stone-500">
                                 <span className="flex items-center gap-1.5 font-medium">
                                     <Users className="size-3.5" />
-                                    在线成员 ({onlineUsers.length || 1})
+                                    {t("canvas.collab.modal.onlineUsers", { count: onlineUsers.length || 1 })}
                                 </span>
                             </div>
                             <div className="max-h-36 divide-y divide-stone-100 overflow-y-auto rounded-xl border border-stone-200/70 p-1 dark:divide-stone-800 dark:border-stone-800">
                                 {onlineUsers.length === 0 ? (
-                                    <div className="px-3 py-2 text-xs text-stone-400">正在获取在线成员...</div>
+                                    <div className="px-3 py-2 text-xs text-stone-400">{t("canvas.collab.modal.fetchingUsers")}</div>
                                 ) : (
                                     onlineUsers.map((u) => (
                                         <div key={u.id} className="flex items-center justify-between px-2.5 py-1.5 text-xs">
@@ -206,11 +206,11 @@ export function CanvasCollabModal({
                                             >
                                                 {u.role === "host" ? (
                                                     <>
-                                                        <Crown className="size-2.5" /> 房主
+                                                        <Crown className="size-2.5" /> {t("canvas.collab.modal.roleHost")}
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Eye className="size-2.5" /> 观摩
+                                                        <Eye className="size-2.5" /> {t("canvas.collab.modal.roleViewer")}
                                                     </>
                                                 )}
                                             </span>
@@ -228,10 +228,10 @@ export function CanvasCollabModal({
                             className="!mt-2 !h-9 !w-full !rounded-xl"
                             onClick={() => {
                                 onStopCollab();
-                                message.info(role === "host" ? "已停止协同" : "已退出协同房间");
+                                message.info(role === "host" ? t("canvas.collab.modal.stoppedCollabMsg") : t("canvas.collab.modal.leftCollabMsg"));
                             }}
                         >
-                            {role === "host" ? "停止协同" : "退出协同"}
+                            {role === "host" ? t("canvas.collab.modal.stopCollab") : t("canvas.collab.modal.leaveCollab")}
                         </Button>
                     </div>
                 )}

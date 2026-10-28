@@ -1,0 +1,154 @@
+---
+title: 文本工作流模型 DSL 与动态调度规范 (Spec)
+description: 将 ComfyUI 文本生成与视觉反推工作流抽象为一等公民模型 Profile，实现无侵入动态定义与多模态连线防呆
+---
+
+# 文本工作流模型 DSL 与动态调度规范 (Spec)
+
+## Problem Statement
+
+在前期完成视频与图像工作流向 `WorkflowModelProfile` DSL 体系改造后，生图与生视频节点已全面支持基于模型的动态参数解析、前置多维约束校验（规范模式）以及拓扑级联剪枝。然而，无限画布的**文本生成与多模态反推（Text & VLM）**模块仍处于割裂与遗留状态：
+
+1. **调度逻辑孤立硬编码，缺乏通用拓扑剪枝**：现有文本调度依赖定制化的特殊处理逻辑，在代码中硬编码查找标题为 `image` 的节点并手动执行物理删除。一旦引入第三方、社区或结构差异的文本模型工作流，该硬编码逻辑即刻失效，无法自适应不同拓扑；
+2. **UI 遗留闭源商业大模型参数，与底层 ComfyUI 脱节**：画布文本参数面板中仍残留早期的闭源大模型特有选项（如 `reasoningEffort: "auto" | "low" | "medium"`），而本地自建 ComfyUI 的文本处理核心节点（如 `kktools` 的 `TextGenerate`）实际接收的是 `max_length`、`seed`、`thinking`、`temperature` 等参数，界面与底层实际能力严重错位；
+3. **模型选择器与规范校验引擎缺位**：图像与视频已具备独立的模型选择器组件与可用性诊断引擎（具备置灰与诊断提示），而文本节点目前仍在使用扁平的工作流选择器，缺乏连线配额校验、字数限制检测以及算力主机可用性诊断；
+4. **纯文本生成与多模态视觉反推场景混淆**：现存工作流将纯文本对话（如扩写、润色）与视觉反推（如从图片反推生图提示词）糅合在一起，未能以明确的模型 Profile 区分「严禁输入图片」与「必须输入图片」的边界，导致连线错误无法在前置交互中被阻断。
+
+---
+
+## Solution
+
+将文本生成与视觉反推工作流彻底纳入 **“工作流即模型（Workflow-as-a-Model）”** 架构，建立标准化文本模型 DSL（`WorkflowModelProfile`，`capability: "text"`），并通过规范约束引擎实现连线与提交的全链路防呆：
+
+1. **定义标准文本模型 Profile**：
+   - **`text-qwen-35-chat`（纯文本生成与扩写）**：声明 `minImages: 0`、`maxImages: 0`，严禁连入任何媒体资产，画布连线实时拦截红线，用于生图提示词扩写、脚本润色与角色设定；
+   - **`text-qwen-35-vlm`（多模态识图与反推）**：声明 `minImages: 1`、`maxImages: 1`，要求严格接入 1 张参考图，用于理解主体并反推专业生图提示词；
+2. **清洗文本参数面板 UI（工作流驱动原则）**：
+   - 彻底移除闭源商业大模型的 `reasoningEffort` 遗留控件；
+   - 由模型 DSL 中的 `capabilityConfig.textConfig` 动态驱动渲染原生 ComfyUI 参数（如最大生成长度预设、深度思考开关、随机种子）；
+3. **构建专用文本模型选择器（TextModelPicker）**：
+   - 接入规范模式约束引擎，当节点接入了参考图时，自动置灰纯文本模型并展示诊断提示；当未接入参考图时，自动置灰视觉反推模型；
+4. **统一归并到通用调度引擎**：
+   - 废弃针对文本的特化黑盒删除逻辑，将文本工作流统一接入标准的插槽契约（`prompt`、`seed`、`ref_image_01`、`output_text`）与声明式拓扑剪枝，实现新增文本工作流零代码侵入。
+
+---
+
+## User Stories
+
+1. As a canvas creator, I want to select between "Qwen-3.5 文本生成" and "Qwen-3.5 视觉反推" using a dedicated Text Model Picker, so that I can clearly understand the intended purpose of each text workflow.
+2. As a canvas creator, I want the "Qwen-3.5 纯文本生成" model option to be disabled with a diagnostic tooltip when I have connected an image node to the text card, so that I am prevented from sending unwanted images to a text-only workflow.
+3. As a canvas creator, I want the "Qwen-3.5 视觉反推" model option to be disabled with a diagnostic tooltip when no image is connected, so that I know I must connect a reference image before attempting prompt extraction.
+4. As a canvas creator, I want the canvas connection line to turn red and reject connection when I attempt to drag an image wire into a text node set to pure text mode, so that I receive immediate tactile feedback without needing to open the model selector.
+5. As a canvas creator, I want the text card's "Generate" button to be disabled with an amber warning icon if my connected inputs violate the current model profile constraints, so that I cannot submit invalid requests.
+6. As a canvas creator, I want the text parameters panel to display ComfyUI-native controls (Max Tokens length, Thinking toggle, Temperature) rather than irrelevant OpenAI options like "reasoning effort", so that my controls accurately reflect what the model executes.
+7. As a canvas creator, I want to toggle the "Thinking" mode on supported text models, so that I can enable chain-of-thought reasoning for complex prompt drafting.
+8. As a canvas creator, I want to select token length limits (e.g. 256, 512, 1024) defined by the model DSL, so that I can control generation brevity without typing arbitrary integers.
+9. As a canvas creator, I want models not enabled on my active ComfyUI host channel to appear disabled with host-unavailable diagnostics, so that I know when to switch算力主机.
+10. As a canvas creator, I want the text node output to automatically receive the generated text string and propagate it via output wires to downstream image prompt inputs, so that I can chain prompt generation into image creation seamlessly.
+11. As a developer, I want all text workflows to declare inputs and outputs through standardized `slotMapping` slots (`prompt`, `seed`, `ref_image_01`, `output_text`), so that I can introduce new text LLMs without writing custom parameter binding code.
+12. As a developer, I want unused image loading subgraphs in multi-capability workflows to be automatically pruned via declared slot presence, eliminating fragile node-deletion logic.
+
+---
+
+## Implementation Decisions
+
+### 1. 文本模型 DSL 扩展规范（Schema Extension）
+
+在通用模型能力配置中扩充文本独有的参数配置结构，由模型 Profile 声明其所支持的生成控制项：
+
+```ts
+export interface TextCapabilityConfig {
+    maxLength?: {
+        default: number;
+        options: number[];
+    };
+    thinkingSupported?: boolean;
+    temperatureRange?: {
+        min: number;
+        max: number;
+        default: number;
+        step: number;
+    };
+}
+```
+
+各文本模型在 `capabilityConfig.textConfig` 中声明对应配置。例如 `text-qwen-35-chat` 与 `text-qwen-35-vlm` 声明 `maxLength: { default: 512, options: [256, 512, 1024] }` 及 `thinkingSupported: true`。
+
+### 2. 标准模型 Profile 定义
+
+在模型注册表体系中确立两款内置文本模型：
+- **`text-qwen-35-chat`**：
+  - `capability`: `"text"`
+  - `category`: `"text"`
+  - `references`: `minImages: 0`, `maxImages: 0`, `minVideos: 0`, `maxVideos: 0`, `maxAudios: 0`, `maskSupported: false`, `promptMaxChars: 4000`
+  - `slotMapping`: `prompt: "prompt"`, `seed: "seed"`, `textOutput: "output_text"`
+- **`text-qwen-35-vlm`**：
+  - `capability`: `"text"`
+  - `category`: `"text"`
+  - `references`: `minImages: 1`, `maxImages: 1`, `minVideos: 0`, `maxVideos: 0`, `maxAudios: 0`, `maskSupported: false`, `promptMaxChars: 4000`
+  - `slotMapping`: `prompt: "prompt"`, `seed: "seed"`, `images: "ref_image_01"`, `textOutput: "output_text"`
+
+### 3. 多维约束规则引擎（Constraint Engine）规则增强
+
+既有的 `ImageQuotaRule` 全面复用于文本模型：
+- 当 `maxImages === 0` 且用户连入了图片时，返回诊断：“该模型为纯文本模型，不支持连入参考图片”；
+- 当 `minImages === 1` 且用户未连入图片时，返回诊断：“该模型为视觉反推模型，需要连入至少 1 张参考图片”；
+- 提示词超长规则、主机支持规则与文本模型无缝兼容。
+
+### 4. 文本模型选择器组件（TextModelPicker）
+
+- 新增专用的文本模型下拉/级联选择器组件，风格与现有的 `ImageModelPicker` 及 `VideoModelPicker` 保持一致；
+- 调用约束引擎计算每个候选文本模型的可用性状态；
+- 对不兼容模型标记 `disabled: true`，右侧展示问号图标，悬停呈现诊断原因；
+- 在画布文本节点的 prompt 工具条中替换旧的 `ChannelWorkflowPicker`。
+
+### 5. 文本参数面板组件（TextSettingsPanel）改造
+
+- 彻底清除 `reasoningEffort` 相关状态字段与 UI 控件；
+- 依据当前选中的 `WorkflowModelProfile` 的 `textConfig` 动态渲染控件：
+  - 若 `maxLength` 存在，渲染选项分段控制（Segmented）或下拉框；
+  - 若 `thinkingSupported === true`，渲染深度思考开关（Switch）；
+  - 保留并规范随机种子输入框。
+
+### 6. 统一调度管道与输出提取
+
+- 废除单体特定的文本节点删除黑盒逻辑；
+- 文本工作流调度统一走标准插槽绑定机制：
+  - 根据 `slotMapping.prompt` 注入用户指示或反推指令；
+  - 根据 `slotMapping.seed` 注入种子；
+  - 仅当模型 Profile 允许图片且实际连入图片时，向 `slotMapping.images` 绑定上传后的资产名；若模型 Profile 声明无图片需求，调度前根据插槽标注进行安全拓扑剪枝，确保不向后端提交悬空图像加载节点；
+- 执行完成后，通过 `slotMapping.textOutput` 或 ComfyUI 执行历史中的文本输出节点拉取生成文本，写回画布节点的 `metadata.text`。
+
+---
+
+## Testing Decisions
+
+- **外部行为测试原则**：测试重点聚焦于输入给定外部连线上下文时模型选择器与约束引擎的输出结果，以及参数变动时调度载荷的构造正确性，绝不刺探内部临时状态。
+- **核心测试切面（Seams）**：
+  1. **约束规则引擎测试**：
+     - 输入 0 张图片时，验证 `text-qwen-35-chat` 可用，`text-qwen-35-vlm` 禁用且包含“需要连入至少 1 张参考图片”的诊断信息；
+     - 输入 1 张图片时，验证 `text-qwen-35-vlm` 可用，`text-qwen-35-chat` 禁用且包含“纯文本模型不支持连入参考图片”的诊断信息；
+     - 输入超过 4000 字符文本时，验证字数超限阻断。
+  2. **文本模型选择器组件交互测试**：
+     - 测试在不同连线状态下，级联菜单中的禁用状态与提示内容渲染；
+     - 测试切换模型时正确触发节点元数据中的 `modelId` 更新。
+  3. **调度载荷绑定测试**：
+     - 验证纯文本生成调度时，生成的 JSON 任务体中无残留悬空图像输入，`prompt` 与 `seed` 映射正确；
+     - 验证视觉反推调度时，参考图片文件名正确注入到目标输入插槽。
+- **既有测试参考（Prior Art）**：
+  - 参照 `model-constraint-engine.test.ts`、`image-model-picker.test.ts` 和 `models.test.ts` 的测试结构。
+
+---
+
+## Out of Scope
+
+- 不引入 OpenAI、Gemini、Claude 等外部闭源商业大模型 API 或代理层；
+- 本规范不涵盖 TTS（文本转语音）与声音克隆工作流，音频工作流属于独立能力；
+- 本规范不涉及多图输入视觉模型（多图 VLM 留待后续拓展独立 Profile）；
+- 本规范不改变全局画布历史撤销与协同通信协议。
+
+---
+
+## Further Notes
+
+- 文本节点的输出可以通过连线直接作为下游图片节点的提示词输入端口（`prompt`），因此文本模型输出的清洁度（自动剥离多余的 ComfyUI 内部标记）需在输出解析层统一做轻量清洗。

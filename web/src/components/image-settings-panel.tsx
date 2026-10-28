@@ -1,10 +1,21 @@
-import { type ReactNode, useState } from "react";
-import { ConfigProvider, Switch } from "antd";
+import { type ReactNode, useState, useEffect } from "react";
+import { ConfigProvider } from "antd";
 import { useTranslation } from "react-i18next";
 
 import i18n from "@/i18n";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import type { AiConfig } from "@/stores/use-config-store";
+import {
+    getModelProfile,
+    imageQwen21Profile,
+    IMAGE_RESOLUTION_PRESETS,
+    IMAGE_STANDARD_ASPECT_RATIOS,
+    IMAGE_RESOLUTION_TIERS,
+    getImageDimensions,
+    parseImageSizeTierAndRatio,
+    type ImageResolutionTier,
+    type ImageAspectRatio,
+} from "@/services/api/models";
 
 const qualityOptions = [
     { value: "auto", labelKey: "auto" },
@@ -12,53 +23,96 @@ const qualityOptions = [
     { value: "medium", labelKey: "medium" },
     { value: "low", labelKey: "low" },
 ];
-const DIMENSION_STEP = 16;
 
-const aspectOptions = [
-    { value: "1:1", label: "1:1", width: 1024, height: 1024, icon: "square" },
-    { value: "3:2", label: "3:2", width: 1536, height: 1024, icon: "landscape" },
-    { value: "2:3", label: "2:3", width: 1024, height: 1536, icon: "portrait" },
-    { value: "4:3", label: "4:3", width: 1360, height: 1024, icon: "landscape" },
-    { value: "3:4", label: "3:4", width: 1024, height: 1360, icon: "portrait" },
-    { value: "16:9", label: "16:9", width: 1824, height: 1024, icon: "landscape" },
-    { value: "9:16", label: "9:16", width: 1024, height: 1824, icon: "portrait" },
-    { value: "1:1-2k", label: "1:1(2k)", size: "2048x2048", width: 2048, height: 2048, icon: "square" },
-    { value: "16:9-2k", label: "16:9(2k)", size: "2048x1152", width: 2048, height: 1152, icon: "landscape" },
-    { value: "9:16-2k", label: "9:16(2k)", size: "1152x2048", width: 1152, height: 2048, icon: "portrait" },
-    { value: "16:9-4k", label: "16:9(4k)", size: "3840x2160", width: 3840, height: 2160, icon: "landscape" },
-    { value: "9:16-4k", label: "9:16(4k)", size: "2160x3840", width: 2160, height: 3840, icon: "portrait" },
-    { value: "auto", label: "auto", width: 0, height: 0, icon: "auto" },
+const resolutionTiers: Array<{ value: ImageResolutionTier; label: string }> = [
+    { value: "1k", label: "1K" },
+    { value: "2k", label: "2K" },
+    { value: "4k", label: "4K" },
+];
+
+const aspectList: Array<{ value: ImageAspectRatio; label: string; icon: string; width: number; height: number }> = [
+    { value: "1:1", label: "1:1", icon: "square", width: 1, height: 1 },
+    { value: "4:3", label: "4:3", icon: "landscape", width: 4, height: 3 },
+    { value: "3:4", label: "3:4", icon: "portrait", width: 3, height: 4 },
+    { value: "3:2", label: "3:2", icon: "landscape", width: 3, height: 2 },
+    { value: "2:3", label: "2:3", icon: "portrait", width: 2, height: 3 },
+    { value: "16:9", label: "16:9", icon: "landscape", width: 16, height: 9 },
+    { value: "9:16", label: "9:16", icon: "portrait", width: 9, height: 16 },
 ];
 
 export const imageQualityOptions = qualityOptions.map((item) => ({ value: item.value, get label() { return i18n.t(`settingsPanels.common.${item.labelKey}`); } }));
-export const imageAspectOptions = aspectOptions.map((item) => ({ value: item.size || item.value, label: item.label }));
+
+export const imageAspectOptions = [
+    { value: "512x512", label: "1:1 (1K - 512×512)" },
+    { value: "640x384", label: "16:9 (1K - 640×384)" },
+    { value: "384x640", label: "9:16 (1K - 384×640)" },
+    { value: "576x448", label: "4:3 (1K - 576×448)" },
+    { value: "448x576", label: "3:4 (1K - 448×576)" },
+    { value: "640x448", label: "3:2 (1K - 640×448)" },
+    { value: "448x640", label: "2:3 (1K - 448×640)" },
+    { value: "1024x1024", label: "1:1 (2K - 1024×1024)" },
+    { value: "1344x768", label: "16:9 (2K - 1344×768)" },
+    { value: "768x1344", label: "9:16 (2K - 768×1344)" },
+    { value: "2048x2048", label: "1:1 (4K - 2048×2048)" },
+    { value: "2688x1536", label: "16:9 (4K - 2688×1536)" },
+    { value: "1536x2688", label: "9:16 (4K - 1536×2688)" },
+];
 
 type ImageSettingsPanelProps = {
     config: AiConfig;
     onConfigChange: (key: "size" | "count", value: string) => void;
     theme: CanvasTheme;
+    modelId?: string;
     showTitle?: boolean;
     className?: string;
     maxCount?: number;
     quickCount?: number;
 };
 
-export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5", maxCount = 15, quickCount = 10 }: ImageSettingsPanelProps) {
+export function ImageSettingsPanel({ config, onConfigChange, theme, modelId, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5", maxCount = 15, quickCount = 10 }: ImageSettingsPanelProps) {
     const { t } = useTranslation();
-    const [snapDimensionToStep, setSnapDimensionToStep] = useState(true);
+    const profile = getModelProfile(modelId) || imageQwen21Profile;
+    const sizeConfig = profile.capabilityConfig.size;
+    const hasSizeConfig = Boolean(sizeConfig);
+
+    const activeSize = config.size || sizeConfig?.default || "512x512";
+    const parsed = parseImageSizeTierAndRatio(activeSize);
+
+    const [activeTier, setActiveTier] = useState<ImageResolutionTier>(parsed.tier || "1k");
+
+    // 当外部尺寸变化时同步档位
+    useEffect(() => {
+        if (parsed.tier && parsed.tier !== activeTier) {
+            setActiveTier(parsed.tier);
+        }
+    }, [parsed.tier]);
+
+    const availableAspectOptions = aspectList.filter((item) => {
+        if (!sizeConfig?.values || sizeConfig.values.length === 0) return true;
+        const allowed = sizeConfig.values.map((v) => v.toLowerCase().replace(/\s+/g, ""));
+        return allowed.includes(item.value.toLowerCase().replace(/\s+/g, ""));
+    });
+
     const count = Math.max(1, Math.min(maxCount, Math.floor(Math.abs(Number(config.count)) || 1)));
-    const activeSize = config.size || "auto";
-    const selectedAspect = aspectOptions.find((item) => (item.size || item.value) === activeSize || item.value === activeSize);
-    const dimensions = readSizeDimensions(activeSize, selectedAspect || aspectOptions[0]);
-    const selectAspect = (value: string) => {
-        const option = aspectOptions.find((item) => item.value === value);
-        onConfigChange("size", option?.size || option?.value || "auto");
+    const dimensions = { width: parsed.width, height: parsed.height };
+
+    const handleTierChange = (newTier: ImageResolutionTier) => {
+        setActiveTier(newTier);
+        const targetRatio = parsed.ratio || "1:1";
+        const dim = getImageDimensions(targetRatio, newTier);
+        onConfigChange("size", `${dim.width}x${dim.height}`);
     };
+
+    const selectAspect = (ratio: ImageAspectRatio) => {
+        const dim = getImageDimensions(ratio, activeTier);
+        onConfigChange("size", `${dim.width}x${dim.height}`);
+    };
+
     const updateDimension = (key: "width" | "height", value: number | null) => {
-        const next = Math.max(1, Math.floor(value || dimensions[key] || 1024));
+        const next = Math.max(1, Math.floor(value || dimensions[key] || 512));
         const width = key === "width" ? next : dimensions.width;
         const height = key === "height" ? next : dimensions.height;
-        onConfigChange("size", `${alignDimension(width, snapDimensionToStep)}x${alignDimension(height, snapDimensionToStep)}`);
+        onConfigChange("size", `${width}x${height}`);
     };
 
     return (
@@ -73,42 +127,64 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                 }}
             >
                 {showTitle ? <div className="text-lg font-semibold">{t("settingsPanels.image.title")}</div> : null}
-                <div className="space-y-2.5">
-                    <div className="flex items-center justify-between gap-3">
-                        <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.size")}</SettingTitle>
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium" style={{ color: theme.node.muted }}>
-                                {t("settingsPanels.image.align16")}
-                            </span>
-                            <span title={t("settingsPanels.image.align16Hint")} onMouseDown={(event) => event.stopPropagation()}>
-                                <Switch size="small" checked={snapDimensionToStep} onChange={setSnapDimensionToStep} />
-                            </span>
+                {hasSizeConfig ? (
+                    <>
+                        {sizeConfig?.allowCustom !== false ? (
+                            <div className="space-y-2.5">
+                                <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.size")}</SettingTitle>
+                                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5">
+                                    <DimensionInput prefix="W" value={dimensions.width} disabled={activeSize === "auto"} theme={theme} onChange={(value) => updateDimension("width", value)} />
+                                    <span className="text-lg opacity-45">↔</span>
+                                    <DimensionInput prefix="H" value={dimensions.height} disabled={activeSize === "auto"} theme={theme} onChange={(value) => updateDimension("height", value)} />
+                                </div>
+                            </div>
+                        ) : null}
+                        <div className="space-y-2.5">
+                            <div className="flex items-center justify-between gap-3">
+                                <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.aspectRatio")}</SettingTitle>
+                                <div className="flex items-center rounded-lg p-0.5 border" style={{ borderColor: theme.node.stroke }}>
+                                    {resolutionTiers.map((tierItem) => (
+                                        <button
+                                            key={tierItem.value}
+                                            type="button"
+                                            className="px-2.5 py-0.5 text-xs font-semibold rounded-md transition cursor-pointer"
+                                            style={{
+                                                background: activeTier === tierItem.value ? theme.node.text : "transparent",
+                                                color: activeTier === tierItem.value ? theme.node.panel : theme.node.text,
+                                            }}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            onClick={() => handleTierChange(tierItem.value)}
+                                        >
+                                            {tierItem.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2.5">
+                                {availableAspectOptions.map((item) => {
+                                    const isSelected = parsed.ratio === item.value;
+                                    return (
+                                        <button
+                                            key={item.value}
+                                            type="button"
+                                            className="flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
+                                            style={{
+                                                borderColor: isSelected ? theme.node.text : theme.node.stroke,
+                                                background: "transparent",
+                                                color: theme.node.text,
+                                            }}
+                                            onMouseDown={(event) => event.stopPropagation()}
+                                            onClick={() => selectAspect(item.value)}
+                                        >
+                                            <AspectIcon type={item.icon} width={item.width} height={item.height} color={theme.node.text} />
+                                            <span>{item.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5">
-                        <DimensionInput prefix="W" value={dimensions.width} disabled={activeSize === "auto"} theme={theme} alignToStep={snapDimensionToStep} onChange={(value) => updateDimension("width", value)} />
-                        <span className="text-lg opacity-45">↔</span>
-                        <DimensionInput prefix="H" value={dimensions.height} disabled={activeSize === "auto"} theme={theme} alignToStep={snapDimensionToStep} onChange={(value) => updateDimension("height", value)} />
-                    </div>
-                </div>
-                <div className="space-y-2.5">
-                    <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.aspectRatio")}</SettingTitle>
-                    <div className="grid grid-cols-4 gap-2.5">
-                        {aspectOptions.map((item) => (
-                            <button
-                                key={item.value}
-                                type="button"
-                                className="flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-transparent text-sm transition hover:opacity-80"
-                                style={{ borderColor: selectedAspect?.value === item.value ? theme.node.text : theme.node.stroke, background: "transparent", color: theme.node.text }}
-                                onMouseDown={(event) => event.stopPropagation()}
-                                onClick={() => selectAspect(item.value)}
-                            >
-                                <AspectIcon type={item.icon} width={item.width} height={item.height} color={theme.node.text} />
-                                <span>{item.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                    </>
+                ) : null}
                 <div className="space-y-2.5">
                     <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.count")}</SettingTitle>
                     <div className="grid grid-cols-4 gap-2.5">
@@ -143,7 +219,12 @@ export function imageQualityLabel(value: string) {
 }
 
 export function imageSizeLabel(size: string) {
-    return aspectOptions.find((item) => (item.size || item.value) === size || item.value === size)?.label || size;
+    if (!size || size === "auto") return i18n.t("settingsPanels.common.auto");
+    const parsed = parseImageSizeTierAndRatio(size);
+    if (parsed.ratio) {
+        return `${parsed.ratio} (${parsed.tier.toUpperCase()})`;
+    }
+    return size;
 }
 
 function OptionPill({ selected, theme, onClick, children }: { selected: boolean; theme: CanvasTheme; onClick: () => void; children: ReactNode }) {
@@ -160,9 +241,9 @@ function OptionPill({ selected, theme, onClick, children }: { selected: boolean;
     );
 }
 
-function DimensionInput({ prefix, value, disabled, theme, alignToStep, onChange }: { prefix: string; value: number; disabled: boolean; theme: CanvasTheme; alignToStep: boolean; onChange: (value: number | null) => void }) {
+function DimensionInput({ prefix, value, disabled, theme, onChange }: { prefix: string; value: number; disabled: boolean; theme: CanvasTheme; onChange: (value: number | null) => void }) {
     const commit = (input: HTMLInputElement) => {
-        const next = alignDimension(Math.max(1, Math.floor(Number(input.value) || value || 1024)), alignToStep);
+        const next = Math.max(1, Math.floor(Number(input.value) || value || 512));
         input.value = String(next);
         onChange(next);
     };
@@ -224,16 +305,4 @@ function SettingTitle({ children, color }: { children: string; color: string }) 
             {children}
         </div>
     );
-}
-
-function readSizeDimensions(size: string, fallback: { width: number; height: number }) {
-    const match = size?.match(/^(\d+)x(\d+)$/);
-    return {
-        width: match ? Number(match[1]) : fallback.width,
-        height: match ? Number(match[2]) : fallback.height,
-    };
-}
-
-function alignDimension(value: number, enabled: boolean) {
-    return enabled ? Math.ceil(value / DIMENSION_STEP) * DIMENSION_STEP : value;
 }

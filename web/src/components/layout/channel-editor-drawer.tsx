@@ -1,10 +1,9 @@
-import { App, Button, Drawer, Input, Space, Popconfirm, Tag, Tooltip } from "antd";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { App, Button, Drawer, Input, Space, Tag } from "antd";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldAlert, Plus, Trash2, Check, RotateCcw, Upload, FileCode, CheckCircle2 } from "lucide-react";
-import { nanoid } from "nanoid";
+import { ShieldAlert, FileCode, CheckCircle2 } from "lucide-react";
 
-import { checkComfyuiConnection, formatIngestSuccessMessage, ingestWorkflow, isMixedContentHttp, notifyMixedContentBlocked, validateComfyuiWorkflow } from "@/services/api/comfyui";
+import { checkComfyuiConnection, isMixedContentHttp, notifyMixedContentBlocked } from "@/services/api/comfyui";
 import {
     normalizeChannelModels,
     type ComfyWorkflowItem,
@@ -40,9 +39,6 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     const [proxyErrors, setProxyErrors] = useState<ProxyFieldErrors>({});
     const [testingConnection, setTestingConnection] = useState(false);
     const { message } = App.useApp();
-
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const pendingCategoryRef = useRef<WorkflowCategory | null>(null);
 
     const handleTestConnection = async () => {
         const url = (draft?.comfyuiProxyUrl || "").trim() || "http://127.0.0.1:8188";
@@ -82,45 +78,6 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         patch({ workflows });
     };
 
-    const handleTriggerUpload = (category: WorkflowCategory) => {
-        pendingCategoryRef.current = category;
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-            fileInputRef.current.click();
-        }
-    };
-
-    const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        const category = pendingCategoryRef.current;
-        if (!file || !category) return;
-        try {
-            const text = await file.text();
-            const ingested = ingestWorkflow(text, { categoryHint: category });
-            if (!ingested.ok || !ingested.workflow) {
-                message.error(`工作流适配失败: ${ingested.error || "未知原因"}`);
-                return;
-            }
-
-            const rawName = file.name.replace(/\.[^/.]+$/, "");
-            const existingInCat = currentWorkflows.filter((w) => w.category === category);
-            const newWorkflow: ComfyWorkflowItem = {
-                id: nanoid(),
-                name: rawName || `${category}-workflow-${existingInCat.length + 1}`,
-                category,
-                json: ingested.workflow as Record<string, unknown>,
-                createdAt: Date.now(),
-                isBuiltin: false,
-                isDefault: existingInCat.length === 0,
-            };
-
-            setWorkflows([...currentWorkflows, newWorkflow]);
-            message.success(formatIngestSuccessMessage(`成功添加工作流 "${newWorkflow.name}"`, ingested.detectedSlots.length));
-        } catch {
-            message.error("解析文件失败，请确保上传的是有效的 JSON 格式工作流");
-        }
-    };
-
     const handleSetDefault = (category: WorkflowCategory, id: string) => {
         const next = currentWorkflows.map((w) => {
             if (w.category === category) {
@@ -130,28 +87,6 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
         });
         setWorkflows(next);
         message.success("已更新默认工作流");
-    };
-
-    const handleRemove = (category: WorkflowCategory, id: string) => {
-        const target = currentWorkflows.find((w) => w.id === id);
-        if (target?.isBuiltin) {
-            message.warning("系统内置工作流不可删除");
-            return;
-        }
-        const filtered = currentWorkflows.filter((w) => w.id !== id);
-        const remainingInCat = filtered.filter((w) => w.category === category);
-        if (target?.isDefault && remainingInCat.length > 0) {
-            remainingInCat[0].isDefault = true;
-        }
-        setWorkflows(filtered);
-        message.success("工作流已删除");
-    };
-
-    const handleResetCategory = (category: WorkflowCategory) => {
-        const defaults = getDefaultComfyWorkflowItems(draft).filter((w) => w.category === category);
-        const others = currentWorkflows.filter((w) => w.category !== category);
-        setWorkflows([...others, ...defaults]);
-        message.success("已恢复内置默认工作流");
     };
 
     const save = () => {
@@ -280,7 +215,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                 <div className="mb-4">
                     <div className="text-base font-semibold">工作流能力矩阵（9 大分类）</div>
                     <div className="mt-0.5 text-xs text-stone-500">
-                        统一管理该渠道下的所有 ComfyUI 工作流能力。上传时需包含完整的 <code>_meta.title</code> 槽位协议标注。
+                        统一管理该渠道下的所有内置 ComfyUI 工作流能力与默认项。
                     </div>
                 </div>
 
@@ -294,28 +229,12 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                                         <div className="text-sm font-semibold text-stone-800 dark:text-stone-200">{cat.title}</div>
                                         <div className="text-[11px] text-stone-500">{cat.desc}</div>
                                     </div>
-                                    <Space size="small">
-                                        <Button
-                                            size="small"
-                                            icon={<Plus className="size-3.5" />}
-                                            onClick={() => handleTriggerUpload(cat.key)}
-                                        >
-                                            添加工作流
-                                        </Button>
-                                        <Tooltip title="重置回系统内置默认工作流">
-                                            <Button
-                                                size="small"
-                                                icon={<RotateCcw className="size-3" />}
-                                                onClick={() => handleResetCategory(cat.key)}
-                                            />
-                                        </Tooltip>
-                                    </Space>
                                 </div>
 
                                 <div className="space-y-1.5">
                                     {items.length === 0 ? (
                                         <div className="rounded-lg border border-dashed border-stone-200 py-3 text-center text-xs text-stone-400 dark:border-stone-800">
-                                            暂无工作流，请点击右上角添加
+                                            暂无内置工作流
                                         </div>
                                     ) : (
                                         items.map((item) => (
@@ -333,7 +252,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                                                         <span className="truncate">{item.name}</span>
                                                         {item.isBuiltin && <Tag color="default" className="!mr-0 !text-[10px]">内置</Tag>}
                                                         {item.isDefault && (
-                                                            <Tag color="blue" className="!mr-0 !text-[10px] flex items-center gap-0.5">
+                                                             <Tag color="blue" className="!mr-0 !text-[10px] flex items-center gap-0.5">
                                                                 <CheckCircle2 className="size-2.5" /> 默认
                                                             </Tag>
                                                         )}
@@ -353,22 +272,6 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                                                         >
                                                             设为默认
                                                         </Button>
-                                                    )}
-                                                    {!item.isBuiltin && (
-                                                        <Popconfirm
-                                                            title="确认删除该工作流？"
-                                                            onConfirm={() => handleRemove(cat.key, item.id)}
-                                                            okText="删除"
-                                                            cancelText="取消"
-                                                        >
-                                                            <Button
-                                                                size="small"
-                                                                type="text"
-                                                                danger
-                                                                className="!h-6 !w-6 !p-0"
-                                                                icon={<Trash2 className="size-3.5" />}
-                                                            />
-                                                        </Popconfirm>
                                                     )}
                                                 </Space>
                                             </div>
@@ -402,15 +305,6 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                     );
                 })()}
             </div>
-
-            {/* 隐藏的文件上传 input */}
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json,application/json"
-                className="hidden"
-                onChange={handleFileChange}
-            />
         </Drawer>
     );
 }
