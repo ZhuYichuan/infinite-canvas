@@ -77,7 +77,7 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
     describe("ImageQuotaRule", () => {
         const rule = new ImageQuotaRule();
 
-        it("detects when connected images exceed model maxImages", () => {
+        it("detects when connected images exceed model maxImages (blocking: true)", () => {
             // Frame model strictly supports 2 images
             const ctx: ConstraintContext = {
                 targetModel: videoMinimaxH3FrameFp8PdmdProfile,
@@ -89,10 +89,11 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
 
             const result = rule.check(ctx);
             expect(result.passed).toBe(false);
+            expect(result.blocking).toBe(true);
             expect(result.reason).toBe("已连接 3 张参考图，该模型最多支持 2 张");
         });
 
-        it("detects when connected images are less than model minImages", () => {
+        it("detects when connected images are less than model minImages (blocking: false)", () => {
             // Frame model requires at least 2 images
             const ctx: ConstraintContext = {
                 targetModel: videoMinimaxH3FrameFp8PdmdProfile,
@@ -104,6 +105,7 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
 
             const result = rule.check(ctx);
             expect(result.passed).toBe(false);
+            expect(result.blocking).toBe(false);
             expect(result.reason).toBe("该模型至少需要 2 张参考图，当前仅连接 1 张");
         });
 
@@ -261,6 +263,50 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
             expect(result.reasons).toContain("该模型不支持参考视频，当前已连接 1 个视频");
             expect(result.reasons).toContain("该模型不支持参考音频，当前已连接 1 个音频");
             expect(result.reasons).toContain(`提示词字数 (${maxChars + 100}) 超出该模型上限 (${maxChars} 字符)`);
+        });
+    });
+
+    describe("Decoupled isSelectable vs isAvailable (resolves chicken-and-egg paradox)", () => {
+        it("allows selecting a model that requires inputs even when 0 inputs are connected (isSelectable=true, isAvailable=false)", () => {
+            // For example: blank node switching to Frame video model (minImages: 2)
+            const ctx: ConstraintContext = {
+                targetModel: videoMinimaxH3FrameFp8PdmdProfile,
+                connectedImages: 0,
+                connectedVideos: 0,
+                connectedAudios: 0,
+                promptText: "",
+            };
+
+            const result = evaluateModelAvailability(ctx);
+            expect(result.isAvailable).toBe(false);
+            expect(result.isSelectable).toBe(true);
+            expect(result.warningReasons).toContain("该模型至少需要 2 张参考图，当前仅连接 0 张");
+            expect(result.blockingReasons).toHaveLength(0);
+        });
+
+        it("allows selecting Inpaint model when 0 or 1 image connected, but blocks when > 2 images", () => {
+            const ctx0: ConstraintContext = {
+                targetModel: imageQwenInpaintProfile,
+                connectedImages: 0,
+                connectedVideos: 0,
+                connectedAudios: 0,
+                promptText: "",
+            };
+            const result0 = evaluateModelAvailability(ctx0);
+            expect(result0.isAvailable).toBe(false);
+            expect(result0.isSelectable).toBe(true);
+
+            const ctx3: ConstraintContext = {
+                targetModel: imageQwenInpaintProfile,
+                connectedImages: 3,
+                connectedVideos: 0,
+                connectedAudios: 0,
+                promptText: "",
+            };
+            const result3 = evaluateModelAvailability(ctx3);
+            expect(result3.isAvailable).toBe(false);
+            expect(result3.isSelectable).toBe(false);
+            expect(result3.blockingReasons).toContain("该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 3 张");
         });
     });
 });

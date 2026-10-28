@@ -84,21 +84,46 @@ export function TextModelPicker({
                     activeChannel: channel,
                 });
 
+                const isBlocked = !availability.isSelectable;
+                const needsInputs = availability.isSelectable && !availability.isAvailable;
+
                 return {
                     value: model.id,
-                    disabled: !availability.isAvailable,
+                    disabled: isBlocked,
                     label: (
-                        <div className={`flex items-center justify-between gap-2 py-0.5 min-w-[200px] ${!availability.isAvailable ? "opacity-60" : ""}`}>
+                        <div className={`flex items-center justify-between gap-2 py-0.5 min-w-[200px] ${isBlocked ? "opacity-60" : ""}`}>
                             <div className="flex items-center gap-1.5 truncate">
                                 {getModelIcon(model.id)}
                                 <span className="font-medium text-xs truncate">{model.name}</span>
                             </div>
-                            {!availability.isAvailable && (
+                            {isBlocked ? (
                                 <Tooltip
                                     title={
                                         <div className="space-y-1 text-xs">
-                                            <div className="font-semibold text-amber-300">当前不可用：</div>
-                                            {availability.reasons.map((r, i) => (
+                                            <div className="font-semibold text-rose-400">无法切换（资源冲突）：</div>
+                                            {availability.blockingReasons.map((r, i) => (
+                                                <div key={i} className="flex items-start gap-1">
+                                                    <span className="text-rose-400">•</span>
+                                                    <span>{r}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    }
+                                >
+                                    <span
+                                        className="pointer-events-auto flex items-center gap-0.5 text-rose-500 shrink-0 cursor-help p-0.5 hover:text-rose-600"
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    >
+                                        <HelpCircle className="size-3.5" />
+                                    </span>
+                                </Tooltip>
+                            ) : needsInputs ? (
+                                <Tooltip
+                                    title={
+                                        <div className="space-y-1 text-xs">
+                                            <div className="font-semibold text-amber-300">选定后前置要求：</div>
+                                            {availability.warningReasons.map((r, i) => (
                                                 <div key={i} className="flex items-start gap-1">
                                                     <span className="text-amber-400">•</span>
                                                     <span>{r}</span>
@@ -112,10 +137,10 @@ export function TextModelPicker({
                                         onClick={(e) => e.stopPropagation()}
                                         onMouseDown={(e) => e.stopPropagation()}
                                     >
-                                        <HelpCircle className="size-3.5" />
+                                        <AlertTriangle className="size-3.5" />
                                     </span>
                                 </Tooltip>
-                            )}
+                            ) : null}
                         </div>
                     ),
                     model,

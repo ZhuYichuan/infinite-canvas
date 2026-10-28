@@ -20,6 +20,11 @@ export interface ConstraintContext {
 export interface ConstraintCheckResult {
     passed: boolean;
     reason?: string;
+    /**
+     * 是否硬性阻断模型切换选择（例如超额连线、违规媒体类型、主机离线）
+     * 设为 false 表示属于输入前置条件未就绪（如缺图），允许选择但在生成时阻断
+     */
+    blocking?: boolean;
 }
 
 /**
@@ -34,8 +39,16 @@ export interface ModelConstraintRule {
  * 模型可用性诊断汇总结果
  */
 export interface ModelAvailability {
+    /** 是否满足所有执行约束（用于节点「生成」按钮的可用性） */
     isAvailable: boolean;
+    /** 是否允许在选择器中切换选中（用于下拉菜单的 disabled 状态） */
+    isSelectable: boolean;
+    /** 全量未满足原因清单（用于生成按钮阻断 Tooltip） */
     reasons: string[];
+    /** 硬性阻断切换原因清单（用于选择器 disabled 置灰 Tooltip） */
+    blockingReasons: string[];
+    /** 前置输入待满足提示清单（用于选择器黄色提醒 Tooltip） */
+    warningReasons: string[];
 }
 
 /**
@@ -73,13 +86,16 @@ export class ImageQuotaRule implements ModelConstraintRule {
                 : `该模型不支持参考图，当前已连接 ${ctx.connectedImages} 张图片`;
             return {
                 passed: false,
+                blocking: true,
                 reason,
             };
         }
 
         if (refs.maskSupported && refs.minImages !== undefined && refs.maxImages !== undefined && refs.minImages === refs.maxImages && ctx.connectedImages !== refs.minImages) {
+            const isExcess = ctx.connectedImages > refs.maxImages;
             return {
                 passed: false,
+                blocking: isExcess,
                 reason: `该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 ${ctx.connectedImages} 张`,
             };
         }
@@ -87,6 +103,7 @@ export class ImageQuotaRule implements ModelConstraintRule {
         if (refs.maxImages !== undefined && ctx.connectedImages > refs.maxImages) {
             return {
                 passed: false,
+                blocking: true,
                 reason: `已连接 ${ctx.connectedImages} 张参考图，该模型最多支持 ${refs.maxImages} 张`,
             };
         }
@@ -97,6 +114,7 @@ export class ImageQuotaRule implements ModelConstraintRule {
                 : `该模型至少需要 ${refs.minImages} 张参考图，当前仅连接 ${ctx.connectedImages} 张`;
             return {
                 passed: false,
+                blocking: false,
                 reason,
             };
         }
@@ -199,14 +217,25 @@ export function evaluateModelAvailability(
     rules: ModelConstraintRule[] = DEFAULT_MODEL_CONSTRAINT_RULES,
 ): ModelAvailability {
     const reasons: string[] = [];
+    const blockingReasons: string[] = [];
+    const warningReasons: string[] = [];
+
     for (const rule of rules) {
         const result = rule.check(ctx);
         if (!result.passed && result.reason) {
             reasons.push(result.reason);
+            if (result.blocking !== false) {
+                blockingReasons.push(result.reason);
+            } else {
+                warningReasons.push(result.reason);
+            }
         }
     }
     return {
         isAvailable: reasons.length === 0,
+        isSelectable: blockingReasons.length === 0,
         reasons,
+        blockingReasons,
+        warningReasons,
     };
 }

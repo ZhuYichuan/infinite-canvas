@@ -126,7 +126,7 @@ describe("TextModelPicker Data Contract & Constraints", () => {
         expect(rejection?.defaultMessage).toBe("连接被拒绝：纯文本模型不支持连入参考图片（如需识图反推，请在节点工具栏切换为「Qwen-3.5 视觉反推」）");
     });
 
-    it("evaluates Qwen-3.5 VLM availability (requires exactly 1 image)", () => {
+    it("evaluates Qwen-3.5 VLM availability (requires exactly 1 image, allows selection when 0 images)", () => {
         const check0 = evaluateModelAvailability({
             targetModel: textQwen35VlmProfile,
             connectedImages: 0,
@@ -135,7 +135,10 @@ describe("TextModelPicker Data Contract & Constraints", () => {
             promptText: "提取主体与光影",
         });
         expect(check0.isAvailable).toBe(false);
+        expect(check0.isSelectable).toBe(true);
         expect(check0.reasons).toContain("该模型为视觉反推模型，需要连入至少 1 张参考图片");
+        expect(check0.warningReasons).toContain("该模型为视觉反推模型，需要连入至少 1 张参考图片");
+        expect(check0.blockingReasons).toHaveLength(0);
 
         const check1 = evaluateModelAvailability({
             targetModel: textQwen35VlmProfile,
@@ -145,6 +148,8 @@ describe("TextModelPicker Data Contract & Constraints", () => {
             promptText: "提取主体与光影",
         });
         expect(check1.isAvailable).toBe(true);
+        expect(check1.isSelectable).toBe(true);
+        expect(check1.reasons).toHaveLength(0);
 
         const check2 = evaluateModelAvailability({
             targetModel: textQwen35VlmProfile,
@@ -154,7 +159,9 @@ describe("TextModelPicker Data Contract & Constraints", () => {
             promptText: "提取主体与光影",
         });
         expect(check2.isAvailable).toBe(false);
+        expect(check2.isSelectable).toBe(false);
         expect(check2.reasons).toContain("已连接 2 张参考图，该模型最多支持 1 张");
+        expect(check2.blockingReasons).toContain("已连接 2 张参考图，该模型最多支持 1 张");
     });
 
     it("allows connecting 1 image to VLM text node but rejects the 2nd image", () => {
