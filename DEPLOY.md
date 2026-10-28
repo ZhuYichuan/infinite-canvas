@@ -78,9 +78,9 @@ server {
     root /var/www/canvas.imihoo.com;
     index index.html;
 
-    # SPA 路由回退
+    # SPA 路由回退（不要写 $uri/，否则 public/ 下与路由同名的目录会 301→403）
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri /index.html;
     }
 
     # 运行期配置禁止缓存
