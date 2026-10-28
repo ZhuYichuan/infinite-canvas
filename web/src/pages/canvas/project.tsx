@@ -4013,6 +4013,9 @@ function InfiniteCanvasPage() {
                         status: NODE_STATUS_LOADING,
                         fontSize: sourceNode?.metadata?.fontSize || 14,
                         model: generationConfig.model,
+                        modelId: sourceNode?.metadata?.modelId || "text-qwen-35-chat",
+                        maxLength: sourceNode?.metadata?.maxLength,
+                        thinking: sourceNode?.metadata?.thinking,
                         reasoningEffort: generationConfig.reasoningEffort,
                         generationMode: mode,
                         generationReferences: generationContext.generationReferences,
@@ -4091,6 +4094,8 @@ function InfiniteCanvasPage() {
                                 {
                                     signal: controller.signal,
                                     seed: slotSeed,
+                                    maxLength: sourceNode?.metadata?.maxLength,
+                                    thinking: sourceNode?.metadata?.thinking,
                                     onProgress: (status, detail) => {
                                         if (status === "submitted" && detail?.jobId) {
                                             setNodes((prev) =>

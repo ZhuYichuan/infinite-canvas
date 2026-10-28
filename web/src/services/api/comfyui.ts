@@ -2261,7 +2261,13 @@ export const FALLBACK_COMFYUI_TEXT_WORKFLOW_JSON: ComfyuiWorkflowJson = {
  */
 export function applyTextBindings(
     workflow: ComfyuiWorkflowJson,
-    params: { prompt: string; assetId?: string; seed?: number },
+    params: {
+        prompt: string;
+        assetId?: string;
+        seed?: number;
+        maxLength?: number;
+        thinking?: boolean;
+    },
 ): ComfyuiWorkflowJson {
     const cloned = structuredClone(workflow);
     type NodeRecord = {
@@ -2332,6 +2338,19 @@ export function applyTextBindings(
             } else if ("seed" in record.inputs && !Array.isArray(record.inputs.seed)) {
                 record.inputs.seed = params.seed;
             }
+        }
+    }
+
+    // 4. Handle text generator parameters: max_length, thinking
+    for (const node of Object.values(cloned)) {
+        if (typeof node !== "object" || node === null) continue;
+        const record = node as NodeRecord;
+        if (!record.inputs) continue;
+        if (params.maxLength !== undefined && "max_length" in record.inputs && typeof record.inputs.max_length === "number") {
+            record.inputs.max_length = params.maxLength;
+        }
+        if (params.thinking !== undefined && "thinking" in record.inputs && typeof record.inputs.thinking === "boolean") {
+            record.inputs.thinking = params.thinking;
         }
     }
 
@@ -2433,6 +2452,8 @@ export interface ComfyuiTextRequest {
     channelId?: string;
     workflowId?: string;
     seed?: number;
+    maxLength?: number;
+    thinking?: boolean;
     jobId?: string;
     signal?: AbortSignal;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
@@ -2479,6 +2500,8 @@ export async function requestComfyuiText(req: ComfyuiTextRequest): Promise<{ tex
                 prompt: req.prompt,
                 assetId,
                 seed,
+                maxLength: req.maxLength,
+                thinking: req.thinking,
             });
 
             jobId = await submitJob(boundWorkflow, baseUrl, token);

@@ -317,10 +317,13 @@ export function CanvasNodePromptPanel({
                                 onChange={(channelId, workflowId) => onConfigChange(node.id, { channelId, workflowId })}
                             />
                             <CanvasTextSettingsPopover
+                                modelId={node.metadata?.modelId || "text-qwen-35-chat"}
+                                maxLength={node.metadata?.maxLength}
+                                thinking={node.metadata?.thinking}
+                                onParamChange={(patch) => onConfigChange(node.id, patch)}
                                 config={config}
                                 count={node.metadata?.textCount || 1}
                                 buttonClassName="!h-10 min-w-0 !max-w-[160px] !justify-start !rounded-full !px-3"
-                                onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })}
                                 onCountChange={(textCount) => onConfigChange(node.id, { textCount })}
                                 onOpenChange={handleSettingsOpenChange}
                             />

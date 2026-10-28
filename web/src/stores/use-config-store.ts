@@ -200,11 +200,20 @@ export const DEFAULT_SUPPORTED_IMAGE_MODEL_IDS: string[] = [
 ];
 
 /**
+ * 默认主机支持的文本模型 ID 清单（开箱即用支持 2 款标准文本模型）
+ */
+export const DEFAULT_SUPPORTED_TEXT_MODEL_IDS: string[] = [
+    "text-qwen-35-chat",
+    "text-qwen-35-vlm",
+];
+
+/**
  * 默认主机支持的全量工作流模型清单
  */
 export const DEFAULT_SUPPORTED_MODEL_IDS: string[] = [
     ...DEFAULT_SUPPORTED_VIDEO_MODEL_IDS,
     ...DEFAULT_SUPPORTED_IMAGE_MODEL_IDS,
+    ...DEFAULT_SUPPORTED_TEXT_MODEL_IDS,
 ];
 
 /**
@@ -231,6 +240,15 @@ export function isModelSupportedByHost(channel: ModelChannel | undefined, modelI
         DEFAULT_SUPPORTED_IMAGE_MODEL_IDS.includes(id) || id.startsWith("image-")
     );
     if (!hasAnyImageConfigured && (DEFAULT_SUPPORTED_IMAGE_MODEL_IDS.includes(normalizedId) || normalizedId.startsWith("image-"))) {
+        return true;
+    }
+
+    // 开箱即用兼容：若主机尚未显式声明任何文本模型，
+    // 则默认对系统内置文本模型放行，避免历史旧配置导致文本模型意外被阻断
+    const hasAnyTextConfigured = channel.supportedModelIds.some((id) =>
+        DEFAULT_SUPPORTED_TEXT_MODEL_IDS.includes(id) || id.startsWith("text-")
+    );
+    if (!hasAnyTextConfigured && (DEFAULT_SUPPORTED_TEXT_MODEL_IDS.includes(normalizedId) || normalizedId.startsWith("text-"))) {
         return true;
     }
     return false;

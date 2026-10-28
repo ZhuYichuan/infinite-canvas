@@ -35,12 +35,27 @@ export interface WorkflowVramConfig {
     };
 }
 
+export interface TextCapabilityConfig {
+    maxLength?: {
+        default: number;
+        options: number[];
+    };
+    thinkingSupported?: boolean;
+    temperatureRange?: {
+        min: number;
+        max: number;
+        default: number;
+        step: number;
+    };
+}
+
 export interface WorkflowCapabilityConfig {
     version: 1;
     references: WorkflowReferencesConfig;
     size?: WorkflowSizeConfig;
     duration?: WorkflowDurationConfig;
     vram?: WorkflowVramConfig;
+    textConfig?: TextCapabilityConfig;
     features?: Record<string, { supported: boolean; default?: boolean }>;
 }
 

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { applyTextBindings } from "../../comfyui";
 import {
     BUILTIN_IMAGE_WORKFLOW_MODELS,
     BUILTIN_VIDEO_WORKFLOW_MODELS,
+    BUILTIN_TEXT_WORKFLOW_MODELS,
     BUILTIN_WORKFLOW_MODELS,
     dispatchComfyuiModelWorkflow,
     getModelProfile,
@@ -9,6 +11,8 @@ import {
     imageQwen21Profile,
     imageQwenInpaintProfile,
     imageZTurboProfile,
+    textQwen35ChatProfile,
+    textQwen35VlmProfile,
     listModelsByCapability,
     validateModelExecution,
     videoMinimaxH3FrameFp8PdmdProfile,
@@ -175,6 +179,24 @@ describe("Workflow Model Profiles (Image Workflow Models)", () => {
         expect(getModelProfile("i2i")?.id).toBe("image-flux2-dev");
         expect(getModelProfile("flux")?.id).toBe("image-flux2-dev");
         expect(getModelProfile("inpaint")?.id).toBe("image-qwen-inpaint");
+    });
+
+    it("resolves text profiles and aliases correctly", () => {
+        expect(getModelProfile("text-qwen-35-chat")?.id).toBe("text-qwen-35-chat");
+        expect(getModelProfile("qwen-35-chat")?.id).toBe("text-qwen-35-chat");
+        expect(getModelProfile("qwen3.5 4b")?.id).toBe("text-qwen-35-chat");
+        expect(getModelProfile("text")?.id).toBe("text-qwen-35-chat");
+
+        expect(getModelProfile("text-qwen-35-vlm")?.id).toBe("text-qwen-35-vlm");
+        expect(getModelProfile("qwen-35-vlm")?.id).toBe("text-qwen-35-vlm");
+        expect(getModelProfile("vlm")?.id).toBe("text-qwen-35-vlm");
+
+        const chatProfile = getModelProfile("text-qwen-35-chat");
+        expect(chatProfile?.capability).toBe("text");
+        expect(chatProfile?.capabilityConfig.references.minImages).toBe(0);
+        expect(chatProfile?.capabilityConfig.references.maxImages).toBe(0);
+        expect(chatProfile?.capabilityConfig.textConfig?.maxLength?.default).toBe(512);
+        expect(chatProfile?.capabilityConfig.textConfig?.thinkingSupported).toBe(true);
     });
 
     it("verifies 1K / 2K / 4K resolution tiers and 64-pixel alignment presets", () => {
@@ -428,5 +450,37 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
         expect((dispatched["2"] as any).inputs.value).toBe(12345);
         expect((dispatched["10"] as any).inputs.image).toBe("source_uploaded.png");
         expect((dispatched["11"] as any).inputs.image).toBe("mask_uploaded.png");
+    });
+
+    it("applies text bindings cleanly and prunes image node for pure text chat", () => {
+        const textWorkflow = {
+            "1": { inputs: { value: "old prompt" }, class_type: "PrimitiveStringMultiline", _meta: { title: "prompt" } },
+            "2": { inputs: { value: 0 }, class_type: "PrimitiveInt", _meta: { title: "seed" } },
+            "3": {
+                inputs: {
+                    prompt: ["1", 0],
+                    image: ["12", 0],
+                    max_length: 256,
+                    thinking: false,
+                },
+                class_type: "TextGenerate",
+                _meta: { title: "TextGenerate" },
+            },
+            "12": { inputs: { image: "old.png" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
+        };
+
+        const bound = applyTextBindings(textWorkflow as any, {
+            prompt: "扩写一段关于未来城市的生图提示词",
+            seed: 8888,
+            maxLength: 1024,
+            thinking: true,
+        });
+
+        expect((bound["1"] as any).inputs.value).toBe("扩写一段关于未来城市的生图提示词");
+        expect((bound["2"] as any).inputs.value).toBe(8888);
+        expect(bound["12"]).toBeUndefined();
+        expect((bound["3"] as any).inputs.image).toBeUndefined();
+        expect((bound["3"] as any).inputs.max_length).toBe(1024);
+        expect((bound["3"] as any).inputs.thinking).toBe(true);
     });
 });

@@ -23,11 +23,17 @@ import {
     IMAGE_WORKFLOW_MODELS,
     IMAGE_STANDARD_ASPECT_RATIOS,
 } from "./image-models";
+import {
+    textQwen35ChatProfile,
+    textQwen35VlmProfile,
+    TEXT_WORKFLOW_MODELS,
+} from "./text-models";
 
 export * from "./types";
 export * from "./video-minimax-h3-omni";
 export * from "./video-minimax-h3-frame";
 export * from "./image-models";
+export * from "./text-models";
 export * from "./constraint-engine";
 
 /**
@@ -46,11 +52,17 @@ export const BUILTIN_VIDEO_WORKFLOW_MODELS: WorkflowModelProfile[] = [
 export const BUILTIN_IMAGE_WORKFLOW_MODELS: WorkflowModelProfile[] = IMAGE_WORKFLOW_MODELS;
 
 /**
- * 系统内置工作流模型注册表（视频 + 图片）
+ * 系统内置文本工作流模型清单（2 款标准文本/反推模型）
+ */
+export const BUILTIN_TEXT_WORKFLOW_MODELS: WorkflowModelProfile[] = TEXT_WORKFLOW_MODELS;
+
+/**
+ * 系统内置工作流模型注册表（视频 + 图片 + 文本）
  */
 export const BUILTIN_WORKFLOW_MODELS: WorkflowModelProfile[] = [
     ...BUILTIN_VIDEO_WORKFLOW_MODELS,
     ...BUILTIN_IMAGE_WORKFLOW_MODELS,
+    ...BUILTIN_TEXT_WORKFLOW_MODELS,
 ];
 
 /**
@@ -114,7 +126,27 @@ export function getModelProfile(modelIdOrCategory?: string): WorkflowModelProfil
         return imageQwenInpaintProfile;
     }
 
-    // 5. 模糊匹配已知模型的名称
+    // 5. 文本模型别名匹配
+    if (
+        lower === "text-qwen-35-chat" ||
+        lower === "qwen-35-chat" ||
+        lower === "qwen3.5 4b" ||
+        lower === "qwen3.5-4b" ||
+        lower === "qwen3.5" ||
+        lower === "text"
+    ) {
+        return textQwen35ChatProfile;
+    }
+    if (
+        lower === "text-qwen-35-vlm" ||
+        lower === "qwen-35-vlm" ||
+        lower === "qwen-vlm" ||
+        lower === "vlm"
+    ) {
+        return textQwen35VlmProfile;
+    }
+
+    // 6. 模糊匹配已知模型的名称
     return BUILTIN_WORKFLOW_MODELS.find(
         (m) => m.name.toLowerCase() === lower || m.name.toLowerCase().includes(lower)
     );
