@@ -219,7 +219,7 @@ export function getConnectionRejectionDetail(
             return {
                 key: "connectionMediaTypeUnsupported",
                 defaultMessage: profile.capability === "text"
-                    ? "连接被拒绝：纯文本模型不支持连入参考图片"
+                    ? "连接被拒绝：纯文本模型不支持连入参考图片（如需识图反推，请在节点工具栏切换为「Qwen-3.5 视觉反推」）"
                     : "连接被拒绝：当前模型不支持参考图",
             };
         }

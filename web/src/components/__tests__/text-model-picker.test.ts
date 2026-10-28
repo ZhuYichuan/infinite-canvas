@@ -123,7 +123,7 @@ describe("TextModelPicker Data Contract & Constraints", () => {
 
         const rejection = getConnectionRejectionDetail(imageNode.id, textNode.id, [imageNode, textNode]);
         expect(rejection?.key).toBe("connectionMediaTypeUnsupported");
-        expect(rejection?.defaultMessage).toBe("连接被拒绝：纯文本模型不支持连入参考图片");
+        expect(rejection?.defaultMessage).toBe("连接被拒绝：纯文本模型不支持连入参考图片（如需识图反推，请在节点工具栏切换为「Qwen-3.5 视觉反推」）");
     });
 
     it("evaluates Qwen-3.5 VLM availability (requires exactly 1 image)", () => {

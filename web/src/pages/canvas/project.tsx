@@ -860,10 +860,12 @@ function InfiniteCanvasPage() {
                                         : [sourceId, node.id];
                                 const detail = getConnectionRejectionDetail(fromId, toId, nodesRef.current, connectionsRef.current);
                                 if (detail) {
-                                    bestRejectionReason = t(`canvas.projectPage.${detail.key}`, {
-                                        ...detail.params,
-                                        defaultValue: detail.defaultMessage,
-                                    });
+                                    bestRejectionReason =
+                                        detail.defaultMessage ||
+                                        t(`canvas.projectPage.${detail.key}`, {
+                                            ...detail.params,
+                                            defaultValue: detail.defaultMessage,
+                                        });
                                     break;
                                 }
                             }
