@@ -15,6 +15,11 @@ import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
 export { formatIngestSuccessMessage, ingestWorkflow, type IngestOptions, type IngestResult, type DetectedSlotInfo, type AmbiguityInfo } from "./comfyui-adapter";
+import {
+    dispatchComfyuiModelWorkflow,
+    getModelProfile,
+    validateModelExecution,
+} from "./models";
 export * from "./models";
 
 export type ComfyuiSize = {
