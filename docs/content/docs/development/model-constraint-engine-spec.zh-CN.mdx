@@ -1,0 +1,128 @@
+---
+title: 模型多维约束检查引擎与不可用诊断规范 (Spec)
+description: 基于规范模式 (Specification Pattern) 的模型约束校验引擎与前端交互诊断设计规范
+---
+
+# 模型多维约束检查引擎与不可用诊断规范 (Spec)
+
+## Problem Statement
+
+当前无限画布平台在向视频模型引入提示词、参考图片、参考视频、参考音频等外部上下文时，存在**模型可用性感知脱节与缺乏前置校验**的问题：
+
+1. **模型选择列表缺乏前置可用性感知**：当视频节点已经接入了较多参考资源（例如已连入 5 张图片或 1 个动作参考视频）时，打开视频模型选择器，与当前资源冲突的模型（例如首尾帧模型严格只支持 2 张图片、禁止连入音视频）依然呈可点击激活状态。用户无法在选择阶段获知该模型是否可用以及不可用的根本原因；
+2. **缺乏即时诊断反馈与引导**：当某种外部接入违背了模型 DSL 契约（如连入禁止的多模态素材、提示词超过 2000 字符上限、或当前算力主机未开启支持），用户只能在拉线失败或点击生成报错后才获知问题，没有在模型侧通过微交互（如不可用置灰和小问号提示）清晰呈现违规详情；
+3. **校验逻辑分散脆弱**：校验代码散落在连线阻断、浮层渲染和 API 提交拦截等多个不同生命周期，缺乏统一、可扩展的多维度校验架构，若新增约束维度（如遮罩、长文本、显存约束）难以统一维护。
+
+---
+
+## Solution
+
+采用面向对象与领域驱动设计中的**规范模式（Specification Pattern / 组合策略模式 Composite Strategy）**，构建一套高内聚、易测试的**模型多维约束检查引擎（Model Constraint Engine）**，并在 UI 交互层实现模型置灰与诊断引导：
+
+1. **规范模式架构**：将约束划分为独立的纯函数策略规则对象（主机支持规则、图片配额规则、视频配额规则、音频配额规则、提示词字数规则等），由统一的规则引擎聚合执行，一次性输出布尔可用性状态与全量不合规原因清单；
+2. **模型选择器级联列表动态置灰与小问号 Tooltip**：
+   - 候选模型如果与当前节点接入的素材冲突，在级联列表中直接标记为置灰不可选状态（`disabled: true`）；
+   - 模型右侧常驻渲染微型帮助提示图标（小问号 `?`），鼠标悬停弹出浮层，清晰展示所有不兼容的具体原因；
+3. **全链路防呆闭环**：
+   - 选择器前置阻断切换到冲突模型；
+   - 节点当前已选模型若处于冲突违规状态，底部的「生成」按钮联动置灰阻断，悬停同样展示诊断提示；
+   - 提交底层再次兜底执行 Fail-loud 拦截。
+
+---
+
+## User Stories
+
+1. As a video creator, I want the model dropdown options to be disabled when my current connected images exceed the candidate model's allowed image quota, so that I do not accidentally switch to an incompatible model.
+2. As a video creator, I want to see a small question mark icon next to disabled model options, so that I can immediately inspect why the model cannot be used.
+3. As a video creator, I want to hover over the question mark icon and read human-readable explanations (e.g., "Connected 5 reference images, but this model only supports up to 2"), so that I understand exactly which resource wires need to be removed.
+4. As a video creator, I want candidate models that forbid video reference inputs (such as frame-to-frame interpolation models) to be disabled when I have connected a video wire to the node, so that I don't attempt invalid video-to-frame workflows.
+5. As a video creator, I want candidate models that forbid audio inputs to be disabled when I have connected an audio wire to the node, so that I am guided to use Omni models instead.
+6. As a video creator, I want candidate models to be disabled if my current prompt length exceeds the model's allowed maximum characters (2000 chars), so that I am notified to shorten the prompt before generating.
+7. As a video creator, I want candidate models that are not enabled or supported on the active ComfyUI host channel to be marked as unavailable with a diagnostic reason, so that I know whether to switch hosts or enable the model in settings.
+8. As a video creator, I want to see multiple violation reasons simultaneously when more than one constraint is broken, so that I can resolve all incompatibilities in one pass.
+9. As a canvas creator, I want the node's main "Generate" button to become disabled with a question mark warning if my currently active model's constraints are violated, so that I am prevented from submitting a doomed generation request.
+10. As a canvas creator, I want the disabled states and question mark tooltips to instantly refresh as soon as I connect, disconnect, or delete reference nodes, so that the UI always mirrors the live canvas state.
+11. As a developer, I want all constraint rules to be decoupled into standalone specification classes/functions, so that adding new modal constraints (like masks or inpainting) requires zero modifications to existing picker and button components.
+12. As a developer, I want the constraint checking engine to be purely functional and deterministic, so that it can be 100% covered by unit tests without mocking canvas DOM.
+
+---
+
+## Implementation Decisions
+
+### 1. 架构模式决策：规范模式（Specification Pattern / Composite Strategy）
+将多维约束解耦为独立的校验规格，避免单体 `if-else`。
+
+```ts
+export interface ConstraintContext {
+    targetModel: WorkflowModelProfile;
+    connectedImages: number;
+    connectedVideos: number;
+    connectedAudios: number;
+    promptText: string;
+    activeChannel?: ModelChannel;
+}
+
+export interface ConstraintCheckResult {
+    passed: boolean;
+    reason?: string;
+}
+
+export interface ModelConstraintRule {
+    readonly id: string;
+    check(ctx: ConstraintContext): ConstraintCheckResult;
+}
+
+export interface ModelAvailability {
+    isAvailable: boolean;
+    reasons: string[];
+}
+```
+
+### 2. 内置独立规则集
+- `HostSupportRule`：检查当前算力主机是否启用了该模型 ID；
+- `ImageQuotaRule`：检查已连图片数是否位于 `[minImages, maxImages]` 之间；
+- `VideoQuotaRule`：检查当 `maxVideos === 0` 时是否有视频连入，或已连视频是否超出 `maxVideos`；
+- `AudioQuotaRule`：检查当 `maxAudios === 0` 时是否有音频连入，或已连音频是否超出 `maxAudios`；
+- `PromptLengthRule`：检查提示词字符数是否超过 DSL 的 `promptMaxChars`；
+
+### 3. 组件交互决策：级联选择器（Cascader）模型列表
+- 在模型项渲染中，如果 `!availability.isAvailable`，该级联节点设置 `disabled: true`；
+- 模型项右侧渲染 `<Tooltip title={reasons.join("；")}><HelpCircle className="size-3 text-amber-500" /></Tooltip>`；
+- 点击置灰项时阻止触发 `onChange`，鼠标悬停小问号可清晰阅览诊断列表。
+
+### 4. 组件交互决策：底部生成按钮（Generate Button）
+- 节点 prompt 面板中的「生成」按钮联动调用 `evaluateModelAvailability`；
+- 若当前激活模型未通过可用性检查，生成按钮呈现 `disabled` 样式，并附带问号警告提示，阻断提交。
+
+---
+
+## Testing Decisions
+
+- **外部行为测试原则**：只测试输入特定 `ConstraintContext` 时的 `isAvailable` 与 `reasons` 输出，不测试内部遍历细节。
+- **单元测试范围**：
+  1. `model-constraint-engine.test.ts`：
+     - 测试图片超额（5张图连接首尾帧模型）返回 `isAvailable: false` 且包含具体图片数量提示；
+     - 测试非法媒体类型（连入视频给首尾帧模型）返回视频不支持原因；
+     - 测试提示词超长（>2000字）返回字数超限原因；
+     - 测试主机未支持返回主机未就绪原因；
+     - 测试多项违规并发时，`reasons` 正确收集全部冲突项。
+  2. `video-model-picker.test.ts`：
+     - 测试当传入具有 3 张图片连线的节点时，首尾帧选项被标记为 `disabled: true`；
+     - 测试全能参考模型在 3 张图片连线下保持可用。
+- **既有参考（Prior Art）**：
+  - 参考 `models.test.ts` 与 `video-settings-panel.test.ts`。
+
+---
+
+## Out of Scope
+
+- 不修改底层已稳定的 ComfyUI 协议调度器与拓扑剪枝逻辑；
+- 不修改现有的 4 款精简 FP8 视频模型 DSL 属性值；
+- 不开放大于 0.98 MP 的非法尺寸输入。
+
+---
+
+## Further Notes
+
+- 提示词字数统计使用 JavaScript 字符长度 `promptText.length`，与 UI 输入框字数统计保持严格统一；
+- 问号图标采用 `lucide-react` 的 `HelpCircle`，颜色使用低干扰警示色（如 `text-amber-500` 或 `opacity-70`），保持极简扁平主题。
