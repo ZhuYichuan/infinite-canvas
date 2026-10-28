@@ -18,6 +18,7 @@ export type PoseSeriesItem = {
 };
 
 export const POSE_CDN_BASE = "https://ai-pose-gallery.pages.dev/img";
+export const POSE_REPOSITORY_URL = "https://github.com/ZhuYichuan/pose-gallery";
 
 export const POSE_ANGLE_LABELS: Record<PoseAngleKey, string> = {
     front: "正面",
