@@ -67,6 +67,13 @@ export class ImageQuotaRule implements ModelConstraintRule {
         const refs = ctx.targetModel.capabilityConfig.references;
         if (!refs) return { passed: true };
 
+        if ((refs.maxImages ?? 0) === 0 && ctx.connectedImages > 0) {
+            return {
+                passed: false,
+                reason: `该模型不支持参考图，当前已连接 ${ctx.connectedImages} 张图片`,
+            };
+        }
+
         if (refs.maxImages !== undefined && ctx.connectedImages > refs.maxImages) {
             return {
                 passed: false,

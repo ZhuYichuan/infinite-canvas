@@ -850,6 +850,18 @@ async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string,
     return data.prompt_id;
 }
 
+function workflowHasYoloPaths(workflow: ComfyuiWorkflowJson): boolean {
+    for (const node of Object.values(workflow)) {
+        if (!node || typeof node !== "object" || !node.inputs || typeof node.inputs !== "object") continue;
+        for (const val of Object.values(node.inputs)) {
+            if (typeof val === "string" && /(?:^|[\\/])(bbox|segm)[\\/]/i.test(val)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 /**
  * Submit a bound workflow to ComfyUI's /prompt endpoint; returns prompt_id as jobId.
  * 自动识别目标主机操作系统（Windows 或 Linux）并适配 bbox / segm 等模型路径分隔符；失败时具备反向翻转重试兜底机制。
@@ -859,7 +871,11 @@ export async function submitJob(workflow: ComfyuiWorkflowJson, baseUrl: string, 
         throw new ComfyuiNoWorkflowError("工作流拓扑为空，请检查当前渠道工作流配置或重新选择有效的工作流");
     }
 
-    // 1. 探测主机操作系统并自适应转换路径
+    // 1. 若工作流包含 segm/bbox 路径，探测主机操作系统并自适应转换路径
+    if (!workflowHasYoloPaths(workflow)) {
+        return await submitJobInternal(workflow, baseUrl, token);
+    }
+
     const targetOs = await detectComfyuiHostOs(baseUrl, token);
     const adaptedWorkflow = adaptWorkflowModelPaths(workflow, targetOs);
 
@@ -1888,28 +1904,52 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
             : Array.isArray(channel.workflows)
               ? getDefaultWorkflow(channel, category)
               : undefined;
-        const workflow = targetWorkflowItem
-            ? { json: targetWorkflowItem.json }
-            : isI2i
+        const channelWorkflow = isI2i
             ? (channelModel && isI2iWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiI2iWorkflow ||
               channel.models.find((m) => isI2iWorkflowModel(m))?.comfyuiWorkflow
             : (channelModel && isT2iWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiT2iWorkflow ||
               channel.models.find((m) => isT2iWorkflowModel(m))?.comfyuiWorkflow;
+
+        const modelProfile = getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel);
+        if (modelProfile) {
+            validateModelExecution(modelProfile, {
+                imagesCount: references.length,
+                size: req.size,
+            });
+        }
+        const profileWorkflow = modelProfile ? getWorkflowForModelProfile(modelProfile.id) : undefined;
+        const workflow = targetWorkflowItem
+            ? { json: targetWorkflowItem.json }
+            : channelWorkflow
+            ? { json: channelWorkflow.json }
+            : profileWorkflow
+            ? { json: profileWorkflow.json }
+            : undefined;
         if (!workflow) throw new ComfyuiNoWorkflowError(i18n.t("comfyui.noWorkflow", { model: requestModel }));
         const baseUrl = (channel.comfyuiProxyUrl || "").trim();
         const token = channel.comfyuiProxyToken;
 
         if (!jobId) {
-            const referenceSlots = imageReferenceSlots(workflow.json);
-            if (references.length && !referenceSlots.length) throw new ComfyuiError(i18n.t("comfyui.noImageReferenceSlot"));
-            if (references.length > referenceSlots.length) throw new ComfyuiError(i18n.t("comfyui.imageReferenceLimit", { count: referenceSlots.length }));
+            if (!modelProfile) {
+                const referenceSlots = imageReferenceSlots(workflow.json);
+                if (references.length && !referenceSlots.length) throw new ComfyuiError(i18n.t("comfyui.noImageReferenceSlot"));
+                if (references.length > referenceSlots.length) throw new ComfyuiError(i18n.t("comfyui.imageReferenceLimit", { count: referenceSlots.length }));
+            }
 
             const size = parseSize(req.size);
             if (seed === undefined) seed = generateRandomSeed();
             const refImages = await Promise.all(references.map((image, index) => uploadComfyuiAsset(baseUrl, token, image.dataUrl, image.name || `ref_image_${index + 1}.png`, req.signal)));
-            const boundWorkflow = applyBindings(workflow.json, { prompt: req.prompt, width: size.width, height: size.height, seed, refImages });
+            const boundWorkflow = modelProfile
+                ? dispatchComfyuiModelWorkflow(modelProfile, workflow.json, {
+                      prompt: req.prompt,
+                      width: size.width,
+                      height: size.height,
+                      seed,
+                      assetIds: refImages,
+                  })
+                : applyBindings(workflow.json, { prompt: req.prompt, width: size.width, height: size.height, seed, refImages });
             jobId = await submitJob(boundWorkflow, baseUrl, token);
             req.onProgress?.("submitted", { jobId });
         }
@@ -2032,9 +2072,13 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
             : Array.isArray(channel.workflows)
               ? getDefaultWorkflow(channel, "inpaint")
               : undefined;
+        const modelProfile = getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel || "inpaint");
+        const profileWorkflow = modelProfile ? getWorkflowForModelProfile(modelProfile.id) : undefined;
         const inpaintWorkflow =
             targetWorkflowItem
                 ? { json: targetWorkflowItem.json }
+                : profileWorkflow
+                ? { json: profileWorkflow.json }
                 : (channelModel && isInpaintWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
                   channel.comfyuiInpaintWorkflow ||
                   channel.models.find((m) => isInpaintWorkflowModel(m))?.comfyuiWorkflow;
@@ -2053,12 +2097,19 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
 
             // 2. Bind parameters into workflow
             if (seed === undefined) seed = generateRandomSeed();
-            const boundWorkflow = applyBindings(inpaintWorkflow.json, {
-                prompt: req.prompt,
-                seed,
-                refImages: [refAssetId],
-                refMask: maskAssetId,
-            });
+            const boundWorkflow = modelProfile
+                ? dispatchComfyuiModelWorkflow(modelProfile, inpaintWorkflow.json, {
+                      prompt: req.prompt,
+                      seed,
+                      assetIds: [refAssetId],
+                      maskAssetId,
+                  })
+                : applyBindings(inpaintWorkflow.json, {
+                      prompt: req.prompt,
+                      seed,
+                      refImages: [refAssetId],
+                      refMask: maskAssetId,
+                  });
 
             // 3. Submit job
             jobId = await submitJob(boundWorkflow, baseUrl, token);

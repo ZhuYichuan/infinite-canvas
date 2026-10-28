@@ -1,5 +1,5 @@
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type ConnectionHandle } from "@/types/canvas";
-import { getModelProfile, videoMinimaxH3OmniProfile } from "@/services/api/models";
+import { getModelProfile, imageQwen21Profile, videoMinimaxH3OmniProfile } from "@/services/api/models";
 import { getGroupResourceNodes } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 
@@ -116,7 +116,7 @@ export function validateInputConnection(
 
     // 针对绑定了模型 DSL 的节点进行配额与多模态类型边界校验
     const modelId = toNode.metadata?.modelId || toNode.metadata?.videoMode || toNode.metadata?.model;
-    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : undefined);
+    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : toNode.type === CanvasNodeType.Image ? imageQwen21Profile : undefined);
 
     if (profile?.capabilityConfig.references) {
         const refs = profile.capabilityConfig.references;
@@ -193,7 +193,7 @@ export function getConnectionRejectionDetail(
     }
 
     const modelId = toNode.metadata?.modelId || toNode.metadata?.videoMode || toNode.metadata?.model;
-    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : undefined);
+    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : toNode.type === CanvasNodeType.Image ? imageQwen21Profile : undefined);
 
     if (profile?.capabilityConfig.references) {
         const refs = profile.capabilityConfig.references;
@@ -273,7 +273,7 @@ export function findInvalidNodeConnections(
     if (!toNode) return invalidIds;
 
     const modelId = toNode.metadata?.modelId || toNode.metadata?.videoMode || toNode.metadata?.model;
-    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : undefined);
+    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : toNode.type === CanvasNodeType.Image ? imageQwen21Profile : undefined);
     if (!profile?.capabilityConfig.references) return invalidIds;
 
     const refs = profile.capabilityConfig.references;

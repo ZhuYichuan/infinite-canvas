@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile } from "@/services/api/models";
+import { BUILTIN_VIDEO_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile } from "@/services/api/models";
 import { isModelSupportedByHost } from "@/stores/use-config-store";
 import type { ModelChannel } from "@/types/config";
 
 describe("VideoModelPicker Data Contract & Hierarchy", () => {
-    it("BUILTIN_WORKFLOW_MODELS only contains 4 FP8 models without BF16", () => {
-        expect(BUILTIN_WORKFLOW_MODELS).toHaveLength(4);
-        const ids = BUILTIN_WORKFLOW_MODELS.map((m) => m.id);
+    it("BUILTIN_VIDEO_WORKFLOW_MODELS only contains 4 FP8 models without BF16", () => {
+        expect(BUILTIN_VIDEO_WORKFLOW_MODELS).toHaveLength(4);
+        const ids = BUILTIN_VIDEO_WORKFLOW_MODELS.map((m) => m.id);
         expect(ids).toContain("omni-video-minimax-h3-fp8-4step-pdmd");
         expect(ids).toContain("omni-video-minimax-h3-fp8");
         expect(ids).toContain("frame-video-minimax-h3-fp8-4step-pdmd");
@@ -19,7 +19,7 @@ describe("VideoModelPicker Data Contract & Hierarchy", () => {
     });
 
     it("model profile names and VRAM tiers are human readable without raw IDs", () => {
-        BUILTIN_WORKFLOW_MODELS.forEach((model) => {
+        BUILTIN_VIDEO_WORKFLOW_MODELS.forEach((model) => {
             expect(model.name).not.toBe("video_minimax_h3_omni");
             expect(model.name).not.toBe("video_minimax_h3_frame");
             expect(model.vramTier).toBeDefined();
@@ -28,7 +28,7 @@ describe("VideoModelPicker Data Contract & Hierarchy", () => {
     });
 
     it("all 4 video models define tags: [5, 10, 15] in capabilityConfig.duration for quick presets", () => {
-        BUILTIN_WORKFLOW_MODELS.forEach((model) => {
+        BUILTIN_VIDEO_WORKFLOW_MODELS.forEach((model) => {
             expect(model.capabilityConfig.duration).toBeDefined();
             expect(model.capabilityConfig.duration?.tags).toEqual([5, 10, 15]);
             expect(model.capabilityConfig.duration?.default).toBe(5);
@@ -65,8 +65,8 @@ describe("VideoModelPicker Data Contract & Hierarchy", () => {
     });
 
     it("evaluates candidate model availability with image over-quota (Frame video disabled with 3 images)", () => {
-        const frameModel = BUILTIN_WORKFLOW_MODELS.find((m) => m.category === "frameVideo")!;
-        const omniModel = BUILTIN_WORKFLOW_MODELS.find((m) => m.category === "omniVideo")!;
+        const frameModel = BUILTIN_VIDEO_WORKFLOW_MODELS.find((m) => m.category === "frameVideo")!;
+        const omniModel = BUILTIN_VIDEO_WORKFLOW_MODELS.find((m) => m.category === "omniVideo")!;
 
         const frameCheck = evaluateModelAvailability({
             targetModel: frameModel,
@@ -90,7 +90,7 @@ describe("VideoModelPicker Data Contract & Hierarchy", () => {
     });
 
     it("evaluates candidate model availability with video connection (Frame video disabled)", () => {
-        const frameModel = BUILTIN_WORKFLOW_MODELS.find((m) => m.category === "frameVideo")!;
+        const frameModel = BUILTIN_VIDEO_WORKFLOW_MODELS.find((m) => m.category === "frameVideo")!;
         const check = evaluateModelAvailability({
             targetModel: frameModel,
             connectedImages: 2,

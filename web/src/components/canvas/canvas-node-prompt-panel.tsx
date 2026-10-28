@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
 
 import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
 import { VideoModelPicker } from "@/components/video-model-picker";
+import { ImageModelPicker } from "@/components/image-model-picker";
 import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, isModelSupportedByHost, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
-import { BUILTIN_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile } from "@/services/api/models";
+import { BUILTIN_VIDEO_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile, imageQwen21Profile } from "@/services/api/models";
 import { getNodeResourceCounts } from "@/lib/canvas/canvas-node-geometry";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -93,7 +94,7 @@ export function CanvasNodePromptPanel({
     const videoModelAvailability = useMemo(() => {
         if (mode !== "video") return { isAvailable: true, reasons: [] };
         const effectiveModelId = node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd");
-        const profile = getModelProfile(effectiveModelId) || BUILTIN_WORKFLOW_MODELS[0];
+        const profile = getModelProfile(effectiveModelId) || BUILTIN_VIDEO_WORKFLOW_MODELS[0];
         const activeChannel = globalConfig.channels.find((c) => c.id === (node.metadata?.channelId || globalConfig.channelId)) || globalConfig.channels[0];
         return evaluateModelAvailability({
             targetModel: profile,
@@ -104,6 +105,24 @@ export function CanvasNodePromptPanel({
             activeChannel,
         });
     }, [mode, node.metadata?.modelId, node.metadata?.videoMode, node.metadata?.channelId, config.videoMode, globalConfig.channels, globalConfig.channelId, connectedResources, prompt]);
+
+    const imageModelAvailability = useMemo(() => {
+        if (mode !== "image") return { isAvailable: true, reasons: [] };
+        const effectiveModelId = node.metadata?.modelId || config.imageModel || "image-qwen-2.1";
+        const profile = getModelProfile(effectiveModelId) || imageQwen21Profile;
+        const activeChannel = globalConfig.channels.find((c) => c.id === (node.metadata?.channelId || globalConfig.channelId)) || globalConfig.channels[0];
+        return evaluateModelAvailability({
+            targetModel: profile,
+            connectedImages: connectedResources.images,
+            connectedVideos: connectedResources.videos,
+            connectedAudios: connectedResources.audios,
+            promptText: prompt,
+            activeChannel,
+        });
+    }, [mode, node.metadata?.modelId, config.imageModel, node.metadata?.channelId, globalConfig.channels, globalConfig.channelId, connectedResources, prompt]);
+
+    const isCurrentModelAvailable = mode === "video" ? videoModelAvailability.isAvailable : mode === "image" ? imageModelAvailability.isAvailable : true;
+    const currentModelUnavailabilityReasons = mode === "video" ? videoModelAvailability.reasons : mode === "image" ? imageModelAvailability.reasons : [];
 
     // Restore prompts only when switching nodes; preserve the current input after generation on the same node.
     useEffect(() => {
@@ -131,6 +150,30 @@ export function CanvasNodePromptPanel({
                             <div>当前视频节点存在以下约束限制，请修正后再生成：</div>
                             <div className="space-y-1 rounded bg-stone-100 p-2 dark:bg-stone-800">
                                 {videoModelAvailability.reasons.map((r, i) => (
+                                    <div key={i} className="flex items-start gap-1.5">
+                                        <span className="text-amber-500 font-bold">•</span>
+                                        <span>{r}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ),
+                    okText: "我知道了",
+                });
+                return;
+            }
+        }
+
+        // 图片生成前校验当前主机与模型多维约束（规范模式）
+        if (mode === "image") {
+            if (!imageModelAvailability.isAvailable) {
+                Modal.warning({
+                    title: "无法生成图片（存在不兼容项）",
+                    content: (
+                        <div className="space-y-2 pt-2 text-xs">
+                            <div>当前图片节点存在以下约束限制，请修正后再生成：</div>
+                            <div className="space-y-1 rounded bg-stone-100 p-2 dark:bg-stone-800">
+                                {imageModelAvailability.reasons.map((r, i) => (
                                     <div key={i} className="flex items-start gap-1.5">
                                         <span className="text-amber-500 font-bold">•</span>
                                         <span>{r}</span>
@@ -194,20 +237,22 @@ export function CanvasNodePromptPanel({
                     <CanvasPromptLibrary onSelect={updatePrompt} />
                     {mode === "image" ? (
                         <>
-                            <ChannelWorkflowPicker
-                                category={
-                                    Boolean(
-                                        connectedNodes?.some((n) => n.type === CanvasNodeType.Image || (n.type === CanvasNodeType.Group && (n.metadata?.groupChildCount || 0) > 0)) ||
-                                        mentionReferences?.some((r) => r.type === "image")
-                                    )
-                                        ? "i2i"
-                                        : "t2i"
-                                }
-                                channelId={node.metadata?.channelId}
-                                workflowId={node.metadata?.workflowId}
-                                onChange={(channelId, workflowId) => onConfigChange(node.id, { channelId, workflowId })}
+                            <ImageModelPicker
+                                channelId={node.metadata?.channelId || config.channelId}
+                                modelId={node.metadata?.modelId || config.imageModel || "image-qwen-2.1"}
+                                connectedImages={connectedResources.images}
+                                connectedVideos={connectedResources.videos}
+                                connectedAudios={connectedResources.audios}
+                                promptText={prompt}
+                                onChange={(nextChannelId, nextModelId) => {
+                                    onConfigChange(node.id, {
+                                        channelId: nextChannelId,
+                                        modelId: nextModelId,
+                                    });
+                                }}
                             />
                             <CanvasImageSettingsPopover
+                                modelId={node.metadata?.modelId || config.imageModel || "image-qwen-2.1"}
                                 config={config}
                                 placement="topLeft"
                                 buttonClassName="!h-10 min-w-0 !max-w-[160px] !justify-start !rounded-full !px-3"
@@ -291,12 +336,12 @@ export function CanvasNodePromptPanel({
                         </span>
                     </Button>
                 ) : canRepeat ? (
-                    !videoModelAvailability.isAvailable ? (
+                    !isCurrentModelAvailable ? (
                         <Tooltip
                             title={
                                 <div className="space-y-1 text-xs">
                                     <div className="font-semibold text-amber-300">无法再次生成（存在不兼容项）：</div>
-                                    {videoModelAvailability.reasons.map((r, i) => (
+                                    {currentModelUnavailabilityReasons.map((r, i) => (
                                         <div key={i}>• {r}</div>
                                     ))}
                                 </div>
@@ -324,12 +369,12 @@ export function CanvasNodePromptPanel({
                         </Button>
                     )
                 ) : (
-                    !videoModelAvailability.isAvailable ? (
+                    !isCurrentModelAvailable ? (
                         <Tooltip
                             title={
                                 <div className="space-y-1 text-xs">
                                     <div className="font-semibold text-amber-300">无法生成（存在不兼容项）：</div>
-                                    {videoModelAvailability.reasons.map((r, i) => (
+                                    {currentModelUnavailabilityReasons.map((r, i) => (
                                         <div key={i}>• {r}</div>
                                     ))}
                                 </div>

@@ -340,5 +340,52 @@ describe("Model-Driven Multimodal Connection Guards (Issue #8)", () => {
                 defaultMessage: "连接已存在",
             });
         });
+
+        it("Z-Image Turbo 连入参考图时返回媒体类型不支持诊断", () => {
+            const zTurboNode: CanvasNodeData = {
+                ...makeNode("turbo-node", CanvasNodeType.Image),
+                metadata: { modelId: "image-z-turbo" },
+            };
+            const imgNode = makeNode("img-1", CanvasNodeType.Image);
+            const allNodes = [zTurboNode, imgNode];
+
+            const detail = getConnectionRejectionDetail(imgNode.id, zTurboNode.id, allNodes, []);
+            expect(detail).toEqual({
+                key: "connectionMediaTypeUnsupported",
+                defaultMessage: "连接被拒绝：当前模型不支持参考图",
+            });
+        });
+
+        it("Flux2.Dev 连第 3 张图时返回配额超限诊断", () => {
+            const fluxNode: CanvasNodeData = {
+                ...makeNode("flux-node", CanvasNodeType.Image),
+                metadata: { modelId: "image-flux2-dev" },
+            };
+            const imgNodes = Array.from({ length: 3 }, (_, i) => makeNode(`img-${i + 1}`, CanvasNodeType.Image));
+            const imgConns = imgNodes.slice(0, 2).map((n, i) => makeConnection(`c-img-${i + 1}`, n.id, fluxNode.id));
+            const allNodes = [fluxNode, ...imgNodes];
+
+            const detail = getConnectionRejectionDetail(imgNodes[2].id, fluxNode.id, allNodes, imgConns);
+            expect(detail).toEqual({
+                key: "connectionQuotaImagesExceeded",
+                params: { max: 2, current: 2, incoming: 1 },
+                defaultMessage: "连接被拒绝：超出参考图上限（该模型最多支持 2 张，当前已有 2 张）",
+            });
+        });
+
+        it("图片节点连入参考视频时返回媒体类型不支持诊断", () => {
+            const imgNode: CanvasNodeData = {
+                ...makeNode("img-target", CanvasNodeType.Image),
+                metadata: { modelId: "image-qwen-2.1" },
+            };
+            const vidNode = makeNode("vid-src", CanvasNodeType.Video);
+            const allNodes = [imgNode, vidNode];
+
+            const detail = getConnectionRejectionDetail(vidNode.id, imgNode.id, allNodes, []);
+            expect(detail).toEqual({
+                key: "connectionMediaTypeUnsupported",
+                defaultMessage: "连接被拒绝：当前模型不支持参考视频",
+            });
+        });
     });
 });

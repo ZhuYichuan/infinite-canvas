@@ -15,20 +15,42 @@ import {
     videoMinimaxH3FrameFp8Profile,
     videoMinimaxH3FrameProfile,
 } from "./video-minimax-h3-frame";
+import {
+    imageQwen21Profile,
+    imageZTurboProfile,
+    imageFlux2DevProfile,
+    imageQwenInpaintProfile,
+    IMAGE_WORKFLOW_MODELS,
+    IMAGE_STANDARD_ASPECT_RATIOS,
+} from "./image-models";
 
 export * from "./types";
 export * from "./video-minimax-h3-omni";
 export * from "./video-minimax-h3-frame";
+export * from "./image-models";
 export * from "./constraint-engine";
 
 /**
- * 系统内置工作流模型清单注册表（全量收敛为 4 款精品 FP8 模型）
+ * 系统内置视频工作流模型清单（4 款精品 FP8 模型）
  */
-export const BUILTIN_WORKFLOW_MODELS: WorkflowModelProfile[] = [
+export const BUILTIN_VIDEO_WORKFLOW_MODELS: WorkflowModelProfile[] = [
     videoMinimaxH3OmniFp8PdmdProfile,
     videoMinimaxH3OmniFp8Profile,
     videoMinimaxH3FrameFp8PdmdProfile,
     videoMinimaxH3FrameFp8Profile,
+];
+
+/**
+ * 系统内置图片工作流模型清单（4 款原生工作流模型）
+ */
+export const BUILTIN_IMAGE_WORKFLOW_MODELS: WorkflowModelProfile[] = IMAGE_WORKFLOW_MODELS;
+
+/**
+ * 系统内置工作流模型注册表（视频 + 图片）
+ */
+export const BUILTIN_WORKFLOW_MODELS: WorkflowModelProfile[] = [
+    ...BUILTIN_VIDEO_WORKFLOW_MODELS,
+    ...BUILTIN_IMAGE_WORKFLOW_MODELS,
 ];
 
 /**
@@ -61,7 +83,38 @@ export function getModelProfile(modelIdOrCategory?: string): WorkflowModelProfil
         return videoMinimaxH3FrameFp8Profile;
     }
 
-    // 4. 模糊匹配已知模型的名称
+    // 4. 图片模型别名匹配
+    if (
+        lower === "image-qwen-2.1" ||
+        lower === "qwen-2.1" ||
+        lower === "qwen2.1" ||
+        lower === "qwen" ||
+        lower === "qwen-image" ||
+        lower === "t2i"
+    ) {
+        return imageQwen21Profile;
+    }
+    if (lower === "image-z-turbo" || lower === "z-turbo" || lower === "turbo" || lower === "z-image") {
+        return imageZTurboProfile;
+    }
+    if (
+        lower === "image-flux2-dev" ||
+        lower === "flux2-dev" ||
+        lower === "flux" ||
+        lower === "flux2" ||
+        lower === "i2i"
+    ) {
+        return imageFlux2DevProfile;
+    }
+    if (
+        lower === "image-qwen-inpaint" ||
+        lower === "inpaint" ||
+        lower === "qwen-inpaint"
+    ) {
+        return imageQwenInpaintProfile;
+    }
+
+    // 5. 模糊匹配已知模型的名称
     return BUILTIN_WORKFLOW_MODELS.find(
         (m) => m.name.toLowerCase() === lower || m.name.toLowerCase().includes(lower)
     );
@@ -112,14 +165,14 @@ export function validateModelExecution(profile: WorkflowModelProfile, params: Mo
         throw new Error(`「${profile.name}」最多支持 ${refs.maxAudios} 个参考音频，当前已连接 ${audCount} 个，请精简连线。`);
     }
 
-    // 4. 尺寸硬件对齐校验
+    // 4. 尺寸规格校验
     if (params.size && profile.capabilityConfig.size) {
         const sizeConfig = profile.capabilityConfig.size;
         if (!sizeConfig.allowCustom && sizeConfig.values && sizeConfig.values.length > 0) {
             const normalized = params.size.toLowerCase().replace(/\s+/g, "");
             const isAllowed = sizeConfig.values.some((v) => v.toLowerCase().replace(/\s+/g, "") === normalized);
             if (!isAllowed) {
-                throw new Error(`「${profile.name}」不支持尺寸 ${params.size}，请从预设的 32 整数倍规格中选择。`);
+                throw new Error(`「${profile.name}」不支持尺寸 ${params.size}，请从预设的规格中选择。`);
             }
         }
     }
@@ -148,6 +201,7 @@ export interface DispatchedWorkflowParams {
     audioAssetIds?: string[];
     firstFrameAssetId?: string;
     lastFrameAssetId?: string;
+    maskAssetId?: string;
 }
 
 type NodeRecord = {
@@ -222,7 +276,12 @@ export function dispatchComfyuiModelWorkflow(
             node.inputs.image = params.lastFrameAssetId;
         }
 
-        // 全能多图参考 (ref_image_01..09)
+        // 蒙版插槽绑定 (inpaint)
+        if (title === "ref_mask" && params.maskAssetId) {
+            node.inputs.image = params.maskAssetId;
+        }
+
+        // 全能多图参考 (ref_image_01..10)
         if (params.assetIds && params.assetIds.length > 0) {
             const numberedMatch = /^ref_image_(\d{2})$/.exec(title);
             if (numberedMatch) {
@@ -277,6 +336,9 @@ export function dispatchComfyuiModelWorkflow(
             removedNodeIds.add(id);
         }
         if (title === "last_frame" && !params.lastFrameAssetId) {
+            removedNodeIds.add(id);
+        }
+        if (title === "ref_mask" && !params.maskAssetId) {
             removedNodeIds.add(id);
         }
 

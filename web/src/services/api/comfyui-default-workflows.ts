@@ -160,6 +160,14 @@ export function getWorkflowForModelProfile(modelId?: string): ComfyuiWorkflow | 
             return DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW;
         case "frame-video-minimax-h3-fp8":
             return DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_20STEP_WORKFLOW;
+        case "image-qwen-2.1":
+            return DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW;
+        case "image-z-turbo":
+            return DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW;
+        case "image-flux2-dev":
+            return DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW;
+        case "image-qwen-inpaint":
+            return DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW;
         default:
             return undefined;
     }

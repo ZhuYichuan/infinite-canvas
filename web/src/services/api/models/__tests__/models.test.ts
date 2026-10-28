@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+    BUILTIN_IMAGE_WORKFLOW_MODELS,
+    BUILTIN_VIDEO_WORKFLOW_MODELS,
     BUILTIN_WORKFLOW_MODELS,
     dispatchComfyuiModelWorkflow,
     getModelProfile,
+    imageFlux2DevProfile,
+    imageQwen21Profile,
+    imageQwenInpaintProfile,
+    imageZTurboProfile,
     listModelsByCapability,
     validateModelExecution,
     videoMinimaxH3FrameFp8PdmdProfile,
@@ -16,8 +22,8 @@ import {
 
 describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
     it("registers exactly 4 FP8 models and excludes BF16", () => {
-        expect(BUILTIN_WORKFLOW_MODELS.length).toBe(4);
-        expect(BUILTIN_WORKFLOW_MODELS.every((m) => m.precision === "fp8")).toBe(true);
+        expect(BUILTIN_VIDEO_WORKFLOW_MODELS.length).toBe(4);
+        expect(BUILTIN_VIDEO_WORKFLOW_MODELS.every((m) => m.precision === "fp8")).toBe(true);
 
         // BF16 models should be completely purged
         expect(getModelProfile("omni-video-minimax-h3-bf16-turbo")).toBeUndefined();
@@ -109,6 +115,63 @@ describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
             "frame-video-minimax-h3-fp8-4step-pdmd",
             "frame-video-minimax-h3-fp8",
         ]);
+
+        const imageModels = listModelsByCapability("image");
+        expect(imageModels.length).toBe(4);
+        expect(imageModels.map((m) => m.id)).toEqual([
+            "image-qwen-2.1",
+            "image-z-turbo",
+            "image-flux2-dev",
+            "image-qwen-inpaint",
+        ]);
+    });
+});
+
+describe("Workflow Model Profiles (Image Workflow Models)", () => {
+    it("registers exactly 4 native image models", () => {
+        expect(BUILTIN_IMAGE_WORKFLOW_MODELS.length).toBe(4);
+        expect(BUILTIN_IMAGE_WORKFLOW_MODELS.every((m) => m.capability === "image")).toBe(true);
+    });
+
+    it("registers image-qwen-2.1 with max 10 images and standard aspect ratios", () => {
+        const profile = getModelProfile("image-qwen-2.1");
+        expect(profile).toBeDefined();
+        expect(profile?.capabilityConfig.references.maxImages).toBe(10);
+        expect(profile?.capabilityConfig.references.minImages).toBe(0);
+        expect(profile?.capabilityConfig.size?.parameter).toBe("aspect_ratio");
+        expect(profile?.capabilityConfig.size?.values).toContain("1:1");
+        expect(profile?.capabilityConfig.size?.values).toContain("9:16");
+    });
+
+    it("registers image-z-turbo as pure text-to-image (max 0 images)", () => {
+        const profile = getModelProfile("image-z-turbo");
+        expect(profile).toBeDefined();
+        expect(profile?.capabilityConfig.references.maxImages).toBe(0);
+    });
+
+    it("registers image-flux2-dev with max 2 images", () => {
+        const profile = getModelProfile("image-flux2-dev");
+        expect(profile).toBeDefined();
+        expect(profile?.capabilityConfig.references.maxImages).toBe(2);
+    });
+
+    it("registers image-qwen-inpaint with maskSupported and undefined size (UI-hidden)", () => {
+        const profile = getModelProfile("image-qwen-inpaint");
+        expect(profile).toBeDefined();
+        expect(profile?.capabilityConfig.references.minImages).toBe(1);
+        expect(profile?.capabilityConfig.references.maxImages).toBe(1);
+        expect(profile?.capabilityConfig.references.maskSupported).toBe(true);
+        expect(profile?.capabilityConfig.size).toBeUndefined();
+    });
+
+    it("resolves image profiles by legacy aliases", () => {
+        expect(getModelProfile("t2i")?.id).toBe("image-qwen-2.1");
+        expect(getModelProfile("qwen-2.1")?.id).toBe("image-qwen-2.1");
+        expect(getModelProfile("turbo")?.id).toBe("image-z-turbo");
+        expect(getModelProfile("z-turbo")?.id).toBe("image-z-turbo");
+        expect(getModelProfile("i2i")?.id).toBe("image-flux2-dev");
+        expect(getModelProfile("flux")?.id).toBe("image-flux2-dev");
+        expect(getModelProfile("inpaint")?.id).toBe("image-qwen-inpaint");
     });
 });
 
@@ -238,5 +301,65 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
 
         expect((dispatched["10"] as any).inputs.image).toBe("asset_first.png");
         expect((dispatched["11"] as any).inputs.image).toBe("asset_last.png");
+    });
+
+    it("binds parameters and prunes unassigned slots in Qwen 2.1 image workflow", () => {
+        const rawWorkflow = {
+            "1": { inputs: { value: "old prompt" }, class_type: "PrimitiveStringMultiline", _meta: { title: "prompt" } },
+            "2": { inputs: { value: 1024 }, class_type: "PrimitiveInt", _meta: { title: "width" } },
+            "3": { inputs: { value: 1024 }, class_type: "PrimitiveInt", _meta: { title: "height" } },
+            "4": { inputs: { value: 0 }, class_type: "PrimitiveInt", _meta: { title: "seed" } },
+            "11": { inputs: { image: "old1.png" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
+            "12": { inputs: { image: "old2.png" }, class_type: "LoadImage", _meta: { title: "ref_image_02" } },
+            "13": { inputs: { image: "old3.png" }, class_type: "LoadImage", _meta: { title: "ref_image_03" } },
+            "20": {
+                inputs: {
+                    "images.image_1": ["11", 0],
+                    "images.image_2": ["12", 0],
+                    "images.image_3": ["13", 0],
+                },
+                class_type: "TextEncodeQwenImage21",
+            },
+        };
+
+        const dispatched = dispatchComfyuiModelWorkflow(imageQwen21Profile, rawWorkflow, {
+            prompt: "赛博朋克雨夜街道",
+            width: 768,
+            height: 1024,
+            seed: 888,
+            assetIds: ["new_ref1.png"],
+        });
+
+        expect((dispatched["1"] as any).inputs.value).toBe("赛博朋克雨夜街道");
+        expect((dispatched["2"] as any).inputs.value).toBe(768);
+        expect((dispatched["3"] as any).inputs.value).toBe(1024);
+        expect((dispatched["4"] as any).inputs.value).toBe(888);
+        expect((dispatched["11"] as any).inputs.image).toBe("new_ref1.png");
+        expect(dispatched["12"]).toBeUndefined();
+        expect(dispatched["13"]).toBeUndefined();
+        expect((dispatched["20"] as any).inputs["images.image_1"]).toEqual(["11", 0]);
+        expect((dispatched["20"] as any).inputs["images.image_2"]).toBeUndefined();
+        expect((dispatched["20"] as any).inputs["images.image_3"]).toBeUndefined();
+    });
+
+    it("binds ref_image_01 and ref_mask in Qwen Inpaint workflow", () => {
+        const rawWorkflow = {
+            "1": { inputs: { value: "old prompt" }, class_type: "PrimitiveStringMultiline", _meta: { title: "prompt" } },
+            "2": { inputs: { value: 0 }, class_type: "PrimitiveInt", _meta: { title: "seed" } },
+            "10": { inputs: { image: "source.png" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
+            "11": { inputs: { image: "mask.png" }, class_type: "LoadImage", _meta: { title: "ref_mask" } },
+        };
+
+        const dispatched = dispatchComfyuiModelWorkflow(imageQwenInpaintProfile, rawWorkflow, {
+            prompt: "戴红色帽子的猫",
+            seed: 12345,
+            assetIds: ["source_uploaded.png"],
+            maskAssetId: "mask_uploaded.png",
+        });
+
+        expect((dispatched["1"] as any).inputs.value).toBe("戴红色帽子的猫");
+        expect((dispatched["2"] as any).inputs.value).toBe(12345);
+        expect((dispatched["10"] as any).inputs.image).toBe("source_uploaded.png");
+        expect((dispatched["11"] as any).inputs.image).toBe("mask_uploaded.png");
     });
 });

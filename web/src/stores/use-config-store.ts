@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { nanoid } from "nanoid";
 
 import { localForageStorage } from "@/lib/localforage-storage";
+import { getModelProfile } from "@/services/api/models";
 
 import {
     DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW,
@@ -322,6 +323,8 @@ function findChannelModel(config: AiConfig, value: string): { channel: ModelChan
 }
 
 export function modelCapabilityOf(config: AiConfig, value: string): ModelCapability | undefined {
+    const profile = getModelProfile(value);
+    if (profile?.capability) return profile.capability;
     return findChannelModel(config, value)?.model.capability;
 }
 
@@ -332,6 +335,8 @@ function isInpaintModelName(name: string): boolean {
 
 export function modelMatchesCapability(config: AiConfig, value: string, capability?: ModelCapability) {
     if (!capability) return true;
+    const profile = getModelProfile(value);
+    if (profile) return profile.capability === capability;
     if (capability === "image") {
         const decoded = decodeChannelModel(value);
         const name = decoded?.model || value;

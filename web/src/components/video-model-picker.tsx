@@ -3,7 +3,7 @@ import { AlertTriangle, Film, HelpCircle, Server, Sparkles } from "lucide-react"
 import { useMemo } from "react";
 
 import {
-    BUILTIN_WORKFLOW_MODELS,
+    BUILTIN_VIDEO_WORKFLOW_MODELS,
     evaluateModelAvailability,
     getModelProfile,
     type WorkflowModelProfile,
@@ -49,7 +49,7 @@ export function VideoModelPicker({
     }, [channels, channelId]);
 
     const activeProfile = useMemo(() => {
-        return getModelProfile(modelId) || BUILTIN_WORKFLOW_MODELS[0];
+        return getModelProfile(modelId) || BUILTIN_VIDEO_WORKFLOW_MODELS[0];
     }, [modelId]);
 
     // 级联递进选项：第一级为 API 提供商 (算力主机)，hover 展开第二级为模型
@@ -63,7 +63,7 @@ export function VideoModelPicker({
                 </div>
             ),
             rawName: channel.name,
-            children: BUILTIN_WORKFLOW_MODELS.map((model) => {
+            children: BUILTIN_VIDEO_WORKFLOW_MODELS.map((model) => {
                 const isFrame = model.category === "frameVideo";
                 const availability = evaluateModelAvailability({
                     targetModel: model,

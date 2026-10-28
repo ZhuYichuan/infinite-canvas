@@ -7,6 +7,19 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Image Node Workflow Model DSL Architecture & Dynamic Sizing (图片节点模型 DSL 架构与动态尺寸适配):
+  - **ImageModelPicker Cascader & 4 Image Models (图片模型级联选择器与 4 大内置生图模型)**:
+    - 验证画布图片节点支持通过 `ImageModelPicker` 进行「算力主机 + 生图模型」两级级联切换；
+    - 验证内置 4 款标准生图模型：Qwen-Image 2.1 全能生图 (`image-qwen-2.1`)、Z-Image Turbo 极速文生图 (`image-z-turbo`)、Flux2.Dev 垫图与双图融合 (`image-flux-2-dev`)、Qwen-Image 局部编辑重绘 (`image-qwen-inpaint`)；
+  - **Workflow-Driven UI & Dynamic Size / Inpaint Adaption (工作流驱动 UI 与局部重绘自适应)**:
+    - 验证 Qwen-Image 2.1、Z-Image Turbo 和 Flux2.Dev 打开图片设置浮层（`CanvasImageSettingsPopover` / `ImageSettingsPanel`）时，尺寸与比例胶囊按模型 Profile 动态过滤呈现；
+    - 验证局部编辑模型（Inpaint）根据工作流驱动 UI 规范（工作流未定义尺寸/比例输入插槽）自动彻底隐藏尺寸与比例调节区域，仅保留生成质量/步数等有效设置项，触发按钮自适应呈现「参数设置」；
+  - **Multi-modal Reference Image Quotas & Fail-loud Guard (多模态参考图配额与不可用诊断)**:
+    - 验证纯文生图模型（Z-Image Turbo）严格禁止连入参考图：已有图片连入时在模型选择器中置灰并悬停提示「该模型不支持参考图，当前已连接 X 张图片」；
+    - 验证双图融合模型（Flux2.Dev）连接超过 2 张参考图时阻断连线并置灰；
+    - 验证全能生图模型（Qwen-Image 2.1）支持最多连接 10 张参考图，超出时拦截；
+    - 验证生成按钮联动：存在不可用约束时生成与重复按钮置灰并提供问号诊断，防止提交非法任务到 ComfyUI。
+
 - Canvas Side Panel Assets Tab with Pose Gallery (画布左侧面板资产选项卡与姿态库集成):
   - 验证展开画布左侧常驻面板并点击「资产」Tab 时，顶部默认高亮选中「系统预设」分段开关，并无缝支持切换到「我的素材」；
   - 验证在「系统预设」下展示姿态库工作区：包含顶部实时搜索框、三大系列切换（标准/性感/半身）与当前系列的姿态分类横向滚竿；
