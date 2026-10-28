@@ -1,6 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Popover, Progress, Select, Tooltip, message } from "antd";
-import { Activity, Cpu, Eraser, ExternalLink, HardDrive, Loader2, RefreshCw, Server, Sparkles } from "lucide-react";
+import { Button, Modal, Popover, Progress, Select, Tooltip, message } from "antd";
+import {
+    Activity,
+    AlertTriangle,
+    CheckCircle2,
+    Clock,
+    Cpu,
+    Eraser,
+    ExternalLink,
+    HardDrive,
+    Info,
+    Loader2,
+    RefreshCw,
+    Server,
+    ShieldCheck,
+    Sparkles,
+    Zap,
+} from "lucide-react";
 import { useConfigStore, type ModelChannel } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -70,6 +86,9 @@ export function CanvasComfyuiMonitor() {
     const [isCleaning, setIsCleaning] = useState<boolean>(false);
     const [isCleaningAll, setIsCleaningAll] = useState<boolean>(false);
     const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
+
+    // 清理弹窗确认状态："single" (清理当前机器) | "all" (清理所有机器) | null (未触发)
+    const [cleanConfirmTarget, setCleanConfirmTarget] = useState<"single" | "all" | null>(null);
 
     // 多台机器概览缓存（用于机器切换列表展示）
     const [channelSummaries, setChannelSummaries] = useState<Record<string, ChannelSummary>>({});
@@ -224,8 +243,8 @@ export function CanvasComfyuiMonitor() {
         };
     }, [refreshCurrent, probeAllChannels]);
 
-    // 清理当前机器
-    const handleFree = async () => {
+    // 执行清理当前机器
+    const executeFreeSingle = async () => {
         if (!baseUrl || isCleaning) return;
         setIsCleaning(true);
         try {
@@ -240,11 +259,12 @@ export function CanvasComfyuiMonitor() {
             message.error(`清理请求异常: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
             setIsCleaning(false);
+            setCleanConfirmTarget(null);
         }
     };
 
-    // 一键清理所有机器
-    const handleFreeAll = async () => {
+    // 执行一键清理所有机器
+    const executeFreeAll = async () => {
         if (isCleaningAll) return;
         setIsCleaningAll(true);
         let successCount = 0;
@@ -259,7 +279,7 @@ export function CanvasComfyuiMonitor() {
                 })
             );
             if (successCount > 0) {
-                message.success(`已完成 ${successCount} 台 ComfyUI 主机的显存与模型清理！`);
+                message.success(`已完成全部 ${successCount} 台主机的显存与模型清理！`);
                 await refreshCurrent(true);
                 await probeAllChannels();
             } else {
@@ -269,6 +289,7 @@ export function CanvasComfyuiMonitor() {
             message.error(`批量清理异常: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
             setIsCleaningAll(false);
+            setCleanConfirmTarget(null);
         }
     };
 
@@ -519,7 +540,10 @@ export function CanvasComfyuiMonitor() {
             <div className="space-y-1.5 pt-1">
                 <button
                     type="button"
-                    onClick={handleFree}
+                    onClick={() => {
+                        setPopoverOpen(false);
+                        setCleanConfirmTarget("single");
+                    }}
                     disabled={isCleaning || !isOnline}
                     className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                     style={{
@@ -527,38 +551,23 @@ export function CanvasComfyuiMonitor() {
                         color: theme.node.text,
                     }}
                 >
-                    {isCleaning ? (
-                        <>
-                            <Loader2 className="size-3.5 animate-spin" />
-                            <span>正在清理当前主机...</span>
-                        </>
-                    ) : (
-                        <>
-                            <Eraser className="size-3.5" />
-                            <span>卸载模型并释放显存 (当前主机)</span>
-                        </>
-                    )}
+                    <Eraser className="size-3.5" />
+                    <span>卸载模型并释放显存 (当前主机)</span>
                 </button>
 
                 {comfyChannels.length > 1 ? (
                     <button
                         type="button"
-                        onClick={handleFreeAll}
+                        onClick={() => {
+                            setPopoverOpen(false);
+                            setCleanConfirmTarget("all");
+                        }}
                         disabled={isCleaningAll}
                         className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs opacity-75 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                         style={{ color: theme.node.text }}
                     >
-                        {isCleaningAll ? (
-                            <>
-                                <Loader2 className="size-3.5 animate-spin" />
-                                <span>正在清理全部主机...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles className="size-3 text-amber-500" />
-                                <span>一键清理全部 {comfyChannels.length} 台主机显存</span>
-                            </>
-                        )}
+                        <Sparkles className="size-3 text-amber-500" />
+                        <span>一键清理全部 {comfyChannels.length} 台主机显存</span>
                     </button>
                 ) : null}
             </div>
@@ -566,44 +575,176 @@ export function CanvasComfyuiMonitor() {
     );
 
     return (
-        <div className="flex items-center gap-0.5">
-            {/* 常驻显存状态按钮 */}
-            <Popover
-                content={content}
-                trigger={["click"]}
-                open={popoverOpen}
-                onOpenChange={setPopoverOpen}
-                placement="bottomRight"
-                arrow={false}
-            >
-                <button
-                    type="button"
-                    className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
-                    style={{ color: theme.node.text }}
-                    title="点击查看硬件负载与切换 ComfyUI 主机"
+        <>
+            <div className="flex items-center gap-0.5">
+                {/* 常驻显存状态按钮 */}
+                <Popover
+                    content={content}
+                    trigger={["click"]}
+                    open={popoverOpen}
+                    onOpenChange={setPopoverOpen}
+                    placement="bottomRight"
+                    arrow={false}
                 >
-                    <span className="size-2 rounded-full shrink-0" style={{ background: dotColor }} />
-                    <span className="max-w-[200px] truncate opacity-90">{topBarText}</span>
-                </button>
-            </Popover>
+                    <button
+                        type="button"
+                        className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
+                        style={{ color: theme.node.text }}
+                        title="点击查看硬件负载与切换 ComfyUI 主机"
+                    >
+                        <span className="size-2 rounded-full shrink-0" style={{ background: dotColor }} />
+                        <span className="max-w-[200px] truncate opacity-90">{topBarText}</span>
+                    </button>
+                </Popover>
 
-            {/* 快速一键清理当前机器 */}
-            <Tooltip title={isCleaning ? "正在释放显存..." : `清理「${activeChannel?.name || "ComfyUI"}」显存与模型`}>
-                <button
-                    type="button"
-                    onClick={handleFree}
-                    disabled={isCleaning || !isOnline}
-                    aria-label="清理显存与卸载已加载模型"
-                    className="grid size-8 place-items-center rounded-lg transition hover:bg-black/5 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                    style={{ color: theme.node.text }}
-                >
-                    {isCleaning ? (
-                        <Loader2 className="size-3.5 animate-spin text-amber-500" />
-                    ) : (
-                        <Eraser className="size-3.5 opacity-80 transition-opacity hover:opacity-100" />
-                    )}
-                </button>
-            </Tooltip>
-        </div>
+                {/* 快速一键清理当前机器 */}
+                <Tooltip title={isCleaning ? "正在释放显存..." : `清理「${activeChannel?.name || "ComfyUI"}」显存与模型`}>
+                    <button
+                        type="button"
+                        onClick={() => setCleanConfirmTarget("single")}
+                        disabled={isCleaning || !isOnline}
+                        aria-label="清理显存与卸载已加载模型"
+                        className="grid size-8 place-items-center rounded-lg transition hover:bg-black/5 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                        style={{ color: theme.node.text }}
+                    >
+                        {isCleaning ? (
+                            <Loader2 className="size-3.5 animate-spin text-amber-500" />
+                        ) : (
+                            <Eraser className="size-3.5 opacity-80 transition-opacity hover:opacity-100" />
+                        )}
+                    </button>
+                </Tooltip>
+            </div>
+
+            {/* 清理与卸载模型确认弹窗 */}
+            <Modal
+                open={cleanConfirmTarget !== null}
+                onCancel={() => {
+                    if (!isCleaning && !isCleaningAll) {
+                        setCleanConfirmTarget(null);
+                    }
+                }}
+                centered
+                width={500}
+                destroyOnClose
+                title={
+                    <div className="flex items-center gap-2 text-base font-semibold">
+                        <Eraser className="size-5 text-amber-500" />
+                        <span>
+                            {cleanConfirmTarget === "all"
+                                ? `确认一键清理全部 ${comfyChannels.length} 台主机的显存？`
+                                : `确认清理主机「${activeChannel?.name || "ComfyUI"}」的显存？`}
+                        </span>
+                    </div>
+                }
+                footer={
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                        <Button
+                            onClick={() => setCleanConfirmTarget(null)}
+                            disabled={isCleaning || isCleaningAll}
+                        >
+                            暂不清理
+                        </Button>
+                        <Button
+                            type="primary"
+                            danger
+                            onClick={() => {
+                                if (cleanConfirmTarget === "all") {
+                                    executeFreeAll();
+                                } else {
+                                    executeFreeSingle();
+                                }
+                            }}
+                            loading={isCleaning || isCleaningAll}
+                            icon={<Eraser className="size-4" />}
+                        >
+                            确认清理并释放
+                        </Button>
+                    </div>
+                }
+            >
+                <div className="space-y-3.5 pt-2 text-xs leading-relaxed">
+                    {/* 目标主机信息提示 */}
+                    <div
+                        className="rounded-lg p-3"
+                        style={{
+                            background: theme.mode === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)",
+                            border: `1px solid ${theme.node.stroke}`,
+                        }}
+                    >
+                        <div className="text-[11px] font-medium opacity-60">清理目标算力主机</div>
+                        <div className="mt-1 font-semibold" style={{ color: theme.node.text }}>
+                            {cleanConfirmTarget === "all" ? (
+                                <div className="space-y-1">
+                                    <div className="text-amber-600 dark:text-amber-400 font-medium">
+                                        将同时向全部 {comfyChannels.length} 台 ComfyUI 机器发送清理指令：
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5 pt-1">
+                                        {comfyChannels.map((c) => (
+                                            <span
+                                                key={c.id}
+                                                className="inline-flex items-center gap-1 rounded bg-black/5 px-2 py-0.5 text-[11px] dark:bg-white/10"
+                                            >
+                                                <Server className="size-3 opacity-60" />
+                                                <span>{c.name || "ComfyUI"}</span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <Server className="size-4 text-blue-500" />
+                                    <span>{activeChannel?.name || "ComfyUI"}</span>
+                                    <span className="font-mono text-xs opacity-60">({baseUrl})</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 影响与后果详细解释（友好引导体验） */}
+                    <div className="space-y-2.5">
+                        <div className="flex items-start gap-2.5">
+                            <Zap className="size-4 shrink-0 text-emerald-500 mt-0.5" />
+                            <div>
+                                <strong className="text-stone-800 dark:text-stone-200">立即释放显存，恢复清爽闲置状态</strong>
+                                <div className="mt-0.5 text-stone-500 dark:text-stone-400">
+                                    ComfyUI 将强制脱离显存中已驻留的大模型（Checkpoint、DiT/UNET、CLIP、VAE 等）并回收 PyTorch 显存缓存，显存占用即刻降回初始空闲状态，降低显卡功耗与发热。
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                            <Clock className="size-4 shrink-0 text-amber-500 mt-0.5" />
+                            <div>
+                                <strong className="text-stone-800 dark:text-stone-200">下次生成时有 2~8 秒冷启动加载耗时</strong>
+                                <div className="mt-0.5 text-stone-500 dark:text-stone-400">
+                                    由于模型权重已从显存卸载，<strong>下一次点击生图或生成视频时</strong>，ComfyUI 需要重新从本地磁盘读取模型进显存（通常耗时约 2 ~ 8 秒），之后同模型的后续生成仍恢复极速热加载。
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                            <ShieldCheck className="size-4 shrink-0 text-blue-500 mt-0.5" />
+                            <div>
+                                <strong className="text-stone-800 dark:text-stone-200">零数据风险，无损安全</strong>
+                                <div className="mt-0.5 text-stone-500 dark:text-stone-400">
+                                    仅释放运行时 GPU/系统 RAM 临时缓存，<strong>绝不会删除任何本地磁盘模型文件</strong>，亦不会影响画布上的节点、生成参数或已有产物。
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                            <AlertTriangle className="size-4 shrink-0 text-orange-500 mt-0.5" />
+                            <div>
+                                <strong className="text-stone-800 dark:text-stone-200">建议在任务空闲时执行</strong>
+                                <div className="mt-0.5 text-stone-500 dark:text-stone-400">
+                                    若当前有正在进行的生图/生视频推断运算，执行卸载可能导致运算中断，请确认任务已完成或空闲后再清理。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+        </>
     );
 }
