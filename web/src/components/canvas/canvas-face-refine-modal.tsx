@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Input, Modal, Select, Tag } from "antd";
 import { AlertCircle, CheckCircle2, Server, SmilePlus, Sparkles, Workflow } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import {
     getChannelWorkflows,
@@ -26,6 +27,7 @@ export function CanvasFaceRefineModal({
     onClose,
     onConfirm,
 }: CanvasFaceRefineModalProps) {
+    const { t } = useTranslation();
     const config = useEffectiveConfig();
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
 
@@ -95,7 +97,7 @@ export function CanvasFaceRefineModal({
                     <span className="flex size-7 items-center justify-center rounded-lg bg-pink-500/10 text-pink-500 dark:bg-pink-400/20 dark:text-pink-400">
                         <SmilePlus className="size-4" />
                     </span>
-                    <span className="text-base font-semibold">MiniMax H3 视频人脸修复</span>
+                    <span className="text-base font-semibold">{t("canvas.faceRefine.modal.title")}</span>
                 </div>
             }
             open={open}
@@ -106,17 +108,17 @@ export function CanvasFaceRefineModal({
             footer={
                 <div className="flex items-center justify-between pt-2">
                     <div className="text-xs text-stone-400">
-                        {hasReferences ? "已检测到角色参考图" : "未检测到参考图（创建后可连线）"}
+                        {hasReferences ? t("canvas.faceRefine.modal.hasReferences") : t("canvas.faceRefine.modal.noReferences")}
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button onClick={onClose}>取消</Button>
+                        <Button onClick={onClose}>{t("common.cancel")}</Button>
                         <Button
                             type="primary"
                             icon={<Sparkles className="size-3.5" />}
                             disabled={!selectedChannelId || !selectedWorkflowId}
                             onClick={handleConfirm}
                         >
-                            {hasReferences && prompt ? "开始人脸修复" : "创建人脸修复节点"}
+                            {hasReferences && prompt ? t("canvas.faceRefine.modal.startRefine") : t("canvas.faceRefine.modal.createNode")}
                         </Button>
                     </div>
                 </div>
@@ -124,28 +126,28 @@ export function CanvasFaceRefineModal({
         >
             <div className="space-y-4 py-2">
                 <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                    为原视频派生高保真面部精修节点。请选择执行此任务的 ComfyUI 主机（渠道）及对应工作流。
+                    {t("canvas.faceRefine.modal.description")}
                 </p>
 
                 {/* 1. 执行主机 / 渠道选择 */}
                 <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                         <label className="font-medium text-stone-700 dark:text-stone-200">
-                            执行主机 / 渠道
+                            {t("canvas.faceRefine.modal.channelLabel")}
                         </label>
                         <button
                             type="button"
                             onClick={() => openConfigDialog(true, "channels")}
                             className="text-blue-500 hover:underline cursor-pointer"
                         >
-                            管理渠道
+                            {t("canvas.faceRefine.modal.manageChannels")}
                         </button>
                     </div>
                     <Select
                         className="w-full"
                         value={selectedChannelId}
                         onChange={(value) => setSelectedChannelId(value)}
-                        placeholder="选择执行渠道主机"
+                        placeholder={t("canvas.faceRefine.modal.channelPlaceholder")}
                         options={channels.map((c) => {
                             const isDefault = c.id === config.channelId;
                             const hostUrl = c.comfyuiProxyUrl?.trim() || "http://127.0.0.1:8188";
@@ -156,7 +158,7 @@ export function CanvasFaceRefineModal({
                                         <span className="flex items-center gap-1.5">
                                             <Server className="size-3.5 text-blue-500 shrink-0" />
                                             <span className="font-medium truncate max-w-[180px]">{c.name}</span>
-                                            {isDefault && <Tag className="text-[10px] m-0 px-1 py-0">默认</Tag>}
+                                            {isDefault && <Tag className="text-[10px] m-0 px-1 py-0">{t("common.default")}</Tag>}
                                         </span>
                                         <span className="font-mono text-xs text-stone-400 truncate max-w-[200px]">
                                             {hostUrl}
@@ -171,13 +173,13 @@ export function CanvasFaceRefineModal({
                 {/* 2. 人脸修复工作流选择 */}
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-stone-700 dark:text-stone-200">
-                        人脸修复工作流
+                        {t("canvas.faceRefine.modal.workflowLabel")}
                     </label>
                     <Select
                         className="w-full"
                         value={selectedWorkflowId}
                         onChange={(value) => setSelectedWorkflowId(value)}
-                        placeholder="选择人脸修复工作流"
+                        placeholder={t("canvas.faceRefine.modal.workflowPlaceholder")}
                         options={faceRefineWorkflows.map((w) => ({
                             value: w.id,
                             label: (
@@ -186,7 +188,7 @@ export function CanvasFaceRefineModal({
                                         <Workflow className="size-3.5 text-pink-500 shrink-0" />
                                         <span className="truncate">{w.name}</span>
                                     </span>
-                                    {w.isDefault && <Tag className="text-[10px] m-0 px-1 py-0">默认</Tag>}
+                                    {w.isDefault && <Tag className="text-[10px] m-0 px-1 py-0">{t("common.default")}</Tag>}
                                 </div>
                             ),
                         }))}
@@ -196,22 +198,22 @@ export function CanvasFaceRefineModal({
                 {/* 3. 角色参考图与状态检测 */}
                 <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/50 p-3 space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                        <span className="text-stone-500 dark:text-stone-400">角色参考图检测</span>
+                        <span className="text-stone-500 dark:text-stone-400">{t("canvas.faceRefine.modal.refDetection")}</span>
                         {hasReferences ? (
                             <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                                 <CheckCircle2 className="size-3.5" />
-                                <span>已就绪 ({upstreamImageNodes.length || node?.metadata?.references?.length || 0} 张)</span>
+                                <span>{t("canvas.faceRefine.modal.refReady", { count: upstreamImageNodes.length || node?.metadata?.references?.length || 0 })}</span>
                             </span>
                         ) : (
                             <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
                                 <AlertCircle className="size-3.5" />
-                                <span>待连线</span>
+                                <span>{t("canvas.faceRefine.modal.refPending")}</span>
                             </span>
                         )}
                     </div>
                     {!hasReferences && (
                         <p className="text-[11px] text-stone-400 leading-normal">
-                            提示：人脸修复需要参考图提取面部特征。创建后可从图片节点连线至新节点作为参考。
+                            {t("canvas.faceRefine.modal.refTip")}
                         </p>
                     )}
                 </div>
@@ -219,13 +221,13 @@ export function CanvasFaceRefineModal({
                 {/* 4. 修复提示词 */}
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-stone-700 dark:text-stone-200">
-                        提示词（可微调或继承原视频）
+                        {t("canvas.faceRefine.modal.promptLabel")}
                     </label>
                     <Input.TextArea
                         rows={3}
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="输入提示词，如：realistic detailed face, high quality portrait..."
+                        placeholder={t("canvas.faceRefine.modal.promptPlaceholder")}
                         className="text-xs leading-relaxed"
                     />
                 </div>

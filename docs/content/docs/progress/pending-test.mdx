@@ -7,6 +7,15 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Canvas Modals i18n Bilingual Support (画布弹窗中英国际化验证):
+  - **协同弹窗（CanvasCollabModal）中英双语验证**:
+    - 在画布顶部工具栏点击「协同」按钮打开多人协同弹窗；
+    - 切换系统语言为英文（English），验证弹窗标题（LAN Multi-User Collaboration / Real-Time Collaboration）、昵称标签、使用说明、开启协同按钮、状态栏文案、分享链接提示与在线成员列表均正确展示为英文；
+    - 切换回中文，验证文字完整展示为中文，无硬编码残留与占位符错漏。
+  - **人脸修复与深度视频弹窗双语验证**:
+    - 点击人脸修复或深度估计入口打开对应配置弹窗；
+    - 切换中英文语言，验证弹窗标题、说明、执行主机渠道选择器、工作流选择器、参考图/视频就绪状态与底部操作按钮（取消 / 开始 / 创建）文案均正确随语言环境切换。
+
 - Text Workflow Model DSL & Dynamic Dispatch (文本工作流模型 DSL 与动态调度验证):
   - **纯文本生成（Qwen-3.5 文本生成）连线防呆与文本生成验证**:
     - 在画布上选中或创建文本节点，默认模型为「Qwen-3.5 文本生成」；
