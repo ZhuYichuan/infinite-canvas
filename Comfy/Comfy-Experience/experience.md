@@ -34,6 +34,9 @@
 | `/history/{prompt_id}` | `GET` | 无需请求体 | `{ [prompt_id]: { status: { status_str: "success" \| "error" }, outputs: { [node_id]: { images: [], videos: [], text: [] } } } }` | 轮询任务完成状态与节点产物 |
 | `/view` | `GET` | Query 参数：<br>- `filename`: 文件名<br>- `subfolder`: 子目录（可选）<br>- `type`: `"output"` / `"input"` | 200 返回媒体资源二进制 Blob | 预览与下载生成产物 |
 | `/interrupt` | `POST` | `application/json`<br>`{}` | 200 返回中断指令确认 | 用户取消任务时中断 GPU 当前运算 |
+| `/free` 或 `/api/free` | `POST` | `application/json`<br>`{ "unload_models": true, "free_memory": true }` | `200`: 空包体 | 卸载已加载模型并释放 PyTorch/显存缓存 |
+| `/api/kktools/runtime_stats` | `GET` | Query 参数可选 `?t=<timestamp>` 防缓存 | `200`: `{ "ok": true, "data": { cpu, memory, process, devices } }` | 实时硬件监控（显存占用、GPU 利用率、CPU、内存） |
+| `/system_stats` | `GET` | 无需请求体 | `200`: `{ "system": { ... }, "devices": [ ... ] }` | 官方原生系统环境、Python/PyTorch版本与设备列表 |
 
 ---
 
@@ -136,6 +139,73 @@
   - `rank 1`：`type === "temp"`（临时预览产物，无正式保存节点时的兜底）
   - `rank 2`：`type === "input"`（输入参考资产，最低优先级，仅作为极端备用）
 - 在 `pollJobRaw` 中对解析出的 `outputs` 列表按该等级稳定排序，并在 `collectVideoAssetIds`、`collectImageAssetIds` 与 `collectAudioAssetIds` 收集器中严格优先返回 `type === "output"` 的条目，彻底杜绝多节点工作流误取输入节点素材的问题。
+
+---
+
+### 9. 硬件运行监控与显存模型清理契约（/free 与 /api/kktools/runtime_stats）
+
+#### (1) 清理与卸载接口：`POST /free`（或 `/api/free`）
+
+* **请求格式**：
+  ```json
+  {
+    "unload_models": true,
+    "free_memory": true
+  }
+  ```
+* **字段详解**：
+  | 字段 | 类型 | 必填 | 默认值 | 作用与底层实现 |
+  | --- | --- | --- | --- | --- |
+  | `unload_models` | `boolean` | 否 | `false` | 为 `true` 时调用 `model_management.unload_all_models()`，强制卸载当前载入显存中的所有 Checkpoint/UNET/CLIP/VAE/LoRA 等模型权重，彻底释放占用显存 |
+  | `free_memory` | `boolean` | 否 | `false` | 为 `true` 时调用 `model_management.soft_empty_cache()`，执行 `torch.cuda.empty_cache()` 与 Python `gc.collect()`，将缓存显存归还操作系统 |
+* **本地官方文档对比与排查要点**：
+  - 官方文档 `Comfy/Comfy-Org/docs/development/comfyui-server/comms_routes.mdx` 中仅记录了 `/free` 路由用途为 "free memory by unloading specified models"，但**遗漏了请求体 JSON 参数说明**。
+  - 若调用时传入空对象 `{}`，ComfyUI 默认两个字段均为 `false`，导致实际上未卸载模型也未清缓存；前端封装 `freeComfyuiMemory` 时已将两者默认置为 `true`。
+  - 部分代理环境使用 `/api/free`，官方原生直接走 `/free`，前端实现应优先请求 `/api/free`，遇到 404 自动回退 `/free`。
+
+---
+
+#### (2) 硬件运行时状态监控：`GET /api/kktools/runtime_stats`
+
+由本项目核心依赖插件 `Comfyui-kktools` 提供，返回高频采样的 CPU、RAM、GPU 显存与核心利用率。
+
+* **响应数据字段详解**：
+  ```json
+  {
+    "ok": true,
+    "data": {
+      "cpu": {
+        "percent": 8.5,             // [number] CPU 整体使用率百分比 (0.0 ~ 100.0)
+        "logical_cores": 12         // [number] CPU 逻辑核心总数
+      },
+      "memory": {
+        "total": 68642123776,       // [number] 宿主机总物理内存 (字节 Bytes)
+        "available": 54574084096,   // [number] 宿主机当前可用物理内存 (字节 Bytes)
+        "used": 14068039680,        // [number] 宿主机当前已用物理内存 (字节 Bytes)
+        "percent": 20.5             // [number] 宿主机物理内存使用率百分比 (0.0 ~ 100.0)
+      },
+      "process": {
+        "memory_used": 1522647040,  // [number] ComfyUI Python 后端进程自身内存 (字节 Bytes)
+        "uptime_seconds": 51380     // [number] ComfyUI 服务进程自启动以来的运行秒数 (Seconds)
+      },
+      "devices": [
+        {
+          "name": "cuda:0 NVIDIA GeForce RTX 3090 Ti : cudaMallocAsync", // [string] 设备名与内存分配器
+          "type": "cuda",                                                // [string] 设备类型 (cuda, mps, cpu 等)
+          "index": 0,                                                   // [number] 设备物理索引
+          "utilization": 0.0,                                           // [number] GPU 核心实时计算利用率百分比 (0.0 ~ 100.0)
+          "memory_total": 25756696576,                                  // [number] GPU 物理显存总容量 (字节 Bytes)
+          "memory_free": 24361566208,                                   // [number] GPU 物理显存当前空闲量 (字节 Bytes)
+          "memory_used": 1395130368,                                    // [number] GPU 物理显存当前占用量 (字节 Bytes)
+          "memory_percent": 5.4                                         // [number] GPU 显存占用百分比 (0.0 ~ 100.0)
+        }
+      ]
+    }
+  }
+  ```
+* **对比官方 `/system_stats` 接口**：
+  - 官方 `/system_stats` 仅提供静态环境（操作系统、Python/PyTorch 版本、启动参数）及瞬时 `vram_total` / `vram_free`。
+  - `/system_stats` **不包含** GPU 计算核心利用率（`utilization`）、宿主机 CPU 使用率（`cpu.percent`）、ComfyUI 进程自身内存占用与启动运行时间。因此画布实时监控看板优先使用 `/api/kktools/runtime_stats`，未安装插件时才降级读取 `/system_stats`。
 
 ---
 

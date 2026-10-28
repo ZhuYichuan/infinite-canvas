@@ -3548,3 +3548,244 @@ export async function fetchComfyuiModels(
     return [];
 }
 
+/**
+ * ComfyUI 内存与模型卸载请求参数
+ * 对应 POST /free 与 POST /api/free 端点
+ */
+export type ComfyuiFreeRequest = {
+    /**
+     * 是否卸载显存中已缓存的模型权重 (Checkpoint, UNET, CLIP, VAE, LoRA 等)
+     * 若为 true，底层执行 model_management.unload_all_models()
+     */
+    unload_models?: boolean;
+    /**
+     * 是否释放 PyTorch 显存缓存与系统内存垃圾回收
+     * 若为 true，底层执行 model_management.soft_empty_cache() (torch.cuda.empty_cache / gc.collect)
+     */
+    free_memory?: boolean;
+};
+
+/**
+ * ComfyUI 宿主机 CPU 运行指标
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeCpu = {
+    /** CPU 当前整体使用率百分比，取值范围 0.0 ~ 100.0 */
+    percent: number;
+    /** CPU 逻辑处理器总核心数 */
+    logical_cores: number;
+};
+
+/**
+ * ComfyUI 宿主机系统物理内存 (RAM) 运行指标
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeMemory = {
+    /** 宿主机物理内存总容量，单位：字节 (Bytes) */
+    total: number;
+    /** 宿主机当前可用空闲物理内存，单位：字节 (Bytes) */
+    available: number;
+    /** 宿主机当前已使用物理内存，单位：字节 (Bytes) */
+    used: number;
+    /** 宿主机物理内存使用率百分比，取值范围 0.0 ~ 100.0 */
+    percent: number;
+};
+
+/**
+ * ComfyUI 服务进程自身资源占用与生命周期
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeProcess = {
+    /** ComfyUI 后端 Python 进程当前占用的物理内存 (RSS)，单位：字节 (Bytes) */
+    memory_used: number;
+    /** ComfyUI 服务进程自启动以来的累计运行秒数 (Seconds) */
+    uptime_seconds: number;
+};
+
+/**
+ * 单个 GPU/加速设备运行状态指标
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeDevice = {
+    /** 设备名称与内存分配器描述 (例如 "cuda:0 NVIDIA GeForce RTX 3090 Ti : cudaMallocAsync") */
+    name: string;
+    /** 设备类型，通常为 "cuda"、"mps"、"cpu" 等 */
+    type: string;
+    /** 设备在系统中的物理序号索引 (0, 1, ...) */
+    index: number;
+    /** GPU 计算核心实时利用率百分比，取值范围 0.0 ~ 100.0 */
+    utilization: number;
+    /** GPU 物理显存总容量 (VRAM Total)，单位：字节 (Bytes) */
+    memory_total: number;
+    /** GPU 物理显存当前空闲剩余量 (VRAM Free)，单位：字节 (Bytes) */
+    memory_free: number;
+    /** GPU 物理显存当前已占用量 (VRAM Used)，单位：字节 (Bytes) */
+    memory_used: number;
+    /** GPU 显存占用率百分比，取值范围 0.0 ~ 100.0 */
+    memory_percent: number;
+};
+
+/**
+ * ComfyUI 运行时监控指标整体响应数据结构
+ * 来源于 GET /api/kktools/runtime_stats
+ */
+export type ComfyuiRuntimeStats = {
+    /** 请求是否成功 */
+    ok: boolean;
+    /** 运行状态核心监控数据 */
+    data: {
+        /** CPU 负载指标 */
+        cpu: ComfyuiRuntimeCpu;
+        /** 宿主机系统内存 (RAM) 负载指标 */
+        memory: ComfyuiRuntimeMemory;
+        /** ComfyUI 服务进程自身指标 */
+        process: ComfyuiRuntimeProcess;
+        /** 各 GPU / 计算加速设备状态列表 */
+        devices: ComfyuiRuntimeDevice[];
+    };
+};
+
+/**
+ * ComfyUI 官方原生系统设备信息
+ * 来源于 GET /system_stats
+ */
+export type ComfyuiSystemDevice = {
+    /** 设备名称与分配器信息 (例如 "cuda:0 NVIDIA GeForce RTX 3090 Ti : cudaMallocAsync") */
+    name: string;
+    /** 设备类型 (例如 "cuda", "mps", "cpu") */
+    type: string;
+    /** 设备序号 */
+    index: number;
+    /** 显存总容量，单位：字节 (Bytes) */
+    vram_total: number;
+    /** 显存剩余容量，单位：字节 (Bytes) */
+    vram_free: number;
+    /** PyTorch 显存保留总量，单位：字节 (Bytes) */
+    torch_vram_total?: number;
+    /** PyTorch 显存空闲可用量，单位：字节 (Bytes) */
+    torch_vram_free?: number;
+};
+
+/**
+ * ComfyUI 官方原生环境与系统统计响应
+ * 来源于 GET /system_stats
+ */
+export type ComfyuiSystemStats = {
+    /** 系统与运行环境详情 */
+    system: {
+        /** 操作系统平台 (例如 "win32", "linux", "darwin") */
+        os?: string;
+        /** 系统总内存 (RAM)，单位：字节 (Bytes) */
+        ram_total?: number;
+        /** 系统可用空闲内存 (RAM)，单位：字节 (Bytes) */
+        ram_free?: number;
+        /** ComfyUI 核心版本号 */
+        comfyui_version?: string;
+        /** Python 运行环境版本及编译详情 */
+        python_version?: string;
+        /** PyTorch 与 CUDA/ROCm 版本号 */
+        pytorch_version?: string;
+        /** 是否使用便携嵌入式 Python 环境 */
+        embedded_python?: boolean;
+        /** 启动命令行参数数组 */
+        argv?: string[];
+        [key: string]: unknown;
+    };
+    /** 加速设备列表 */
+    devices: ComfyuiSystemDevice[];
+};
+
+/**
+ * 请求 ComfyUI 执行清理动作，卸载已加载的模型并释放系统与显存缓存
+ * 优先调用 /api/free，降级兼容 /free
+ * @param baseUrl ComfyUI 服务基础 URL
+ * @param token 可选鉴权 Bearer Token
+ * @param options 清理选项，默认两者皆为 true
+ * @returns 是否成功释放
+ */
+export async function freeComfyuiMemory(
+    baseUrl: string,
+    token?: string,
+    options: ComfyuiFreeRequest = { unload_models: true, free_memory: true }
+): Promise<boolean> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "*/*",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const body = JSON.stringify({
+        unload_models: options.unload_models !== false,
+        free_memory: options.free_memory !== false,
+    });
+
+    try {
+        // 优先打 /api/free
+        let res = await comfyuiFetch(`${normalized}/api/free`, { method: "POST", headers, body }, baseUrl);
+        if (res.status === 404) {
+            // 降级回退至 /free
+            res = await comfyuiFetch(`${normalized}/free`, { method: "POST", headers, body }, baseUrl);
+        }
+        return res.ok;
+    } catch (error) {
+        if (error instanceof ComfyuiError) throw error;
+        return false;
+    }
+}
+
+/**
+ * 获取 ComfyUI 硬件实时运行状态 (基于 Comfyui-kktools 插件)
+ * @param baseUrl ComfyUI 服务基础 URL
+ * @param token 可选鉴权 Bearer Token
+ * @returns 实时监控数据对象，若端点不可用或报错返回 null
+ */
+export async function getComfyuiRuntimeStats(
+    baseUrl: string,
+    token?: string
+): Promise<ComfyuiRuntimeStats | null> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    const headers: Record<string, string> = {
+        Accept: "*/*",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    try {
+        const res = await comfyuiFetch(`${normalized}/api/kktools/runtime_stats?t=${Date.now()}`, { headers }, baseUrl);
+        if (!res.ok) return null;
+        const json = (await res.json()) as ComfyuiRuntimeStats;
+        if (json && json.ok && json.data) {
+            return json;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * 获取 ComfyUI 原生系统统计与设备信息 (基于官方原生 /system_stats)
+ * @param baseUrl ComfyUI 服务基础 URL
+ * @param token 可选鉴权 Bearer Token
+ * @returns 系统统计数据对象，若端点不可用或报错返回 null
+ */
+export async function getComfyuiSystemStats(
+    baseUrl: string,
+    token?: string
+): Promise<ComfyuiSystemStats | null> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    const headers: Record<string, string> = {
+        Accept: "*/*",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    try {
+        const res = await comfyuiFetch(`${normalized}/system_stats`, { headers }, baseUrl);
+        if (!res.ok) return null;
+        return (await res.json()) as ComfyuiSystemStats;
+    } catch {
+        return null;
+    }
+}
+
+
