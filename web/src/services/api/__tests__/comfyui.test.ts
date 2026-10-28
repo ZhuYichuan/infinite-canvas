@@ -1303,44 +1303,6 @@ describe("Qwen-Image-2.1 and submitJob validation", () => {
         expect((bound["480:468"]?.inputs as Record<string, unknown>)?.switch).toBe(false);
     });
 
-    it("safely binds Qwen-Image-2.1 Int8 for text-to-image and image-to-image", async () => {
-        const t2iJson = (await import("@/assets/workflows/t2i_qwen_image_21_int8_api.json")).default;
-        const i2iJson = (await import("@/assets/workflows/i2i_qwen_image_21_int8_api.json")).default;
-
-        // Dedicated text-to-image (pure T2I without ref image nodes)
-        const pureT2iBound = applyBindings(t2iJson as unknown as ComfyuiWorkflowJson, {
-            prompt: "a majestic golden dragon",
-            width: 1024,
-            height: 1024,
-            seed: 1234,
-        });
-        expect(pureT2iBound["1"]).toBeDefined(); // SaveImageAdvanced
-        expect((pureT2iBound["24"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
-        expect(pureT2iBound["10"]).toBeUndefined(); // ref_image nodes completely omitted
-        expect((pureT2iBound["26"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toBeUndefined();
-
-        // Image-to-image with 1 reference image and custom size
-        const i2iBound = applyBindings(i2iJson as unknown as ComfyuiWorkflowJson, {
-            prompt: "character redesign",
-            width: 1024,
-            height: 1024,
-            seed: 1234,
-            refImages: ["uploaded_int8_asset.png"],
-        });
-        expect(i2iBound["1"]).toBeDefined();
-        expect((i2iBound["24"]?.inputs as Record<string, unknown>)?.switch).toBe(true);
-        expect((i2iBound["26"]?.inputs as Record<string, unknown>)?.["images.image_1"]).toEqual(["10", 0]);
-        expect((i2iBound["26"]?.inputs as Record<string, unknown>)?.["images.image_2"]).toBeUndefined();
-
-        // Image-to-image without custom size (fallback to reference latent)
-        const fallbackBound = applyBindings(i2iJson as unknown as ComfyuiWorkflowJson, {
-            prompt: "character redesign",
-            seed: 1234,
-            refImages: ["uploaded_int8_asset.png"],
-        });
-        expect((fallbackBound["24"]?.inputs as Record<string, unknown>)?.switch).toBe(false);
-    });
-
     it("rejects empty workflow in submitJob", async () => {
         await expect(submitJob({}, "http://127.0.0.1:8188")).rejects.toThrow(ComfyuiNoWorkflowError);
     });

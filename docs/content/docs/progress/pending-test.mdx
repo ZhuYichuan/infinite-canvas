@@ -7,12 +7,6 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
-- Qwen-Image-2.1 Int8 Built-in Workflows (Qwen-Image-2.1 Int8 内置轻量文生图/图生图工作流):
-  - 验证系统内置 ComfyUI 渠道与模型列表中包含 `Qwen-Image-2.1 (Int8)` 选项；
-  - 验证文生图工作流列表中包含 `Qwen-Image-2.1 文生图 (Int8)`，图生图工作流列表中包含 `Qwen-Image-2.1 多图参考图生图 (Int8)`；
-  - 验证画布连接 Int8 工作流时，纯文本生成正常调度，连接 1~10 张参考图时多图融合生成正常运行；
-  - 验证核心工作流部署指南页面（`/guide`）包含 Qwen-Image-2.1 Int8 的下载与模型说明卡片。
-
 - ComfyUI Hardware Runtime Monitor & Memory Cleanup (ComfyUI 多机硬件监控与显存模型清理):
   - 验证画布顶端右侧显示 ComfyUI 实时显存指标（如 `3090Ti · 显存 5% (1.4G/24G)`）与色温状态点（低负载绿/中负载黄/高负载红）；
   - 配置了多台 ComfyUI 主机时，验证 Popover 面板顶部展示算力主机切换选择器，支持查看各主机的在线状态与显存占用并一键无缝切换监控目标；

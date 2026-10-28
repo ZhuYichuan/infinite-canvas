@@ -10,8 +10,8 @@
 
 | 序号 | 业务分类 | 工作流名称 | 模型名称 | 核心模型权重路径（ComfyUI `models/` 目录） | 采样步数 | 推荐显存 | 核心技术特点 |
 | :---: | :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| **1** | **文生图 (T2I)** | [文生图工作流](./workflows/1_t2i/) | `Z-Image-Turbo`<br/>`Qwen-Image-2.1 (BF16)`<br/>`Qwen-Image-2.1 (Int8)` | `diffusion_models/z_image_turbo_bf16.safetensors`<br/>`diffusion_models/qwen_image_2.1_bf16.safetensors`<br/>`diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors`<br/>`clip/qwen3vl_8b_bf16.safetensors`<br/>`clip/qwen3vl_8b_int8_convrot.safetensors` | 4~8 步 (Turbo)<br/>25 步 (Qwen2.1) | 8G ~ 16G+ | 极速推理出图 / 8B 视觉语言大模型深度理解、两栖架构（无参考图时纯文生图）、提供 BF16 原生精度与 Int8 轻量低显存双版本 |
-| **2** | **图生图 (I2I)** | [图生图工作流](./workflows/2_i2i/) | `Flux2.Dev`<br/>`Qwen-Image-2.1 (BF16)`<br/>`Qwen-Image-2.1 (Int8)` | `diffusion_models/flux2_dev_fp8mixed.safetensors`<br/>`diffusion_models/qwen_image_2.1_bf16.safetensors`<br/>`diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors`<br/>`clip/qwen3vl_8b_bf16.safetensors`<br/>`clip/qwen3vl_8b_int8_convrot.safetensors` | 8~16 步 (Flux2)<br/>25 步 (Qwen2.1) | 12G ~ 24G | Flow Matching 顶级质感 / 原生支持最多 10 张参考图联合垫图与角色风格强迁移，Int8 版本大幅降低显存开销 |
+| **1** | **文生图 (T2I)** | [文生图工作流](./workflows/1_t2i/) | `Z-Image-Turbo`<br/>`Qwen-Image-2.1` | `diffusion_models/z_image_turbo_bf16.safetensors`<br/>`diffusion_models/qwen_image_2.1_bf16.safetensors`<br/>`text_encoders/qwen_3_4b.safetensors`<br/>`clip/qwen3vl_8b_bf16.safetensors` | 4~8 步 (Turbo)<br/>25 步 (Qwen2.1) | 8G ~ 16G+ | 极速推理出图 / 8B 视觉语言大模型深度理解、两栖架构（无参考图时纯文生图） |
+| **2** | **图生图 (I2I)** | [图生图工作流](./workflows/2_i2i/) | `Flux2.Dev`<br/>`Qwen-Image-2.1` | `diffusion_models/flux2_dev_fp8mixed.safetensors`<br/>`diffusion_models/qwen_image_2.1_bf16.safetensors`<br/>`loras/Flux2TurboComfyv2.safetensors`<br/>`clip/qwen3vl_8b_bf16.safetensors` | 8~16 步 (Flux2)<br/>25 步 (Qwen2.1) | 12G ~ 24G | Flow Matching 顶级质感 / 原生支持最多 10 张参考图联合垫图与角色风格强迁移 |
 | **3** | **局部编辑 (Inpaint)** | [局部编辑工作流](./workflows/3_inpaint/) | `Qwen-Image Inpaint` | `diffusion_models/qwen_image_fp8_e4m3fn.safetensors`<br/>`loras/Qwen-Image-Lightning-4steps-V1.0.safetensors`<br/>`text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors`<br/>`vae/qwen_image_vae.safetensors` | 4 步 | 8G ~ 12G | Qwen2.5-VL 视觉理解、4 步 Lightning 极速重绘、LayerStyle 平滑边缘无缝融入 |
 | **4** | **文本生成 / 反推 (Text)** | [文本生成工作流](./workflows/4_text/) | `Qwen3.5 4B` | `diffusion_models/qwen3.5_4b_bf16.safetensors` | 自回归 | 4G ~ 6G | 轻量端侧 4B 语言模型、支持提示词自动扩写与图像反推提示词、数据纯本地离线保密 |
 | **5** | **全能参考视频 (Omni Video)** | [全能参考视频工作流](./workflows/5_omni_video/) | `MiniMax H3 ref2va` | **FP8版**: `diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_ref2va_bf16.safetensors`<br/>**LoRA**: `loras/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors`<br/>`loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>**Text**: `text_encoders/qwen3vl_32b_minimax_h3...safetensors`<br/>**VAE**: `minimax_h3_video_vae_fp16`, `minimax_h3_audio_vae_fp32` | 4步 (PDMD)<br/>20步 (FP8)<br/>8步 (Turbo)<br/>20步 (BF16高精) | 16G ~ 24G+ | 首创多模态参考（最多 9 图 + 3 视频 + 3 音频）、原生音画潜空间联合生成、支持 EasyCache 去噪缓存与 4 步 PDMD 极速出片 |
@@ -33,18 +33,12 @@ Comfy/Comfy-Api/
     ├── 1_t2i/                              # 1. 文生图工作流 (Text to Image)
     │   ├── README.md
     │   ├── z_image_turbo_api.json          # Z-Image-Turbo 极速出图 (4~8步)
-    │   ├── qwen_image_21_api.json          # Qwen-Image-2.1 BF16 旗舰大模型文生图 (25步，无图时文生图)
-    │   ├── qwen_image_21_int8_api.json     # Qwen-Image-2.1 Int8 轻量大模型文生图 (25步，无图时文生图)
-    │   ├── qwen_image_21_int8_workflow.json# Qwen-Image-2.1 Int8 可视化工作流
-    │   ├── qwen_image_21_workflow.json     # Qwen-Image-2.1 BF16 可视化工作流
+    │   ├── qwen_image_21_api.json          # Qwen-Image-2.1 旗舰大模型文生图 (25步，无图时文生图)
     │   └── z_image_turbo_workflow.json     # ComfyUI 可视化工作流
     ├── 2_i2i/                              # 2. 图生图工作流 (Image to Image)
     │   ├── README.md
     │   ├── flux2_dev_i2i_api.json          # Flux2.Dev Flow Matching 风格迁移
-    │   ├── qwen_image_21_api.json          # Qwen-Image-2.1 BF16 多图参考图生图 (支持最多 10 张参考图)
-    │   ├── qwen_image_21_int8_api.json     # Qwen-Image-2.1 Int8 多图参考图生图 (支持最多 10 张参考图)
-    │   ├── qwen_image_21_int8_workflow.json# Qwen-Image-2.1 Int8 可视化工作流
-    │   ├── qwen_image_21_workflow.json     # Qwen-Image-2.1 BF16 可视化工作流
+    │   ├── qwen_image_21_api.json          # Qwen-Image-2.1 多图参考图生图 (支持最多 10 张参考图)
     │   └── flux2_dev_i2i_workflow.json
     ├── 3_inpaint/                          # 3. 局部编辑工作流 (Inpaint)
     │   ├── README.md

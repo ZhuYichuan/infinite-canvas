@@ -14,8 +14,6 @@ import frameVideoFp84StepPdmdJson from "@/assets/workflows/video_minimax_h3_fram
 import frameVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_frame_bf16_8step_turbo_api.json";
 import frameVideoBf1620StepJson from "@/assets/workflows/video_minimax_h3_frame_bf16_20step_api.json";
 import qwenImage21Json from "@/assets/workflows/qwen_image_21_api.json";
-import t2iQwenImage21Int8Json from "@/assets/workflows/t2i_qwen_image_21_int8_api.json";
-import i2iQwenImage21Int8Json from "@/assets/workflows/i2i_qwen_image_21_int8_api.json";
 import audioMinimaxMusic3Json from "@/assets/workflows/audio_minimax_music_3_api.json";
 import videoH3FaceRefineJson from "@/assets/workflows/video_h3_face_refine_api.json";
 import videoDepthReshotJson from "@/assets/workflows/video_depth_reshot_api.json";
@@ -39,19 +37,6 @@ export const DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW: ComfyuiWorkflow = {
     createdAt: 0,
     isBuiltin: true,
 };
-export const DEFAULT_BUILTIN_COMFYUI_T2I_QWEN_IMAGE_21_INT8_WORKFLOW: ComfyuiWorkflow = {
-    name: "Qwen-Image-2.1 文生图 (Int8)",
-    json: t2iQwenImage21Int8Json as Record<string, unknown>,
-    createdAt: 0,
-    isBuiltin: true,
-};
-export const DEFAULT_BUILTIN_COMFYUI_I2I_QWEN_IMAGE_21_INT8_WORKFLOW: ComfyuiWorkflow = {
-    name: "Qwen-Image-2.1 多图参考图生图 (Int8)",
-    json: i2iQwenImage21Int8Json as Record<string, unknown>,
-    createdAt: 0,
-    isBuiltin: true,
-};
-export const DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_INT8_WORKFLOW: ComfyuiWorkflow = DEFAULT_BUILTIN_COMFYUI_I2I_QWEN_IMAGE_21_INT8_WORKFLOW;
 export const DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW: ComfyuiWorkflow = {
     name: "Z-Image-Turbo 文生图",
     json: t2iZImageTurboJson as Record<string, unknown>,
@@ -250,16 +235,6 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             description: "Qwen-Image-2.1 大模型文生图工作流 (BF16，支持多模态理解与超写实画质)",
         },
         {
-            id: `${prefix}-t2i-qwen-image-21-int8`,
-            name: "Qwen-Image-2.1 文生图 (Int8)",
-            category: "t2i",
-            json: DEFAULT_BUILTIN_COMFYUI_T2I_QWEN_IMAGE_21_INT8_WORKFLOW.json,
-            createdAt: 0,
-            isBuiltin: true,
-            isDefault: false,
-            description: "Qwen-Image-2.1 大模型文生图工作流 (Int8 量化版，低显存占用与更快推理)",
-        },
-        {
             id: `${prefix}-t2i-z-image-turbo`,
             name: "Z-Image-Turbo 文生图",
             category: "t2i",
@@ -278,16 +253,6 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             isBuiltin: true,
             isDefault: true,
             description: "Qwen-Image-2.1 多图融合与风格迁移工作流 (支持最多 10 张参考图)",
-        },
-        {
-            id: `${prefix}-i2i-qwen-image-21-int8`,
-            name: "Qwen-Image-2.1 多图参考图生图 (Int8)",
-            category: "i2i",
-            json: DEFAULT_BUILTIN_COMFYUI_I2I_QWEN_IMAGE_21_INT8_WORKFLOW.json,
-            createdAt: 0,
-            isBuiltin: true,
-            isDefault: false,
-            description: "Qwen-Image-2.1 多图融合与风格迁移工作流 (Int8 量化版，支持最多 10 张参考图)",
         },
         {
             id: `${prefix}-i2i-flux2-dev`,
