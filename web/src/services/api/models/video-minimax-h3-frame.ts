@@ -31,7 +31,7 @@ export const videoMinimaxH3FrameFp8PdmdProfile: WorkflowModelProfile = {
     capabilityConfig: {
         version: 1,
         references: {
-            promptMaxChars: 2000,
+            promptMaxChars: 20000,
             minImages: 2,
             maxImages: 2,
             maskSupported: false,
@@ -83,7 +83,7 @@ export const videoMinimaxH3FrameFp8Profile: WorkflowModelProfile = {
     capabilityConfig: {
         version: 1,
         references: {
-            promptMaxChars: 2000,
+            promptMaxChars: 20000,
             minImages: 2,
             maxImages: 2,
             maskSupported: false,

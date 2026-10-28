@@ -2,7 +2,6 @@
 
 ## Unreleased
 
-+ [修复] 修复 `comfyui.ts` 中缺失 `getModelProfile`、`validateModelExecution` 与 `dispatchComfyuiModelWorkflow` 模块导入导致视频生成提交时报未定义运行时异常的问题。
 + [修复] 补齐画布连线超限国际化词条（canvas.projectPage.connectionQuotaExceeded 等），修复连线拒绝时显示未翻译原始 key 的问题，并升级为针对参考图/视频/音频配额超限的具体诊断提示。
 + [新增] 引入基于规范模式（Specification Pattern）的模型多维约束检查引擎：模型选择器自动置灰冲突模型并支持小问号 Hover 查看不可用诊断原因，生成按钮联动约束前置防呆。
 

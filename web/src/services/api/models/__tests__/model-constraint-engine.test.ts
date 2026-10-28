@@ -190,8 +190,9 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
     describe("PromptLengthRule", () => {
         const rule = new PromptLengthRule();
 
-        it("rejects when prompt length exceeds promptMaxChars (2000 chars)", () => {
-            const longPrompt = "a".repeat(2005);
+        it("rejects when prompt length exceeds promptMaxChars", () => {
+            const maxChars = videoMinimaxH3OmniFp8PdmdProfile.capabilityConfig.references?.promptMaxChars || 2000;
+            const longPrompt = "a".repeat(maxChars + 5);
             const ctx: ConstraintContext = {
                 targetModel: videoMinimaxH3OmniFp8PdmdProfile,
                 connectedImages: 0,
@@ -202,16 +203,16 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
 
             const result = rule.check(ctx);
             expect(result.passed).toBe(false);
-            expect(result.reason).toBe("提示词字数 (2005) 超出该模型上限 (2000 字符)");
+            expect(result.reason).toBe(`提示词字数 (${maxChars + 5}) 超出该模型上限 (${maxChars} 字符)`);
         });
 
-        it("passes when prompt is within 2000 chars", () => {
+        it("passes when prompt is within promptMaxChars", () => {
             const ctx: ConstraintContext = {
                 targetModel: videoMinimaxH3OmniFp8PdmdProfile,
                 connectedImages: 0,
                 connectedVideos: 0,
                 connectedAudios: 0,
-                promptText: "Valid prompt under 2000 chars",
+                promptText: "Valid prompt under limit",
             };
 
             expect(rule.check(ctx).passed).toBe(true);
@@ -220,12 +221,13 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
 
     describe("evaluateModelAvailability with multiple violations", () => {
         it("collects all diagnostic reasons when multiple rules fail simultaneously", () => {
+            const maxChars = videoMinimaxH3FrameFp8PdmdProfile.capabilityConfig.references?.promptMaxChars || 2000;
             const ctx: ConstraintContext = {
                 targetModel: videoMinimaxH3FrameFp8PdmdProfile,
                 connectedImages: 5,        // exceeds maxImages: 2
                 connectedVideos: 1,        // forbids videos
                 connectedAudios: 1,        // forbids audios
-                promptText: "x".repeat(2100), // exceeds 2000 chars
+                promptText: "x".repeat(maxChars + 100), // exceeds promptMaxChars
                 activeChannel: baseHost,   // does not support frame model
             };
 
@@ -236,7 +238,7 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
             expect(result.reasons).toContain("已连接 5 张参考图，该模型最多支持 2 张");
             expect(result.reasons).toContain("该模型不支持参考视频，当前已连接 1 个视频");
             expect(result.reasons).toContain("该模型不支持参考音频，当前已连接 1 个音频");
-            expect(result.reasons).toContain("提示词字数 (2100) 超出该模型上限 (2000 字符)");
+            expect(result.reasons).toContain(`提示词字数 (${maxChars + 100}) 超出该模型上限 (${maxChars} 字符)`);
         });
     });
 });
