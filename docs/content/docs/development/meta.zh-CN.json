@@ -8,6 +8,7 @@
     "comfyui-workflow-standard",
     "workflow-model-host-decoupling-spec",
     "model-constraint-engine-spec",
+    "text-workflow-model-dsl-spec",
     "multimodal-video-workflow-spec",
     "canvas-data-structure",
     "local-codex-canvas"
