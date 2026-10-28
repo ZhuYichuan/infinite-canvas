@@ -421,6 +421,24 @@ export function CanvasComfyuiMonitor() {
                     </span>
                 </div>
                 <div className="flex items-center gap-1">
+                    <Tooltip title={`清理「${activeChannel?.name || "ComfyUI"}」显存与模型`}>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setPopoverOpen(false);
+                                setCleanConfirmTarget("single");
+                            }}
+                            disabled={isCleaning || !isOnline}
+                            className="grid size-6 place-items-center rounded transition hover:bg-black/5 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            style={{ color: theme.node.muted }}
+                        >
+                            {isCleaning ? (
+                                <Loader2 className="size-3.5 animate-spin text-amber-500" />
+                            ) : (
+                                <Eraser className="size-3.5" />
+                            )}
+                        </button>
+                    </Tooltip>
                     <Tooltip title="立即刷新状态">
                         <button
                             type="button"
@@ -576,45 +594,25 @@ export function CanvasComfyuiMonitor() {
 
     return (
         <>
-            <div className="flex items-center gap-0.5">
-                {/* 常驻显存状态按钮 */}
-                <Popover
-                    content={content}
-                    trigger={["click"]}
-                    open={popoverOpen}
-                    onOpenChange={setPopoverOpen}
-                    placement="bottomRight"
-                    arrow={false}
+            {/* 常驻显存状态按钮 (点击展开监控与清理浮窗) */}
+            <Popover
+                content={content}
+                trigger={["click"]}
+                open={popoverOpen}
+                onOpenChange={setPopoverOpen}
+                placement="bottomRight"
+                arrow={false}
+            >
+                <button
+                    type="button"
+                    className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
+                    style={{ color: theme.node.text }}
+                    title="点击查看硬件负载与切换 ComfyUI 主机"
                 >
-                    <button
-                        type="button"
-                        className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
-                        style={{ color: theme.node.text }}
-                        title="点击查看硬件负载与切换 ComfyUI 主机"
-                    >
-                        <span className="size-2 rounded-full shrink-0" style={{ background: dotColor }} />
-                        <span className="max-w-[200px] truncate opacity-90">{topBarText}</span>
-                    </button>
-                </Popover>
-
-                {/* 快速一键清理当前机器 */}
-                <Tooltip title={isCleaning ? "正在释放显存..." : `清理「${activeChannel?.name || "ComfyUI"}」显存与模型`}>
-                    <button
-                        type="button"
-                        onClick={() => setCleanConfirmTarget("single")}
-                        disabled={isCleaning || !isOnline}
-                        aria-label="清理显存与卸载已加载模型"
-                        className="grid size-8 place-items-center rounded-lg transition hover:bg-black/5 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                        style={{ color: theme.node.text }}
-                    >
-                        {isCleaning ? (
-                            <Loader2 className="size-3.5 animate-spin text-amber-500" />
-                        ) : (
-                            <Eraser className="size-3.5 opacity-80 transition-opacity hover:opacity-100" />
-                        )}
-                    </button>
-                </Tooltip>
-            </div>
+                    <span className="size-2 rounded-full shrink-0" style={{ background: dotColor }} />
+                    <span className="max-w-[200px] truncate opacity-90">{topBarText}</span>
+                </button>
+            </Popover>
 
             {/* 清理与卸载模型确认弹窗 */}
             <Modal
