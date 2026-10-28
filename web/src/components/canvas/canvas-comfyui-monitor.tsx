@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Popover, Progress, Tooltip, message } from "antd";
-import { Activity, Cpu, Eraser, ExternalLink, HardDrive, Loader2, RefreshCw, Server } from "lucide-react";
-import { useConfigStore } from "@/stores/use-config-store";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Popover, Progress, Select, Tooltip, message } from "antd";
+import { Activity, Cpu, Eraser, ExternalLink, HardDrive, Loader2, RefreshCw, Server, Sparkles } from "lucide-react";
+import { useConfigStore, type ModelChannel } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
@@ -29,30 +29,59 @@ function formatUptime(seconds?: number) {
     return `${mins}分钟`;
 }
 
+type ChannelSummary = {
+    online: boolean;
+    vramPercent: number;
+    vramUsed: number;
+    vramTotal: number;
+    gpuName: string;
+};
+
 export function CanvasComfyuiMonitor() {
     const colorTheme = useThemeStore((state) => state.theme);
     const theme = canvasThemes[colorTheme];
 
     const channels = useConfigStore((state) => state.config.channels);
-    const primaryChannel = channels.find((c) => c.apiFormat === "comfyui" || c.comfyuiProxyUrl?.trim()) || channels[0];
-    const baseUrl = (primaryChannel?.comfyuiProxyUrl || primaryChannel?.baseUrl || "http://127.0.0.1:8188").trim();
-    const token = primaryChannel?.comfyuiProxyToken || primaryChannel?.apiKey;
+    const comfyChannels = useMemo(() => {
+        const list = (channels || []).filter((c) => c.apiFormat === "comfyui" || c.comfyuiProxyUrl?.trim());
+        return list.length > 0 ? list : channels;
+    }, [channels]);
+
+    // 当前选中的机器 ID，默认选中主渠道
+    const [selectedChannelId, setSelectedChannelId] = useState<string>(() => comfyChannels[0]?.id || "");
+
+    useEffect(() => {
+        if (!comfyChannels.some((c) => c.id === selectedChannelId)) {
+            setSelectedChannelId(comfyChannels[0]?.id || "");
+        }
+    }, [comfyChannels, selectedChannelId]);
+
+    const activeChannel: ModelChannel = useMemo(() => {
+        return comfyChannels.find((c) => c.id === selectedChannelId) || comfyChannels[0];
+    }, [comfyChannels, selectedChannelId]);
+
+    const baseUrl = (activeChannel?.comfyuiProxyUrl || activeChannel?.baseUrl || "http://127.0.0.1:8188").trim();
+    const token = activeChannel?.comfyuiProxyToken || activeChannel?.apiKey;
 
     const [systemStats, setSystemStats] = useState<ComfyuiSystemStats | null>(null);
     const [runtimeStats, setRuntimeStats] = useState<ComfyuiRuntimeStats | null>(null);
     const [isOnline, setIsOnline] = useState<boolean>(false);
     const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
     const [isCleaning, setIsCleaning] = useState<boolean>(false);
+    const [isCleaningAll, setIsCleaningAll] = useState<boolean>(false);
     const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
+
+    // 多台机器概览缓存（用于机器切换列表展示）
+    const [channelSummaries, setChannelSummaries] = useState<Record<string, ChannelSummary>>({});
 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    const refresh = useCallback(
+    // 刷新当前选中的机器详情
+    const refreshCurrent = useCallback(
         async (silent = false) => {
             if (!baseUrl) return;
             if (!silent) setIsRefreshing(true);
             try {
-                // 并发获取官方原生 system_stats 与 kktools runtime_stats
                 const [sys, run] = await Promise.all([
                     getComfyuiSystemStats(baseUrl, token),
                     getComfyuiRuntimeStats(baseUrl, token),
@@ -60,10 +89,46 @@ export function CanvasComfyuiMonitor() {
 
                 if (sys || run) {
                     setIsOnline(true);
-                    if (sys) setSystemStats(sys);
-                    if (run) setRuntimeStats(run);
+                    setSystemStats(sys);
+                    setRuntimeStats(run);
+
+                    // 同步更新摘要
+                    let used = 0;
+                    let total = 0;
+                    let percent = 0;
+                    const d = run?.data?.devices?.[0];
+                    if (d) {
+                        used = d.memory_used;
+                        total = d.memory_total;
+                        percent = Math.round(d.memory_percent);
+                    } else if (sys?.devices?.[0]) {
+                        total = sys.devices[0].vram_total;
+                        used = total - (sys.devices[0].vram_free || 0);
+                        percent = total > 0 ? Math.round((used / total) * 100) : 0;
+                    }
+                    const gpu = cleanGpuName(d?.name || sys?.devices?.[0]?.name);
+                    setChannelSummaries((prev) => ({
+                        ...prev,
+                        [activeChannel.id]: {
+                            online: true,
+                            vramPercent: percent,
+                            vramUsed: used,
+                            vramTotal: total,
+                            gpuName: gpu,
+                        },
+                    }));
                 } else {
                     setIsOnline(false);
+                    setChannelSummaries((prev) => ({
+                        ...prev,
+                        [activeChannel.id]: {
+                            online: false,
+                            vramPercent: 0,
+                            vramUsed: 0,
+                            vramTotal: 0,
+                            gpuName: "未连接",
+                        },
+                    }));
                 }
             } catch {
                 setIsOnline(false);
@@ -71,18 +136,74 @@ export function CanvasComfyuiMonitor() {
                 if (!silent) setIsRefreshing(false);
             }
         },
-        [baseUrl, token]
+        [baseUrl, token, activeChannel?.id]
     );
 
-    // 定时轮询与后台休眠
+    // 多机轻量概览探测
+    const probeAllChannels = useCallback(async () => {
+        if (comfyChannels.length <= 1) return;
+        const targets = comfyChannels.filter((c) => c.id !== activeChannel?.id);
+        await Promise.allSettled(
+            targets.map(async (ch) => {
+                const chUrl = (ch.comfyuiProxyUrl || ch.baseUrl || "").trim();
+                const chToken = ch.comfyuiProxyToken || ch.apiKey;
+                if (!chUrl) return;
+                try {
+                    const sys = await getComfyuiSystemStats(chUrl, chToken);
+                    if (sys && sys.devices?.[0]) {
+                        const total = sys.devices[0].vram_total;
+                        const free = sys.devices[0].vram_free || 0;
+                        const used = total - free;
+                        const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+                        setChannelSummaries((prev) => ({
+                            ...prev,
+                            [ch.id]: {
+                                online: true,
+                                vramPercent: percent,
+                                vramUsed: used,
+                                vramTotal: total,
+                                gpuName: cleanGpuName(sys.devices[0].name),
+                            },
+                        }));
+                    } else {
+                        setChannelSummaries((prev) => ({
+                            ...prev,
+                            [ch.id]: {
+                                online: false,
+                                vramPercent: 0,
+                                vramUsed: 0,
+                                vramTotal: 0,
+                                gpuName: "离线",
+                            },
+                        }));
+                    }
+                } catch {
+                    setChannelSummaries((prev) => ({
+                        ...prev,
+                        [ch.id]: {
+                            online: false,
+                            vramPercent: 0,
+                            vramUsed: 0,
+                            vramTotal: 0,
+                            gpuName: "离线",
+                        },
+                    }));
+                }
+            })
+        );
+    }, [comfyChannels, activeChannel?.id]);
+
+    // 轮询与后台休眠
     useEffect(() => {
-        refresh(true);
+        refreshCurrent(true);
+        probeAllChannels();
 
         const handleVisibilityChange = () => {
             if (document.hidden) {
                 if (timerRef.current) clearInterval(timerRef.current);
             } else {
-                refresh(true);
+                refreshCurrent(true);
+                probeAllChannels();
                 startInterval();
             }
         };
@@ -90,7 +211,7 @@ export function CanvasComfyuiMonitor() {
         const startInterval = () => {
             if (timerRef.current) clearInterval(timerRef.current);
             timerRef.current = setInterval(() => {
-                refresh(true);
+                refreshCurrent(true);
             }, 3500);
         };
 
@@ -101,17 +222,17 @@ export function CanvasComfyuiMonitor() {
             if (timerRef.current) clearInterval(timerRef.current);
             document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
-    }, [refresh]);
+    }, [refreshCurrent, probeAllChannels]);
 
-    // 执行显存与模型清理
+    // 清理当前机器
     const handleFree = async () => {
         if (!baseUrl || isCleaning) return;
         setIsCleaning(true);
         try {
             const ok = await freeComfyuiMemory(baseUrl, token, { unload_models: true, free_memory: true });
             if (ok) {
-                message.success("已释放模型权重与系统显存缓存");
-                await refresh(true);
+                message.success(`已释放主机「${activeChannel?.name || "ComfyUI"}」模型与显存`);
+                await refreshCurrent(true);
             } else {
                 message.error("清理显存失败，请检查 ComfyUI 服务状态");
             }
@@ -122,7 +243,36 @@ export function CanvasComfyuiMonitor() {
         }
     };
 
-    // 整合显存指标：优先从 runtimeStats 读取实时利用率，兜底从原生 systemStats 计算
+    // 一键清理所有机器
+    const handleFreeAll = async () => {
+        if (isCleaningAll) return;
+        setIsCleaningAll(true);
+        let successCount = 0;
+        try {
+            await Promise.allSettled(
+                comfyChannels.map(async (c) => {
+                    const u = (c.comfyuiProxyUrl || c.baseUrl || "").trim();
+                    const k = c.comfyuiProxyToken || c.apiKey;
+                    if (!u) return;
+                    const ok = await freeComfyuiMemory(u, k, { unload_models: true, free_memory: true });
+                    if (ok) successCount += 1;
+                })
+            );
+            if (successCount > 0) {
+                message.success(`已完成 ${successCount} 台 ComfyUI 主机的显存与模型清理！`);
+                await refreshCurrent(true);
+                await probeAllChannels();
+            } else {
+                message.error("全部主机清理失败，请检查服务连接");
+            }
+        } catch (error) {
+            message.error(`批量清理异常: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            setIsCleaningAll(false);
+        }
+    };
+
+    // 整合当前选中的机器指标
     const gpuDev = runtimeStats?.data?.devices?.[0] || systemStats?.devices?.[0];
     const gpuName = cleanGpuName(gpuDev?.name);
 
@@ -160,13 +310,11 @@ export function CanvasComfyuiMonitor() {
         ramPercent = ramTotal > 0 ? Math.min(100, Math.round((ramUsed / ramTotal) * 100)) : 0;
     }
 
-    // CPU 与 GPU 计算核心利用率
     const cpuPercent = runtimeStats?.data?.cpu?.percent !== undefined ? Math.round(runtimeStats.data.cpu.percent) : null;
     const gpuUtilization = runtimeStats?.data?.devices?.[0]?.utilization !== undefined ? Math.round(runtimeStats.data.devices[0].utilization) : null;
     const processMemory = runtimeStats?.data?.process?.memory_used;
     const uptimeSeconds = runtimeStats?.data?.process?.uptime_seconds;
 
-    // 状态点色温：<70% 绿，70~90% 橙，>90% 红
     const dotColor = !isOnline
         ? theme.node.muted
         : vramPercent >= 90
@@ -177,16 +325,67 @@ export function CanvasComfyuiMonitor() {
 
     const vramStatusStroke = vramPercent >= 90 ? "#ef4444" : vramPercent >= 70 ? "#f59e0b" : "#10b981";
 
-    // 顶栏常驻精简文案
+    // 顶栏常驻展示文案（多机时展示机器名）
+    const machinePrefix = comfyChannels.length > 1 ? `${activeChannel?.name || "ComfyUI"} · ` : "";
     const topBarText = !isOnline
-        ? "ComfyUI 离线"
+        ? `${machinePrefix}离线`
         : vramTotal > 0
-        ? `显存 ${vramPercent}% · ${formatBytes(vramUsed)}/${formatBytes(vramTotal)}`
-        : "ComfyUI 就绪";
+        ? `${machinePrefix}显存 ${vramPercent}% (${formatBytes(vramUsed)}/${formatBytes(vramTotal)})`
+        : `${machinePrefix}就绪`;
 
     // 悬停/点击 Popover 展开面板
     const content = (
         <div className="w-80 select-none space-y-3 p-1 text-xs">
+            {/* 多机切换下拉选择器 (当配置了 2 台及以上时呈现) */}
+            {comfyChannels.length > 1 ? (
+                <div className="border-b pb-2" style={{ borderColor: theme.node.stroke }}>
+                    <div className="mb-1 flex items-center justify-between text-[11px] opacity-70">
+                        <span className="flex items-center gap-1 font-medium">
+                            <Server className="size-3" />
+                            <span>算力主机 ({comfyChannels.length}台)</span>
+                        </span>
+                        <span>点击切换监控对象</span>
+                    </div>
+                    <Select
+                        size="small"
+                        value={selectedChannelId}
+                        onChange={(id) => {
+                            setSelectedChannelId(id);
+                        }}
+                        className="w-full text-xs"
+                        options={comfyChannels.map((c) => {
+                            const sum = channelSummaries[c.id];
+                            const hostUrl = (c.comfyuiProxyUrl || c.baseUrl || "").replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+                            return {
+                                value: c.id,
+                                label: (
+                                    <div className="flex items-center justify-between gap-1 text-xs">
+                                        <div className="flex min-w-0 items-center gap-1.5">
+                                            <span
+                                                className="size-1.5 shrink-0 rounded-full"
+                                                style={{
+                                                    background: sum
+                                                        ? sum.online
+                                                            ? "#22c55e"
+                                                            : "#a8a29e"
+                                                        : c.id === activeChannel.id && isOnline
+                                                        ? "#22c55e"
+                                                        : "#a8a29e",
+                                                }}
+                                            />
+                                            <span className="truncate max-w-[130px] font-medium">{c.name || "ComfyUI 主机"}</span>
+                                        </div>
+                                        <span className="text-[10px] opacity-60 font-mono truncate max-w-[100px]">
+                                            {sum?.online ? `显存 ${sum.vramPercent}%` : hostUrl}
+                                        </span>
+                                    </div>
+                                ),
+                            };
+                        })}
+                    />
+                </div>
+            ) : null}
+
             {/* 顶栏：服务连接状态与地址 */}
             <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: theme.node.stroke }}>
                 <div className="flex min-w-0 items-center gap-2">
@@ -197,14 +396,14 @@ export function CanvasComfyuiMonitor() {
                         <span className="relative inline-flex size-2 rounded-full" style={{ background: dotColor }} />
                     </span>
                     <span className="truncate font-semibold" style={{ color: theme.node.text }}>
-                        {isOnline ? "ComfyUI 已连接" : "ComfyUI 服务未连接"}
+                        {activeChannel?.name || "ComfyUI"} {isOnline ? "(在线)" : "(未连通)"}
                     </span>
                 </div>
                 <div className="flex items-center gap-1">
                     <Tooltip title="立即刷新状态">
                         <button
                             type="button"
-                            onClick={() => refresh(false)}
+                            onClick={() => refreshCurrent(false)}
                             disabled={isRefreshing}
                             className="grid size-6 place-items-center rounded transition hover:bg-black/5 dark:hover:bg-white/10"
                             style={{ color: theme.node.muted }}
@@ -213,7 +412,7 @@ export function CanvasComfyuiMonitor() {
                         </button>
                     </Tooltip>
                     {baseUrl ? (
-                        <Tooltip title="在浏览器打开 ComfyUI 原生界面">
+                        <Tooltip title="在浏览器打开该主机原生 ComfyUI 页面">
                             <a
                                 href={baseUrl}
                                 target="_blank"
@@ -316,8 +515,8 @@ export function CanvasComfyuiMonitor() {
                 ) : null}
             </div>
 
-            {/* 底部释放按钮 */}
-            <div className="pt-1">
+            {/* 底部清理操作 */}
+            <div className="space-y-1.5 pt-1">
                 <button
                     type="button"
                     onClick={handleFree}
@@ -331,15 +530,37 @@ export function CanvasComfyuiMonitor() {
                     {isCleaning ? (
                         <>
                             <Loader2 className="size-3.5 animate-spin" />
-                            <span>正在清理并释放显存...</span>
+                            <span>正在清理当前主机...</span>
                         </>
                     ) : (
                         <>
                             <Eraser className="size-3.5" />
-                            <span>卸载已加载模型并释放显存</span>
+                            <span>卸载模型并释放显存 (当前主机)</span>
                         </>
                     )}
                 </button>
+
+                {comfyChannels.length > 1 ? (
+                    <button
+                        type="button"
+                        onClick={handleFreeAll}
+                        disabled={isCleaningAll}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs opacity-75 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                        style={{ color: theme.node.text }}
+                    >
+                        {isCleaningAll ? (
+                            <>
+                                <Loader2 className="size-3.5 animate-spin" />
+                                <span>正在清理全部主机...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="size-3 text-amber-500" />
+                                <span>一键清理全部 {comfyChannels.length} 台主机显存</span>
+                            </>
+                        )}
+                    </button>
+                ) : null}
             </div>
         </div>
     );
@@ -359,15 +580,15 @@ export function CanvasComfyuiMonitor() {
                     type="button"
                     className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
                     style={{ color: theme.node.text }}
-                    title="点击查看 ComfyUI 硬件与系统负载详情"
+                    title="点击查看硬件负载与切换 ComfyUI 主机"
                 >
                     <span className="size-2 rounded-full shrink-0" style={{ background: dotColor }} />
-                    <span className="max-w-[155px] truncate opacity-90">{topBarText}</span>
+                    <span className="max-w-[200px] truncate opacity-90">{topBarText}</span>
                 </button>
             </Popover>
 
-            {/* 快速一键清理按钮 */}
-            <Tooltip title={isCleaning ? "正在释放显存..." : "清理显存与卸载已加载模型"}>
+            {/* 快速一键清理当前机器 */}
+            <Tooltip title={isCleaning ? "正在释放显存..." : `清理「${activeChannel?.name || "ComfyUI"}」显存与模型`}>
                 <button
                     type="button"
                     onClick={handleFree}

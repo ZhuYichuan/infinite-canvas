@@ -7,12 +7,13 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
-- ComfyUI Hardware Runtime Monitor & Memory Cleanup (ComfyUI 硬件监控与显存模型清理):
-  - 验证画布顶端右侧显示 ComfyUI 实时显存指标（如 `显存 5% · 1.4G/24G`）与色温状态点（低负载绿/中负载黄/高负载红）；
-  - 点击显存胶囊展开详细硬件监控面板（Popover），验证 GPU 型号、显存进度条、系统 RAM 内存使用率、ComfyUI/PyTorch 版本号及运行详情清晰展示；
-  - 点击顶栏或浮层中的「清理」图标按钮，验证调用 `/free` 卸载已加载模型并释放显存，按钮呈现转圈加载并在完成后弹出「已释放模型权重与系统显存缓存」提示，显存数据实时下降刷新；
+- ComfyUI Hardware Runtime Monitor & Memory Cleanup (ComfyUI 多机硬件监控与显存模型清理):
+  - 验证画布顶端右侧显示 ComfyUI 实时显存指标（如 `3090Ti · 显存 5% (1.4G/24G)`）与色温状态点（低负载绿/中负载黄/高负载红）；
+  - 配置了多台 ComfyUI 主机时，验证 Popover 面板顶部展示算力主机切换选择器，支持查看各主机的在线状态与显存占用并一键无缝切换监控目标；
+  - 点击显存胶囊展开详细硬件监控面板（Popover），验证当前选中主机的 GPU 型号、显存进度条、系统 RAM 内存使用率、ComfyUI/PyTorch 版本号及运行详情清晰展示；
+  - 点击顶栏或浮层中的「清理」图标按钮，验证调用 `/free` 卸载当前主机已加载模型并释放显存，多机模式下支持一键清理所有主机显存，按钮呈现转圈加载并在完成后弹出提示，显存数据实时下降刷新；
   - 验证页面切换后台（标签页失焦）自动暂停轮询，切换回前台时自动重新唤醒刷新；
-  - 验证当 ComfyUI 离线或服务未启动时，优雅展示灰色离线状态，不影响画布其他常规编辑操作。
+  - 验证当某台 ComfyUI 离线或服务未启动时，优雅展示灰色离线状态，不影响其他在线主机监控及画布常规编辑操作。
 
 - Multimodal Connection Rejection Diagnostics & i18n Fix (连线防呆诊断与国际化修复):
   - 验证将第 10 张图片连入 MiniMax H3 视频节点时，连接被优雅拦截，Toast 提示清晰展示「连接被拒绝：超出参考图上限（该模型最多支持 9 张，当前已有 9 张）」，不再弹出裸露的 `canvas.projectPage.connectionQuotaExceeded` 键名；
