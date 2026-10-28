@@ -6,7 +6,7 @@ import {
     BUILTIN_TEXT_WORKFLOW_MODELS,
     evaluateModelAvailability,
     getModelProfile,
-    textQwen35ChatProfile,
+    textQwen35Profile,
     type WorkflowModelProfile,
 } from "@/services/api/models";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -26,13 +26,7 @@ export type TextModelPickerProps = {
 };
 
 function getModelIcon(modelId: string) {
-    switch (modelId) {
-        case "text-qwen-35-vlm":
-            return <Eye className="size-3.5 shrink-0 text-indigo-500" />;
-        case "text-qwen-35-chat":
-        default:
-            return <MessageSquareText className="size-3.5 shrink-0 text-emerald-500" />;
-    }
+    return <Sparkles className="size-3.5 shrink-0 text-emerald-500" />;
 }
 
 export function TextModelPicker({
@@ -60,7 +54,7 @@ export function TextModelPicker({
     }, [channels, channelId]);
 
     const activeProfile = useMemo(() => {
-        return getModelProfile(modelId) || textQwen35ChatProfile;
+        return getModelProfile(modelId) || textQwen35Profile;
     }, [modelId]);
 
     // 级联递进选项：第一级为 API 提供商 (算力主机)，hover 展开第二级为模型

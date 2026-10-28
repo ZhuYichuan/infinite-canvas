@@ -24,6 +24,7 @@ import {
     IMAGE_STANDARD_ASPECT_RATIOS,
 } from "./image-models";
 import {
+    textQwen35Profile,
     textQwen35ChatProfile,
     textQwen35VlmProfile,
     TEXT_WORKFLOW_MODELS,
@@ -128,22 +129,20 @@ export function getModelProfile(modelIdOrCategory?: string): WorkflowModelProfil
 
     // 5. 文本模型别名匹配
     if (
+        lower === "text-qwen-35" ||
         lower === "text-qwen-35-chat" ||
+        lower === "text-qwen-35-vlm" ||
+        lower === "qwen-35" ||
         lower === "qwen-35-chat" ||
+        lower === "qwen-35-vlm" ||
         lower === "qwen3.5 4b" ||
         lower === "qwen3.5-4b" ||
         lower === "qwen3.5" ||
+        lower === "qwen-vlm" ||
+        lower === "vlm" ||
         lower === "text"
     ) {
-        return textQwen35ChatProfile;
-    }
-    if (
-        lower === "text-qwen-35-vlm" ||
-        lower === "qwen-35-vlm" ||
-        lower === "qwen-vlm" ||
-        lower === "vlm"
-    ) {
-        return textQwen35VlmProfile;
+        return textQwen35Profile;
     }
 
     // 6. 模糊匹配已知模型的名称

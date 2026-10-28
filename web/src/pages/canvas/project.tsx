@@ -4015,7 +4015,7 @@ function InfiniteCanvasPage() {
                         status: NODE_STATUS_LOADING,
                         fontSize: sourceNode?.metadata?.fontSize || 14,
                         model: generationConfig.model,
-                        modelId: sourceNode?.metadata?.modelId || "text-qwen-35-chat",
+                        modelId: sourceNode?.metadata?.modelId || "text-qwen-35",
                         maxLength: sourceNode?.metadata?.maxLength,
                         thinking: sourceNode?.metadata?.thinking,
                         reasoningEffort: generationConfig.reasoningEffort,

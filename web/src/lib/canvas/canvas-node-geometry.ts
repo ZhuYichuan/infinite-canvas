@@ -1,5 +1,5 @@
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type ConnectionHandle } from "@/types/canvas";
-import { getModelProfile, imageQwen21Profile, textQwen35ChatProfile, videoMinimaxH3OmniProfile } from "@/services/api/models";
+import { getModelProfile, imageQwen21Profile, textQwen35Profile, videoMinimaxH3OmniProfile } from "@/services/api/models";
 import { getGroupResourceNodes } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 
@@ -122,7 +122,7 @@ export function validateInputConnection(
             : toNode.type === CanvasNodeType.Image
             ? imageQwen21Profile
             : toNode.type === CanvasNodeType.Text
-            ? textQwen35ChatProfile
+            ? textQwen35Profile
             : undefined
     );
 
@@ -207,7 +207,7 @@ export function getConnectionRejectionDetail(
             : toNode.type === CanvasNodeType.Image
             ? imageQwen21Profile
             : toNode.type === CanvasNodeType.Text
-            ? textQwen35ChatProfile
+            ? textQwen35Profile
             : undefined
     );
 
@@ -219,7 +219,7 @@ export function getConnectionRejectionDetail(
             return {
                 key: "connectionMediaTypeUnsupported",
                 defaultMessage: profile.capability === "text"
-                    ? "连接被拒绝：纯文本模型不支持连入参考图片（如需识图反推，请在节点工具栏切换为「Qwen-3.5 视觉反推」）"
+                    ? "连接被拒绝：该模型不支持连入参考图片"
                     : "连接被拒绝：当前模型不支持参考图",
             };
         }

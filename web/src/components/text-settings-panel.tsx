@@ -30,13 +30,17 @@ export function TextSettingsPanel({
     className = "space-y-4",
 }: TextSettingsPanelProps) {
     const { t } = useTranslation();
-    const profile = getModelProfile(modelId || "text-qwen-35-chat");
+    const profile = getModelProfile(modelId || "text-qwen-35");
     const textConfig = profile?.capabilityConfig?.textConfig;
-    const maxLengthOptions = textConfig?.maxLength?.options || [256, 512, 1024];
+    const maxLengthOptions = textConfig?.maxLength?.options;
     const defaultMaxLength = textConfig?.maxLength?.default || 512;
     const currentMaxLength = maxLength ?? defaultMaxLength;
-    const isThinkingSupported = textConfig?.thinkingSupported ?? true;
-    const currentThinking = thinking ?? true;
+    const isThinkingSupported = textConfig?.thinkingSupported ?? false;
+    const currentThinking = thinking ?? false;
+
+    if (!maxLengthOptions && !isThinkingSupported) {
+        return null;
+    }
 
     return (
         <ImageSettingsTheme theme={theme}>
@@ -44,23 +48,25 @@ export function TextSettingsPanel({
                 <div className="text-lg font-semibold">{t("settingsPanels.text.title")}</div>
 
                 {/* 生成长度控制 */}
-                <div className="space-y-2.5">
-                    <div className="text-sm font-medium" style={{ color: theme.node.muted }}>
-                        {t("settingsPanels.text.maxLength", "生成长度")}
+                {maxLengthOptions && maxLengthOptions.length > 0 ? (
+                    <div className="space-y-2.5">
+                        <div className="text-sm font-medium" style={{ color: theme.node.muted }}>
+                            {t("settingsPanels.text.maxLength", "生成长度")}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            {maxLengthOptions.map((val) => (
+                                <OptionPill
+                                    key={val}
+                                    selected={currentMaxLength === val}
+                                    theme={theme}
+                                    onClick={() => onParamChange?.({ maxLength: val })}
+                                >
+                                    {val} {t("settingsPanels.text.tokens", "词")}
+                                </OptionPill>
+                            ))}
+                        </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                        {maxLengthOptions.map((val) => (
-                            <OptionPill
-                                key={val}
-                                selected={currentMaxLength === val}
-                                theme={theme}
-                                onClick={() => onParamChange?.({ maxLength: val })}
-                            >
-                                {val} {t("settingsPanels.text.tokens", "词")}
-                            </OptionPill>
-                        ))}
-                    </div>
-                </div>
+                ) : null}
 
                 {/* 深度思考开关 */}
                 {isThinkingSupported ? (

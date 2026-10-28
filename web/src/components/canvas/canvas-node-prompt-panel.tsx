@@ -10,7 +10,7 @@ import { VideoModelPicker } from "@/components/video-model-picker";
 import { ImageModelPicker } from "@/components/image-model-picker";
 import { TextModelPicker } from "@/components/text-model-picker";
 import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, isModelSupportedByHost, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
-import { BUILTIN_VIDEO_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile, imageQwen21Profile, textQwen35ChatProfile } from "@/services/api/models";
+import { BUILTIN_VIDEO_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile, imageQwen21Profile, textQwen35Profile } from "@/services/api/models";
 import { getNodeResourceCounts } from "@/lib/canvas/canvas-node-geometry";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -124,8 +124,8 @@ export function CanvasNodePromptPanel({
 
     const textModelAvailability = useMemo(() => {
         if (mode !== "text") return { isAvailable: true, reasons: [] };
-        const effectiveModelId = node.metadata?.modelId || "text-qwen-35-chat";
-        const profile = getModelProfile(effectiveModelId) || textQwen35ChatProfile;
+        const effectiveModelId = node.metadata?.modelId || "text-qwen-35";
+        const profile = getModelProfile(effectiveModelId) || textQwen35Profile;
         const activeChannel = globalConfig.channels.find((c) => c.id === (node.metadata?.channelId || globalConfig.channelId)) || globalConfig.channels[0];
         return evaluateModelAvailability({
             targetModel: profile,
@@ -164,9 +164,11 @@ export function CanvasNodePromptPanel({
         else onPromptChange(node.id, value);
     };
 
+    const canSubmitEmptyPrompt = mode === "text" && connectedResources.images > 0;
+
     const submit = (intent: CanvasGenerationIntent = canRepeat ? "repeat" : "new") => {
         const text = prompt.trim();
-        if ((!text && intent !== "repeat") || isGenerating) return;
+        if ((!text && intent !== "repeat" && !canSubmitEmptyPrompt) || isGenerating) return;
 
         // 视频生成前校验当前主机与模型多维约束（规范模式）
         if (mode === "video") {
@@ -247,6 +249,32 @@ export function CanvasNodePromptPanel({
                 onReorder={onReorderReferences}
                 onLocateNode={onLocateNode}
             />
+            {mode === "text" && connectedResources.images > 0 && (
+                <div className="mb-2 flex items-center gap-1.5 overflow-x-auto text-xs py-0.5">
+                    <span className="shrink-0 text-stone-400 dark:text-stone-500">快捷指令:</span>
+                    <button
+                        type="button"
+                        className="shrink-0 rounded-full border border-stone-200 px-2.5 py-0.5 text-xs transition hover:border-purple-400 hover:text-purple-500 dark:border-stone-700"
+                        onClick={() => updatePrompt("请根据参考图片反推一段适合用于 AI 生图的提示词。涵盖主体、构图、光影、色彩与质感。")}
+                    >
+                        生图反推
+                    </button>
+                    <button
+                        type="button"
+                        className="shrink-0 rounded-full border border-stone-200 px-2.5 py-0.5 text-xs transition hover:border-purple-400 hover:text-purple-500 dark:border-stone-700"
+                        onClick={() => updatePrompt("详细分析提取这张图片的视觉风格、艺术流派、配色方案与渲染材质。")}
+                    >
+                        风格提取
+                    </button>
+                    <button
+                        type="button"
+                        className="shrink-0 rounded-full border border-stone-200 px-2.5 py-0.5 text-xs transition hover:border-purple-400 hover:text-purple-500 dark:border-stone-700"
+                        onClick={() => updatePrompt("用详细的自然语言描述画面中的主体、人物姿态、镜头机位与环境分镜。")}
+                    >
+                        分镜描述
+                    </button>
+                </div>
+            )}
             <CanvasPromptChipInput
                 value={prompt}
                 references={mentionReferences}
@@ -254,7 +282,11 @@ export function CanvasNodePromptPanel({
                 onSubmit={submit}
                 className="thin-scrollbar h-40 w-full cursor-text resize-none rounded-xl px-3 py-2 text-sm leading-5 outline-none"
                 style={{ background: "transparent", color: theme.node.text }}
-                placeholder={t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`)}
+                placeholder={
+                    mode === "text" && connectedResources.images > 0
+                        ? "输入看图指令（留空默认执行生图提示词反推）..."
+                        : t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`)
+                }
             />
 
             <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -340,7 +372,7 @@ export function CanvasNodePromptPanel({
                         <>
                             <TextModelPicker
                                 channelId={node.metadata?.channelId || config.channelId}
-                                modelId={node.metadata?.modelId || "text-qwen-35-chat"}
+                                modelId={node.metadata?.modelId || "text-qwen-35"}
                                 connectedImages={connectedResources.images}
                                 connectedVideos={connectedResources.videos}
                                 connectedAudios={connectedResources.audios}
@@ -353,7 +385,7 @@ export function CanvasNodePromptPanel({
                                 }}
                             />
                             <CanvasTextSettingsPopover
-                                modelId={node.metadata?.modelId || "text-qwen-35-chat"}
+                                modelId={node.metadata?.modelId || "text-qwen-35"}
                                 maxLength={node.metadata?.maxLength}
                                 thinking={node.metadata?.thinking}
                                 onParamChange={(patch) => onConfigChange(node.id, patch)}
@@ -434,7 +466,7 @@ export function CanvasNodePromptPanel({
                         <Button
                             type="primary"
                             className="ml-auto !h-10 !min-w-16 shrink-0 !rounded-full !px-3"
-                            disabled={!prompt.trim()}
+                            disabled={!prompt.trim() && !canSubmitEmptyPrompt}
                             onClick={() => submit("new")}
                             aria-label={t("canvas.promptPanel.generate")}
                         >
@@ -517,7 +549,11 @@ export function CanvasNodePromptPanel({
                             isFullscreen ? "flex-1 min-h-[50vh] h-full" : "h-[52dvh] min-h-80"
                         )}
                         style={{ background: "transparent", borderColor: theme.toolbar.border, color: theme.node.text }}
-                        placeholder={t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`)}
+                        placeholder={
+                            mode === "text" && connectedResources.images > 0
+                                ? "输入看图指令（留空默认执行生图提示词反推）..."
+                                : t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`)
+                        }
                     />
                 </div>
             </Modal>

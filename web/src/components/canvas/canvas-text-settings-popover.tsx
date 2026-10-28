@@ -44,8 +44,11 @@ export function CanvasTextSettingsPopover({
     const [open, setOpen] = useState(false);
     const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
 
-    const profile = getModelProfile(modelId || "text-qwen-35-chat");
-    const currentMaxLength = maxLength ?? profile?.capabilityConfig?.textConfig?.maxLength?.default ?? 512;
+    const profile = getModelProfile(modelId || "text-qwen-35");
+    const textConfig = profile?.capabilityConfig?.textConfig;
+    const hasConfig = Boolean(textConfig?.maxLength || textConfig?.thinkingSupported);
+
+    const currentMaxLength = maxLength ?? textConfig?.maxLength?.default ?? 512;
     const currentThinking = thinking ?? true;
 
     const updateOpen = (nextOpen: boolean) => {
@@ -87,6 +90,8 @@ export function CanvasTextSettingsPopover({
             window.removeEventListener("keydown", handleKeyDown);
         };
     }, [open]);
+
+    if (!hasConfig) return null;
 
     const panel = open && buttonRect ? (
         <TextSettingsPortal

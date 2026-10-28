@@ -182,21 +182,21 @@ describe("Workflow Model Profiles (Image Workflow Models)", () => {
     });
 
     it("resolves text profiles and aliases correctly", () => {
-        expect(getModelProfile("text-qwen-35-chat")?.id).toBe("text-qwen-35-chat");
-        expect(getModelProfile("qwen-35-chat")?.id).toBe("text-qwen-35-chat");
-        expect(getModelProfile("qwen3.5 4b")?.id).toBe("text-qwen-35-chat");
-        expect(getModelProfile("text")?.id).toBe("text-qwen-35-chat");
+        expect(getModelProfile("text-qwen-35")?.id).toBe("text-qwen-35");
+        expect(getModelProfile("text-qwen-35-chat")?.id).toBe("text-qwen-35");
+        expect(getModelProfile("qwen-35-chat")?.id).toBe("text-qwen-35");
+        expect(getModelProfile("qwen3.5 4b")?.id).toBe("text-qwen-35");
+        expect(getModelProfile("text")?.id).toBe("text-qwen-35");
 
-        expect(getModelProfile("text-qwen-35-vlm")?.id).toBe("text-qwen-35-vlm");
-        expect(getModelProfile("qwen-35-vlm")?.id).toBe("text-qwen-35-vlm");
-        expect(getModelProfile("vlm")?.id).toBe("text-qwen-35-vlm");
+        expect(getModelProfile("text-qwen-35-vlm")?.id).toBe("text-qwen-35");
+        expect(getModelProfile("qwen-35-vlm")?.id).toBe("text-qwen-35");
+        expect(getModelProfile("vlm")?.id).toBe("text-qwen-35");
 
-        const chatProfile = getModelProfile("text-qwen-35-chat");
-        expect(chatProfile?.capability).toBe("text");
-        expect(chatProfile?.capabilityConfig.references.minImages).toBe(0);
-        expect(chatProfile?.capabilityConfig.references.maxImages).toBe(0);
-        expect(chatProfile?.capabilityConfig.textConfig?.maxLength?.default).toBe(512);
-        expect(chatProfile?.capabilityConfig.textConfig?.thinkingSupported).toBe(true);
+        const textProfile = getModelProfile("text-qwen-35");
+        expect(textProfile?.capability).toBe("text");
+        expect(textProfile?.capabilityConfig.references.minImages).toBe(0);
+        expect(textProfile?.capabilityConfig.references.maxImages).toBe(1);
+        expect(textProfile?.capabilityConfig.textConfig).toBeUndefined();
     });
 
     it("verifies 1K / 2K / 4K resolution tiers and 64-pixel alignment presets", () => {

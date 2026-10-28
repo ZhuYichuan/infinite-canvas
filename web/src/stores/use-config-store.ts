@@ -203,8 +203,7 @@ export const DEFAULT_SUPPORTED_IMAGE_MODEL_IDS: string[] = [
  * 默认主机支持的文本模型 ID 清单（开箱即用支持 2 款标准文本模型）
  */
 export const DEFAULT_SUPPORTED_TEXT_MODEL_IDS: string[] = [
-    "text-qwen-35-chat",
-    "text-qwen-35-vlm",
+    "text-qwen-35",
 ];
 
 /**
