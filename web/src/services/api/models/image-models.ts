@@ -229,7 +229,7 @@ export const imageFlux2DevProfile: WorkflowModelProfile = {
 
 /**
  * 4. Qwen-Image 局部编辑重绘
- * 专用于蒙版涂抹局部重绘，严格需要 1 底图 + 1 蒙版
+ * 专用于蒙版涂抹局部重绘，严格需要 2 张参考图：一张原图 + 一张蒙版
  * 遵循工作流驱动原则：工作流中没有独立的 width/height 槽位（底图尺寸自适应），UI 不暴露尺寸调整
  */
 export const imageQwenInpaintProfile: WorkflowModelProfile = {
@@ -243,8 +243,8 @@ export const imageQwenInpaintProfile: WorkflowModelProfile = {
         version: 1,
         references: {
             promptMaxChars: 20000,
-            minImages: 1,
-            maxImages: 1,
+            minImages: 2,
+            maxImages: 2,
             maskSupported: true,
             minVideos: 0,
             maxVideos: 0,
@@ -255,11 +255,11 @@ export const imageQwenInpaintProfile: WorkflowModelProfile = {
     slotMapping: {
         prompt: "prompt",
         seed: "seed",
-        images: "ref_image_01",
+        images: "ref_image_01, ref_mask",
         mask: "ref_mask",
         output: "output_image",
     },
-    description: "Qwen-Image 局部涂抹重绘，精准修改蒙版选区，底图尺寸自适应，界面无需尺寸调节。",
+    description: "Qwen-Image 局部编辑重绘，严格需要两张参考图（一张原图 + 一张蒙版），底图尺寸自适应，界面无需尺寸调节。",
 };
 
 /**

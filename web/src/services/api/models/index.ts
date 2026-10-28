@@ -222,7 +222,7 @@ export function dispatchComfyuiModelWorkflow(
 ): Record<string, unknown> {
     // 提交前严格 Fail-loud 校验
     validateModelExecution(profile, {
-        imagesCount: (params.firstFrameAssetId ? 1 : 0) + (params.lastFrameAssetId ? 1 : 0) + (params.assetIds?.length || 0),
+        imagesCount: (params.firstFrameAssetId ? 1 : 0) + (params.lastFrameAssetId ? 1 : 0) + (params.maskAssetId ? 1 : 0) + (params.assetIds?.length || 0),
         videosCount: params.videoAssetIds?.length || 0,
         audiosCount: params.audioAssetIds?.length || 0,
         size: params.width && params.height ? `${params.width}x${params.height}` : undefined,
@@ -277,8 +277,12 @@ export function dispatchComfyuiModelWorkflow(
         }
 
         // 蒙版插槽绑定 (inpaint)
-        if (title === "ref_mask" && params.maskAssetId) {
-            node.inputs.image = params.maskAssetId;
+        if (title === "ref_mask") {
+            if (params.maskAssetId) {
+                node.inputs.image = params.maskAssetId;
+            } else if (params.assetIds && params.assetIds[1]) {
+                node.inputs.image = params.assetIds[1];
+            }
         }
 
         // 全能多图参考 (ref_image_01..10)
@@ -338,7 +342,7 @@ export function dispatchComfyuiModelWorkflow(
         if (title === "last_frame" && !params.lastFrameAssetId) {
             removedNodeIds.add(id);
         }
-        if (title === "ref_mask" && !params.maskAssetId) {
+        if (title === "ref_mask" && !params.maskAssetId && (!params.assetIds || !params.assetIds[1])) {
             removedNodeIds.add(id);
         }
 

@@ -82,7 +82,7 @@ describe("ImageModelPicker Data Contract & Constraints", () => {
         expect(check11.reasons).toContain("已连接 11 张参考图，该模型最多支持 10 张");
     });
 
-    it("evaluates Qwen-Image Inpaint availability (requires exactly 1 image)", () => {
+    it("evaluates Qwen-Image Inpaint availability (requires exactly 2 images: base + mask)", () => {
         const check0 = evaluateModelAvailability({
             targetModel: imageQwenInpaintProfile,
             connectedImages: 0,
@@ -91,7 +91,7 @@ describe("ImageModelPicker Data Contract & Constraints", () => {
             promptText: "inpaint area",
         });
         expect(check0.isAvailable).toBe(false);
-        expect(check0.reasons).toContain("该模型至少需要 1 张参考图，当前仅连接 0 张");
+        expect(check0.reasons).toContain("该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 0 张");
 
         const check1 = evaluateModelAvailability({
             targetModel: imageQwenInpaintProfile,
@@ -100,7 +100,8 @@ describe("ImageModelPicker Data Contract & Constraints", () => {
             connectedAudios: 0,
             promptText: "inpaint area",
         });
-        expect(check1.isAvailable).toBe(true);
+        expect(check1.isAvailable).toBe(false);
+        expect(check1.reasons).toContain("该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 1 张");
 
         const check2 = evaluateModelAvailability({
             targetModel: imageQwenInpaintProfile,
@@ -109,8 +110,17 @@ describe("ImageModelPicker Data Contract & Constraints", () => {
             connectedAudios: 0,
             promptText: "inpaint area",
         });
-        expect(check2.isAvailable).toBe(false);
-        expect(check2.reasons).toContain("已连接 2 张参考图，该模型最多支持 1 张");
+        expect(check2.isAvailable).toBe(true);
+
+        const check3 = evaluateModelAvailability({
+            targetModel: imageQwenInpaintProfile,
+            connectedImages: 3,
+            connectedVideos: 0,
+            connectedAudios: 0,
+            promptText: "inpaint area",
+        });
+        expect(check3.isAvailable).toBe(false);
+        expect(check3.reasons).toContain("该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 3 张");
     });
 
     it("evaluates media type compatibility (rejects video/audio for image models)", () => {

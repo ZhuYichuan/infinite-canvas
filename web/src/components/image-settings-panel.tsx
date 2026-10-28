@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect } from "react";
-import { ConfigProvider, Switch } from "antd";
+import { ConfigProvider } from "antd";
 import { useTranslation } from "react-i18next";
 
 import i18n from "@/i18n";
@@ -23,7 +23,6 @@ const qualityOptions = [
     { value: "medium", labelKey: "medium" },
     { value: "low", labelKey: "low" },
 ];
-const DIMENSION_STEP = 16;
 
 const resolutionTiers: Array<{ value: ImageResolutionTier; label: string }> = [
     { value: "1k", label: "1K" },
@@ -80,7 +79,6 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, modelId, sho
     const parsed = parseImageSizeTierAndRatio(activeSize);
 
     const [activeTier, setActiveTier] = useState<ImageResolutionTier>(parsed.tier || "1k");
-    const [snapDimensionToStep, setSnapDimensionToStep] = useState(true);
 
     // 当外部尺寸变化时同步档位
     useEffect(() => {
@@ -114,7 +112,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, modelId, sho
         const next = Math.max(1, Math.floor(value || dimensions[key] || 512));
         const width = key === "width" ? next : dimensions.width;
         const height = key === "height" ? next : dimensions.height;
-        onConfigChange("size", `${alignDimension(width, snapDimensionToStep)}x${alignDimension(height, snapDimensionToStep)}`);
+        onConfigChange("size", `${width}x${height}`);
     };
 
     return (
@@ -133,21 +131,11 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, modelId, sho
                     <>
                         {sizeConfig?.allowCustom !== false ? (
                             <div className="space-y-2.5">
-                                <div className="flex items-center justify-between gap-3">
-                                    <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.size")}</SettingTitle>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-medium" style={{ color: theme.node.muted }}>
-                                            {t("settingsPanels.image.align16")}
-                                        </span>
-                                        <span title={t("settingsPanels.image.align16Hint")} onMouseDown={(event) => event.stopPropagation()}>
-                                            <Switch size="small" checked={snapDimensionToStep} onChange={setSnapDimensionToStep} />
-                                        </span>
-                                    </div>
-                                </div>
+                                <SettingTitle color={theme.node.muted}>{t("settingsPanels.image.size")}</SettingTitle>
                                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5">
-                                    <DimensionInput prefix="W" value={dimensions.width} disabled={activeSize === "auto"} theme={theme} alignToStep={snapDimensionToStep} onChange={(value) => updateDimension("width", value)} />
+                                    <DimensionInput prefix="W" value={dimensions.width} disabled={activeSize === "auto"} theme={theme} onChange={(value) => updateDimension("width", value)} />
                                     <span className="text-lg opacity-45">↔</span>
-                                    <DimensionInput prefix="H" value={dimensions.height} disabled={activeSize === "auto"} theme={theme} alignToStep={snapDimensionToStep} onChange={(value) => updateDimension("height", value)} />
+                                    <DimensionInput prefix="H" value={dimensions.height} disabled={activeSize === "auto"} theme={theme} onChange={(value) => updateDimension("height", value)} />
                                 </div>
                             </div>
                         ) : null}
@@ -253,9 +241,9 @@ function OptionPill({ selected, theme, onClick, children }: { selected: boolean;
     );
 }
 
-function DimensionInput({ prefix, value, disabled, theme, alignToStep, onChange }: { prefix: string; value: number; disabled: boolean; theme: CanvasTheme; alignToStep: boolean; onChange: (value: number | null) => void }) {
+function DimensionInput({ prefix, value, disabled, theme, onChange }: { prefix: string; value: number; disabled: boolean; theme: CanvasTheme; onChange: (value: number | null) => void }) {
     const commit = (input: HTMLInputElement) => {
-        const next = alignDimension(Math.max(1, Math.floor(Number(input.value) || value || 1024)), alignToStep);
+        const next = Math.max(1, Math.floor(Number(input.value) || value || 512));
         input.value = String(next);
         onChange(next);
     };
@@ -317,8 +305,4 @@ function SettingTitle({ children, color }: { children: string; color: string }) 
             {children}
         </div>
     );
-}
-
-function alignDimension(value: number, enabled: boolean) {
-    return enabled ? Math.ceil(value / DIMENSION_STEP) * DIMENSION_STEP : value;
 }

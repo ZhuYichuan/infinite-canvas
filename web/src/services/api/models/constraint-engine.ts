@@ -74,6 +74,13 @@ export class ImageQuotaRule implements ModelConstraintRule {
             };
         }
 
+        if (refs.maskSupported && refs.minImages !== undefined && refs.maxImages !== undefined && refs.minImages === refs.maxImages && ctx.connectedImages !== refs.minImages) {
+            return {
+                passed: false,
+                reason: `该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 ${ctx.connectedImages} 张`,
+            };
+        }
+
         if (refs.maxImages !== undefined && ctx.connectedImages > refs.maxImages) {
             return {
                 passed: false,

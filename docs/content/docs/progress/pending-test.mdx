@@ -8,11 +8,14 @@ description: Implemented changes that still need manual verification
 The current release needs manual verification in these areas:
 
 - Image Node Workflow Model DSL Architecture & Dynamic Sizing (图片节点模型 DSL 架构与动态尺寸适配):
-  - **1K / 2K / 4K Resolution Tiers & 64-Pixel Presets (清晰度档位与 64 像素对齐预设)**:
+  - **1K / 2K / 4K Resolution Tiers & Clean Size Panel (清晰度档位与精简尺寸面板)**:
     - 验证默认初始尺寸为 `512×512`（1K 档 1:1），生成速度极快；
     - 验证图片设置面板顶部提供「1K」、「2K」、「4K」三档清晰度切换按钮；
     - 验证切换档位时，下方 7 大常用宽高比（1:1, 4:3, 3:4, 3:2, 2:3, 16:9, 9:16）自动联动到对应档位的 64 像素硬件对齐尺寸（如 1K 16:9 为 640×384，2K 16:9 为 1344×768，4K 16:9 为 2688×1536）；
-    - 验证自定义 W / H 输入框实时同步当前宽高，且支持开启 16 倍数对齐手动微调；
+    - 验证自定义 W / H 输入框实时同步当前宽高，已移除冗余的「16 倍数对齐」开关按钮，面板更加干净；
+  - **Inpaint 2-Image Quota (局部编辑严格两张参考图防呆)**:
+    - 验证 Qwen-Image 局部编辑重绘模型严格限制为 2 张参考图（一张原图 + 一张蒙版）：少于 2 张或多于 2 张时模型置灰，悬停清晰提示「该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 X 张」；
+    - 验证连接 2 张图片后正常点亮可用；连线尝试拉入第 3 张图时即时红色阻断拦截；
   - **Host Availability Compatibility & Open-by-Default Fallback (主机支持度历史配置兼容)**:
     - 验证已配置过历史视频主机（未显式声明生图模型名单）的环境下，生图模型默认允许使用（开箱即用），不再误报「当前主机未启用该模型支持」；
   - **ImageModelPicker Cascader & 4 Image Models (图片模型级联选择器与 4 大内置生图模型)**:

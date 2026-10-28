@@ -158,11 +158,11 @@ describe("Workflow Model Profiles (Image Workflow Models)", () => {
         expect(profile?.capabilityConfig.references.maxImages).toBe(2);
     });
 
-    it("registers image-qwen-inpaint with maskSupported and undefined size (UI-hidden)", () => {
+    it("registers image-qwen-inpaint with exactly 2 images (base + mask) and undefined size", () => {
         const profile = getModelProfile("image-qwen-inpaint");
         expect(profile).toBeDefined();
-        expect(profile?.capabilityConfig.references.minImages).toBe(1);
-        expect(profile?.capabilityConfig.references.maxImages).toBe(1);
+        expect(profile?.capabilityConfig.references.minImages).toBe(2);
+        expect(profile?.capabilityConfig.references.maxImages).toBe(2);
         expect(profile?.capabilityConfig.references.maskSupported).toBe(true);
         expect(profile?.capabilityConfig.size).toBeUndefined();
     });

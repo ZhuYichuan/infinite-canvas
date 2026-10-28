@@ -11,6 +11,7 @@ import {
 import {
     videoMinimaxH3OmniFp8PdmdProfile,
     videoMinimaxH3FrameFp8PdmdProfile,
+    imageQwenInpaintProfile,
 } from "../index";
 import type { ModelChannel } from "@/types/config";
 
@@ -116,6 +117,27 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
             };
 
             expect(rule.check(ctx).passed).toBe(true);
+        });
+
+        it("strictly enforces exactly 2 images for inpaint (base + mask)", () => {
+            const checkCount = (count: number) => rule.check({
+                targetModel: imageQwenInpaintProfile,
+                connectedImages: count,
+                connectedVideos: 0,
+                connectedAudios: 0,
+                promptText: "",
+            });
+
+            expect(checkCount(0).passed).toBe(false);
+            expect(checkCount(0).reason).toBe("该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 0 张");
+
+            expect(checkCount(1).passed).toBe(false);
+            expect(checkCount(1).reason).toBe("该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 1 张");
+
+            expect(checkCount(2).passed).toBe(true);
+
+            expect(checkCount(3).passed).toBe(false);
+            expect(checkCount(3).reason).toBe("该模型需要两张参考图（一张原图 + 一张蒙版），当前已连接 3 张");
         });
     });
 
