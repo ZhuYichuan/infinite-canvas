@@ -1071,6 +1071,30 @@ describe("native ComfyUI video validation", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it("submits video job with model profile and default workflow successfully", async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (String(url).includes("/prompt")) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ prompt_id: "job_video_123" }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+
+        const result = await submitComfyuiVideoJob({
+            config: { ...buildFrameVideoConfig(), size: "1280x736" },
+            prompt: "生成一段超酷动画",
+            model: "omni-video-minimax-h3-fp8-4step-pdmd",
+            videoMode: "omni",
+        });
+
+        expect(result.jobId).toBe("job_video_123");
+        expect(result.baseUrl).toBe("http://10.7.8.12:8188");
+        expect(fetchMock).toHaveBeenCalled();
+    });
+
     it("reports a completed job without video output as no-video-output rather than cancellation", async () => {
         fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ job_1: { status: { status_str: "success", completed: true }, outputs: {} } }) });
         const error: unknown = await pollComfyuiVideoJob("job_1", "http://10.7.8.12:8188").catch((reason) => reason);

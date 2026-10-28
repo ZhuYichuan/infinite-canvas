@@ -144,6 +144,27 @@ export const DEFAULT_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW = DEFAULT_BUILTIN_COMFYUI
 export const DEFAULT_COMFYUI_AUDIO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW;
 export const DEFAULT_COMFYUI_FACE_REFINE_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FACE_REFINE_WORKFLOW;
 
+/**
+ * 根据模型 Profile ID 匹配精准对齐的系统内置工作流模板
+ */
+export function getWorkflowForModelProfile(modelId?: string): ComfyuiWorkflow | undefined {
+    if (!modelId) return undefined;
+    switch (modelId) {
+        case "omni-video-minimax-h3-fp8-4step-pdmd":
+        case "video_minimax_h3_omni":
+            return DEFAULT_BUILTIN_COMFYUI_VIDEO_PDMD_WORKFLOW;
+        case "omni-video-minimax-h3-fp8":
+            return DEFAULT_BUILTIN_COMFYUI_VIDEO_20STEP_WORKFLOW;
+        case "frame-video-minimax-h3-fp8-4step-pdmd":
+        case "video_minimax_h3_frame":
+            return DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW;
+        case "frame-video-minimax-h3-fp8":
+            return DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_20STEP_WORKFLOW;
+        default:
+            return undefined;
+    }
+}
+
 // Backward-compatible local aliases
 export const DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW;
 export const DEFAULT_LOCAL_COMFYUI_I2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW;

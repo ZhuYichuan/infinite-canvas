@@ -10,6 +10,7 @@ import {
     DEFAULT_COMFYUI_T2I_WORKFLOW,
     DEFAULT_COMFYUI_TEXT_WORKFLOW,
     DEFAULT_COMFYUI_VIDEO_WORKFLOW,
+    getWorkflowForModelProfile,
 } from "./comfyui-default-workflows";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
@@ -2936,24 +2937,35 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
         : Array.isArray(channel.workflows)
           ? getDefaultWorkflow(channel, initialVideoMode === "frame" ? "frameVideo" : "omniVideo")
           : undefined;
+    const modelProfile = getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel || initialVideoMode);
     const isFrameWorkflow = targetWorkflowItem?.category === "frameVideo";
-    const isOmniOrRefineWorkflow = targetWorkflowItem?.category === "omniVideo" || targetWorkflowItem?.category === "faceRefine" || targetWorkflowItem?.category === "depthVideo";
-    const hasReferenceVideos = Boolean(req.referenceVideos && req.referenceVideos.length > 0);
-    const videoMode = isFrameWorkflow
-        ? "frame"
-        : isOmniOrRefineWorkflow || hasReferenceVideos
-        ? "omni"
-        : initialVideoMode;
+    const isFrameMode = modelProfile?.category === "frameVideo" || isFrameWorkflow || initialVideoMode === "frame";
+    const videoMode = isFrameMode ? "frame" : "omni";
+    if (modelProfile) {
+        validateModelExecution(modelProfile, {
+            imagesCount: (req.references?.length || 0) + (req.firstFrame ? 1 : 0) + (req.lastFrame ? 1 : 0),
+            videosCount: req.referenceVideos?.length || 0,
+            audiosCount: req.referenceAudios?.length || 0,
+            size: req.config.size,
+            duration: req.config.videoSeconds ? Number(req.config.videoSeconds) : undefined,
+        });
+    }
+
+    const profileWorkflow = modelProfile ? getWorkflowForModelProfile(modelProfile.id) : undefined;
     const videoWorkflow =
         targetWorkflowItem
             ? { json: targetWorkflowItem.json }
+            : profileWorkflow
+            ? { json: profileWorkflow.json }
             : videoMode === "frame"
             ? (channelModel && isFrameVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiFrameVideoWorkflow ||
-              channel.models.find((m) => isFrameVideoWorkflowModel(m))?.comfyuiWorkflow
+              channel.models.find((m) => isFrameVideoWorkflowModel(m))?.comfyuiWorkflow ||
+              DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW
             : (channelModel && isOmniVideoWorkflowModel(channelModel) ? channelModel.comfyuiWorkflow : undefined) ||
               channel.comfyuiVideoWorkflow ||
-              channel.models.find((m) => isOmniVideoWorkflowModel(m))?.comfyuiWorkflow;
+              channel.models.find((m) => isOmniVideoWorkflowModel(m))?.comfyuiWorkflow ||
+              DEFAULT_COMFYUI_VIDEO_WORKFLOW;
 
     if (!videoWorkflow) {
         throw new ComfyuiNoWorkflowError(i18n.t(videoMode === "frame" ? "comfyui.noFrameVideoWorkflow" : "comfyui.noVideoWorkflow"));
@@ -2967,17 +2979,6 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const assetIds: string[] = [];
     const videoAssetIds: string[] = [];
     const audioAssetIds: string[] = [];
-
-    const modelProfile = getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel || videoMode);
-    if (modelProfile) {
-        validateModelExecution(modelProfile, {
-            imagesCount: (req.references?.length || 0) + (req.firstFrame ? 1 : 0) + (req.lastFrame ? 1 : 0),
-            videosCount: req.referenceVideos?.length || 0,
-            audiosCount: req.referenceAudios?.length || 0,
-            size: req.config.size,
-            duration: req.config.videoSeconds ? Number(req.config.videoSeconds) : undefined,
-        });
-    }
 
     if (videoMode === "frame") {
         // 首尾帧模式 - 严格校验（Fail-loud）：在任何上传之前先构建去重后的参考图并校验数量/类型
