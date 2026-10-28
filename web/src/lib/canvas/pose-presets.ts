@@ -27,8 +27,15 @@ export const POSE_ANGLE_LABELS: Record<PoseAngleKey, string> = {
     low: "仰视",
 };
 
-export const POSE_SERIES_LIST: PoseSeriesItem[] = poseData.series as PoseSeriesItem[];
-export const ALL_POSES: PoseItem[] = poseData.poses as PoseItem[];
+const BLOCKED_SERIES_IDS = new Set(["pair60"]);
+const BLOCKED_SERIES_NAMES = new Set(["双人纠缠"]);
+
+export const POSE_SERIES_LIST: PoseSeriesItem[] = (poseData.series as PoseSeriesItem[]).filter(
+    (s) => !BLOCKED_SERIES_IDS.has(s.id) && !BLOCKED_SERIES_NAMES.has(s.name),
+);
+export const ALL_POSES: PoseItem[] = (poseData.poses as PoseItem[]).filter(
+    (p) => !BLOCKED_SERIES_IDS.has(p.series),
+);
 
 export function getPoseImageUrl(poseId: string, angle: PoseAngleKey, cdnBase = POSE_CDN_BASE): string {
     return `${cdnBase.replace(/\/+$/, "")}/${poseId}_${angle}.png`;
