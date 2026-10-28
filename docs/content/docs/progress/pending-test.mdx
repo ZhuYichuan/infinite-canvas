@@ -7,6 +7,27 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Canvas Top Bar ComfyUI Monitor & Popover i18n Verification (画布顶栏硬件监控与弹窗国际化双语支持验证):
+  - **顶栏状态胶囊中英切换验证**:
+    - 切换系统语言为英文（English），查看顶栏监控按钮：
+      - 空闲时显示 `Ready` 或 `VRAM 72% (17 GB / 24 GB)`；
+      - 任务运行中显示 `Running 1 · VRAM 72%` 或 `Running 1 (Queued 2) · VRAM 72%`；
+      - 离线时显示 `Offline`。
+    - 切换回中文，验证文案恢复为「就绪」、「显存 72% (17 GB / 24 GB)」、「运行中 1 · 显存 72%」等。
+  - **硬件监控详情面板（Popover 弹窗）中英切换验证**:
+    - 点击显存按钮展开监控面板，验证英文模式下：
+      - 多主机切换列表：「Compute Hosts (2)」、「Click to switch monitored host」、「Running 1」；
+      - 状态信息栏：「ComfyUI (Online)」、「(Disconnected)」以及各个操作 Tooltip；
+      - 任务队列卡片：「Task Queue」、「Processing」、「Idle / Ready」、「Running Tasks」、「Queued Tasks」；
+      - GPU / 显存卡片：「Load 0%」、「VRAM Usage:」；
+      - 内存 / CPU 卡片：「System RAM」、「CPU: 13% (12 cores)」、「RAM Usage:」；
+      - 进程与版本卡片：「ComfyUI Version:」、「PyTorch Version:」、「Process / Uptime: 30 GB · 21h 8m」；
+      - 底部清理操作按钮：「Unload Models & Free VRAM (Current Host)」、「Clean VRAM on All 2 Hosts」。
+  - **清理显存确认弹窗（Modal）中英切换验证**:
+    - 点击清理显存按钮弹出二次确认弹窗，验证标题、目标主机提示文案、4 项影响与安全引导说明、取消按钮（Cancel）与确认按钮（Confirm & Free）均完整呈现为对应语言。
+  - **协同按钮双语验证**:
+    - 验证顶栏「协同」按钮在未开启时显示「Co-op」，协同观看时显示「Co-op Watch」，房主协同中显示「Co-op (X)」。
+
 - Repeat Generation Panel State Consistency (再次生成时原节点面板状态保持一致):
   - 验证图片节点、文本节点、视频节点、音频节点点击「再次生成」时：
     - 原节点的提示词面板（CanvasNodePromptPanel）不进入运行中状态，不显示 loading 转圈，不显示红色的「停止」按钮，保持原有的完成/就绪状态；

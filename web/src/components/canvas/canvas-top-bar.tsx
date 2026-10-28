@@ -184,9 +184,9 @@ export function CanvasTopBar({
                     >
                         {activeRoomId
                             ? collabRole === "host"
-                                ? `协同中 (${onlineUsers.length || 1})`
-                                : "协同观看"
-                            : "协同"}
+                                ? t("canvas.collab.inProgress", { count: onlineUsers.length || 1 })
+                                : t("canvas.collab.watching")
+                            : t("canvas.collab.button")}
                     </Button>
                     <UserStatusActions variant="canvas" onOpenShortcuts={() => setShortcutsOpen(true)} onOpenPlugins={onOpenPlugins} />
                     <span className="h-6 w-px" style={{ background: theme.toolbar.border }} />

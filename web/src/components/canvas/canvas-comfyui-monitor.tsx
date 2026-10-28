@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Modal, Popover, Progress, Select, Tooltip, message } from "antd";
+import { useTranslation } from "react-i18next";
 import {
     Activity,
     AlertTriangle,
@@ -31,20 +32,20 @@ import {
     getComfyuiQueueStats,
 } from "@/services/api/comfyui";
 
-function cleanGpuName(rawName?: string) {
-    if (!rawName) return "GPU 加速卡";
+function cleanGpuName(rawName?: string, defaultName = "GPU") {
+    if (!rawName) return defaultName;
     return rawName
         .replace(/^cuda:\d+\s*/i, "")
         .replace(/\s*:\s*cudaMallocAsync/i, "")
         .trim() || rawName;
 }
 
-function formatUptime(seconds?: number) {
+function formatUptime(seconds: number | undefined, t: (key: string, opts?: Record<string, unknown>) => string) {
     if (!seconds || seconds <= 0) return "";
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) return `${hours}小时${mins}分`;
-    return `${mins}分钟`;
+    if (hours > 0) return t("canvas.monitor.uptimeHoursMins", { hours, mins });
+    return t("canvas.monitor.uptimeMins", { mins });
 }
 
 type ChannelSummary = {
@@ -58,6 +59,7 @@ type ChannelSummary = {
 };
 
 export function CanvasComfyuiMonitor() {
+    const { t } = useTranslation();
     const colorTheme = useThemeStore((state) => state.theme);
     const theme = canvasThemes[colorTheme];
 
@@ -132,7 +134,7 @@ export function CanvasComfyuiMonitor() {
                         used = total - (sys.devices[0].vram_free || 0);
                         percent = total > 0 ? Math.round((used / total) * 100) : 0;
                     }
-                    const gpu = cleanGpuName(d?.name || sys?.devices?.[0]?.name);
+                    const gpu = cleanGpuName(d?.name || sys?.devices?.[0]?.name, t("canvas.monitor.defaultGpu"));
                     setChannelSummaries((prev) => ({
                         ...prev,
                         [activeChannel.id]: {
@@ -155,7 +157,7 @@ export function CanvasComfyuiMonitor() {
                             vramPercent: 0,
                             vramUsed: 0,
                             vramTotal: 0,
-                            gpuName: "未连接",
+                            gpuName: t("canvas.monitor.notConnected"),
                             runningCount: 0,
                             pendingCount: 0,
                         },
@@ -167,7 +169,7 @@ export function CanvasComfyuiMonitor() {
                 if (!silent) setIsRefreshing(false);
             }
         },
-        [baseUrl, token, activeChannel?.id]
+        [baseUrl, token, activeChannel?.id, t]
     );
 
     // 多机轻量概览探测
@@ -196,7 +198,7 @@ export function CanvasComfyuiMonitor() {
                                 vramPercent: percent,
                                 vramUsed: used,
                                 vramTotal: total,
-                                gpuName: cleanGpuName(sys.devices[0].name),
+                                gpuName: cleanGpuName(sys.devices[0].name, t("canvas.monitor.defaultGpu")),
                                 runningCount: q?.runningCount || 0,
                                 pendingCount: q?.pendingCount || 0,
                             },
@@ -209,7 +211,7 @@ export function CanvasComfyuiMonitor() {
                                 vramPercent: 0,
                                 vramUsed: 0,
                                 vramTotal: 0,
-                                gpuName: "离线",
+                                gpuName: t("canvas.monitor.offline"),
                                 runningCount: 0,
                                 pendingCount: 0,
                             },
@@ -223,7 +225,7 @@ export function CanvasComfyuiMonitor() {
                             vramPercent: 0,
                             vramUsed: 0,
                             vramTotal: 0,
-                            gpuName: "离线",
+                            gpuName: t("canvas.monitor.offline"),
                             runningCount: 0,
                             pendingCount: 0,
                         },
@@ -231,7 +233,7 @@ export function CanvasComfyuiMonitor() {
                 }
             })
         );
-    }, [comfyChannels, activeChannel?.id]);
+    }, [comfyChannels, activeChannel?.id, t]);
 
     // 轮询与后台休眠
     useEffect(() => {
@@ -271,13 +273,13 @@ export function CanvasComfyuiMonitor() {
         try {
             const ok = await freeComfyuiMemory(baseUrl, token, { unload_models: true, free_memory: true });
             if (ok) {
-                message.success(`已释放主机「${activeChannel?.name || "ComfyUI"}」模型与显存`);
+                message.success(t("canvas.monitor.freedSingleSuccess", { name: activeChannel?.name || "ComfyUI" }));
                 await refreshCurrent(true);
             } else {
-                message.error("清理显存失败，请检查 ComfyUI 服务状态");
+                message.error(t("canvas.monitor.freedSingleFailed"));
             }
         } catch (error) {
-            message.error(`清理请求异常: ${error instanceof Error ? error.message : String(error)}`);
+            message.error(t("canvas.monitor.cleanRequestError", { error: error instanceof Error ? error.message : String(error) }));
         } finally {
             setIsCleaning(false);
             setCleanConfirmTarget(null);
@@ -300,14 +302,14 @@ export function CanvasComfyuiMonitor() {
                 })
             );
             if (successCount > 0) {
-                message.success(`已完成全部 ${successCount} 台主机的显存与模型清理！`);
+                message.success(t("canvas.monitor.freedAllSuccess", { count: successCount }));
                 await refreshCurrent(true);
                 await probeAllChannels();
             } else {
-                message.error("全部主机清理失败，请检查服务连接");
+                message.error(t("canvas.monitor.freedAllFailed"));
             }
         } catch (error) {
-            message.error(`批量清理异常: ${error instanceof Error ? error.message : String(error)}`);
+            message.error(t("canvas.monitor.batchCleanError", { error: error instanceof Error ? error.message : String(error) }));
         } finally {
             setIsCleaningAll(false);
             setCleanConfirmTarget(null);
@@ -316,7 +318,7 @@ export function CanvasComfyuiMonitor() {
 
     // 整合当前选中的机器指标
     const gpuDev = runtimeStats?.data?.devices?.[0] || systemStats?.devices?.[0];
-    const gpuName = cleanGpuName(gpuDev?.name);
+    const gpuName = cleanGpuName(gpuDev?.name, t("canvas.monitor.defaultGpu"));
 
     let vramTotal = 0;
     let vramUsed = 0;
@@ -372,16 +374,18 @@ export function CanvasComfyuiMonitor() {
 
     // 顶栏常驻展示文案（多机时展示机器名）
     const machinePrefix = comfyChannels.length > 1 ? `${activeChannel?.name || "ComfyUI"} · ` : "";
-    let topBarText = `${machinePrefix}离线`;
+    let topBarText = `${machinePrefix}${t("canvas.monitor.offline")}`;
     if (isOnline) {
         if (hasRunningTasks) {
-            topBarText = `${machinePrefix}运行中 ${queueStats!.runningCount}${hasPendingTasks ? ` (排队 ${queueStats!.pendingCount})` : ""} · 显存 ${vramPercent}%`;
+            topBarText = hasPendingTasks
+                ? `${machinePrefix}${t("canvas.monitor.runningWithPending", { running: queueStats!.runningCount, pending: queueStats!.pendingCount })} · ${t("canvas.monitor.vramUsage", { percent: vramPercent })}`
+                : `${machinePrefix}${t("canvas.monitor.running", { count: queueStats!.runningCount })} · ${t("canvas.monitor.vramUsage", { percent: vramPercent })}`;
         } else if (hasPendingTasks) {
-            topBarText = `${machinePrefix}排队中 ${queueStats!.pendingCount} · 显存 ${vramPercent}%`;
+            topBarText = `${machinePrefix}${t("canvas.monitor.queued", { count: queueStats!.pendingCount })} · ${t("canvas.monitor.vramUsage", { percent: vramPercent })}`;
         } else if (vramTotal > 0) {
-            topBarText = `${machinePrefix}显存 ${vramPercent}% (${formatBytes(vramUsed)}/${formatBytes(vramTotal)})`;
+            topBarText = `${machinePrefix}${t("canvas.monitor.vramUsageWithBytes", { percent: vramPercent, used: formatBytes(vramUsed), total: formatBytes(vramTotal) })}`;
         } else {
-            topBarText = `${machinePrefix}就绪`;
+            topBarText = `${machinePrefix}${t("canvas.monitor.ready")}`;
         }
     }
 
@@ -394,9 +398,9 @@ export function CanvasComfyuiMonitor() {
                     <div className="mb-1 flex items-center justify-between text-[11px] opacity-70">
                         <span className="flex items-center gap-1 font-medium">
                             <Server className="size-3" />
-                            <span>算力主机 ({comfyChannels.length}台)</span>
+                            <span>{t("canvas.monitor.hostsTitle", { count: comfyChannels.length })}</span>
                         </span>
-                        <span>点击切换监控对象</span>
+                        <span>{t("canvas.monitor.hostsSwitchHint")}</span>
                     </div>
                     <Select
                         size="small"
@@ -428,14 +432,14 @@ export function CanvasComfyuiMonitor() {
                                                         : "#a8a29e",
                                                 }}
                                             />
-                                            <span className="truncate max-w-[125px] font-medium">{c.name || "ComfyUI 主机"}</span>
+                                            <span className="truncate max-w-[125px] font-medium">{c.name || t("canvas.monitor.defaultHost")}</span>
                                         </div>
                                         <span className="text-[10px] opacity-70 font-mono truncate max-w-[110px]">
                                             {sum?.online ? (
                                                 runCount > 0 ? (
-                                                    <span className="text-blue-500 font-medium">运行中 {runCount}</span>
+                                                    <span className="text-blue-500 font-medium">{t("canvas.monitor.running", { count: runCount })}</span>
                                                 ) : (
-                                                    `显存 ${sum.vramPercent}%`
+                                                    t("canvas.monitor.vramUsage", { percent: sum.vramPercent })
                                                 )
                                             ) : (
                                                 hostUrl
@@ -459,11 +463,11 @@ export function CanvasComfyuiMonitor() {
                         <span className="relative inline-flex size-2 rounded-full" style={{ background: dotColor }} />
                     </span>
                     <span className="truncate font-semibold" style={{ color: theme.node.text }}>
-                        {activeChannel?.name || "ComfyUI"} {isOnline ? "(在线)" : "(未连通)"}
+                        {activeChannel?.name || "ComfyUI"} {isOnline ? `(${t("canvas.monitor.online")})` : `(${t("canvas.monitor.disconnected")})`}
                     </span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <Tooltip title={`清理「${activeChannel?.name || "ComfyUI"}」显存与模型`}>
+                    <Tooltip title={t("canvas.monitor.cleanHostVramTooltip", { name: activeChannel?.name || "ComfyUI" })}>
                         <button
                             type="button"
                             onClick={() => {
@@ -481,7 +485,7 @@ export function CanvasComfyuiMonitor() {
                             )}
                         </button>
                     </Tooltip>
-                    <Tooltip title="立即刷新状态">
+                    <Tooltip title={t("canvas.monitor.refreshStatusTooltip")}>
                         <button
                             type="button"
                             onClick={() => refreshCurrent(false)}
@@ -493,7 +497,7 @@ export function CanvasComfyuiMonitor() {
                         </button>
                     </Tooltip>
                     {baseUrl ? (
-                        <Tooltip title="在浏览器打开该主机原生 ComfyUI 页面">
+                        <Tooltip title={t("canvas.monitor.openComfyPageTooltip")}>
                             <a
                                 href={baseUrl}
                                 target="_blank"
@@ -513,26 +517,26 @@ export function CanvasComfyuiMonitor() {
                 <div className="mb-2 flex items-center justify-between">
                     <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.node.text }}>
                         <Activity className="size-3.5 text-blue-500" />
-                        <span>任务队列</span>
+                        <span>{t("canvas.monitor.taskQueue")}</span>
                     </span>
                     {hasRunningTasks ? (
                         <span className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
                             <Loader2 className="size-2.5 animate-spin" />
-                            <span>运算中</span>
+                            <span>{t("canvas.monitor.processing")}</span>
                         </span>
                     ) : (
-                        <span className="text-[11px] opacity-60">空闲就绪</span>
+                        <span className="text-[11px] opacity-60">{t("canvas.monitor.idleReady")}</span>
                     )}
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                     <div className="flex flex-col rounded p-1.5" style={{ background: theme.mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}>
-                        <span className="opacity-60 text-[10px]">运行中任务</span>
+                        <span className="opacity-60 text-[10px]">{t("canvas.monitor.runningTasks")}</span>
                         <span className="text-sm font-semibold mt-0.5 font-mono" style={{ color: hasRunningTasks ? "#3b82f6" : theme.node.text }}>
                             {queueStats?.runningCount ?? 0}
                         </span>
                     </div>
                     <div className="flex flex-col rounded p-1.5" style={{ background: theme.mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}>
-                        <span className="opacity-60 text-[10px]">排队中任务</span>
+                        <span className="opacity-60 text-[10px]">{t("canvas.monitor.queuedTasks")}</span>
                         <span className="text-sm font-semibold mt-0.5 font-mono" style={{ color: hasPendingTasks ? "#f59e0b" : theme.node.text }}>
                             {queueStats?.pendingCount ?? 0}
                         </span>
@@ -551,7 +555,7 @@ export function CanvasComfyuiMonitor() {
                     </span>
                     {gpuUtilization !== null ? (
                         <span className="text-[11px] opacity-70">
-                            负载 <strong className="font-semibold">{gpuUtilization}%</strong>
+                            {t("canvas.monitor.load")} <strong className="font-semibold">{gpuUtilization}%</strong>
                         </span>
                     ) : null}
                 </div>
@@ -564,7 +568,7 @@ export function CanvasComfyuiMonitor() {
                 />
                 <div className="mt-1.5 flex items-center justify-between text-[11px] opacity-75">
                     <span>
-                        显存占用: <strong>{vramPercent}%</strong>
+                        {t("canvas.monitor.vramLabel")} <strong>{vramPercent}%</strong>
                     </span>
                     <span>
                         {formatBytes(vramUsed)} / {formatBytes(vramTotal)}
@@ -577,12 +581,12 @@ export function CanvasComfyuiMonitor() {
                 <div className="mb-1.5 flex items-center justify-between">
                     <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.node.text }}>
                         <HardDrive className="size-3.5 text-amber-500" />
-                        <span>系统内存 (RAM)</span>
+                        <span>{t("canvas.monitor.systemRam")}</span>
                     </span>
                     {cpuPercent !== null ? (
                         <span className="text-[11px] opacity-70">
-                            CPU: <strong className="font-semibold">{cpuPercent}%</strong>
-                            {runtimeStats?.data?.cpu?.logical_cores ? ` (${runtimeStats.data.cpu.logical_cores}核)` : ""}
+                            {t("canvas.monitor.cpu")} <strong className="font-semibold">{cpuPercent}%</strong>
+                            {runtimeStats?.data?.cpu?.logical_cores ? ` (${t("canvas.monitor.cores", { count: runtimeStats.data.cpu.logical_cores })})` : ""}
                         </span>
                     ) : null}
                 </div>
@@ -595,7 +599,7 @@ export function CanvasComfyuiMonitor() {
                 />
                 <div className="mt-1.5 flex items-center justify-between text-[11px] opacity-75">
                     <span>
-                        内存占用: <strong>{ramPercent}%</strong>
+                        {t("canvas.monitor.ramLabel")} <strong>{ramPercent}%</strong>
                     </span>
                     <span>
                         {formatBytes(ramUsed)} / {formatBytes(ramTotal)}
@@ -607,22 +611,22 @@ export function CanvasComfyuiMonitor() {
             <div className="space-y-1 rounded-lg px-2.5 py-2 text-[11px] opacity-75" style={{ background: theme.mode === "dark" ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)" }}>
                 {systemStats?.system?.comfyui_version ? (
                     <div className="flex justify-between">
-                        <span>ComfyUI 版本:</span>
+                        <span>{t("canvas.monitor.comfyuiVersion")}</span>
                         <span className="font-mono">{systemStats.system.comfyui_version}</span>
                     </div>
                 ) : null}
                 {systemStats?.system?.pytorch_version ? (
                     <div className="flex justify-between">
-                        <span>PyTorch 版本:</span>
+                        <span>{t("canvas.monitor.pytorchVersion")}</span>
                         <span className="font-mono truncate max-w-[180px]">{systemStats.system.pytorch_version}</span>
                     </div>
                 ) : null}
                 {processMemory ? (
                     <div className="flex justify-between">
-                        <span>进程占用 / 运行:</span>
+                        <span>{t("canvas.monitor.processUptime")}</span>
                         <span>
                             {formatBytes(processMemory)}
-                            {uptimeSeconds ? ` · ${formatUptime(uptimeSeconds)}` : ""}
+                            {uptimeSeconds ? ` · ${formatUptime(uptimeSeconds, t)}` : ""}
                         </span>
                     </div>
                 ) : null}
@@ -644,7 +648,7 @@ export function CanvasComfyuiMonitor() {
                     }}
                 >
                     <Eraser className="size-3.5" />
-                    <span>卸载模型并释放显存 (当前主机)</span>
+                    <span>{t("canvas.monitor.cleanCurrent")}</span>
                 </button>
 
                 {comfyChannels.length > 1 ? (
@@ -659,7 +663,7 @@ export function CanvasComfyuiMonitor() {
                         style={{ color: theme.node.text }}
                     >
                         <Sparkles className="size-3 text-amber-500" />
-                        <span>一键清理全部 {comfyChannels.length} 台主机显存</span>
+                        <span>{t("canvas.monitor.cleanAll", { count: comfyChannels.length })}</span>
                     </button>
                 ) : null}
             </div>
@@ -681,7 +685,7 @@ export function CanvasComfyuiMonitor() {
                     type="button"
                     className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
                     style={{ color: theme.node.text }}
-                    title="点击查看硬件负载与切换 ComfyUI 主机"
+                    title={t("canvas.monitor.buttonTitle")}
                 >
                     <span className="relative flex size-2 shrink-0">
                         {isOnline && hasRunningTasks ? (
@@ -712,8 +716,8 @@ export function CanvasComfyuiMonitor() {
                         <Eraser className="size-5 text-amber-500" />
                         <span>
                             {cleanConfirmTarget === "all"
-                                ? `确认一键清理全部 ${comfyChannels.length} 台主机的显存？`
-                                : `确认清理主机「${activeChannel?.name || "ComfyUI"}」的显存？`}
+                                ? t("canvas.monitor.confirmTitleAll", { count: comfyChannels.length })
+                                : t("canvas.monitor.confirmTitleSingle", { name: activeChannel?.name || "ComfyUI" })}
                         </span>
                     </div>
                 }
@@ -723,7 +727,7 @@ export function CanvasComfyuiMonitor() {
                             onClick={() => setCleanConfirmTarget(null)}
                             disabled={isCleaning || isCleaningAll}
                         >
-                            暂不清理
+                            {t("canvas.monitor.cancel")}
                         </Button>
                         <Button
                             type="primary"
@@ -738,7 +742,7 @@ export function CanvasComfyuiMonitor() {
                             loading={isCleaning || isCleaningAll}
                             icon={<Eraser className="size-4" />}
                         >
-                            确认清理并释放
+                            {t("canvas.monitor.confirmAndFree")}
                         </Button>
                     </div>
                 }
@@ -752,12 +756,12 @@ export function CanvasComfyuiMonitor() {
                             border: `1px solid ${theme.node.stroke}`,
                         }}
                     >
-                        <div className="text-[11px] font-medium opacity-60">清理目标算力主机</div>
+                        <div className="text-[11px] font-medium opacity-60">{t("canvas.monitor.targetHost")}</div>
                         <div className="mt-1 font-semibold" style={{ color: theme.node.text }}>
                             {cleanConfirmTarget === "all" ? (
                                 <div className="space-y-1">
                                     <div className="text-amber-600 dark:text-amber-400 font-medium">
-                                        将同时向全部 {comfyChannels.length} 台 ComfyUI 机器发送清理指令：
+                                        {t("canvas.monitor.sendAllCommandHint", { count: comfyChannels.length })}
                                     </div>
                                     <div className="flex flex-wrap gap-1.5 pt-1">
                                         {comfyChannels.map((c) => (
@@ -786,9 +790,9 @@ export function CanvasComfyuiMonitor() {
                         <div className="flex items-start gap-2.5">
                             <Zap className="size-4 shrink-0 text-emerald-500 mt-0.5" />
                             <div>
-                                <strong className="text-stone-800 dark:text-stone-200">立即释放显存，恢复清爽闲置状态</strong>
+                                <strong className="text-stone-800 dark:text-stone-200">{t("canvas.monitor.guide1Title")}</strong>
                                 <div className="mt-0.5 text-stone-500 dark:text-stone-400">
-                                    ComfyUI 将强制脱离显存中已驻留的大模型（Checkpoint、DiT/UNET、CLIP、VAE 等）并回收 PyTorch 显存缓存，显存占用即刻降回初始空闲状态，降低显卡功耗与发热。
+                                    {t("canvas.monitor.guide1Desc")}
                                 </div>
                             </div>
                         </div>
@@ -796,9 +800,9 @@ export function CanvasComfyuiMonitor() {
                         <div className="flex items-start gap-2.5">
                             <Clock className="size-4 shrink-0 text-amber-500 mt-0.5" />
                             <div>
-                                <strong className="text-stone-800 dark:text-stone-200">下次生成时有 2~8 秒冷启动加载耗时</strong>
+                                <strong className="text-stone-800 dark:text-stone-200">{t("canvas.monitor.guide2Title")}</strong>
                                 <div className="mt-0.5 text-stone-500 dark:text-stone-400">
-                                    由于模型权重已从显存卸载，<strong>下一次点击生图或生成视频时</strong>，ComfyUI 需要重新从本地磁盘读取模型进显存（通常耗时约 2 ~ 8 秒），之后同模型的后续生成仍恢复极速热加载。
+                                    {t("canvas.monitor.guide2Desc")}
                                 </div>
                             </div>
                         </div>
@@ -806,9 +810,9 @@ export function CanvasComfyuiMonitor() {
                         <div className="flex items-start gap-2.5">
                             <ShieldCheck className="size-4 shrink-0 text-blue-500 mt-0.5" />
                             <div>
-                                <strong className="text-stone-800 dark:text-stone-200">零数据风险，无损安全</strong>
+                                <strong className="text-stone-800 dark:text-stone-200">{t("canvas.monitor.guide3Title")}</strong>
                                 <div className="mt-0.5 text-stone-500 dark:text-stone-400">
-                                    仅释放运行时 GPU/系统 RAM 临时缓存，<strong>绝不会删除任何本地磁盘模型文件</strong>，亦不会影响画布上的节点、生成参数或已有产物。
+                                    {t("canvas.monitor.guide3Desc")}
                                 </div>
                             </div>
                         </div>
@@ -816,9 +820,9 @@ export function CanvasComfyuiMonitor() {
                         <div className="flex items-start gap-2.5">
                             <AlertTriangle className="size-4 shrink-0 text-orange-500 mt-0.5" />
                             <div>
-                                <strong className="text-stone-800 dark:text-stone-200">建议在任务空闲时执行</strong>
+                                <strong className="text-stone-800 dark:text-stone-200">{t("canvas.monitor.guide4Title")}</strong>
                                 <div className="mt-0.5 text-stone-500 dark:text-stone-400">
-                                    若当前有正在进行的生图/生视频推断运算，执行卸载可能导致运算中断，请确认任务已完成或空闲后再清理。
+                                    {t("canvas.monitor.guide4Desc")}
                                 </div>
                             </div>
                         </div>
