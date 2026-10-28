@@ -1,5 +1,5 @@
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type ConnectionHandle } from "@/types/canvas";
-import { getModelProfile, imageQwen21Profile, videoMinimaxH3OmniProfile } from "@/services/api/models";
+import { getModelProfile, imageQwen21Profile, textQwen35ChatProfile, videoMinimaxH3OmniProfile } from "@/services/api/models";
 import { getGroupResourceNodes } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 
@@ -116,7 +116,15 @@ export function validateInputConnection(
 
     // 针对绑定了模型 DSL 的节点进行配额与多模态类型边界校验
     const modelId = toNode.metadata?.modelId || toNode.metadata?.videoMode || toNode.metadata?.model;
-    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : toNode.type === CanvasNodeType.Image ? imageQwen21Profile : undefined);
+    const profile = getModelProfile(modelId) || (
+        toNode.type === CanvasNodeType.Video
+            ? videoMinimaxH3OmniProfile
+            : toNode.type === CanvasNodeType.Image
+            ? imageQwen21Profile
+            : toNode.type === CanvasNodeType.Text
+            ? textQwen35ChatProfile
+            : undefined
+    );
 
     if (profile?.capabilityConfig.references) {
         const refs = profile.capabilityConfig.references;
@@ -193,7 +201,15 @@ export function getConnectionRejectionDetail(
     }
 
     const modelId = toNode.metadata?.modelId || toNode.metadata?.videoMode || toNode.metadata?.model;
-    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : toNode.type === CanvasNodeType.Image ? imageQwen21Profile : undefined);
+    const profile = getModelProfile(modelId) || (
+        toNode.type === CanvasNodeType.Video
+            ? videoMinimaxH3OmniProfile
+            : toNode.type === CanvasNodeType.Image
+            ? imageQwen21Profile
+            : toNode.type === CanvasNodeType.Text
+            ? textQwen35ChatProfile
+            : undefined
+    );
 
     if (profile?.capabilityConfig.references) {
         const refs = profile.capabilityConfig.references;
@@ -202,7 +218,9 @@ export function getConnectionRejectionDetail(
         if ((refs.maxImages ?? 0) === 0 && incoming.images > 0) {
             return {
                 key: "connectionMediaTypeUnsupported",
-                defaultMessage: "连接被拒绝：当前模型不支持参考图",
+                defaultMessage: profile.capability === "text"
+                    ? "连接被拒绝：纯文本模型不支持连入参考图片"
+                    : "连接被拒绝：当前模型不支持参考图",
             };
         }
         if ((refs.maxVideos ?? 0) === 0 && incoming.videos > 0) {

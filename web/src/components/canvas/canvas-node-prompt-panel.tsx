@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
 import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
 import { VideoModelPicker } from "@/components/video-model-picker";
 import { ImageModelPicker } from "@/components/image-model-picker";
+import { TextModelPicker } from "@/components/text-model-picker";
 import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, isModelSupportedByHost, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
-import { BUILTIN_VIDEO_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile, imageQwen21Profile } from "@/services/api/models";
+import { BUILTIN_VIDEO_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile, imageQwen21Profile, textQwen35ChatProfile } from "@/services/api/models";
 import { getNodeResourceCounts } from "@/lib/canvas/canvas-node-geometry";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -121,8 +122,35 @@ export function CanvasNodePromptPanel({
         });
     }, [mode, node.metadata?.modelId, config.imageModel, node.metadata?.channelId, globalConfig.channels, globalConfig.channelId, connectedResources, prompt]);
 
-    const isCurrentModelAvailable = mode === "video" ? videoModelAvailability.isAvailable : mode === "image" ? imageModelAvailability.isAvailable : true;
-    const currentModelUnavailabilityReasons = mode === "video" ? videoModelAvailability.reasons : mode === "image" ? imageModelAvailability.reasons : [];
+    const textModelAvailability = useMemo(() => {
+        if (mode !== "text") return { isAvailable: true, reasons: [] };
+        const effectiveModelId = node.metadata?.modelId || "text-qwen-35-chat";
+        const profile = getModelProfile(effectiveModelId) || textQwen35ChatProfile;
+        const activeChannel = globalConfig.channels.find((c) => c.id === (node.metadata?.channelId || globalConfig.channelId)) || globalConfig.channels[0];
+        return evaluateModelAvailability({
+            targetModel: profile,
+            connectedImages: connectedResources.images,
+            connectedVideos: connectedResources.videos,
+            connectedAudios: connectedResources.audios,
+            promptText: prompt,
+            activeChannel,
+        });
+    }, [mode, node.metadata?.modelId, node.metadata?.channelId, globalConfig.channels, globalConfig.channelId, connectedResources, prompt]);
+
+    const isCurrentModelAvailable = mode === "video"
+        ? videoModelAvailability.isAvailable
+        : mode === "image"
+        ? imageModelAvailability.isAvailable
+        : mode === "text"
+        ? textModelAvailability.isAvailable
+        : true;
+    const currentModelUnavailabilityReasons = mode === "video"
+        ? videoModelAvailability.reasons
+        : mode === "image"
+        ? imageModelAvailability.reasons
+        : mode === "text"
+        ? textModelAvailability.reasons
+        : [];
 
     // Restore prompts only when switching nodes; preserve the current input after generation on the same node.
     useEffect(() => {
@@ -310,11 +338,19 @@ export function CanvasNodePromptPanel({
                         </>
                     ) : (
                         <>
-                            <ChannelWorkflowPicker
-                                category="text"
-                                channelId={node.metadata?.channelId}
-                                workflowId={node.metadata?.workflowId}
-                                onChange={(channelId, workflowId) => onConfigChange(node.id, { channelId, workflowId })}
+                            <TextModelPicker
+                                channelId={node.metadata?.channelId || config.channelId}
+                                modelId={node.metadata?.modelId || "text-qwen-35-chat"}
+                                connectedImages={connectedResources.images}
+                                connectedVideos={connectedResources.videos}
+                                connectedAudios={connectedResources.audios}
+                                promptText={prompt}
+                                onChange={(nextChannelId, nextModelId) => {
+                                    onConfigChange(node.id, {
+                                        channelId: nextChannelId,
+                                        modelId: nextModelId,
+                                    });
+                                }}
                             />
                             <CanvasTextSettingsPopover
                                 modelId={node.metadata?.modelId || "text-qwen-35-chat"}

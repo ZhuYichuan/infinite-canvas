@@ -68,9 +68,12 @@ export class ImageQuotaRule implements ModelConstraintRule {
         if (!refs) return { passed: true };
 
         if ((refs.maxImages ?? 0) === 0 && ctx.connectedImages > 0) {
+            const reason = ctx.targetModel.capability === "text"
+                ? `纯文本模型不支持连入参考图片，当前已连接 ${ctx.connectedImages} 张`
+                : `该模型不支持参考图，当前已连接 ${ctx.connectedImages} 张图片`;
             return {
                 passed: false,
-                reason: `该模型不支持参考图，当前已连接 ${ctx.connectedImages} 张图片`,
+                reason,
             };
         }
 
@@ -89,9 +92,12 @@ export class ImageQuotaRule implements ModelConstraintRule {
         }
 
         if (refs.minImages !== undefined && ctx.connectedImages < refs.minImages) {
+            const reason = ctx.targetModel.capability === "text"
+                ? `该模型为视觉反推模型，需要连入至少 ${refs.minImages} 张参考图片`
+                : `该模型至少需要 ${refs.minImages} 张参考图，当前仅连接 ${ctx.connectedImages} 张`;
             return {
                 passed: false,
-                reason: `该模型至少需要 ${refs.minImages} 张参考图，当前仅连接 ${ctx.connectedImages} 张`,
+                reason,
             };
         }
 
