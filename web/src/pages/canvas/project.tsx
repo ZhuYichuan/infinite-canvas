@@ -3485,7 +3485,8 @@ function InfiniteCanvasPage() {
                 return;
             }
 
-            const runController = startGenerationRequest(nodeId, nodeId, nodeId);
+            const isRepeat = intent === "repeat";
+            const runController = isRepeat ? new AbortController() : startGenerationRequest(nodeId, nodeId, nodeId);
             let generationContext: NodeGenerationContext;
             try {
                 generationContext = await hydrateNodeGenerationContext(
@@ -3493,17 +3494,17 @@ function InfiniteCanvasPage() {
                 );
             } catch (error) {
                 message.error(error instanceof Error ? error.message : t("canvas.projectPage.referenceMissing"));
-                finishGenerationRequest(nodeId, runController);
+                if (!isRepeat) finishGenerationRequest(nodeId, runController);
                 return;
             }
             const effectivePrompt = generationContext.prompt.trim();
             if (runController.signal.aborted) {
-                finishGenerationRequest(nodeId, runController);
+                if (!isRepeat) finishGenerationRequest(nodeId, runController);
                 return;
             }
             const markSourceStatus = shouldMarkGenerationSourceStatus(sourceNode);
             if (!effectivePrompt && (mode === "text" || mode === "audio")) {
-                finishGenerationRequest(nodeId, runController);
+                if (!isRepeat) finishGenerationRequest(nodeId, runController);
                 return;
             }
             let pendingChildIds: string[] = [];
@@ -3525,7 +3526,6 @@ function InfiniteCanvasPage() {
                     const rootId = isEmptyImageNode ? nodeId : nanoid();
                     const imageIds = Array.from({ length: count }, () => nanoid());
                     pendingChildIds = [rootId];
-                    const isRepeat = intent === "repeat";
                     const rootNode: CanvasNodeData = {
                         id: rootId,
                         type: CanvasNodeType.Image,
@@ -3605,7 +3605,11 @@ function InfiniteCanvasPage() {
                     setSelectedConnectionId(null);
                     setDialogNodeId(nodeId);
 
-                    const controller = rootId === nodeId ? runController : startGenerationRequest(rootId, nodeId, nodeId, runController);
+                    const controller = isRepeat
+                        ? startGenerationRequest(rootId, nodeId, rootId, runController)
+                        : rootId === nodeId
+                          ? runController
+                          : startGenerationRequest(rootId, nodeId, nodeId, runController);
                     let hasSuccess = false;
                     let hasFailure = false;
                     let firstError = "";
@@ -3785,7 +3789,6 @@ function InfiniteCanvasPage() {
                     const isEmptyVideoNode = sourceNode?.type === CanvasNodeType.Video && !sourceNode.metadata?.content;
                     const videoId = isEmptyVideoNode ? nodeId : nanoid();
                     const parent = sourceNode?.position || { x: 0, y: 0 };
-                    const isRepeat = intent === "repeat";
                     const videoNode: CanvasNodeData = {
                         id: videoId,
                         type: CanvasNodeType.Video,
@@ -3834,7 +3837,11 @@ function InfiniteCanvasPage() {
                         connectionsRef.current = [...connectionsRef.current, ...nextConnections];
                         setConnections((prev) => [...prev, ...nextConnections]);
                     }
-                    const controller = startGenerationRequest(videoId, nodeId, nodeId, runController);
+                    const controller = isRepeat
+                        ? startGenerationRequest(videoId, nodeId, videoId, runController)
+                        : isEmptyVideoNode
+                          ? runController
+                          : startGenerationRequest(videoId, nodeId, nodeId, runController);
                     try {
                         const video = await storeGeneratedVideo(
                             await requestVideoGeneration(generationConfig, effectivePrompt, generationContext.referenceImages, {
@@ -3896,7 +3903,6 @@ function InfiniteCanvasPage() {
                     const isEmptyAudioNode = sourceNode?.type === CanvasNodeType.Audio && !sourceNode.metadata?.content;
                     const audioId = isEmptyAudioNode ? nodeId : nanoid();
                     const parent = sourceNode?.position || { x: 0, y: 0 };
-                    const isRepeat = intent === "repeat";
                     const audioNode: CanvasNodeData = {
                         id: audioId,
                         type: CanvasNodeType.Audio,
@@ -3937,7 +3943,11 @@ function InfiniteCanvasPage() {
                         connectionsRef.current = [...connectionsRef.current, ...nextConnections];
                         setConnections((prev) => [...prev, ...nextConnections]);
                     }
-                    const controller = startGenerationRequest(audioId, nodeId, nodeId, runController);
+                    const controller = isRepeat
+                        ? startGenerationRequest(audioId, nodeId, audioId, runController)
+                        : isEmptyAudioNode
+                          ? runController
+                          : startGenerationRequest(audioId, nodeId, nodeId, runController);
                     try {
                         const duration = Number(sourceNode?.metadata?.seconds || generationConfig.audioSeconds) || 60;
                         const initialSeed = sourceNode?.metadata?.seed;
@@ -3985,7 +3995,6 @@ function InfiniteCanvasPage() {
                 const isEmptyTextNode = sourceNode?.type === CanvasNodeType.Text && !sourceTextContent && intent !== "repeat";
                 const rootId = isEmptyTextNode ? nodeId : nanoid();
                 const textIds = Array.from({ length: textCount }, () => nanoid());
-                const isRepeat = intent === "repeat";
                 const rootNode: CanvasNodeData = {
                     id: rootId,
                     type: CanvasNodeType.Text,
@@ -4047,7 +4056,11 @@ function InfiniteCanvasPage() {
                 setSelectedConnectionId(null);
                 setDialogNodeId(nodeId);
 
-                const controller = rootId === nodeId ? runController : startGenerationRequest(rootId, nodeId, nodeId, runController);
+                const controller = isRepeat
+                    ? startGenerationRequest(rootId, nodeId, rootId, runController)
+                    : rootId === nodeId
+                      ? runController
+                      : startGenerationRequest(rootId, nodeId, nodeId, runController);
                 const results = await Promise.all(
                     textIds.map(async (textId, index): Promise<CanvasNodeText | null> => {
                         let streamed = "";
@@ -4263,7 +4276,7 @@ function InfiniteCanvasPage() {
                         if (childRequest) finishGenerationRequest(childId, childRequest.controller);
                     }
                 });
-                finishGenerationRequest(nodeId, runController);
+                if (!isRepeat) finishGenerationRequest(nodeId, runController);
             }
         },
         [effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, startGenerationRequest, t],

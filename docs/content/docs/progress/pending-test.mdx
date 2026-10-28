@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Repeat Generation Panel State Consistency (再次生成时原节点面板状态保持一致):
+  - 验证图片节点、文本节点、视频节点、音频节点点击「再次生成」时：
+    - 原节点的提示词面板（CanvasNodePromptPanel）不进入运行中状态，不显示 loading 转圈，不显示红色的「停止」按钮，保持原有的完成/就绪状态；
+    - 原节点的参数和面板状态与生成前完全一致；
+    - 画布上新生成派生的子节点（图片/文本/视频/音频）独立进入 loading/生成中 状态，并在生成完成后更新为成功结果。
+
 - Image Node Workflow Model DSL Architecture & Dynamic Sizing (图片节点模型 DSL 架构与动态尺寸适配):
   - **1K / 2K / 4K Resolution Tiers & Clean Size Panel (清晰度档位与精简尺寸面板)**:
     - 验证默认初始尺寸为 `512×512`（1K 档 1:1），生成速度极快；
