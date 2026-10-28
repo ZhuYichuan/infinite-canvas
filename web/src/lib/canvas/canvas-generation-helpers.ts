@@ -351,6 +351,7 @@ export function resetInterruptedGeneration(nodes: CanvasNodeData[]) {
         );
         const isInterrupted = node.metadata?.status === "loading" || isInterruptedGenerationError(node.metadata?.errorDetails) || hasInterruptedImages || hasInterruptedTexts;
         if (isInterrupted) {
+            const rootJobId = node.metadata?.jobId;
             return {
                 ...node,
                 metadata: {
@@ -359,7 +360,12 @@ export function resetInterruptedGeneration(nodes: CanvasNodeData[]) {
                     errorDetails: i18n.t("canvas.generation.interrupted"),
                     images: node.metadata.images?.map((image) =>
                         image.status === "loading" || isInterruptedGenerationError(image.errorDetails)
-                            ? { ...image, status: "error" as const, errorDetails: i18n.t("canvas.generation.interrupted") }
+                            ? {
+                                  ...image,
+                                  status: "error" as const,
+                                  errorDetails: i18n.t("canvas.generation.interrupted"),
+                                  ...(image.jobId || rootJobId ? { jobId: image.jobId || rootJobId } : {}),
+                              }
                             : image,
                     ),
                     texts: node.metadata.texts?.map((text) =>
@@ -561,6 +567,14 @@ export function updateNodeGenerationProgress(
             };
         }
 
+        const images = item.metadata?.images?.map((img) => ({
+            ...img,
+            ...(isSubmitted ? { jobId: detail?.jobId, networkRetryText: undefined } : {}),
+            ...(isPending ? { queuePosition: detail?.queuePosition, networkRetryText: undefined } : {}),
+            ...(isRunning ? { queuePosition: undefined, networkRetryText: undefined } : {}),
+            ...(isRetry ? { networkRetryText: retryText } : {}),
+        }));
+
         return {
             ...item,
             metadata: {
@@ -569,6 +583,7 @@ export function updateNodeGenerationProgress(
                 ...(isPending ? { queuePosition: detail?.queuePosition, networkRetryText: undefined } : {}),
                 ...(isRunning ? { queuePosition: undefined, networkRetryText: undefined } : {}),
                 ...(isRetry ? { networkRetryText: retryText } : {}),
+                ...(images ? { images } : {}),
             },
         };
     });

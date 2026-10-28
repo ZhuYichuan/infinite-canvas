@@ -3614,7 +3614,7 @@ function InfiniteCanvasPage() {
                             const slotSeed = (nextSeed + index) % 9007199254740991;
                             try {
                                 const handleBatchProgress = (status: string, detail?: { jobId?: string; queuePosition?: number; message?: string }) => {
-                                    setNodes((prev) => updateNodeGenerationProgress(prev, rootId, status, detail, count === 1 ? undefined : imageId));
+                                    setNodes((prev) => updateNodeGenerationProgress(prev, rootId, status, detail, imageId));
                                 };
                                 const image = referenceImages.length
                                     ? await requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, undefined, {
@@ -4306,13 +4306,13 @@ function InfiniteCanvasPage() {
                 message.error(t("canvas.projectPage.generationSnapshotMissing"));
                 return;
             }
-            const sourceRef = imageSlot || saved;
-            const isResume = intent === "resume" && Boolean(sourceRef.jobId);
+            const candidateJobId = imageSlot?.jobId || saved.jobId;
+            const isResume = intent === "resume" && Boolean(candidateJobId);
             if (intent === "resume" && !isResume) {
                 message.error(t("canvas.projectPage.generationSnapshotMissing"));
                 return;
             }
-            const resumeJobId = isResume ? sourceRef.jobId : undefined;
+            const resumeJobId = isResume ? candidateJobId : undefined;
 
             setNodes((prev) =>
                 prev.map((item) =>
@@ -4323,9 +4323,19 @@ function InfiniteCanvasPage() {
                                   ...item.metadata,
                                   status: imageId ? (item.metadata?.status === "error" ? NODE_STATUS_LOADING : item.metadata?.status) : NODE_STATUS_LOADING,
                                   errorDetails: undefined,
-                                  ...(intent === "retry" ? { jobId: undefined } : {}),
+                                  ...(isResume ? { jobId: resumeJobId } : { jobId: undefined }),
                                   isTimeout: undefined,
-                                  images: item.metadata?.images?.map((image) => (image.id === imageId ? { ...image, status: NODE_STATUS_LOADING, errorDetails: undefined, isTimeout: undefined, ...(intent === "retry" ? { jobId: undefined } : {}) } : image)),
+                                  images: item.metadata?.images?.map((image) =>
+                                      image.id === imageId
+                                          ? {
+                                                ...image,
+                                                status: NODE_STATUS_LOADING,
+                                                errorDetails: undefined,
+                                                isTimeout: undefined,
+                                                ...(isResume ? { jobId: resumeJobId } : { jobId: undefined }),
+                                            }
+                                          : image,
+                                  ),
                               },
                           }
                         : item,
@@ -4625,7 +4635,7 @@ function InfiniteCanvasPage() {
     );
 
     const handleBatchRetryInterrupted = useCallback(
-        async (targetNodes?: CanvasNodeData[]) => {
+        async (targetNodes?: CanvasNodeData[], allowRetryFallback = false) => {
             const list = targetNodes && targetNodes.length > 0 ? targetNodes : interruptedNodes;
             if (list.length === 0) return;
             setIsResumingInterrupted(true);
@@ -4637,15 +4647,25 @@ function InfiniteCanvasPage() {
                     );
                     if (interruptedImages && interruptedImages.length > 0) {
                         for (const img of interruptedImages) {
-                            const intent = Boolean(img.jobId) ? "resume" : "retry";
-                            tasks.push(Promise.resolve(handleRetryNode(node, img.id, intent)));
+                            const candidateJobId = img.jobId || node.metadata?.jobId;
+                            if (candidateJobId) {
+                                tasks.push(Promise.resolve(handleRetryNode(node, img.id, "resume")));
+                            } else if (allowRetryFallback) {
+                                tasks.push(Promise.resolve(handleRetryNode(node, img.id, "retry")));
+                            }
                         }
                     } else {
-                        const intent = Boolean(node.metadata?.jobId) ? "resume" : "retry";
-                        tasks.push(Promise.resolve(handleRetryNode(node, undefined, intent)));
+                        const candidateJobId = node.metadata?.jobId;
+                        if (candidateJobId) {
+                            tasks.push(Promise.resolve(handleRetryNode(node, undefined, "resume")));
+                        } else if (allowRetryFallback) {
+                            tasks.push(Promise.resolve(handleRetryNode(node, undefined, "retry")));
+                        }
                     }
                 }
-                await Promise.allSettled(tasks);
+                if (tasks.length > 0) {
+                    await Promise.allSettled(tasks);
+                }
             } finally {
                 setIsResumingInterrupted(false);
             }
@@ -4780,7 +4800,7 @@ function InfiniteCanvasPage() {
                         count={interruptedTaskCount}
                         resuming={isResumingInterrupted}
                         failed={autoResumeFailed && !isResumingInterrupted}
-                        onResumeAll={() => void handleBatchRetryInterrupted()}
+                        onResumeAll={() => void handleBatchRetryInterrupted(undefined, true)}
                         onDismiss={() => setInterruptedBannerDismissed(true)}
                     />
                 ) : null}
@@ -5013,7 +5033,7 @@ function InfiniteCanvasPage() {
                         onUpload={() => handleUploadRequest()}
                         onDelete={() => confirmDeleteNodes(new Set(selectedNodeIds))}
                         onClear={() => setClearConfirmOpen(true)}
-                        onRetryInterrupted={() => void handleBatchRetryInterrupted(selectedInterruptedNodes)}
+                        onRetryInterrupted={() => void handleBatchRetryInterrupted(selectedInterruptedNodes, true)}
                         onCanvasToolChange={setCanvasTool}
                         onBackgroundModeChange={setBackgroundMode}
                         onShowImageInfoChange={setShowImageInfo}
