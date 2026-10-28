@@ -14,7 +14,8 @@ import frameVideoFp84StepPdmdJson from "@/assets/workflows/video_minimax_h3_fram
 import frameVideoBf16TurboJson from "@/assets/workflows/video_minimax_h3_frame_bf16_8step_turbo_api.json";
 import frameVideoBf1620StepJson from "@/assets/workflows/video_minimax_h3_frame_bf16_20step_api.json";
 import qwenImage21Json from "@/assets/workflows/qwen_image_21_api.json";
-import qwenImage21Int8Json from "@/assets/workflows/qwen_image_21_int8_api.json";
+import t2iQwenImage21Int8Json from "@/assets/workflows/t2i_qwen_image_21_int8_api.json";
+import i2iQwenImage21Int8Json from "@/assets/workflows/i2i_qwen_image_21_int8_api.json";
 import audioMinimaxMusic3Json from "@/assets/workflows/audio_minimax_music_3_api.json";
 import videoH3FaceRefineJson from "@/assets/workflows/video_h3_face_refine_api.json";
 import videoDepthReshotJson from "@/assets/workflows/video_depth_reshot_api.json";
@@ -38,12 +39,19 @@ export const DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW: ComfyuiWorkflow = {
     createdAt: 0,
     isBuiltin: true,
 };
-export const DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_INT8_WORKFLOW: ComfyuiWorkflow = {
-    name: "Qwen-Image-2.1 全能生图 (Int8)",
-    json: qwenImage21Int8Json as Record<string, unknown>,
+export const DEFAULT_BUILTIN_COMFYUI_T2I_QWEN_IMAGE_21_INT8_WORKFLOW: ComfyuiWorkflow = {
+    name: "Qwen-Image-2.1 文生图 (Int8)",
+    json: t2iQwenImage21Int8Json as Record<string, unknown>,
     createdAt: 0,
     isBuiltin: true,
 };
+export const DEFAULT_BUILTIN_COMFYUI_I2I_QWEN_IMAGE_21_INT8_WORKFLOW: ComfyuiWorkflow = {
+    name: "Qwen-Image-2.1 多图参考图生图 (Int8)",
+    json: i2iQwenImage21Int8Json as Record<string, unknown>,
+    createdAt: 0,
+    isBuiltin: true,
+};
+export const DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_INT8_WORKFLOW: ComfyuiWorkflow = DEFAULT_BUILTIN_COMFYUI_I2I_QWEN_IMAGE_21_INT8_WORKFLOW;
 export const DEFAULT_BUILTIN_COMFYUI_T2I_WORKFLOW: ComfyuiWorkflow = {
     name: "Z-Image-Turbo 文生图",
     json: t2iZImageTurboJson as Record<string, unknown>,
@@ -245,7 +253,7 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             id: `${prefix}-t2i-qwen-image-21-int8`,
             name: "Qwen-Image-2.1 文生图 (Int8)",
             category: "t2i",
-            json: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_INT8_WORKFLOW.json,
+            json: DEFAULT_BUILTIN_COMFYUI_T2I_QWEN_IMAGE_21_INT8_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
             isDefault: false,
@@ -275,7 +283,7 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             id: `${prefix}-i2i-qwen-image-21-int8`,
             name: "Qwen-Image-2.1 多图参考图生图 (Int8)",
             category: "i2i",
-            json: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_INT8_WORKFLOW.json,
+            json: DEFAULT_BUILTIN_COMFYUI_I2I_QWEN_IMAGE_21_INT8_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
             isDefault: false,
