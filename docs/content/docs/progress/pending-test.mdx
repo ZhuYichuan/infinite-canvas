@@ -7,6 +7,16 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Node Create Menu Screen-Space 1:1 Scaling (双击选择节点菜单屏幕空间 1:1 恒定缩放验证):
+  - **缩放一致性与清晰度验证**:
+    - 在画布空白处双击弹出「选择节点」菜单（包含文本、图片、视频、音频、配置、组、Markdown 等选项）；
+    - 在画布处于大比例放大（如 200%、300%）或极小缩放（如 20%、10%）状态下双击画布；
+    - 验证弹出的「选择节点」菜单始终保持 1:1 恒定屏幕尺寸与清晰度，不再随画布缩放放大变巨大或缩小变迷你；
+    - 验证点击菜单项后，新节点依然精确生成在双击的画布世界坐标中心位置；
+  - **边缘避让与交互防遮挡**:
+    - 在靠近屏幕右边缘或下边缘双击画布，验证菜单自动在视口边界内自适应向内平移，不被浏览器边缘截断；
+    - 点击菜单外部任意空白区域，菜单顺畅关闭。
+
 - Node Inspector Overlay Screen-Space 1:1 Scaling (节点提示词面板屏幕空间 1:1 恒定缩放验证):
   - **缩放一致性与清晰度验证**:
     - 选中任意图片、文本、视频或音频节点，打开下方提示词输入面板；
