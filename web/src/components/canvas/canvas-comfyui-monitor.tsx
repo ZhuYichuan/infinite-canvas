@@ -27,6 +27,8 @@ import {
     getComfyuiSystemStats,
     type ComfyuiRuntimeStats,
     type ComfyuiSystemStats,
+    type ComfyuiQueueStats,
+    getComfyuiQueueStats,
 } from "@/services/api/comfyui";
 
 function cleanGpuName(rawName?: string) {
@@ -51,6 +53,8 @@ type ChannelSummary = {
     vramUsed: number;
     vramTotal: number;
     gpuName: string;
+    runningCount: number;
+    pendingCount: number;
 };
 
 export function CanvasComfyuiMonitor() {
@@ -81,6 +85,7 @@ export function CanvasComfyuiMonitor() {
 
     const [systemStats, setSystemStats] = useState<ComfyuiSystemStats | null>(null);
     const [runtimeStats, setRuntimeStats] = useState<ComfyuiRuntimeStats | null>(null);
+    const [queueStats, setQueueStats] = useState<ComfyuiQueueStats | null>(null);
     const [isOnline, setIsOnline] = useState<boolean>(false);
     const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
     const [isCleaning, setIsCleaning] = useState<boolean>(false);
@@ -101,15 +106,17 @@ export function CanvasComfyuiMonitor() {
             if (!baseUrl) return;
             if (!silent) setIsRefreshing(true);
             try {
-                const [sys, run] = await Promise.all([
+                const [sys, run, q] = await Promise.all([
                     getComfyuiSystemStats(baseUrl, token),
                     getComfyuiRuntimeStats(baseUrl, token),
+                    getComfyuiQueueStats(baseUrl, token),
                 ]);
 
-                if (sys || run) {
+                if (sys || run || q) {
                     setIsOnline(true);
                     setSystemStats(sys);
                     setRuntimeStats(run);
+                    setQueueStats(q);
 
                     // 同步更新摘要
                     let used = 0;
@@ -134,10 +141,13 @@ export function CanvasComfyuiMonitor() {
                             vramUsed: used,
                             vramTotal: total,
                             gpuName: gpu,
+                            runningCount: q?.runningCount || 0,
+                            pendingCount: q?.pendingCount || 0,
                         },
                     }));
                 } else {
                     setIsOnline(false);
+                    setQueueStats(null);
                     setChannelSummaries((prev) => ({
                         ...prev,
                         [activeChannel.id]: {
@@ -146,6 +156,8 @@ export function CanvasComfyuiMonitor() {
                             vramUsed: 0,
                             vramTotal: 0,
                             gpuName: "未连接",
+                            runningCount: 0,
+                            pendingCount: 0,
                         },
                     }));
                 }
@@ -168,7 +180,10 @@ export function CanvasComfyuiMonitor() {
                 const chToken = ch.comfyuiProxyToken || ch.apiKey;
                 if (!chUrl) return;
                 try {
-                    const sys = await getComfyuiSystemStats(chUrl, chToken);
+                    const [sys, q] = await Promise.all([
+                        getComfyuiSystemStats(chUrl, chToken),
+                        getComfyuiQueueStats(chUrl, chToken),
+                    ]);
                     if (sys && sys.devices?.[0]) {
                         const total = sys.devices[0].vram_total;
                         const free = sys.devices[0].vram_free || 0;
@@ -182,6 +197,8 @@ export function CanvasComfyuiMonitor() {
                                 vramUsed: used,
                                 vramTotal: total,
                                 gpuName: cleanGpuName(sys.devices[0].name),
+                                runningCount: q?.runningCount || 0,
+                                pendingCount: q?.pendingCount || 0,
                             },
                         }));
                     } else {
@@ -193,6 +210,8 @@ export function CanvasComfyuiMonitor() {
                                 vramUsed: 0,
                                 vramTotal: 0,
                                 gpuName: "离线",
+                                runningCount: 0,
+                                pendingCount: 0,
                             },
                         }));
                     }
@@ -205,6 +224,8 @@ export function CanvasComfyuiMonitor() {
                             vramUsed: 0,
                             vramTotal: 0,
                             gpuName: "离线",
+                            runningCount: 0,
+                            pendingCount: 0,
                         },
                     }));
                 }
@@ -346,13 +367,23 @@ export function CanvasComfyuiMonitor() {
 
     const vramStatusStroke = vramPercent >= 90 ? "#ef4444" : vramPercent >= 70 ? "#f59e0b" : "#10b981";
 
+    const hasRunningTasks = (queueStats?.runningCount || 0) > 0;
+    const hasPendingTasks = (queueStats?.pendingCount || 0) > 0;
+
     // 顶栏常驻展示文案（多机时展示机器名）
     const machinePrefix = comfyChannels.length > 1 ? `${activeChannel?.name || "ComfyUI"} · ` : "";
-    const topBarText = !isOnline
-        ? `${machinePrefix}离线`
-        : vramTotal > 0
-        ? `${machinePrefix}显存 ${vramPercent}% (${formatBytes(vramUsed)}/${formatBytes(vramTotal)})`
-        : `${machinePrefix}就绪`;
+    let topBarText = `${machinePrefix}离线`;
+    if (isOnline) {
+        if (hasRunningTasks) {
+            topBarText = `${machinePrefix}运行中 ${queueStats!.runningCount}${hasPendingTasks ? ` (排队 ${queueStats!.pendingCount})` : ""} · 显存 ${vramPercent}%`;
+        } else if (hasPendingTasks) {
+            topBarText = `${machinePrefix}排队中 ${queueStats!.pendingCount} · 显存 ${vramPercent}%`;
+        } else if (vramTotal > 0) {
+            topBarText = `${machinePrefix}显存 ${vramPercent}% (${formatBytes(vramUsed)}/${formatBytes(vramTotal)})`;
+        } else {
+            topBarText = `${machinePrefix}就绪`;
+        }
+    }
 
     // 悬停/点击 Popover 展开面板
     const content = (
@@ -377,6 +408,7 @@ export function CanvasComfyuiMonitor() {
                         options={comfyChannels.map((c) => {
                             const sum = channelSummaries[c.id];
                             const hostUrl = (c.comfyuiProxyUrl || c.baseUrl || "").replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+                            const runCount = sum ? sum.runningCount : (c.id === activeChannel.id ? queueStats?.runningCount || 0 : 0);
                             return {
                                 value: c.id,
                                 label: (
@@ -387,17 +419,27 @@ export function CanvasComfyuiMonitor() {
                                                 style={{
                                                     background: sum
                                                         ? sum.online
-                                                            ? "#22c55e"
+                                                            ? runCount > 0
+                                                                ? "#3b82f6"
+                                                                : "#22c55e"
                                                             : "#a8a29e"
                                                         : c.id === activeChannel.id && isOnline
                                                         ? "#22c55e"
                                                         : "#a8a29e",
                                                 }}
                                             />
-                                            <span className="truncate max-w-[130px] font-medium">{c.name || "ComfyUI 主机"}</span>
+                                            <span className="truncate max-w-[125px] font-medium">{c.name || "ComfyUI 主机"}</span>
                                         </div>
-                                        <span className="text-[10px] opacity-60 font-mono truncate max-w-[100px]">
-                                            {sum?.online ? `显存 ${sum.vramPercent}%` : hostUrl}
+                                        <span className="text-[10px] opacity-70 font-mono truncate max-w-[110px]">
+                                            {sum?.online ? (
+                                                runCount > 0 ? (
+                                                    <span className="text-blue-500 font-medium">运行中 {runCount}</span>
+                                                ) : (
+                                                    `显存 ${sum.vramPercent}%`
+                                                )
+                                            ) : (
+                                                hostUrl
+                                            )}
                                         </span>
                                     </div>
                                 ),
@@ -463,6 +505,38 @@ export function CanvasComfyuiMonitor() {
                             </a>
                         </Tooltip>
                     ) : null}
+                </div>
+            </div>
+
+            {/* ComfyUI 任务队列卡片 */}
+            <div className="rounded-lg p-2.5" style={{ background: theme.mode === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)" }}>
+                <div className="mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.node.text }}>
+                        <Activity className="size-3.5 text-blue-500" />
+                        <span>任务队列</span>
+                    </span>
+                    {hasRunningTasks ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                            <Loader2 className="size-2.5 animate-spin" />
+                            <span>运算中</span>
+                        </span>
+                    ) : (
+                        <span className="text-[11px] opacity-60">空闲就绪</span>
+                    )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="flex flex-col rounded p-1.5" style={{ background: theme.mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}>
+                        <span className="opacity-60 text-[10px]">运行中任务</span>
+                        <span className="text-sm font-semibold mt-0.5 font-mono" style={{ color: hasRunningTasks ? "#3b82f6" : theme.node.text }}>
+                            {queueStats?.runningCount ?? 0}
+                        </span>
+                    </div>
+                    <div className="flex flex-col rounded p-1.5" style={{ background: theme.mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}>
+                        <span className="opacity-60 text-[10px]">排队中任务</span>
+                        <span className="text-sm font-semibold mt-0.5 font-mono" style={{ color: hasPendingTasks ? "#f59e0b" : theme.node.text }}>
+                            {queueStats?.pendingCount ?? 0}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -609,8 +683,16 @@ export function CanvasComfyuiMonitor() {
                     style={{ color: theme.node.text }}
                     title="点击查看硬件负载与切换 ComfyUI 主机"
                 >
-                    <span className="size-2 rounded-full shrink-0" style={{ background: dotColor }} />
-                    <span className="max-w-[200px] truncate opacity-90">{topBarText}</span>
+                    <span className="relative flex size-2 shrink-0">
+                        {isOnline && hasRunningTasks ? (
+                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-400 opacity-75" />
+                        ) : null}
+                        <span
+                            className="relative inline-flex size-2 rounded-full"
+                            style={{ background: hasRunningTasks ? "#3b82f6" : dotColor }}
+                        />
+                    </span>
+                    <span className="max-w-[260px] truncate opacity-90">{topBarText}</span>
                 </button>
             </Popover>
 

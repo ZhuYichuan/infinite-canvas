@@ -311,6 +311,8 @@ function InfiniteCanvasPage() {
     const [referencePickerNodeId, setReferencePickerNodeId] = useState<string | null>(null);
     const [interruptedBannerDismissed, setInterruptedBannerDismissed] = useState(false);
     const [isResumingInterrupted, setIsResumingInterrupted] = useState(false);
+    const [autoResumeTriggered, setAutoResumeTriggered] = useState(false);
+    const [autoResumeFailed, setAutoResumeFailed] = useState(false);
 
     const nodesRef = useRef(nodes);
     const connectionsRef = useRef(connections);
@@ -598,6 +600,8 @@ function InfiniteCanvasPage() {
             };
             setHistoryState({ canUndo: false, canRedo: false });
             setInterruptedBannerDismissed(false);
+            setAutoResumeTriggered(false);
+            setAutoResumeFailed(false);
             setProjectLoaded(true);
         };
         void restore();
@@ -4648,6 +4652,23 @@ function InfiniteCanvasPage() {
         },
         [handleRetryNode, interruptedNodes],
     );
+
+    // 页面刷新中断任务自动恢复机制：页面加载完成后，若检测到存在刷新中断任务，自动无感触发接续恢复
+    useEffect(() => {
+        if (!projectLoaded || autoResumeTriggered || isViewerRef.current) return;
+        if (interruptedTaskCount > 0) {
+            setAutoResumeTriggered(true);
+            void (async () => {
+                await handleBatchRetryInterrupted();
+                setTimeout(() => {
+                    const remaining = countInterruptedTasks(nodesRef.current.filter(hasInterruptedGeneration));
+                    if (remaining > 0) {
+                        setAutoResumeFailed(true);
+                    }
+                }, 500);
+            })();
+        }
+    }, [projectLoaded, autoResumeTriggered, interruptedTaskCount, handleBatchRetryInterrupted]);
     const handleNodeContextMenu = useCallback((event: ReactMouseEvent, nodeId: string) => {
         event.preventDefault();
         event.stopPropagation();
@@ -4758,6 +4779,7 @@ function InfiniteCanvasPage() {
                     <CanvasInterruptedBanner
                         count={interruptedTaskCount}
                         resuming={isResumingInterrupted}
+                        failed={autoResumeFailed && !isResumingInterrupted}
                         onResumeAll={() => void handleBatchRetryInterrupted()}
                         onDismiss={() => setInterruptedBannerDismissed(true)}
                     />

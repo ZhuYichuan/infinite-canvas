@@ -941,7 +941,9 @@ export default {
             "title": "{{count}} generation task(s) interrupted by refresh",
             "resumeAll": "Resume All",
             "ignore": "Dismiss",
-            "resuming": "Resuming {{count}} task(s)..."
+            "resuming": "Auto-resuming {{count}} interrupted task(s)...",
+            "failedTitle": "{{count}} task(s) failed to auto-resume, click to retry",
+            "manualRetry": "Retry Manually"
         },
         "agentOps": {
             "add_node": "Add node",

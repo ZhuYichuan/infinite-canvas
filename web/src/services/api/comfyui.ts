@@ -3835,4 +3835,50 @@ export async function getComfyuiSystemStats(
     }
 }
 
+/**
+ * ComfyUI 队列统计数据
+ * 来源于 GET /queue
+ */
+export type ComfyuiQueueStats = {
+    /** 当前正在 GPU 上计算执行的任务数 */
+    runningCount: number;
+    /** 在队列中排队等待执行的任务数 */
+    pendingCount: number;
+    /** 总活跃任务数 (running + pending) */
+    totalActive: number;
+};
+
+/**
+ * 获取 ComfyUI 任务队列状态 (基于官方原生 /queue)
+ * @param baseUrl ComfyUI 服务基础 URL
+ * @param token 可选鉴权 Bearer Token
+ * @returns 队列统计对象，若请求失败或服务离线返回 null
+ */
+export async function getComfyuiQueueStats(
+    baseUrl: string,
+    token?: string
+): Promise<ComfyuiQueueStats | null> {
+    const normalized = normalizeBaseUrl(baseUrl);
+    const headers: Record<string, string> = {
+        Accept: "*/*",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    try {
+        const res = await comfyuiFetch(`${normalized}/queue`, { headers }, baseUrl);
+        if (!res.ok) return null;
+        const data = (await res.json()) as { queue_running?: unknown[]; queue_pending?: unknown[] };
+        const runningCount = Array.isArray(data.queue_running) ? data.queue_running.length : 0;
+        const pendingCount = Array.isArray(data.queue_pending) ? data.queue_pending.length : 0;
+        return {
+            runningCount,
+            pendingCount,
+            totalActive: runningCount + pendingCount,
+        };
+    } catch {
+        return null;
+    }
+}
+
+
 

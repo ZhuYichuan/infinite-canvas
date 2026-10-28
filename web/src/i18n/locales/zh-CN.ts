@@ -941,7 +941,9 @@ export default {
             "title": "检测到 {{count}} 个生成任务因刷新中断",
             "resumeAll": "一键恢复全部",
             "ignore": "忽略",
-            "resuming": "正在恢复 {{count}} 个任务..."
+            "resuming": "正在自动恢复 {{count}} 个中断任务...",
+            "failedTitle": "{{count}} 个任务自动恢复失败，请手动重试",
+            "manualRetry": "手动重试"
         },
         "agentOps": {
             "add_node": "新增节点",
