@@ -4,6 +4,7 @@ import { Button, Dropdown, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { UserStatusActions } from "@/components/layout/user-status-actions";
+import { CanvasComfyuiMonitor } from "./canvas-comfyui-monitor";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { useCollabStore } from "@/stores/use-collab-store";
@@ -145,6 +146,7 @@ export function CanvasTopBar({
                 </div>
 
                 <div className="pointer-events-auto flex items-center gap-1.5">
+                    <CanvasComfyuiMonitor />
                     <Button
                         type="text"
                         className="!h-10 !rounded-xl !px-3 !font-medium"
