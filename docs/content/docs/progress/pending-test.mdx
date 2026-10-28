@@ -7,6 +7,10 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Top Navigation & Config Modal Workflow Link (导航栏精简与配置弹窗链接跳转隐藏):
+  - 验证顶部主导航栏（及移动端菜单抽屉）中已移除「工作流管理」入口；
+  - 验证在「配置与用户偏好」设置弹窗的渠道列表中，点击工作流右侧的「配置工作流」按钮时，弹窗自动关闭并顺利导航至对应工作流详情。
+
 - Workflow Model & Host Decoupling with 4 FP8 Models (工作流模型与主机解耦及 4 大 FP8 模型支持):
   - **Host & Model Architecture Decoupling (主机与工作流模型架构解耦)**:
     - 验证 `ModelChannel` 仅保存 `baseUrl`、`apiKey` 与 `supportedModelIds`，不再冗余深拷贝工作流 JSON；

@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import { Cloud, Download, Pencil, Plus, RefreshCw, Trash2, Upload, Wifi } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 
 import { ModelPicker } from "@/components/model-picker";
 import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
@@ -570,9 +571,21 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
 
 export function AppConfigModal() {
     const { t } = useTranslation();
+    const location = useLocation();
     const isConfigOpen = useConfigStore((state) => state.isConfigOpen);
     const configTab = useConfigStore((state) => state.configTab);
     const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
+    const lastLocationKeyRef = useRef(location.key);
+
+    useEffect(() => {
+        if (lastLocationKeyRef.current !== location.key) {
+            lastLocationKeyRef.current = location.key;
+            if (isConfigOpen) {
+                setConfigDialogOpen(false);
+            }
+        }
+    }, [location.key, isConfigOpen, setConfigDialogOpen]);
+
     return (
         <Modal
             title={
