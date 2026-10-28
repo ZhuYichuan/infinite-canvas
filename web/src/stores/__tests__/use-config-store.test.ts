@@ -394,6 +394,8 @@ describe("default built-in ComfyUI channel", () => {
             "image-z-turbo",
             "image-flux2-dev",
             "image-qwen-inpaint",
+            "text-qwen-35-chat",
+            "text-qwen-35-vlm",
         ]);
     });
 
@@ -402,7 +404,7 @@ describe("default built-in ComfyUI channel", () => {
         expect(customChannel.name).toBe("自定义 ComfyUI");
         expect(customChannel.models.length).toBe(8);
         expect(customChannel.workflows?.length).toBe(13);
-        expect(customChannel.supportedModelIds?.length).toBe(8);
+        expect(customChannel.supportedModelIds?.length).toBe(10);
         expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
         expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);

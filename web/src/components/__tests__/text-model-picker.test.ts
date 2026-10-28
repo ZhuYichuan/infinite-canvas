@@ -125,4 +125,78 @@ describe("TextModelPicker Data Contract & Constraints", () => {
         expect(rejection?.key).toBe("connectionMediaTypeUnsupported");
         expect(rejection?.defaultMessage).toBe("连接被拒绝：纯文本模型不支持连入参考图片");
     });
+
+    it("evaluates Qwen-3.5 VLM availability (requires exactly 1 image)", () => {
+        const check0 = evaluateModelAvailability({
+            targetModel: textQwen35VlmProfile,
+            connectedImages: 0,
+            connectedVideos: 0,
+            connectedAudios: 0,
+            promptText: "提取主体与光影",
+        });
+        expect(check0.isAvailable).toBe(false);
+        expect(check0.reasons).toContain("该模型为视觉反推模型，需要连入至少 1 张参考图片");
+
+        const check1 = evaluateModelAvailability({
+            targetModel: textQwen35VlmProfile,
+            connectedImages: 1,
+            connectedVideos: 0,
+            connectedAudios: 0,
+            promptText: "提取主体与光影",
+        });
+        expect(check1.isAvailable).toBe(true);
+
+        const check2 = evaluateModelAvailability({
+            targetModel: textQwen35VlmProfile,
+            connectedImages: 2,
+            connectedVideos: 0,
+            connectedAudios: 0,
+            promptText: "提取主体与光影",
+        });
+        expect(check2.isAvailable).toBe(false);
+        expect(check2.reasons).toContain("已连接 2 张参考图，该模型最多支持 1 张");
+    });
+
+    it("allows connecting 1 image to VLM text node but rejects the 2nd image", () => {
+        const img1: CanvasNodeData = {
+            id: "img-1",
+            type: CanvasNodeType.Image,
+            title: "Photo 1",
+            position: { x: 0, y: 0 },
+            width: 200,
+            height: 200,
+        };
+        const img2: CanvasNodeData = {
+            id: "img-2",
+            type: CanvasNodeType.Image,
+            title: "Photo 2",
+            position: { x: 0, y: 300 },
+            width: 200,
+            height: 200,
+        };
+        const vlmNode: CanvasNodeData = {
+            id: "vlm-node",
+            type: CanvasNodeType.Text,
+            title: "VLM Prompt Node",
+            position: { x: 400, y: 150 },
+            width: 200,
+            height: 200,
+            metadata: {
+                modelId: "text-qwen-35-vlm",
+            },
+        };
+        const allNodes = [img1, img2, vlmNode];
+
+        // 1st connection: allowed
+        const res1 = validateInputConnection(img1.id, vlmNode.id, allNodes, []);
+        expect(res1).toEqual({ fromNodeId: img1.id, toNodeId: vlmNode.id });
+
+        // 2nd connection: rejected because maxImages is 1
+        const existingConns = [{ id: "c1", fromNodeId: img1.id, toNodeId: vlmNode.id, kind: "input" as const }];
+        const res2 = validateInputConnection(img2.id, vlmNode.id, allNodes, existingConns);
+        expect(res2).toBeNull();
+
+        const rejection = getConnectionRejectionDetail(img2.id, vlmNode.id, allNodes, existingConns);
+        expect(rejection?.key).toBe("connectionQuotaImagesExceeded");
+    });
 });

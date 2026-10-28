@@ -2288,9 +2288,18 @@ export function applyTextBindings(
         const title = rawTitle.trim().toLowerCase();
 
         if (title === "prompt" && record.inputs) {
-            if ("value" in record.inputs) record.inputs.value = params.prompt;
-            else if ("text" in record.inputs) record.inputs.text = params.prompt;
-            else if ("prompt" in record.inputs) record.inputs.prompt = params.prompt;
+            const defaultVlmPrompt =
+                "请根据参考图片反推一段适合用于 AI 生图的提示词。\n\n要求：\n1. 只输出提示词正文，不要解释。\n2. 覆盖主体、构图、风格、光线、色彩、材质、镜头和氛围。\n3. 尽量写成可直接用于生图模型的完整提示词。";
+            const promptVal = params.prompt && params.prompt.trim()
+                ? params.prompt
+                : params.assetId
+                ? (typeof record.inputs.value === "string" && record.inputs.value && record.inputs.value.includes("反推")
+                    ? record.inputs.value
+                    : defaultVlmPrompt)
+                : params.prompt;
+            if ("value" in record.inputs) record.inputs.value = promptVal;
+            else if ("text" in record.inputs) record.inputs.text = promptVal;
+            else if ("prompt" in record.inputs) record.inputs.prompt = promptVal;
         } else if (title === "image" || title === "ref_image_01" || title === "ref_image") {
             imageNodeId = nodeId;
         } else if (title === "seed" && params.seed !== undefined && record.inputs) {

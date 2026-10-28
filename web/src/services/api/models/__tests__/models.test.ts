@@ -483,4 +483,47 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
         expect((bound["3"] as any).inputs.max_length).toBe(1024);
         expect((bound["3"] as any).inputs.thinking).toBe(true);
     });
+
+    it("applies VLM text bindings with reference image and fallback reverse prompt", () => {
+        const textWorkflow = {
+            "1": { inputs: { value: "old prompt" }, class_type: "PrimitiveStringMultiline", _meta: { title: "prompt" } },
+            "2": { inputs: { value: 0 }, class_type: "PrimitiveInt", _meta: { title: "seed" } },
+            "3": {
+                inputs: {
+                    prompt: ["1", 0],
+                    image: ["12", 0],
+                    max_length: 256,
+                    thinking: false,
+                },
+                class_type: "TextGenerate",
+                _meta: { title: "TextGenerate" },
+            },
+            "12": { inputs: { image: "old.png" }, class_type: "LoadImage", _meta: { title: "ref_image_01" } },
+        };
+
+        // 1. With custom prompt & reference image
+        const boundCustom = applyTextBindings(textWorkflow as any, {
+            prompt: "从参考图中提取赛博朋克光影与主体结构",
+            assetId: "uploaded_photo.png",
+            seed: 6666,
+            maxLength: 512,
+            thinking: true,
+        });
+
+        expect((boundCustom["1"] as any).inputs.value).toBe("从参考图中提取赛博朋克光影与主体结构");
+        expect((boundCustom["2"] as any).inputs.value).toBe(6666);
+        expect((boundCustom["12"] as any).inputs.image).toBe("uploaded_photo.png");
+        expect((boundCustom["3"] as any).inputs.image).toEqual(["12", 0]);
+        expect((boundCustom["3"] as any).inputs.max_length).toBe(512);
+        expect((boundCustom["3"] as any).inputs.thinking).toBe(true);
+
+        // 2. With empty prompt: falls back to reverse-engineering default instructions
+        const boundFallback = applyTextBindings(textWorkflow as any, {
+            prompt: "",
+            assetId: "uploaded_photo.png",
+            seed: 7777,
+        });
+        expect((boundFallback["1"] as any).inputs.value).toContain("反推一段适合用于 AI 生图的提示词");
+        expect((boundFallback["12"] as any).inputs.image).toBe("uploaded_photo.png");
+    });
 });
