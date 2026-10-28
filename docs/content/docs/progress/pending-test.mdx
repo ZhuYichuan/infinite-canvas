@@ -7,6 +7,11 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Multimodal Connection Rejection Diagnostics & i18n Fix (连线防呆诊断与国际化修复):
+  - 验证将第 10 张图片连入 MiniMax H3 视频节点时，连接被优雅拦截，Toast 提示清晰展示「连接被拒绝：超出参考图上限（该模型最多支持 9 张，当前已有 9 张）」，不再弹出裸露的 `canvas.projectPage.connectionQuotaExceeded` 键名；
+  - 验证将视频连入仅支持首尾帧的视频模型时，提示「连接被拒绝：当前模型不支持参考视频」；
+  - 验证英文语言环境下正常展示对应的英文诊断提示。
+
 - Model Constraint Engine & Availability Diagnostic Tooltip (模型多维约束检查引擎与不可用诊断问号):
   - **Cascader Model Disabled State & Help Tooltip (模型选择器置灰与小问号)**:
     - 验证当视频节点已连入 3 张以上图片或连入视频/音频时，打开 `VideoModelPicker`，首尾帧模型选项自动置灰（不可点击切换）；

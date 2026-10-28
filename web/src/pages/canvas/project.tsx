@@ -64,6 +64,7 @@ import {
     findGroupDropTarget,
     fitGroupToEnclosedChildren,
     getAllInvalidConnectionIds,
+    getConnectionRejectionDetail,
     getConnectionTargetAnchor,
     isNodeEnclosedInGroup,
     normalizeConnection,
@@ -138,6 +139,7 @@ type ConnectionDropTarget = {
     nodeId: string | null;
     isNearNode: boolean;
     rejectedNodeId?: string | null;
+    rejectionReason?: string | null;
 };
 
 type CanvasHistoryEntry = Pick<CanvasClipboard, "nodes" | "connections"> & {
@@ -821,6 +823,7 @@ function InfiniteCanvasPage() {
             let isNearNode = false;
             let bestNodeId: string | null = null;
             let bestRejectedNodeId: string | null = null;
+            let bestRejectionReason: string | null = null;
             let bestPriority = Number.POSITIVE_INFINITY;
             const selected = selectedNodeIdsRef.current;
             const isBatch = selected.has(current.nodeId) && selected.size > 1;
@@ -844,6 +847,21 @@ function InfiniteCanvasPage() {
                     if (!canConnect) {
                         if (candidateSourceIds.some((sourceId) => sourceId !== node.id)) {
                             bestRejectedNodeId = node.id;
+                            for (const sourceId of candidateSourceIds) {
+                                if (sourceId === node.id) continue;
+                                const [fromId, toId] =
+                                    nodesRef.current.find((n) => n.id === sourceId)?.type === CanvasNodeType.Config && current.handleType === "target"
+                                        ? [node.id, sourceId]
+                                        : [sourceId, node.id];
+                                const detail = getConnectionRejectionDetail(fromId, toId, nodesRef.current, connectionsRef.current);
+                                if (detail) {
+                                    bestRejectionReason = t(`canvas.projectPage.${detail.key}`, {
+                                        ...detail.params,
+                                        defaultValue: detail.defaultMessage,
+                                    });
+                                    break;
+                                }
+                            }
                         }
                         return;
                     }
@@ -855,9 +873,14 @@ function InfiniteCanvasPage() {
                     }
                 });
 
-            return { nodeId: bestNodeId, isNearNode, rejectedNodeId: bestNodeId ? null : bestRejectedNodeId };
+            return {
+                nodeId: bestNodeId,
+                isNearNode,
+                rejectedNodeId: bestNodeId ? null : bestRejectedNodeId,
+                rejectionReason: bestNodeId ? undefined : bestRejectionReason,
+            };
         },
-        [screenToCanvas],
+        [screenToCanvas, t],
     );
 
     const visibleNodes = useMemo(() => {
@@ -1842,7 +1865,12 @@ function InfiniteCanvasPage() {
                     setConnecting(null);
                     setConnectionRejectedNodeId(null);
                 } else if (dropTarget.rejectedNodeId) {
-                    message.warning(t("canvas.projectPage.connectionQuotaExceeded") || "连接被拒绝：超出模型允许的输入配额或媒体类型不兼容");
+                    const warningMsg =
+                        dropTarget.rejectionReason ||
+                        t("canvas.projectPage.connectionQuotaExceeded", {
+                            defaultValue: "连接被拒绝：超出模型允许的输入配额或媒体类型不兼容",
+                        });
+                    message.warning(warningMsg);
                     setConnecting(null);
                     setConnectionRejectedNodeId(null);
                 } else if (dropTarget.isNearNode) {
@@ -1861,7 +1889,7 @@ function InfiniteCanvasPage() {
                 }
             }
         },
-        [connectNodes, finishNodeDrag, getConnectionDropTarget, screenToCanvas, setConnecting],
+        [connectNodes, finishNodeDrag, getConnectionDropTarget, message, screenToCanvas, setConnecting, t],
     );
 
     useEffect(() => {

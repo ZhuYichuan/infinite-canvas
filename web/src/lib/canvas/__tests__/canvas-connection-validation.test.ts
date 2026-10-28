@@ -4,6 +4,7 @@ import { applyCanvasAgentOps, type CanvasAgentSnapshot } from "@/lib/canvas/canv
 import {
     findInvalidNodeConnections,
     getAllInvalidConnectionIds,
+    getConnectionRejectionDetail,
     validateInputConnection,
 } from "@/lib/canvas/canvas-node-geometry";
 import {
@@ -293,5 +294,51 @@ describe("Model-Driven Multimodal Connection Guards (Issue #8)", () => {
         // 全画布聚合探测验证
         const allInvalid = getAllInvalidConnectionIds(nodes, connections);
         expect(allInvalid.size).toBe(0);
+    });
+
+    describe("getConnectionRejectionDetail", () => {
+        it("Omni Video 连第 10 张图时返回具体的配额超限诊断", () => {
+            const omniNode: CanvasNodeData = {
+                ...makeNode("omni-node", CanvasNodeType.Video),
+                metadata: { modelId: "video_minimax_h3_omni", videoMode: "omni" },
+            };
+            const imgNodes = Array.from({ length: 10 }, (_, i) => makeNode(`img-${i + 1}`, CanvasNodeType.Image));
+            const imgConns = imgNodes.slice(0, 9).map((n, i) => makeConnection(`c-img-${i + 1}`, n.id, omniNode.id));
+            const allNodes = [omniNode, ...imgNodes];
+
+            const detail = getConnectionRejectionDetail(imgNodes[9].id, omniNode.id, allNodes, imgConns);
+            expect(detail).toEqual({
+                key: "connectionQuotaImagesExceeded",
+                params: { max: 9, current: 9, incoming: 1 },
+                defaultMessage: "连接被拒绝：超出参考图上限（该模型最多支持 9 张，当前已有 9 张）",
+            });
+        });
+
+        it("Frame Video 连入视频时返回媒体类型不支持诊断", () => {
+            const frameNode: CanvasNodeData = {
+                ...makeNode("frame-node", CanvasNodeType.Video),
+                metadata: { modelId: "video_minimax_h3_frame", videoMode: "frame" },
+            };
+            const vidNode = makeNode("vid-1", CanvasNodeType.Video);
+            const allNodes = [frameNode, vidNode];
+
+            const detail = getConnectionRejectionDetail(vidNode.id, frameNode.id, allNodes, []);
+            expect(detail).toEqual({
+                key: "connectionMediaTypeUnsupported",
+                defaultMessage: "连接被拒绝：当前模型不支持参考视频",
+            });
+        });
+
+        it("已存在连线时返回已存在诊断", () => {
+            const src = makeNode("src-1", CanvasNodeType.Image);
+            const dst = makeNode("dst-1", CanvasNodeType.Image);
+            const conn = makeConnection("c-1", src.id, dst.id);
+
+            const detail = getConnectionRejectionDetail(src.id, dst.id, [src, dst], [conn]);
+            expect(detail).toEqual({
+                key: "connectionAlreadyExists",
+                defaultMessage: "连接已存在",
+            });
+        });
     });
 });

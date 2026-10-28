@@ -158,6 +158,108 @@ export function validateInputConnection(
     return { fromNodeId, toNodeId };
 }
 
+export type ConnectionRejectionDetail = {
+    key:
+        | "connectionAlreadyExists"
+        | "connectionMediaTypeUnsupported"
+        | "connectionQuotaImagesExceeded"
+        | "connectionQuotaVideosExceeded"
+        | "connectionQuotaAudiosExceeded"
+        | "connectionQuotaExceeded";
+    params?: { max?: number; current?: number; incoming?: number };
+    defaultMessage: string;
+};
+
+/**
+ * 诊断连线被拒绝的具体原因（用于向用户输出友好的诊断提示）
+ */
+export function getConnectionRejectionDetail(
+    fromNodeId: string,
+    toNodeId: string,
+    nodes: CanvasNodeData[],
+    connections: CanvasConnection[] = [],
+): ConnectionRejectionDetail | null {
+    const fromNode = nodes.find((node) => node.id === fromNodeId);
+    const toNode = nodes.find((node) => node.id === toNodeId);
+    if (!fromNode || !toNode || fromNodeId === toNodeId || toNode.type === CanvasNodeType.Group || fromNode.type === CanvasNodeType.Config) {
+        return null;
+    }
+
+    if (connections.some((connection) => connection.fromNodeId === fromNodeId && connection.toNodeId === toNodeId)) {
+        return {
+            key: "connectionAlreadyExists",
+            defaultMessage: "连接已存在",
+        };
+    }
+
+    const modelId = toNode.metadata?.modelId || toNode.metadata?.videoMode || toNode.metadata?.model;
+    const profile = getModelProfile(modelId) || (toNode.type === CanvasNodeType.Video ? videoMinimaxH3OmniProfile : undefined);
+
+    if (profile?.capabilityConfig.references) {
+        const refs = profile.capabilityConfig.references;
+        const incoming = getNodeResourceCounts(fromNode, nodes);
+
+        if ((refs.maxImages ?? 0) === 0 && incoming.images > 0) {
+            return {
+                key: "connectionMediaTypeUnsupported",
+                defaultMessage: "连接被拒绝：当前模型不支持参考图",
+            };
+        }
+        if ((refs.maxVideos ?? 0) === 0 && incoming.videos > 0) {
+            return {
+                key: "connectionMediaTypeUnsupported",
+                defaultMessage: "连接被拒绝：当前模型不支持参考视频",
+            };
+        }
+        if ((refs.maxAudios ?? 0) === 0 && incoming.audios > 0) {
+            return {
+                key: "connectionMediaTypeUnsupported",
+                defaultMessage: "连接被拒绝：当前模型不支持参考音频",
+            };
+        }
+
+        const existingConnections = connections.filter(
+            (c) => c.toNodeId === toNodeId && c.kind === "input" && c.fromNodeId !== fromNodeId,
+        );
+        let existingImages = 0;
+        let existingVideos = 0;
+        let existingAudios = 0;
+
+        for (const conn of existingConnections) {
+            const src = nodes.find((n) => n.id === conn.fromNodeId);
+            if (!src) continue;
+            const counts = getNodeResourceCounts(src, nodes);
+            existingImages += counts.images;
+            existingVideos += counts.videos;
+            existingAudios += counts.audios;
+        }
+
+        if (refs.maxImages !== undefined && existingImages + incoming.images > refs.maxImages) {
+            return {
+                key: "connectionQuotaImagesExceeded",
+                params: { max: refs.maxImages, current: existingImages, incoming: incoming.images },
+                defaultMessage: `连接被拒绝：超出参考图上限（该模型最多支持 ${refs.maxImages} 张，当前已有 ${existingImages} 张）`,
+            };
+        }
+        if (refs.maxVideos !== undefined && existingVideos + incoming.videos > refs.maxVideos) {
+            return {
+                key: "connectionQuotaVideosExceeded",
+                params: { max: refs.maxVideos, current: existingVideos, incoming: incoming.videos },
+                defaultMessage: `连接被拒绝：超出参考视频上限（该模型最多支持 ${refs.maxVideos} 个，当前已有 ${existingVideos} 个）`,
+            };
+        }
+        if (refs.maxAudios !== undefined && existingAudios + incoming.audios > refs.maxAudios) {
+            return {
+                key: "connectionQuotaAudiosExceeded",
+                params: { max: refs.maxAudios, current: existingAudios, incoming: incoming.audios },
+                defaultMessage: `连接被拒绝：超出参考音频上限（该模型最多支持 ${refs.maxAudios} 个，当前已有 ${existingAudios} 个）`,
+            };
+        }
+    }
+
+    return null;
+}
+
 /**
  * 探测指定节点当前输入连线中超出模型 DSL 配额或类型不兼容的既有连线 ID 集合
  */
