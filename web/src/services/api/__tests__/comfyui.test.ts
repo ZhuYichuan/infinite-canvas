@@ -26,27 +26,28 @@ describe("parseSize", () => {
         expect(parseSize(" 1536 x 1024 ")).toEqual({ width: 1536, height: 1024 });
     });
 
-    it("parses aspect ratios with a 1024 base edge", () => {
-        expect(parseSize("1:1")).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("3:4")).toEqual({ width: 1024, height: 1366 });
-        expect(parseSize("4:3")).toEqual({ width: 1366, height: 1024 });
-        expect(parseSize("16:9")).toEqual({ width: 1820, height: 1024 });
+    it("parses aspect ratios with 1k/512 base edge", () => {
+        expect(parseSize("1:1")).toEqual({ width: 512, height: 512 });
+        expect(parseSize("3:4")).toEqual({ width: 448, height: 576 });
+        expect(parseSize("4:3")).toEqual({ width: 576, height: 448 });
+        expect(parseSize("16:9")).toEqual({ width: 640, height: 384 });
     });
 
-    it("falls back to 1024x1024 for empty or auto input", () => {
-        expect(parseSize()).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("")).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("   ")).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("auto")).toEqual({ width: 1024, height: 1024 });
-        expect(parseSize("AUTO")).toEqual({ width: 1024, height: 1024 });
+    it("falls back to 512x512 for empty or auto input", () => {
+        expect(parseSize()).toEqual({ width: 512, height: 512 });
+        expect(parseSize("")).toEqual({ width: 512, height: 512 });
+        expect(parseSize("   ")).toEqual({ width: 512, height: 512 });
+        expect(parseSize("auto")).toEqual({ width: 512, height: 512 });
+        expect(parseSize("AUTO")).toEqual({ width: 512, height: 512 });
     });
 
-    it("parses 2k/4k ratio tiers with a long-edge base", () => {
-        expect(parseSize("1:1-2k")).toEqual({ width: 2048, height: 2048 });
-        expect(parseSize("16:9-2k")).toEqual({ width: 2048, height: 1152 });
-        expect(parseSize("9:16-2k")).toEqual({ width: 1152, height: 2048 });
-        expect(parseSize("16:9-4k")).toEqual({ width: 3840, height: 2160 });
-        expect(parseSize("9:16-4k")).toEqual({ width: 2160, height: 3840 });
+    it("parses 2k/4k ratio tiers aligned with resolution presets", () => {
+        expect(parseSize("1:1-2k")).toEqual({ width: 1024, height: 1024 });
+        expect(parseSize("16:9-2k")).toEqual({ width: 1344, height: 768 });
+        expect(parseSize("9:16-2k")).toEqual({ width: 768, height: 1344 });
+        expect(parseSize("1:1-4k")).toEqual({ width: 2048, height: 2048 });
+        expect(parseSize("16:9-4k")).toEqual({ width: 2688, height: 1536 });
+        expect(parseSize("9:16-4k")).toEqual({ width: 1536, height: 2688 });
     });
 
     it("rounds explicit pixel sizes to even and rejects oversized input", () => {

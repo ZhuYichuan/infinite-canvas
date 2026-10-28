@@ -8,6 +8,13 @@ description: Implemented changes that still need manual verification
 The current release needs manual verification in these areas:
 
 - Image Node Workflow Model DSL Architecture & Dynamic Sizing (图片节点模型 DSL 架构与动态尺寸适配):
+  - **1K / 2K / 4K Resolution Tiers & 64-Pixel Presets (清晰度档位与 64 像素对齐预设)**:
+    - 验证默认初始尺寸为 `512×512`（1K 档 1:1），生成速度极快；
+    - 验证图片设置面板顶部提供「1K」、「2K」、「4K」三档清晰度切换按钮；
+    - 验证切换档位时，下方 7 大常用宽高比（1:1, 4:3, 3:4, 3:2, 2:3, 16:9, 9:16）自动联动到对应档位的 64 像素硬件对齐尺寸（如 1K 16:9 为 640×384，2K 16:9 为 1344×768，4K 16:9 为 2688×1536）；
+    - 验证自定义 W / H 输入框实时同步当前宽高，且支持开启 16 倍数对齐手动微调；
+  - **Host Availability Compatibility & Open-by-Default Fallback (主机支持度历史配置兼容)**:
+    - 验证已配置过历史视频主机（未显式声明生图模型名单）的环境下，生图模型默认允许使用（开箱即用），不再误报「当前主机未启用该模型支持」；
   - **ImageModelPicker Cascader & 4 Image Models (图片模型级联选择器与 4 大内置生图模型)**:
     - 验证画布图片节点支持通过 `ImageModelPicker` 进行「算力主机 + 生图模型」两级级联切换；
     - 验证内置 4 款标准生图模型：Qwen-Image 2.1 全能生图 (`image-qwen-2.1`)、Z-Image Turbo 极速文生图 (`image-z-turbo`)、Flux2.Dev 垫图与双图融合 (`image-flux-2-dev`)、Qwen-Image 局部编辑重绘 (`image-qwen-inpaint`)；

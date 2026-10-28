@@ -18,6 +18,9 @@ import {
     videoMinimaxH3OmniFp8Profile,
     videoMinimaxH3OmniProfile,
     MINIMAX_H3_SIZES,
+    IMAGE_RESOLUTION_PRESETS,
+    getImageDimensions,
+    parseImageSizeTierAndRatio,
 } from "../index";
 
 describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
@@ -172,6 +175,70 @@ describe("Workflow Model Profiles (Image Workflow Models)", () => {
         expect(getModelProfile("i2i")?.id).toBe("image-flux2-dev");
         expect(getModelProfile("flux")?.id).toBe("image-flux2-dev");
         expect(getModelProfile("inpaint")?.id).toBe("image-qwen-inpaint");
+    });
+
+    it("verifies 1K / 2K / 4K resolution tiers and 64-pixel alignment presets", () => {
+        // 1K presets (512 base)
+        expect(IMAGE_RESOLUTION_PRESETS["1k"]["1:1"]).toEqual({ width: 512, height: 512 });
+        expect(IMAGE_RESOLUTION_PRESETS["1k"]["16:9"]).toEqual({ width: 640, height: 384 });
+        expect(IMAGE_RESOLUTION_PRESETS["1k"]["9:16"]).toEqual({ width: 384, height: 640 });
+        expect(IMAGE_RESOLUTION_PRESETS["1k"]["4:3"]).toEqual({ width: 576, height: 448 });
+        expect(IMAGE_RESOLUTION_PRESETS["1k"]["3:4"]).toEqual({ width: 448, height: 576 });
+
+        // 2K presets (1024 base)
+        expect(IMAGE_RESOLUTION_PRESETS["2k"]["1:1"]).toEqual({ width: 1024, height: 1024 });
+        expect(IMAGE_RESOLUTION_PRESETS["2k"]["16:9"]).toEqual({ width: 1344, height: 768 });
+        expect(IMAGE_RESOLUTION_PRESETS["2k"]["9:16"]).toEqual({ width: 768, height: 1344 });
+
+        // 4K presets (2048 base)
+        expect(IMAGE_RESOLUTION_PRESETS["4k"]["1:1"]).toEqual({ width: 2048, height: 2048 });
+        expect(IMAGE_RESOLUTION_PRESETS["4k"]["16:9"]).toEqual({ width: 2688, height: 1536 });
+        expect(IMAGE_RESOLUTION_PRESETS["4k"]["9:16"]).toEqual({ width: 1536, height: 2688 });
+
+        // Default size in profiles is 512x512
+        expect(imageQwen21Profile.capabilityConfig.size?.default).toBe("512x512");
+        expect(imageZTurboProfile.capabilityConfig.size?.default).toBe("512x512");
+        expect(imageFlux2DevProfile.capabilityConfig.size?.default).toBe("512x512");
+    });
+
+    it("verifies getImageDimensions and parseImageSizeTierAndRatio helpers", () => {
+        expect(getImageDimensions("1:1", "1k")).toEqual({ width: 512, height: 512 });
+        expect(getImageDimensions("16:9", "2k")).toEqual({ width: 1344, height: 768 });
+        expect(getImageDimensions("1:1", "4k")).toEqual({ width: 2048, height: 2048 });
+
+        // Exact pixel match
+        expect(parseImageSizeTierAndRatio("512x512")).toEqual({
+            tier: "1k",
+            ratio: "1:1",
+            width: 512,
+            height: 512,
+        });
+        expect(parseImageSizeTierAndRatio("1344x768")).toEqual({
+            tier: "2k",
+            ratio: "16:9",
+            width: 1344,
+            height: 768,
+        });
+        expect(parseImageSizeTierAndRatio("2688x1536")).toEqual({
+            tier: "4k",
+            ratio: "16:9",
+            width: 2688,
+            height: 1536,
+        });
+
+        // Ratio strings
+        expect(parseImageSizeTierAndRatio("1:1")).toEqual({
+            tier: "1k",
+            ratio: "1:1",
+            width: 512,
+            height: 512,
+        });
+        expect(parseImageSizeTierAndRatio("16:9-2k")).toEqual({
+            tier: "2k",
+            ratio: "16:9",
+            width: 1344,
+            height: 768,
+        });
     });
 });
 

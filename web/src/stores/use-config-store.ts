@@ -190,6 +190,24 @@ export const DEFAULT_SUPPORTED_VIDEO_MODEL_IDS: string[] = [
 ];
 
 /**
+ * 默认主机支持的生图模型 ID 清单（开箱即用支持 4 款标准生图模型）
+ */
+export const DEFAULT_SUPPORTED_IMAGE_MODEL_IDS: string[] = [
+    "image-qwen-2.1",
+    "image-z-turbo",
+    "image-flux2-dev",
+    "image-qwen-inpaint",
+];
+
+/**
+ * 默认主机支持的全量工作流模型清单
+ */
+export const DEFAULT_SUPPORTED_MODEL_IDS: string[] = [
+    ...DEFAULT_SUPPORTED_VIDEO_MODEL_IDS,
+    ...DEFAULT_SUPPORTED_IMAGE_MODEL_IDS,
+];
+
+/**
  * 校验指定渠道/主机是否支持运行目标工作流模型
  * 若 supportedModelIds 为空或未设置，则依据开箱即用原则默认全支持
  */
@@ -204,7 +222,18 @@ export function isModelSupportedByHost(channel: ModelChannel | undefined, modelI
         : modelId === "video_minimax_h3_frame"
         ? "frame-video-minimax-h3-fp8-4step-pdmd"
         : modelId;
-    return channel.supportedModelIds.includes(normalizedId) || channel.supportedModelIds.includes(modelId);
+    if (channel.supportedModelIds.includes(normalizedId) || channel.supportedModelIds.includes(modelId)) {
+        return true;
+    }
+    // 开箱即用兼容：若主机仅包含历史视频模型配置、尚未显式声明任何生图模型，
+    // 则默认对系统内置生图模型放行，避免历史旧配置导致生图模型意外被阻断
+    const hasAnyImageConfigured = channel.supportedModelIds.some((id) =>
+        DEFAULT_SUPPORTED_IMAGE_MODEL_IDS.includes(id) || id.startsWith("image-")
+    );
+    if (!hasAnyImageConfigured && (DEFAULT_SUPPORTED_IMAGE_MODEL_IDS.includes(normalizedId) || normalizedId.startsWith("image-"))) {
+        return true;
+    }
+    return false;
 }
 
 export const defaultConfig: AiConfig = {
@@ -221,7 +250,7 @@ export const defaultConfig: AiConfig = {
             apiFormat: "comfyui",
             comfyuiProxyUrl: "http://127.0.0.1:8188",
             comfyuiProxyToken: "",
-            supportedModelIds: [...DEFAULT_SUPPORTED_VIDEO_MODEL_IDS],
+            supportedModelIds: [...DEFAULT_SUPPORTED_MODEL_IDS],
             workflows: getDefaultComfyWorkflowItems({ id: "builtin" }),
             comfyuiT2iWorkflow: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW,
             comfyuiI2iWorkflow: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW,
@@ -262,7 +291,7 @@ export const defaultConfig: AiConfig = {
         "builtin::MiniMax Music 03",
     ],
     quality: "auto",
-    size: "1:1",
+    size: "512x512",
     background: "",
     count: "1",
     canvasImageCount: "1",
@@ -731,7 +760,7 @@ export function createModelChannel(channel?: Partial<ModelChannel>, options?: { 
         models: models.length ? models : options?.preprovisionComfyuiModels !== false ? [...defaultModels] : [],
         comfyuiProxyUrl: channel?.comfyuiProxyUrl !== undefined ? channel.comfyuiProxyUrl : isCloud ? "" : "http://127.0.0.1:8188",
         comfyuiProxyToken: channel?.comfyuiProxyToken !== undefined ? channel.comfyuiProxyToken : "",
-        supportedModelIds: channel?.supportedModelIds !== undefined ? channel.supportedModelIds : [...DEFAULT_SUPPORTED_VIDEO_MODEL_IDS],
+        supportedModelIds: channel?.supportedModelIds !== undefined ? channel.supportedModelIds : [...DEFAULT_SUPPORTED_MODEL_IDS],
         workflows: mergeBuiltinWorkflows(channel?.workflows, defaultWorkflowItems),
         comfyuiT2iWorkflow: channel?.comfyuiT2iWorkflow !== undefined ? channel.comfyuiT2iWorkflow : workflows.t2i,
         comfyuiI2iWorkflow: channel?.comfyuiI2iWorkflow !== undefined ? channel.comfyuiI2iWorkflow : workflows.i2i,

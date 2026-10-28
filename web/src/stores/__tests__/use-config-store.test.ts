@@ -390,6 +390,10 @@ describe("default built-in ComfyUI channel", () => {
             "omni-video-minimax-h3-fp8",
             "frame-video-minimax-h3-fp8-4step-pdmd",
             "frame-video-minimax-h3-fp8",
+            "image-qwen-2.1",
+            "image-z-turbo",
+            "image-flux2-dev",
+            "image-qwen-inpaint",
         ]);
     });
 
@@ -398,7 +402,7 @@ describe("default built-in ComfyUI channel", () => {
         expect(customChannel.name).toBe("自定义 ComfyUI");
         expect(customChannel.models.length).toBe(8);
         expect(customChannel.workflows?.length).toBe(13);
-        expect(customChannel.supportedModelIds?.length).toBe(4);
+        expect(customChannel.supportedModelIds?.length).toBe(8);
         expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
         expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);
@@ -429,6 +433,17 @@ describe("isModelSupportedByHost & updateChannelSupportedModels", () => {
         expect(isModelSupportedByHost(restrictedChannel, "omni-video-minimax-h3-fp8-4step-pdmd")).toBe(true);
         expect(isModelSupportedByHost(restrictedChannel, "omni-video-minimax-h3-fp8")).toBe(false);
         expect(isModelSupportedByHost(restrictedChannel, "frame-video-minimax-h3-fp8")).toBe(false);
+    });
+
+    it("allows image models by default when channel has only legacy video supportedModelIds", () => {
+        const legacyVideoOnlyChannel = createModelChannel({
+            supportedModelIds: ["omni-video-minimax-h3-fp8-4step-pdmd", "frame-video-minimax-h3-fp8"],
+        });
+        // Video model not in whitelist is blocked
+        expect(isModelSupportedByHost(legacyVideoOnlyChannel, "omni-video-minimax-h3-fp8")).toBe(false);
+        // Image models are permitted by default for legacy channels that never configured image whitelist
+        expect(isModelSupportedByHost(legacyVideoOnlyChannel, "image-qwen-2.1")).toBe(true);
+        expect(isModelSupportedByHost(legacyVideoOnlyChannel, "image-z-turbo")).toBe(true);
     });
 
     it("updates channel supported models in store", () => {

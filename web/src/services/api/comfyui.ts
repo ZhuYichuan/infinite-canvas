@@ -20,6 +20,9 @@ import {
     dispatchComfyuiModelWorkflow,
     getModelProfile,
     validateModelExecution,
+    IMAGE_RESOLUTION_PRESETS,
+    type ImageResolutionTier,
+    type ImageAspectRatio,
 } from "./models";
 export * from "./models";
 
@@ -28,16 +31,12 @@ export type ComfyuiSize = {
     height: number;
 };
 
-const DEFAULT_SIZE: ComfyuiSize = { width: 1024, height: 1024 };
-/** Short-edge base (px) used to materialize a plain aspect ratio into pixel dimensions. */
-const SIZE_BASE = 1024;
-/** Long-edge base (px) for the "2k"/"4k" ratio tiers exposed by the image settings panel. */
-const SIZE_TIER_BASE: Record<string, number> = { "2k": 2048, "4k": 3840 };
+const DEFAULT_SIZE: ComfyuiSize = { width: 512, height: 512 };
 /** Hard ceiling per side for explicit pixel sizes; beyond this the input is treated as invalid. */
 const MAX_PIXEL = 8192;
 
 const PIXEL_SIZE_PATTERN = /^(\d+)\s*[x×]\s*(\d+)$/;
-const RATIO_PATTERN = /^(\d+)\s*:\s*(\d+)(?:\s*[-_]\s*(2k|4k))?$/i;
+const RATIO_PATTERN = /^(\d+)\s*:\s*(\d+)(?:\s*[-_]\s*(1k|2k|4k))?$/i;
 
 function roundToEven(value: number) {
     return Math.max(2, Math.round(value / 2) * 2);
@@ -45,12 +44,9 @@ function roundToEven(value: number) {
 
 /**
  * Parse an image size setting into pixel dimensions.
- * Accepts "auto"/empty (falls back to 1024x1024), pixel sizes ("1024x1024", rounded to
- * even, each side capped at 8192px), and aspect ratios ("3:4", shorter edge at 1024px,
- * or "16:9-2k"/"9:16-4k" tiers with the longer edge at 2048/3840px to match the
- * image-settings-panel presets). Note the ratio materialization (short edge 1024) may
- * differ by a few pixels from the OpenAI-side preset the UI advertises for the same
- * ratio value (e.g. 4:3 → 1366x1024 here vs 1360x1024 for OpenAI). Anything else throws.
+ * Accepts "auto"/empty (falls back to 512x512 1K), pixel sizes ("512x512", "1024x1024"),
+ * and standard aspect ratios ("1:1", "16:9", "16:9-2k", "9:16-4k" matching 64px-aligned presets).
+ * Anything else throws.
  */
 export function parseSize(size?: string): ComfyuiSize {
     const value = (size || "").trim();
@@ -70,16 +66,16 @@ export function parseSize(size?: string): ComfyuiSize {
         const a = Number(ratioMatch[1]);
         const b = Number(ratioMatch[2]);
         if (a <= 0 || b <= 0) throw new Error(`Invalid image size: ${value}`);
-        const tier = ratioMatch[3]?.toLowerCase();
-        if (tier) {
-            const base = SIZE_TIER_BASE[tier];
-            return a >= b
-                ? { width: base, height: roundToEven((base * b) / a) }
-                : { width: roundToEven((base * a) / b), height: base };
+        const tier = (ratioMatch[3]?.toLowerCase() || "1k") as ImageResolutionTier;
+        const ratioKey = `${a}:${b}` as ImageAspectRatio;
+        const preset = IMAGE_RESOLUTION_PRESETS[tier]?.[ratioKey];
+        if (preset) {
+            return { width: preset.width, height: preset.height };
         }
+        const base = tier === "4k" ? 2048 : tier === "2k" ? 1024 : 512;
         return a >= b
-            ? { width: roundToEven((SIZE_BASE * a) / b), height: SIZE_BASE }
-            : { width: SIZE_BASE, height: roundToEven((SIZE_BASE * b) / a) };
+            ? { width: roundToEven((base * a) / b), height: base }
+            : { width: base, height: roundToEven((base * b) / a) };
     }
     throw new Error(`Invalid image size: ${value}`);
 }
