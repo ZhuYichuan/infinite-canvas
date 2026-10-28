@@ -7,6 +7,15 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Built-in Multi-Perspective Pose Presets (系统内置多视角姿态库与资产拾取接缝):
+  - 验证在画布顶栏菜单点击「选择资产」、或在文生图/视频页面点击「从素材库选择」时，`AssetPickerModal` 弹窗顶部呈现「我的素材」与「预设姿态库」两个选项卡；
+  - 验证切换至「预设姿态库」时，默认选中「全身独奏·标准类型（73 套）」，并支持无缝切换至「全身独奏·性感类型（80 套）」、「上半身独奏（80 套）」与「双人纠缠（55 套）」，共计 288 套姿态；
+  - 验证切换系列后，分类标签自动联动呈现对应的姿态分类（如坐姿、站立、跪立、下蹲、躺卧等），点击可即时筛选；
+  - 验证搜索框支持按姿态名称、动作编号（如 P001）与分类即时过滤；
+  - 验证每个姿态卡片下方提供正面、侧面、斜向、俯视、仰视 5 视角机位切换标签，点击切换后卡片图片即时无缝切换为对应视角样张；
+  - 验证点击卡片或悬停点击「插入此视角」后，选中的单图 URL 顺畅导入至画布并生成标准图片节点，且在文生图与视频页面正确作为参考图载入；
+  - 验证图片通过 Cloudflare Pages 全球 CDN 加速流式按需拉取，主代码仓库体积增加为 0，且未对本地 IndexedDB 造成存储配额侵占。
+
 - ComfyUI Hardware Runtime Monitor & Memory Cleanup (ComfyUI 多机硬件监控与显存模型清理):
   - 验证画布顶端右侧显示 ComfyUI 实时显存指标（如 `3090Ti · 显存 5% (1.4G/24G)`）与色温状态点（低负载绿/中负载黄/高负载红）；
   - 配置了多台 ComfyUI 主机时，验证 Popover 面板顶部展示算力主机切换选择器，支持查看各主机的在线状态与显存占用并一键无缝切换监控目标；

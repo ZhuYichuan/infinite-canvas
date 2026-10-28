@@ -613,7 +613,12 @@ export default {
             "title": "选择资产",
             "insert": "插入",
             "search": "搜索资产",
-            "empty": "没有资产"
+            "empty": "没有资产",
+            "tabMyAssets": "我的素材",
+            "tabPosePresets": "预设姿态库",
+            "searchPoses": "搜索姿态名称或编号...",
+            "emptyPoses": "未找到匹配的姿态预设",
+            "insertAngle": "插入此视角"
         },
         "imageTools": {
             "copyPrompt": "复制提示词",

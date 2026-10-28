@@ -613,7 +613,12 @@ export default {
             "title": "Select assets",
             "insert": "Insert",
             "search": "Search assets",
-            "empty": "No assets"
+            "empty": "No assets",
+            "tabMyAssets": "My Assets",
+            "tabPosePresets": "Pose Presets",
+            "searchPoses": "Search poses by name or ID...",
+            "emptyPoses": "No matching pose presets found",
+            "insertAngle": "Insert Perspective"
         },
         "imageTools": {
             "copyPrompt": "Copy prompt",
