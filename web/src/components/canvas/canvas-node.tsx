@@ -31,12 +31,10 @@ type CanvasNodeProps = {
     hasInvalidConnections?: boolean;
     isConnecting: boolean;
     referenceSelectionState?: "target" | "disabled" | "available";
-    showPanel: boolean;
     showImageInfo: boolean;
     mentionReferences?: CanvasResourceReference[];
     pluginHost?: CanvasPluginHost;
     registryVersion?: number;
-    renderPanel?: (node: CanvasNodeData) => ReactNode;
     renderNodeContent?: (node: CanvasNodeData) => ReactNode;
     groupChildCount?: number;
     isGroupDropTarget?: boolean;
@@ -103,11 +101,9 @@ export const CanvasNode = React.memo(function CanvasNode({
     hasInvalidConnections = false,
     isConnecting,
     referenceSelectionState,
-    showPanel,
     showImageInfo,
     mentionReferences = [],
     pluginHost,
-    renderPanel,
     renderNodeContent,
     groupChildCount = 0,
     isGroupDropTarget = false,
@@ -507,8 +503,6 @@ export const CanvasNode = React.memo(function CanvasNode({
                     onClick={(event) => onConnectClick?.(event, data.id, "source")}
                 />
             ) : null}
-
-            {showPanel && !isGroup && !isViewer && renderPanel ? <div className="absolute left-1/2 top-full z-[70] w-[720px] -translate-x-1/2 pt-4">{renderPanel(data)}</div> : null}
         </div>
     );
 });

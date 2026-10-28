@@ -35,6 +35,7 @@ import { CanvasFaceRefineModal } from "@/components/canvas/canvas-face-refine-mo
 import { CanvasDepthVideoModal } from "@/components/canvas/canvas-depth-video-modal";
 import { buildNodeGenerationContext, buildNodeGenerationInputs, buildNodeResponseMessages, hydrateNodeGenerationContext, type NodeGenerationContext, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import { CanvasNodeHoverToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-hover-toolbar";
+import { CanvasNodeInspectorOverlay } from "@/components/canvas/canvas-node-inspector-overlay";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { Minimap } from "@/components/canvas/canvas-mini-map";
 import { CanvasNode } from "@/components/canvas/canvas-node";
@@ -906,6 +907,7 @@ function InfiniteCanvasPage() {
     // It stays hidden for multi-selection and while isNodeDragging is true.
     const singleSelectedNodeId = selectedNodeIds.size === 1 ? Array.from(selectedNodeIds)[0] : null;
     const toolbarNode = (toolbarNodeId ? nodeById.get(toolbarNodeId) || null : null) || (singleSelectedNodeId ? nodeById.get(singleSelectedNodeId) || null : null);
+    const inspectorNode = dialogNodeId ? nodeById.get(dialogNodeId) || null : null;
     const infoNode = infoNodeId ? nodeById.get(infoNodeId) || null : null;
     const cropNode = cropNodeId ? nodeById.get(cropNodeId) || null : null;
     const maskEditNode = maskEditNodeId ? nodeById.get(maskEditNodeId) || null : null;
@@ -4897,7 +4899,6 @@ function InfiniteCanvasPage() {
                             hasInvalidConnections={connections.some((c) => c.toNodeId === node.id && invalidConnectionIds.has(c.id))}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node, nodes) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             groupChildCount={groupChildCountById.get(node.id) || 0}
                             isGroupDropTarget={dropTargetGroupId === node.id}
                             batchExpanded={expandedBatchNodeIds.has(node.id)}
@@ -4905,7 +4906,6 @@ function InfiniteCanvasPage() {
                             mentionReferences={mentionReferencesByNodeId.get(node.id) || EMPTY_REFERENCES}
                             pluginHost={pluginHost}
                             registryVersion={nodeRegistryVersion}
-                            renderPanel={renderNodePanel}
                             renderNodeContent={renderNodeContentPanel}
                             onMouseDown={handleNodeMouseDown}
                             onSelectCapture={handleNodeSelectCapture}
@@ -5004,6 +5004,12 @@ function InfiniteCanvasPage() {
                     onCaptureGroupNodes={(node) => handleCaptureGroupNodes(node.id)}
                     onFitGroup={(node) => handleFitGroup(node.id)}
                     onUngroup={(node) => ungroupSelected(node.id)}
+                />
+
+                <CanvasNodeInspectorOverlay
+                    node={!isViewer && !isNodeDragging && !isNodeResizing && !selectionBox && inspectorNode && inspectorNode.type !== CanvasNodeType.Group && !getNodeDefinition(inspectorNode.type)?.hidePanel ? inspectorNode : null}
+                    viewport={viewport}
+                    renderPanel={renderNodePanel}
                 />
 
                 {isViewer ? (
