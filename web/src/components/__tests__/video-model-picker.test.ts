@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_WORKFLOW_MODELS, getModelProfile } from "@/services/api/models";
+import { BUILTIN_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile } from "@/services/api/models";
 import { isModelSupportedByHost } from "@/stores/use-config-store";
 import type { ModelChannel } from "@/types/config";
 
@@ -62,5 +62,43 @@ describe("VideoModelPicker Data Contract & Hierarchy", () => {
 
         const legacyFrame = getModelProfile("video_minimax_h3_frame");
         expect(legacyFrame?.id).toBe("frame-video-minimax-h3-fp8-4step-pdmd");
+    });
+
+    it("evaluates candidate model availability with image over-quota (Frame video disabled with 3 images)", () => {
+        const frameModel = BUILTIN_WORKFLOW_MODELS.find((m) => m.category === "frameVideo")!;
+        const omniModel = BUILTIN_WORKFLOW_MODELS.find((m) => m.category === "omniVideo")!;
+
+        const frameCheck = evaluateModelAvailability({
+            targetModel: frameModel,
+            connectedImages: 3,
+            connectedVideos: 0,
+            connectedAudios: 0,
+            promptText: "",
+        });
+        expect(frameCheck.isAvailable).toBe(false);
+        expect(frameCheck.reasons).toContain("已连接 3 张参考图，该模型最多支持 2 张");
+
+        const omniCheck = evaluateModelAvailability({
+            targetModel: omniModel,
+            connectedImages: 3,
+            connectedVideos: 0,
+            connectedAudios: 0,
+            promptText: "",
+        });
+        expect(omniCheck.isAvailable).toBe(true);
+        expect(omniCheck.reasons).toEqual([]);
+    });
+
+    it("evaluates candidate model availability with video connection (Frame video disabled)", () => {
+        const frameModel = BUILTIN_WORKFLOW_MODELS.find((m) => m.category === "frameVideo")!;
+        const check = evaluateModelAvailability({
+            targetModel: frameModel,
+            connectedImages: 2,
+            connectedVideos: 1,
+            connectedAudios: 0,
+            promptText: "",
+        });
+        expect(check.isAvailable).toBe(false);
+        expect(check.reasons).toContain("该模型不支持参考视频，当前已连接 1 个视频");
     });
 });

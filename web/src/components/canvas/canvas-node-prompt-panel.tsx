@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUp, LoaderCircle, Maximize2, Minimize2, RefreshCw, Square } from "lucide-react";
 import { Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
 import { VideoModelPicker } from "@/components/video-model-picker";
 import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, isModelSupportedByHost, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
-import { getModelProfile } from "@/services/api/models";
+import { BUILTIN_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile } from "@/services/api/models";
+import { getNodeResourceCounts } from "@/lib/canvas/canvas-node-geometry";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -76,6 +77,34 @@ export function CanvasNodePromptPanel({
     const [expanded, setExpanded] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    const connectedResources = useMemo(() => {
+        let images = 0;
+        let videos = 0;
+        let audios = 0;
+        for (const src of connectedNodes) {
+            const counts = getNodeResourceCounts(src, nodes);
+            images += counts.images;
+            videos += counts.videos;
+            audios += counts.audios;
+        }
+        return { images, videos, audios };
+    }, [connectedNodes, nodes]);
+
+    const videoModelAvailability = useMemo(() => {
+        if (mode !== "video") return { isAvailable: true, reasons: [] };
+        const effectiveModelId = node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd");
+        const profile = getModelProfile(effectiveModelId) || BUILTIN_WORKFLOW_MODELS[0];
+        const activeChannel = globalConfig.channels.find((c) => c.id === (node.metadata?.channelId || globalConfig.channelId)) || globalConfig.channels[0];
+        return evaluateModelAvailability({
+            targetModel: profile,
+            connectedImages: connectedResources.images,
+            connectedVideos: connectedResources.videos,
+            connectedAudios: connectedResources.audios,
+            promptText: prompt,
+            activeChannel,
+        });
+    }, [mode, node.metadata?.modelId, node.metadata?.videoMode, node.metadata?.channelId, config.videoMode, globalConfig.channels, globalConfig.channelId, connectedResources, prompt]);
+
     // Restore prompts only when switching nodes; preserve the current input after generation on the same node.
     useEffect(() => {
         setPrompt(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
@@ -92,17 +121,25 @@ export function CanvasNodePromptPanel({
         const text = prompt.trim();
         if ((!text && intent !== "repeat") || isGenerating) return;
 
-        // 视频生成前校验当前主机是否启用了目标模型
+        // 视频生成前校验当前主机与模型多维约束（规范模式）
         if (mode === "video") {
-            const effectiveModelId = node.metadata?.modelId || (node.metadata?.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd");
-            const activeChannel = globalConfig.channels.find((c) => c.id === globalConfig.channelId) || globalConfig.channels[0];
-            if (activeChannel && !isModelSupportedByHost(activeChannel, effectiveModelId)) {
-                const profile = getModelProfile(effectiveModelId);
+            if (!videoModelAvailability.isAvailable) {
                 Modal.warning({
-                    title: "当前主机未就绪该模型",
-                    content: `当前选中的 ComfyUI 主机「${activeChannel.name}」未开启对「${profile?.name || effectiveModelId}」的支持。\n\n请在设置中为主机启用该模型，或切换至支持该模型的算力主机。`,
-                    okText: "前往设置",
-                    onOk: () => openConfigDialog(false, "channels"),
+                    title: "无法生成视频（存在不兼容项）",
+                    content: (
+                        <div className="space-y-2 pt-2 text-xs">
+                            <div>当前视频节点存在以下约束限制，请修正后再生成：</div>
+                            <div className="space-y-1 rounded bg-stone-100 p-2 dark:bg-stone-800">
+                                {videoModelAvailability.reasons.map((r, i) => (
+                                    <div key={i} className="flex items-start gap-1.5">
+                                        <span className="text-amber-500 font-bold">•</span>
+                                        <span>{r}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ),
+                    okText: "我知道了",
                 });
                 return;
             }
@@ -184,6 +221,10 @@ export function CanvasNodePromptPanel({
                             <VideoModelPicker
                                 channelId={node.metadata?.channelId || config.channelId}
                                 modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
+                                connectedImages={connectedResources.images}
+                                connectedVideos={connectedResources.videos}
+                                connectedAudios={connectedResources.audios}
+                                promptText={prompt}
                                 onChange={(nextChannelId, nextModelId, profile) => {
                                     const nextVideoMode = profile.category === "frameVideo" ? "frame" : "omni";
                                     onConfigChange(node.id, {
@@ -250,18 +291,72 @@ export function CanvasNodePromptPanel({
                         </span>
                     </Button>
                 ) : canRepeat ? (
-                    <Button
-                        type="primary"
-                        className="ml-auto !h-10 !rounded-full !px-4"
-                        icon={<RefreshCw className="size-3.5" />}
-                        onClick={() => submit("repeat")}
-                    >
-                        {t("canvas.promptPanel.repeatGeneration")}
-                    </Button>
+                    !videoModelAvailability.isAvailable ? (
+                        <Tooltip
+                            title={
+                                <div className="space-y-1 text-xs">
+                                    <div className="font-semibold text-amber-300">无法再次生成（存在不兼容项）：</div>
+                                    {videoModelAvailability.reasons.map((r, i) => (
+                                        <div key={i}>• {r}</div>
+                                    ))}
+                                </div>
+                            }
+                        >
+                            <span>
+                                <Button
+                                    type="primary"
+                                    className="ml-auto !h-10 !rounded-full !px-4"
+                                    icon={<RefreshCw className="size-3.5" />}
+                                    disabled
+                                >
+                                    {t("canvas.promptPanel.repeatGeneration")}
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    ) : (
+                        <Button
+                            type="primary"
+                            className="ml-auto !h-10 !rounded-full !px-4"
+                            icon={<RefreshCw className="size-3.5" />}
+                            onClick={() => submit("repeat")}
+                        >
+                            {t("canvas.promptPanel.repeatGeneration")}
+                        </Button>
+                    )
                 ) : (
-                    <Button type="primary" className="ml-auto !h-10 !min-w-16 shrink-0 !rounded-full !px-3" disabled={!prompt.trim()} onClick={() => submit("new")} aria-label={t("canvas.promptPanel.generate")}>
-                        <ArrowUp className="size-4" />
-                    </Button>
+                    !videoModelAvailability.isAvailable ? (
+                        <Tooltip
+                            title={
+                                <div className="space-y-1 text-xs">
+                                    <div className="font-semibold text-amber-300">无法生成（存在不兼容项）：</div>
+                                    {videoModelAvailability.reasons.map((r, i) => (
+                                        <div key={i}>• {r}</div>
+                                    ))}
+                                </div>
+                            }
+                        >
+                            <span>
+                                <Button
+                                    type="primary"
+                                    className="ml-auto !h-10 !min-w-16 shrink-0 !rounded-full !px-3"
+                                    disabled
+                                    aria-label={t("canvas.promptPanel.generate")}
+                                >
+                                    <ArrowUp className="size-4" />
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    ) : (
+                        <Button
+                            type="primary"
+                            className="ml-auto !h-10 !min-w-16 shrink-0 !rounded-full !px-3"
+                            disabled={!prompt.trim()}
+                            onClick={() => submit("new")}
+                            aria-label={t("canvas.promptPanel.generate")}
+                        >
+                            <ArrowUp className="size-4" />
+                        </Button>
+                    )
                 )}
             </div>
             <Modal

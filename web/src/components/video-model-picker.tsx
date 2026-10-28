@@ -1,15 +1,16 @@
-import { Cascader } from "antd";
-import { AlertTriangle, Film, Server, Sparkles } from "lucide-react";
+import { Cascader, Tooltip } from "antd";
+import { AlertTriangle, Film, HelpCircle, Server, Sparkles } from "lucide-react";
 import { useMemo } from "react";
 
 import {
     BUILTIN_WORKFLOW_MODELS,
+    evaluateModelAvailability,
     getModelProfile,
     type WorkflowModelProfile,
 } from "@/services/api/models";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
-import { isModelSupportedByHost, useEffectiveConfig } from "@/stores/use-config-store";
+import { useEffectiveConfig } from "@/stores/use-config-store";
 
 export type VideoModelPickerProps = {
     channelId?: string;
@@ -17,6 +18,10 @@ export type VideoModelPickerProps = {
     onChange: (channelId: string, modelId: string, profile: WorkflowModelProfile) => void;
     className?: string;
     disabled?: boolean;
+    connectedImages?: number;
+    connectedVideos?: number;
+    connectedAudios?: number;
+    promptText?: string;
 };
 
 export function VideoModelPicker({
@@ -25,6 +30,10 @@ export function VideoModelPicker({
     onChange,
     className = "",
     disabled = false,
+    connectedImages = 0,
+    connectedVideos = 0,
+    connectedAudios = 0,
+    promptText = "",
 }: VideoModelPickerProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const config = useEffectiveConfig();
@@ -56,12 +65,20 @@ export function VideoModelPicker({
             rawName: channel.name,
             children: BUILTIN_WORKFLOW_MODELS.map((model) => {
                 const isFrame = model.category === "frameVideo";
-                const isSupported = isModelSupportedByHost(channel, model.id);
+                const availability = evaluateModelAvailability({
+                    targetModel: model,
+                    connectedImages,
+                    connectedVideos,
+                    connectedAudios,
+                    promptText,
+                    activeChannel: channel,
+                });
 
                 return {
                     value: model.id,
+                    disabled: !availability.isAvailable,
                     label: (
-                        <div className="flex items-center justify-between gap-2 py-0.5 min-w-[180px]">
+                        <div className={`flex items-center justify-between gap-2 py-0.5 min-w-[200px] ${!availability.isAvailable ? "opacity-60" : ""}`}>
                             <div className="flex items-center gap-1.5 truncate">
                                 {isFrame ? (
                                     <Sparkles className="size-3.5 shrink-0 text-purple-500" />
@@ -69,20 +86,38 @@ export function VideoModelPicker({
                                     <Film className="size-3.5 shrink-0 text-emerald-500" />
                                 )}
                                 <span className="font-medium text-xs truncate">{model.name}</span>
-                                {!isSupported && (
-                                    <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-medium shrink-0">
-                                        <AlertTriangle className="size-3" />
-                                        <span>未就绪</span>
-                                    </span>
-                                )}
                             </div>
+                            {!availability.isAvailable && (
+                                <Tooltip
+                                    title={
+                                        <div className="space-y-1 text-xs">
+                                            <div className="font-semibold text-amber-300">当前不可用：</div>
+                                            {availability.reasons.map((r, i) => (
+                                                <div key={i} className="flex items-start gap-1">
+                                                    <span className="text-amber-400">•</span>
+                                                    <span>{r}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    }
+                                >
+                                    <span
+                                        className="pointer-events-auto flex items-center gap-0.5 text-amber-500 shrink-0 cursor-help p-0.5 hover:text-amber-600"
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    >
+                                        <HelpCircle className="size-3.5" />
+                                    </span>
+                                </Tooltip>
+                            )}
                         </div>
                     ),
                     model,
+                    availability,
                 };
             }),
         }));
-    }, [channels]);
+    }, [channels, connectedImages, connectedVideos, connectedAudios, promptText]);
 
     const cascaderValue = useMemo(() => {
         return [activeChannel.id, activeProfile.id];
@@ -96,7 +131,16 @@ export function VideoModelPicker({
         onChange(selectedChannelId, found.id, found);
     };
 
-    const isActiveSupported = isModelSupportedByHost(activeChannel, activeProfile.id);
+    const activeAvailability = useMemo(() => {
+        return evaluateModelAvailability({
+            targetModel: activeProfile,
+            connectedImages,
+            connectedVideos,
+            connectedAudios,
+            promptText,
+            activeChannel,
+        });
+    }, [activeProfile, connectedImages, connectedVideos, connectedAudios, promptText, activeChannel]);
 
     return (
         <Cascader
@@ -134,11 +178,25 @@ export function VideoModelPicker({
                             <Film className="size-3.5 shrink-0 text-emerald-500" />
                         )}
                         <span className="truncate font-medium">{profile.name}</span>
-                        {!isActiveSupported && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-medium shrink-0">
-                                <AlertTriangle className="size-3" />
-                                <span>未就绪</span>
-                            </span>
+                        {!activeAvailability.isAvailable && (
+                            <Tooltip
+                                title={
+                                    <div className="space-y-1 text-xs">
+                                        <div className="font-semibold text-amber-300">当前不可用：</div>
+                                        {activeAvailability.reasons.map((r, i) => (
+                                            <div key={i} className="flex items-start gap-1">
+                                                <span className="text-amber-400">•</span>
+                                                <span>{r}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                }
+                            >
+                                <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-medium shrink-0 cursor-help">
+                                    <AlertTriangle className="size-3" />
+                                    <HelpCircle className="size-3" />
+                                </span>
+                            </Tooltip>
                         )}
                     </div>
                 );

@@ -7,6 +7,15 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Model Constraint Engine & Availability Diagnostic Tooltip (模型多维约束检查引擎与不可用诊断问号):
+  - **Cascader Model Disabled State & Help Tooltip (模型选择器置灰与小问号)**:
+    - 验证当视频节点已连入 3 张以上图片或连入视频/音频时，打开 `VideoModelPicker`，首尾帧模型选项自动置灰（不可点击切换）；
+    - 验证置灰模型右侧展示微型 `?` 图标，鼠标悬停时弹出浮层，清晰展示具体不可用原因（如「已连接 3 张参考图，该模型最多支持 2 张」或「该模型不支持参考视频」）；
+    - 验证当提示词字数超过 2000 字时，所有模型在列表中均提示字数超限；
+  - **Generation Button Constraint Guard (生成按钮前置防呆联动)**:
+    - 验证当前选中的模型若存在任何约束违规（如提示词超长或外部连线超配），底部的「生成」按钮联动置灰，悬停展示小问号与诊断列表；
+    - 验证修复连线或精简提示词后，生成按钮即时恢复可用状态。
+
 - Top Navigation & Config Modal Workflow Link (导航栏精简与配置弹窗链接跳转隐藏):
   - 验证顶部主导航栏（及移动端菜单抽屉）中已隐藏「开源社区」入口与移除「工作流管理」入口；
   - 验证在「配置与用户偏好」设置弹窗的渠道列表中，点击工作流右侧的「配置工作流」按钮时，弹窗自动关闭并顺利导航至对应工作流详情。
