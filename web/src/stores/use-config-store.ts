@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 
 import { localForageStorage } from "@/lib/localforage-storage";
 import { getModelProfile } from "@/services/api/models";
+import type { ModelSupportedTools } from "@/services/api/models/types";
 
 import {
     DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW,
@@ -82,6 +83,7 @@ export type ChannelModel = {
     capability: ModelCapability;
     script?: string;
     comfyuiWorkflow?: ComfyuiWorkflow;
+    supportedTools?: ModelSupportedTools;
 };
 
 export type ModelChannel = {

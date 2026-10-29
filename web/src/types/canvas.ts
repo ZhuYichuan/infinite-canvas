@@ -1,3 +1,5 @@
+import type { ModelSupportedTools } from "@/services/api/models/types";
+
 export type Position = {
     x: number;
     y: number;
@@ -113,6 +115,7 @@ export type CanvasNodeMetadata = {
     durationMs?: number;
     groupId?: string;
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
+    supportedTools?: ModelSupportedTools;
 };
 
 export type CanvasNodeData = {

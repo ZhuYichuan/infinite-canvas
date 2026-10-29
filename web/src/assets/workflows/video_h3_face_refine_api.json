@@ -354,7 +354,7 @@
     },
     "class_type": "VHS_VideoCombine",
     "_meta": {
-      "title": "10. Save (ORIGINAL audio)"
+      "title": "output_video"
     }
   },
   "31": {

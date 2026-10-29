@@ -2,6 +2,10 @@
 
 ## Unreleased
 
++ [优化] 模型 DSL 支持声明 supportedTools 衍生工具能力：视频模型（MiniMax H3）声明 faceRefine 与 depthVideo 支持能力，画布节点悬浮工具栏根据模型能力受控呈现「人脸修复」与「深度视频」，未声明或不支持的模型不再盲目展示。
++ [修复] 修复 ComfyUI 校验错误中粗暴匹配子串 "int" 误将 Checkpoint、中断或类型错误误判为缺少 ComfyLiterals 的缺陷，并在错误提示中完整保留 ComfyUI 原生详细报错信息。
++ [修复] 补充 ComfyUI-MiniMaxH3-Myang 与 ComfyUI-VideoHelperSuite 核心依赖插件检测，并将人脸修复工作流的产物保存节点标记规范对齐为 output_video。
+
 ## v0.20.0 - 2026-10-28
 
 + [优化] 文本工作流 DSL 收敛为 Qwen-3.5 统一多模态模型：将割裂的纯文本生成与视觉反推合并为单一支持 0~1 张图的多模态 Profile，未连图充当文本扩写助手、连入图片秒变视觉反推，支持空提示词默认反推与快捷指令芯片，并遵循工作流驱动原则隐藏未开放的生成长度与深度思考设置。

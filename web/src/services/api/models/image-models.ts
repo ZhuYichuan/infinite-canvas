@@ -145,6 +145,10 @@ export const imageQwen21Profile: WorkflowModelProfile = {
         output: "out_image",
     },
     description: "Qwen-Image 2.1 全能生图，原生支持文生图及最多 10 张多参考图构图与风格融合。",
+    supportedTools: {
+        maskEdit: true,
+        reversePrompt: true,
+    },
 };
 
 /**
@@ -184,6 +188,10 @@ export const imageZTurboProfile: WorkflowModelProfile = {
         output: "output_image",
     },
     description: "Z-Image-Turbo 极速文生图，仅需数步即可成片，纯文生图，不支持参考图输入。",
+    supportedTools: {
+        maskEdit: true,
+        reversePrompt: true,
+    },
 };
 
 /**
@@ -225,6 +233,10 @@ export const imageFlux2DevProfile: WorkflowModelProfile = {
         output: "output_image",
     },
     description: "Flux2.Dev 深度图生图与双图融合，支持 1~2 张参考图的角色/风格融合与图像重绘。",
+    supportedTools: {
+        maskEdit: true,
+        reversePrompt: true,
+    },
 };
 
 /**
@@ -260,6 +272,10 @@ export const imageQwenInpaintProfile: WorkflowModelProfile = {
         output: "output_image",
     },
     description: "Qwen-Image 局部编辑重绘，严格需要两张参考图（一张原图 + 一张蒙版），底图尺寸自适应，界面无需尺寸调节。",
+    supportedTools: {
+        maskEdit: true,
+        reversePrompt: true,
+    },
 };
 
 /**

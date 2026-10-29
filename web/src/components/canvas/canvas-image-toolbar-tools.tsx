@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Brush, Camera, Copy, FileText, Grid2x2, Lock, LockOpen, Maximize2, Scissors, Sparkles, Upload, ZoomIn } from "lucide-react";
 
 import type { CanvasNodeData } from "@/types/canvas";
+import type { ModelSupportedTools } from "@/services/api/models/types";
 import i18n from "@/i18n";
 
 export type ImageNodeActionToolId = "copyPrompt" | "reversePrompt" | "replace" | "resize" | "maskEdit" | "crop" | "split" | "upscale" | "view";
@@ -116,15 +117,21 @@ export const imageToolDefinitions: ImageToolDefinition[] = [
 
 export const defaultImageQuickToolIds: ImageQuickToolId[] = [...defaultBaseToolIds, ...imageToolDefinitions.filter((tool) => tool.defaultVisible).map((tool) => tool.id)];
 
-export function buildImageToolbarTools(node: CanvasNodeData, handlers: ImageToolHandlers) {
-    return imageToolDefinitions.map((tool) => ({
-        id: tool.id,
-        label: resolveToolText(tool.label, node),
-        title: resolveToolText(tool.title, node),
-        icon: tool.icon(node),
-        active: tool.active?.(node),
-        onClick: () => tool.run(node, handlers),
-    }));
+export function buildImageToolbarTools(node: CanvasNodeData, handlers: ImageToolHandlers, supportedTools?: ModelSupportedTools) {
+    return imageToolDefinitions
+        .filter((tool) => {
+            if (tool.id === "maskEdit" && supportedTools?.maskEdit === false) return false;
+            if (tool.id === "reversePrompt" && supportedTools?.reversePrompt === false) return false;
+            return true;
+        })
+        .map((tool) => ({
+            id: tool.id,
+            label: resolveToolText(tool.label, node),
+            title: resolveToolText(tool.title, node),
+            icon: tool.icon(node),
+            active: tool.active?.(node),
+            onClick: () => tool.run(node, handlers),
+        }));
 }
 
 export function normalizeImageQuickToolIds(value: unknown[]) {

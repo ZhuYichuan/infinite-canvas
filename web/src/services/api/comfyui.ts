@@ -769,33 +769,45 @@ export function adaptWorkflowModelPaths(
 
 export const COMFYUI_CORE_PLUGINS = [
     {
+        name: "ComfyUI-MiniMaxH3-Myang",
+        url: "https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang",
+        keywords: ["h3facetrackcrop", "h3injectvideolatent", "minimaxh3nativeaudiolock", "h3perframedenoise", "h3facestitch"],
+        desc: "MiniMax H3 视频人脸追踪精修组件",
+    },
+    {
+        name: "ComfyUI-VideoHelperSuite",
+        url: "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite",
+        keywords: ["vhs_videocombine", "videohelpersuite", "loadvideo"],
+        desc: "视频加载与音画封装输出",
+    },
+    {
         name: "ComfyUI-KJNodes",
         url: "https://github.com/kijai/ComfyUI-KJNodes",
-        keywords: ["getvideocomponents", "kjnodes", "colormatch"],
+        keywords: ["getvideocomponents", "kjnodes", "colormatch", "getimagesize"],
         desc: "全能参考视频及组件处理",
     },
     {
         name: "ComfyLiterals",
         url: "https://github.com/M1kep/ComfyLiterals",
-        keywords: ["comfyliterals", "int", "float", "primitivestring", "primitiveint"],
+        keywords: ["comfyliterals", "primitiveint", "primitivefloat"],
         desc: "首尾帧/全能视频字面量与基础常数",
     },
     {
         name: "Comfyui-kktools",
         url: "https://github.com/zhiwendesign/Comfyui-kktools",
-        keywords: ["kktools", "prompt_expansion", "vision_llm"],
+        keywords: ["kktools", "prompt_expansion", "vision_llm", "kksomethingtoany"],
         desc: "文本生成与提示词反推",
     },
     {
         name: "ComfyUI-UniversalToolkit",
         url: "https://github.com/whmc76/ComfyUI-UniversalToolkit",
-        keywords: ["universaltoolkit", "toolkit"],
+        keywords: ["universaltoolkit", "showany_utk", "toolkit"],
         desc: "通用工具与参数解析",
     },
     {
         name: "ComfyUI_LayerStyle",
         url: "https://github.com/chflame163/ComfyUI_LayerStyle",
-        keywords: ["layerstyle", "mask"],
+        keywords: ["layerstyle", "layermask"],
         desc: "遮罩处理与图层合成",
     },
 ];
@@ -804,7 +816,7 @@ export function translateComfyuiValidationError(errMsg: string): string {
     const lower = errMsg.toLowerCase();
     for (const plugin of COMFYUI_CORE_PLUGINS) {
         if (plugin.keywords.some((kw) => lower.includes(kw))) {
-            return `缺少核心依赖插件「${plugin.name}」(${plugin.desc})。请在 ComfyUI 的 custom_nodes 目录安装：git clone ${plugin.url}`;
+            return `缺少核心依赖插件「${plugin.name}」(${plugin.desc})。请在 ComfyUI 的 custom_nodes 目录安装：git clone ${plugin.url}\n原始错误: ${errMsg}`;
         }
     }
     if (lower.includes("prompt outputs failed validation") || lower.includes("class not found")) {

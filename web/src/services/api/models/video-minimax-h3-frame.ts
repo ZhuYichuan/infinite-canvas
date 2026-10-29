@@ -65,6 +65,10 @@ export const videoMinimaxH3FrameFp8PdmdProfile: WorkflowModelProfile = {
     },
     slotMapping: FRAME_SLOT_MAPPING,
     description: "MiniMax H3 首尾帧插值视频极速版 (FP8 4步 PDMD)，严格首尾两帧两张参考图，4 步瞬间成片。",
+    supportedTools: {
+        faceRefine: true,
+        depthVideo: true,
+    },
 };
 
 /**
@@ -117,6 +121,10 @@ export const videoMinimaxH3FrameFp8Profile: WorkflowModelProfile = {
     },
     slotMapping: FRAME_SLOT_MAPPING,
     description: "MiniMax H3 首尾帧插值视频标准版 (FP8 Scaled)，平滑细腻过度，适合高质量关键帧演化。",
+    supportedTools: {
+        faceRefine: true,
+        depthVideo: true,
+    },
 };
 
 /**

@@ -7,6 +7,18 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Model DSL Supported Tools & ComfyUI Validation Fixes (模型 DSL 工具能力声明与悬浮工具栏受控展示验证):
+  - **视频模型 DSL 声明衍生工具支持度与工具栏受控呈现**:
+    - 在画布上使用 MiniMax H3 视频模型（Omni 或 Frame）生成视频产物；
+    - 鼠标悬停在生成的视频节点上，查看顶部悬浮工具栏，验证出现「人脸修复」与「深度估计」工具按钮；
+    - 点击「人脸修复」按钮，验证唤起人脸修复弹窗，且自动装配该视频节点为输入视频；
+    - 对于未声明 `supportedTools.faceRefine` 的模型产物或普通无绑定模型的视频节点，验证顶部悬浮工具栏中不显示「人脸修复」按钮。
+  - **ComfyUI 校验错误精准翻译与原始错误信息透传**:
+    - 触发缺少插件或参数配置错误的 ComfyUI 任务执行；
+    - 验证错误提示框不再因为报错信息中包含 `int`、`checkpoint` 等常见单词而误报「缺少核心依赖插件 ComfyLiterals」；
+    - 验证对于缺失 `ComfyUI-MiniMaxH3-Myang`（如 `H3FaceTrackCrop` 等）或 `ComfyUI-VideoHelperSuite`（如 `VHS_VideoCombine`）时，能够精准匹配对应的 Git Clone 安装提示；
+    - 验证错误弹窗或提示中完整保留了 `原始错误: ...` 详细诊断输出，未丢失底层真实堆栈。
+
 - Canvas Modals i18n Bilingual Support (画布弹窗中英国际化验证):
   - **协同弹窗（CanvasCollabModal）中英双语验证**:
     - 在画布顶部工具栏点击「协同」按钮打开多人协同弹窗；

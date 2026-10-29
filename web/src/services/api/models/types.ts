@@ -75,6 +75,14 @@ export type ModelCategoryType =
     | "angle"
     | "upscale";
 
+export interface ModelSupportedTools {
+    faceRefine?: boolean;
+    depthVideo?: boolean;
+    maskEdit?: boolean;
+    reversePrompt?: boolean;
+    [key: string]: boolean | undefined;
+}
+
 export interface WorkflowModelProfile {
     id: string;
     name: string;
@@ -87,4 +95,5 @@ export interface WorkflowModelProfile {
     capabilityConfig: WorkflowCapabilityConfig;
     slotMapping: Record<string, string>;
     description?: string;
+    supportedTools?: ModelSupportedTools;
 }

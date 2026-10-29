@@ -79,6 +79,10 @@ export const videoMinimaxH3OmniFp8PdmdProfile: WorkflowModelProfile = {
     },
     slotMapping: OMNI_SLOT_MAPPING,
     description: "MiniMax H3 全能参考视频极速版 (FP8 4步 PDMD, 集成 EasyCache)，最多支持 9 图 + 3 视频 + 3 音频，极速成片。",
+    supportedTools: {
+        faceRefine: true,
+        depthVideo: true,
+    },
 };
 
 /**
@@ -130,6 +134,10 @@ export const videoMinimaxH3OmniFp8Profile: WorkflowModelProfile = {
     },
     slotMapping: OMNI_SLOT_MAPPING,
     description: "MiniMax H3 全能参考视频标准版 (FP8 Scaled)，细节丰富，光影演化自然，适合高质量成片。",
+    supportedTools: {
+        faceRefine: true,
+        depthVideo: true,
+    },
 };
 
 /**

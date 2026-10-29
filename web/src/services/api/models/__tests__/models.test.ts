@@ -113,6 +113,20 @@ describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
         expect(getModelProfile("frame 20")?.id).toBe("frame-video-minimax-h3-fp8");
     });
 
+    it("configures supportedTools on model profiles", () => {
+        const omni = getModelProfile("omni-video-minimax-h3-fp8-4step-pdmd");
+        expect(omni?.supportedTools?.faceRefine).toBe(true);
+        expect(omni?.supportedTools?.depthVideo).toBe(true);
+
+        const frame = getModelProfile("frame-video-minimax-h3-fp8-4step-pdmd");
+        expect(frame?.supportedTools?.faceRefine).toBe(true);
+        expect(frame?.supportedTools?.depthVideo).toBe(true);
+
+        const image = getModelProfile("image-qwen-2.1");
+        expect(image?.supportedTools?.maskEdit).toBe(true);
+        expect(image?.supportedTools?.reversePrompt).toBe(true);
+    });
+
     it("lists models by capability", () => {
         const videoModels = listModelsByCapability("video");
         expect(videoModels.length).toBe(4);

@@ -9,6 +9,7 @@ import { requestEdit, requestGeneration, requestImageQuestion } from "@/services
 import { generateRandomSeed, requestComfyuiImage } from "@/services/api/comfyui";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
+import { getModelProfile } from "@/services/api/models";
 import { defaultConfig, findWorkflow, getDefaultComfyWorkflowItems, getDefaultWorkflow, inpaintModelOptions, resolveModelChannel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
@@ -2533,6 +2534,7 @@ function InfiniteCanvasPage() {
                     channelId,
                     workflowId,
                     videoMode: "omni",
+                    supportedTools: node.metadata?.supportedTools || { faceRefine: true, depthVideo: true },
                     content: undefined,
                     storageKey: undefined,
                     jobId: undefined,
@@ -2843,6 +2845,7 @@ function InfiniteCanvasPage() {
                     channelId,
                     workflowId,
                     videoMode: "omni",
+                    supportedTools: node.metadata?.supportedTools || { faceRefine: true, depthVideo: true },
                     content: undefined,
                     storageKey: undefined,
                     jobId: undefined,
@@ -3883,6 +3886,8 @@ function InfiniteCanvasPage() {
                                               prompt,
                                               effectivePrompt,
                                               model: generationConfig.model,
+                                              modelId: sourceNode?.metadata?.modelId || generationConfig.model,
+                                              supportedTools: getModelProfile(sourceNode?.metadata?.modelId || generationConfig.model)?.supportedTools,
                                               size: generationConfig.size,
                                               seconds: generationConfig.videoSeconds,
                                               videoMode: generationConfig.videoMode,
@@ -4415,6 +4420,9 @@ function InfiniteCanvasPage() {
                                       metadata: {
                                           ...item.metadata,
                                           ...videoMetadata(video),
+                                          model: node.metadata?.model || generationConfig.model,
+                                          modelId: node.metadata?.modelId || generationConfig.model,
+                                          supportedTools: node.metadata?.supportedTools || getModelProfile(node.metadata?.modelId || generationConfig.model)?.supportedTools,
                                           status: NODE_STATUS_SUCCESS,
                                           errorDetails: undefined,
                                           jobId: undefined,

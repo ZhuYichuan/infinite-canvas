@@ -19,3 +19,17 @@ _Avoid_: Action Bar, Header Bar
 **Node Create Menu**:
 The screen-space contextual picker menu triggered by double-clicking the canvas background or extending a connection handle, rendered at a fixed 1:1 scale.
 _Avoid_: Node Selector, Add Node Popup, Double Click Menu
+
+## Task Lifecycle & Execution
+
+**TaskLifecycleDriver**:
+The provider-specific adapter at the task lifecycle seam responsible for querying, polling, and aborting tasks on a specific backend protocol (e.g. ComfyUI, external HTTP, in-memory test driver).
+_Avoid_: TaskPoller, JobHandler, BackendService
+
+**TaskSnapshot**:
+The universal domain value object describing the point-in-time lifecycle status of a task across all backend providers (phase, queue position, progress, error, artifacts).
+_Avoid_: JobResult, StatusResponse, TaskPayload
+
+**TaskExecutionError**:
+The normalized domain exception representing task failure with standardized categories (`network`, `timeout`, `cancelled`, `lost`, `execution_failed`), decoupling callers from vendor-specific error prototypes.
+_Avoid_: ComfyuiError, VendorException, ApiError
