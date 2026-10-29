@@ -1,0 +1,199 @@
+---
+title: 音频工作流模型 DSL 与深模块架构规范 (Spec)
+description: 基于声明式能力模型、双轨插槽映射与约束引擎的音频工作流驱动架构规范
+---
+
+# 音频工作流模型 DSL 与深模块架构规范 (Spec)
+
+## Problem Statement
+
+在无限画布系统中，图片、视频与文本三大模态均已全面升级为基于 **工作流模型 DSL（`WorkflowModelProfile`）**、**约束检查引擎（`constraint-engine`）** 与 **级联模型选择器（`ModelPicker`）** 标准驱动的深模块架构。
+
+然而，音频节点（Audio Node）目前仍是系统中唯一未被 DSL 改造的“孤岛”，存在以下显著的架构接缝泄漏与体验分裂问题：
+
+1. **选择器体系分裂，暴露底层裸工作流**：
+   - 音频节点悬浮参数面板（`Node Inspector Overlay`）中，仍在使用早已废弃的 `ChannelWorkflowPicker`，直接向用户暴露非标的裸工作流名称与内部文件 ID；
+   - 无法享受图片/视频/文本一致的「算力主机 + 模型名称」级联选择与前置不可用状态感知。
+2. **调度逻辑散落，缺乏统一深模块内聚**：
+   - 音频参数绑定单独手写了 `applyAudioBindings` 独立函数，未接入统一的 `dispatchComfyuiModelWorkflow` 调度引擎；
+   - MiniMax Music 03 模型的特殊硬件机制——由于潜空间音频解码截断导致的「生成文件总是比设定值少 1 秒」的硬件偏差，被生硬硬编码在 `comfyui.ts` 的业务请求函数（`duration + 1`）中，造成底层硬件细节对外严重泄漏。
+3. **文本提示词与歌词槽位解析脆弱**：
+   - 目前依赖正则切分 `[caption]...[lyrics]...` 伪标签，缺乏结构化插槽表达；
+   - 歌词与音乐风格混杂在单一输入框中，既无法精准校验，也无法与上游文本大模型（如 Qwen-3.5 歌词创作）建立清晰的跨模态连接语义。
+4. **约束检查引擎完全缺位**：
+   - 音频节点完全绕开了 `constraint-engine`，既不校验主机是否启用了音频模型，也不防呆拦截误拖入的参考图片、视频或违规连接，缺乏容错与防呆指引。
+
+---
+
+## Solution
+
+将音频节点全量接入系统核心的 **工作流模型 DSL（WorkflowModelProfile）**，建立标准、对称、内聚的音频生成驱动深模块：
+
+```
+                    ┌───────────────────────────────────────────────┐
+                    │       Audio Node Inspector Overlay (业务视图) │
+                    │       • AudioModelPicker (算力主机 + 模型)     │
+                    │       • CanvasAudioSettingsPopover (时长规格) │
+                    └───────────────────────┬───────────────────────┘
+                                            │
+                              驱动规范声明 (WorkflowModelProfile)
+                                            │
+                                            ▼
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│  Audio Model Profile (audio-minimax-music-3)                                      │
+│  • capability: "audio", category: "audio"                                         │
+│  • capabilityConfig: duration (10~300s, default 60s, tags: [60s, 120s, 180s])      │
+│  • slotMapping: caption, lyrics, duration, seed, output_audio                     │
+└───────────────────────────────────────────┬───────────────────────────────────────┘
+                                            │
+                 ┌──────────────────────────┴──────────────────────────┐
+                 ▼                                                     ▼
+┌──────────────────────────────────────┐                   ┌──────────────────────────────────────┐
+│  Model Constraint Engine (约束门禁)   │                   │  Deep Dispatcher (通用调度引擎)      │
+├──────────────────────────────────────┤                   ├──────────────────────────────────────┤
+│ • 主机支持度校验 (HostSupportRule)   │                   │ • dispatchComfyuiModelWorkflow       │
+│ • 连线配额拦截 (零图/零视频防呆)    │                   │ • 内聚 +1s 硬件时长偏差自动补偿      │
+│ • 阻断与告警 Tooltip 动态诊断        │                   │ • 统一对接 TaskLifecycleDriver       │
+└──────────────────────────────────────┘                   └──────────────────────────────────────┘
+```
+
+1. **声明式音频模型 Profile (`audioMinimaxMusic3Profile`)**：
+   - 确立统一模型 ID `audio-minimax-music-3`，入驻 `BUILTIN_AUDIO_WORKFLOW_MODELS` 与全局 `BUILTIN_WORKFLOW_MODELS` 注册表；
+   - 在 `capabilityConfig` 中声明标准时长规格：范围 10~300 秒、默认 60 秒、常用标签 `[60s, 120s, 180s]`。
+2. **专属级联选择器 (`AudioModelPicker`)**：
+   - 彻底淘汰 `ChannelWorkflowPicker`，为音频节点构建专属选择器，直观呈现算力主机与 MiniMax Music 03 模型，并联动约束引擎提供置灰与诊断 Tooltip。
+3. **合流至通用调度引擎 (`dispatchComfyuiModelWorkflow`)**：
+   - 废除独立的 `applyAudioBindings`，在通用调度引擎中统一支持 `caption`、`lyrics`、`duration`（自动应用 `+1s` 偏差补偿）与 `seed` 映射；
+   - 画布节点元数据（`metadata.seconds`）、UI 组件与测试断言保持纯净的用户目标值（如 60s），硬件偏差细节对外完全透明。
+4. **接入约束检查与防呆机制**：
+   - 接入 `checkModelAvailability` 规范引擎，主机未启用音频模型时自动置灰并提示；
+   - 严格拦截非法的参考图、参考视频误连拖拽，消除静默失败与算力浪费。
+
+---
+
+## User Stories
+
+1. **作为画布用户**，我希望在音频节点的悬浮面板中看到标准的「算力主机 + 音频模型」选择器，以便与图片、视频、文本节点获得完全一致的现代交互体验。
+2. **作为画布用户**，我希望在选择音频生成时长时，能直观在常用时长标签（60秒、120秒、180秒）与精确滑块之间切换，无需记忆繁复的数字。
+3. **作为画布用户**，我希望当我选定生成 60 秒音频时，最终拿到的音频文件就是严格的 60 秒，而不是缺少 1 秒的残缺音频。
+4. **作为画布用户**，我希望当我误将图片或视频节点连线至当前不支持视觉参考的音频节点时，系统能即时给出清晰的防呆提示，而不是在后台静默提交报错。
+5. **作为前端维护者**，我希望音频节点的数据模型与调度契约彻底对齐 `WorkflowModelProfile`，消除系统中最后一处针对特定工作流手写参数映射与旧版选择器的技术债。
+6. **作为测试开发者**，我希望音频模型的槽位映射、时长范围与约束检查能通过纯数据驱动的单元测试全量覆盖，摆脱对 ComfyUI 进程的联调依赖。
+
+---
+
+## Implementation Decisions
+
+### 1. 领域模型与 Profile 声明
+
+创建 `web/src/services/api/models/audio-models.ts`：
+
+```typescript
+import type { WorkflowModelProfile } from "./types";
+
+/**
+ * MiniMax Music 03 扩散音乐大模型
+ * 专为全长歌曲与高质量器乐伴奏设计：
+ * - 风格描述（Caption）：支持丰富的乐器、曲风、情绪与流派标签；
+ * - 歌词生成（Lyrics）：支持结构化分段歌词（Verse/Chorus/Bridge），留空则生成纯器乐伴奏；
+ * - 生成时长：支持 10s ~ 300s（最长 5 分钟），常用档位 60s / 120s / 180s。
+ */
+export const audioMinimaxMusic3Profile: WorkflowModelProfile = {
+    id: "audio-minimax-music-3",
+    name: "MiniMax Music 03",
+    capability: "audio",
+    protocol: "comfyui",
+    category: "audio",
+    capabilityConfig: {
+        version: 1,
+        references: {
+            promptMaxChars: 3000,
+            minImages: 0,
+            maxImages: 0,
+            maskSupported: false,
+            minVideos: 0,
+            maxVideos: 0,
+            maxAudios: 0,
+        },
+        duration: {
+            selection: "range",
+            min: 10,
+            max: 300,
+            step: 1,
+            default: 60,
+            tags: [60, 120, 180],
+        },
+    },
+    slotMapping: {
+        caption: "caption",
+        lyrics: "lyrics",
+        prompt: "caption",
+        duration: "duration",
+        seed: "seed",
+        audioOutput: "output_audio",
+    },
+    description: "MiniMax Music 03 扩散音乐大模型，支持最长 5 分钟完整歌曲与纯器乐伴奏生成。",
+};
+
+export const BUILTIN_AUDIO_WORKFLOW_MODELS: WorkflowModelProfile[] = [
+    audioMinimaxMusic3Profile,
+];
+```
+
+---
+
+### 2. 调度引擎统一与硬件补偿内聚
+
+在 `web/src/services/api/models/index.ts` 中的 `dispatchComfyuiModelWorkflow` 拓展音频插槽处理：
+
+```typescript
+// 1. caption 与 lyrics 插槽绑定
+if (title === "caption" && (params.caption !== undefined || params.prompt !== undefined)) {
+    const val = params.caption ?? (parseAudioPrompt(params.prompt || "").caption);
+    setNodeInput(node, ["value", "text", "caption"], val);
+} else if (title === "lyrics" && (params.lyrics !== undefined || params.prompt !== undefined)) {
+    const val = params.lyrics ?? (parseAudioPrompt(params.prompt || "").lyrics);
+    setNodeInput(node, ["value", "text", "lyrics"], val);
+}
+
+// 2. duration 插槽绑定与 MiniMax Music 03 +1s 硬件补偿
+if ((title === "duration" || title === "max_duration") && params.duration !== undefined) {
+    // 若当前为 MiniMax Music 03 模型，自动叠加 +1s 偏差补偿
+    const offset = profile.id === "audio-minimax-music-3" ? 1 : 0;
+    const submittedDuration = Math.max(1, params.duration + offset);
+    setNodeInput(node, ["Number", "value", "duration", "max_duration"], submittedDuration);
+}
+```
+
+---
+
+### 3. 音频模型选择器组件 (`AudioModelPicker`)
+
+创建 `web/src/components/canvas/audio-model-picker.tsx`：
+- 复用 `useConfigStore` 获取当前渠道清单；
+- 级联展示当前主机与其支持的音频模型；
+- 接入 `checkModelAvailability` 评估模型在当前连线状态下的可用性与 Tooltip 诊断；
+- 选中后触发 `onConfigChange(node.id, { channelId, modelId })`。
+
+---
+
+## 阶段划分与实施清单 (Implementation Plan)
+
+- [ ] **Phase 1: 建立音频模型 DSL 与注册表**
+  - 创建 `web/src/services/api/models/audio-models.ts`；
+  - 在 `web/src/services/api/models/index.ts` 中注册 `BUILTIN_AUDIO_WORKFLOW_MODELS` 并合并至 `BUILTIN_WORKFLOW_MODELS`；
+  - 在 `use-config-store.ts` 中将 `audio-minimax-music-3` 纳入默认渠道支持模型列表；
+  - 编写 `web/src/services/api/models/__tests__/audio-models.test.ts` 进行参数与模型解析覆盖。
+- [ ] **Phase 2: 核心调度引擎合流与去冗余**
+  - 在 `dispatchComfyuiModelWorkflow` 中支持音频 `caption`、`lyrics`、`duration`（含 +1s 偏差补偿）；
+  - 改造 `requestComfyuiAudio` 接入 `dispatchComfyuiModelWorkflow` 与统一工作流模板定位；
+  - 移除原废弃的 `applyAudioBindings` 孤岛逻辑；
+  - 扩展调度引擎单测，验证音频参数绑定与时长补偿。
+- [ ] **Phase 3: 研发 AudioModelPicker 并重构 Inspector 浮层**
+  - 研发 `web/src/components/canvas/audio-model-picker.tsx` 并接入约束检查引擎；
+  - 改造 `CanvasAudioSettingsPopover`，使其参数滑杆与快捷标签从 `profile.capabilityConfig.duration` 动态派生；
+  - 在 `canvas-node-prompt-panel.tsx` 中彻底淘汰 `ChannelWorkflowPicker`，替换为 `AudioModelPicker`。
+- [ ] **Phase 4: 业务层适配、回归验证与文档更新**
+  - 在 `web/src/pages/canvas/project.tsx` 中确保音频生成与重试使用 `node.metadata?.modelId`；
+  - 执行全量单元测试与本地构建自检；
+  - 更新 `CHANGELOG.md` 与待测试文档。

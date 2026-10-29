@@ -33,3 +33,13 @@ _Avoid_: JobResult, StatusResponse, TaskPayload
 **TaskExecutionError**:
 The normalized domain exception representing task failure with standardized categories (`network`, `timeout`, `cancelled`, `lost`, `execution_failed`), decoupling callers from vendor-specific error prototypes.
 _Avoid_: ComfyuiError, VendorException, ApiError
+
+## Multimodal Workflow Model DSL
+
+**WorkflowModelProfile**:
+The declarative capability profile defining a generation model's parameters, resource references, slot mappings, and hardware constraints, driving node inspectors and execution dispatchers.
+_Avoid_: ModelConfig, WorkflowConfig, ModelDefinition
+
+**AudioModelPicker**:
+The cascading model selector in the Audio Node Inspector Overlay that binds a compute host to a declarative audio model profile (e.g. MiniMax Music 03).
+_Avoid_: AudioWorkflowPicker, ChannelWorkflowPicker
