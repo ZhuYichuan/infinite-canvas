@@ -7,6 +7,18 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Audio Node Workflow Model DSL & AudioModelPicker (音频工作流模型 DSL 与音频选择器验证):
+  - **MiniMax Music 03 模型注册与 AudioModelPicker 级联交互**:
+    - 在画布上选中音频节点，在悬浮 Inspector 浮层中查看模型选择器；
+    - 验证淘汰了旧版的 `ChannelWorkflowPicker`，替换为 `AudioModelPicker`（算力主机 + MiniMax Music 03 级联展开）；
+    - 验证选择器显示紫色音乐图标与模型名称，与图片、视频、文本选择器视觉语言完全一致；
+    - 尝试将图片、视频或音频节点连线连入该音频节点，验证连线被红框拦截并给出明确诊断原因。
+  - **动态时长参数与 +1s 硬件补偿验证**:
+    - 点击音频参数设置浮层，验证滑杆范围为 10s ~ 300s，快捷标签为 [60s, 120s, 180s]，且参数完全由 Profile 动态配置驱动；
+    - 输入提示词（可测试包含 `[caption]...[lyrics]...` 分段或普通纯文本），发起生成；
+    - 检查底层提交给 ComfyUI 的参数，验证时长已由调度引擎无感应用 `durationOffset: 1` 补偿，生成产物秒数与前端显示精准吻合；
+    - 验证生成成功后的音频节点元数据中正确记录了 `modelId: "audio-minimax-music-3"`。
+
 - Task Lifecycle Driver Seam & Multi-Channel State Abstraction (任务生命周期驱动接缝与状态抽象验证):
   - **任务即时快照与状态归一验证**:
     - 在画布上发起文生图/图生图/视频/文本反推生成；

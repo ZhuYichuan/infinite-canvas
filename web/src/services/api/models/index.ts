@@ -29,12 +29,18 @@ import {
     textQwen35VlmProfile,
     TEXT_WORKFLOW_MODELS,
 } from "./text-models";
+import {
+    audioMinimaxMusic3Profile,
+    BUILTIN_AUDIO_WORKFLOW_MODELS,
+    parseAudioPrompt,
+} from "./audio-models";
 
 export * from "./types";
 export * from "./video-minimax-h3-omni";
 export * from "./video-minimax-h3-frame";
 export * from "./image-models";
 export * from "./text-models";
+export * from "./audio-models";
 export * from "./constraint-engine";
 
 /**
@@ -58,12 +64,18 @@ export const BUILTIN_IMAGE_WORKFLOW_MODELS: WorkflowModelProfile[] = IMAGE_WORKF
 export const BUILTIN_TEXT_WORKFLOW_MODELS: WorkflowModelProfile[] = TEXT_WORKFLOW_MODELS;
 
 /**
- * 系统内置工作流模型注册表（视频 + 图片 + 文本）
+ * 系统内置音频工作流模型清单（MiniMax Music 03）
+ */
+export const BUILTIN_AUDIO_WORKFLOW_MODELS_LIST: WorkflowModelProfile[] = BUILTIN_AUDIO_WORKFLOW_MODELS;
+
+/**
+ * 系统内置工作流模型注册表（视频 + 图片 + 文本 + 音频）
  */
 export const BUILTIN_WORKFLOW_MODELS: WorkflowModelProfile[] = [
     ...BUILTIN_VIDEO_WORKFLOW_MODELS,
     ...BUILTIN_IMAGE_WORKFLOW_MODELS,
     ...BUILTIN_TEXT_WORKFLOW_MODELS,
+    ...BUILTIN_AUDIO_WORKFLOW_MODELS,
 ];
 
 /**
@@ -71,7 +83,9 @@ export const BUILTIN_WORKFLOW_MODELS: WorkflowModelProfile[] = [
  */
 export function getModelProfile(modelIdOrCategory?: string): WorkflowModelProfile | undefined {
     if (!modelIdOrCategory) return undefined;
-    const clean = modelIdOrCategory.trim();
+    const clean = modelIdOrCategory.includes("::")
+        ? modelIdOrCategory.slice(modelIdOrCategory.indexOf("::") + 2).trim()
+        : modelIdOrCategory.trim();
 
     // 1. 精确匹配 ID
     const directMatch = BUILTIN_WORKFLOW_MODELS.find((m) => m.id === clean);
@@ -145,7 +159,20 @@ export function getModelProfile(modelIdOrCategory?: string): WorkflowModelProfil
         return textQwen35Profile;
     }
 
-    // 6. 模糊匹配已知模型的名称
+    // 6. 音频模型别名匹配
+    if (
+        lower === "audio-minimax-music-3" ||
+        lower === "minimax_music_3" ||
+        lower === "minimax-music-3" ||
+        lower === "minimax_music3" ||
+        lower === "minimax-music" ||
+        lower === "music" ||
+        lower === "audio"
+    ) {
+        return audioMinimaxMusic3Profile;
+    }
+
+    // 7. 模糊匹配已知模型的名称
     return BUILTIN_WORKFLOW_MODELS.find(
         (m) => m.name.toLowerCase() === lower || m.name.toLowerCase().includes(lower)
     );
@@ -215,7 +242,8 @@ export function validateModelExecution(profile: WorkflowModelProfile, params: Mo
             const min = durConfig.min ?? 1;
             const max = durConfig.max ?? 15;
             if (params.duration < min || params.duration > max) {
-                throw new Error(`「${profile.name}」视频时长必须在 ${min} ~ ${max} 秒之间，当前为 ${params.duration} 秒。`);
+                const label = profile.capability === "audio" ? "音频时长" : "视频时长";
+                throw new Error(`「${profile.name}」${label}必须在 ${min} ~ ${max} 秒之间，当前为 ${params.duration} 秒。`);
             }
         }
     }
@@ -223,6 +251,8 @@ export function validateModelExecution(profile: WorkflowModelProfile, params: Mo
 
 export interface DispatchedWorkflowParams {
     prompt?: string;
+    caption?: string;
+    lyrics?: string;
     width?: number;
     height?: number;
     duration?: number;
@@ -275,6 +305,19 @@ export function dispatchComfyuiModelWorkflow(
             else if ("prompt" in node.inputs) node.inputs.prompt = params.prompt;
         }
 
+        // 音频 caption 与 lyrics 插槽分流
+        if (title === "caption" && (params.caption !== undefined || params.prompt !== undefined)) {
+            const val = params.caption ?? (params.prompt ? parseAudioPrompt(params.prompt).caption : "");
+            if ("value" in node.inputs) node.inputs.value = val;
+            else if ("text" in node.inputs) node.inputs.text = val;
+            else if ("caption" in node.inputs) node.inputs.caption = val;
+        } else if (title === "lyrics" && (params.lyrics !== undefined || params.prompt !== undefined)) {
+            const val = params.lyrics ?? (params.prompt ? parseAudioPrompt(params.prompt).lyrics : "");
+            if ("value" in node.inputs) node.inputs.value = val;
+            else if ("text" in node.inputs) node.inputs.text = val;
+            else if ("lyrics" in node.inputs) node.inputs.lyrics = val;
+        }
+
         if (title === "width" && params.width !== undefined) {
             if ("Number" in node.inputs) node.inputs.Number = String(params.width);
             else if ("value" in node.inputs) node.inputs.value = params.width;
@@ -287,11 +330,14 @@ export function dispatchComfyuiModelWorkflow(
             else if ("height" in node.inputs) node.inputs.height = params.height;
         }
 
-        if (title === "duration" && params.duration !== undefined) {
-            if ("Number" in node.inputs) node.inputs.Number = String(params.duration);
-            else if ("value" in node.inputs) node.inputs.value = params.duration;
-            else if ("duration" in node.inputs) node.inputs.duration = params.duration;
-            else if ("frames" in node.inputs) node.inputs.frames = params.duration;
+        if ((title === "duration" || title === "max_duration") && params.duration !== undefined) {
+            const offset = profile.durationOffset ?? (profile.id === "audio-minimax-music-3" ? 1 : 0);
+            const effectiveDuration = Math.max(1, params.duration + offset);
+            if ("Number" in node.inputs) node.inputs.Number = String(effectiveDuration);
+            else if ("value" in node.inputs) node.inputs.value = effectiveDuration;
+            else if ("duration" in node.inputs) node.inputs.duration = effectiveDuration;
+            else if ("max_duration" in node.inputs) node.inputs.max_duration = effectiveDuration;
+            else if ("frames" in node.inputs) node.inputs.frames = effectiveDuration;
         }
 
         if (title === "seed" && params.seed !== undefined) {

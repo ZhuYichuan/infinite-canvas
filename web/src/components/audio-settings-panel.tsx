@@ -4,17 +4,24 @@ import { useTranslation } from "react-i18next";
 
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
 import { type CanvasTheme } from "@/lib/canvas-theme";
+import { audioMinimaxMusic3Profile, getModelProfile } from "@/services/api/models";
 import type { AiConfig } from "@/stores/use-config-store";
 
 export const audioQuickSecondOptions = [60, 120, 180];
 
-export function audioSecondsLabel(value?: string | number): string {
-    const s = Math.min(300, Math.max(10, Number(value) || 60));
+export function audioSecondsLabel(value?: string | number, modelId?: string): string {
+    const profile = getModelProfile(modelId) || audioMinimaxMusic3Profile;
+    const durConfig = profile.capabilityConfig.duration;
+    const minSeconds = durConfig?.min ?? 10;
+    const maxSeconds = durConfig?.max ?? 300;
+    const defaultSeconds = durConfig?.default ?? 60;
+    const s = Math.min(maxSeconds, Math.max(minSeconds, Number(value) || defaultSeconds));
     return `${s}s`;
 }
 
 type AudioSettingsPanelProps = {
     config: AiConfig;
+    modelId?: string;
     onConfigChange: (key: "audioSeconds", value: string) => void;
     theme: CanvasTheme;
     showTitle?: boolean;
@@ -23,13 +30,22 @@ type AudioSettingsPanelProps = {
 
 export function AudioSettingsPanel({
     config,
+    modelId,
     onConfigChange,
     theme,
     showTitle = true,
     className = "space-y-4",
 }: AudioSettingsPanelProps) {
     const { t } = useTranslation();
-    const currentSeconds = Math.min(300, Math.max(10, Number(config.audioSeconds) || 60));
+    const profile = getModelProfile(modelId) || audioMinimaxMusic3Profile;
+    const durConfig = profile.capabilityConfig.duration;
+    const minSeconds = durConfig?.min ?? 10;
+    const maxSeconds = durConfig?.max ?? 300;
+    const step = durConfig?.step ?? 1;
+    const defaultSeconds = durConfig?.default ?? 60;
+    const quickOptions = durConfig?.tags && durConfig.tags.length > 0 ? durConfig.tags : audioQuickSecondOptions;
+
+    const currentSeconds = Math.min(maxSeconds, Math.max(minSeconds, Number(config.audioSeconds) || defaultSeconds));
 
     return (
         <ImageSettingsTheme theme={theme}>
@@ -45,7 +61,7 @@ export function AudioSettingsPanel({
 
                 <SettingGroup title="生成时长" color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2">
-                        {audioQuickSecondOptions.map((sec) => (
+                        {quickOptions.map((sec) => (
                             <button
                                 key={sec}
                                 type="button"
@@ -65,9 +81,9 @@ export function AudioSettingsPanel({
 
                     <div className="px-1 pt-1">
                         <Slider
-                            min={10}
-                            max={300}
-                            step={1}
+                            min={minSeconds}
+                            max={maxSeconds}
+                            step={step}
                             value={currentSeconds}
                             tooltip={{ formatter: (v) => `${v} 秒` }}
                             onChange={(val) => onConfigChange("audioSeconds", String(val))}

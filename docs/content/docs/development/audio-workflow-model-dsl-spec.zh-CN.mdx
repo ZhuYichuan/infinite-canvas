@@ -179,21 +179,21 @@ if ((title === "duration" || title === "max_duration") && params.duration !== un
 
 ## 阶段划分与实施清单 (Implementation Plan)
 
-- [ ] **Phase 1: 建立音频模型 DSL 与注册表**
+- [x] **Phase 1: 建立音频模型 DSL 与注册表**
   - 创建 `web/src/services/api/models/audio-models.ts`；
   - 在 `web/src/services/api/models/index.ts` 中注册 `BUILTIN_AUDIO_WORKFLOW_MODELS` 并合并至 `BUILTIN_WORKFLOW_MODELS`；
   - 在 `use-config-store.ts` 中将 `audio-minimax-music-3` 纳入默认渠道支持模型列表；
   - 编写 `web/src/services/api/models/__tests__/audio-models.test.ts` 进行参数与模型解析覆盖。
-- [ ] **Phase 2: 核心调度引擎合流与去冗余**
+- [x] **Phase 2: 核心调度引擎合流与去冗余**
   - 在 `dispatchComfyuiModelWorkflow` 中支持音频 `caption`、`lyrics`、`duration`（含 +1s 偏差补偿）；
   - 改造 `requestComfyuiAudio` 接入 `dispatchComfyuiModelWorkflow` 与统一工作流模板定位；
   - 移除原废弃的 `applyAudioBindings` 孤岛逻辑；
   - 扩展调度引擎单测，验证音频参数绑定与时长补偿。
-- [ ] **Phase 3: 研发 AudioModelPicker 并重构 Inspector 浮层**
-  - 研发 `web/src/components/canvas/audio-model-picker.tsx` 并接入约束检查引擎；
+- [x] **Phase 3: 研发 AudioModelPicker 并重构 Inspector 浮层**
+  - 研发 `web/src/components/audio-model-picker.tsx` 并接入约束检查引擎；
   - 改造 `CanvasAudioSettingsPopover`，使其参数滑杆与快捷标签从 `profile.capabilityConfig.duration` 动态派生；
   - 在 `canvas-node-prompt-panel.tsx` 中彻底淘汰 `ChannelWorkflowPicker`，替换为 `AudioModelPicker`。
-- [ ] **Phase 4: 业务层适配、回归验证与文档更新**
+- [x] **Phase 4: 业务层适配、回归验证与文档更新**
   - 在 `web/src/pages/canvas/project.tsx` 中确保音频生成与重试使用 `node.metadata?.modelId`；
   - 执行全量单元测试与本地构建自检；
   - 更新 `CHANGELOG.md` 与待测试文档。

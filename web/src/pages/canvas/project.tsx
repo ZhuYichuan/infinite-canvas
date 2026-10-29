@@ -3960,10 +3960,12 @@ function InfiniteCanvasPage() {
                     try {
                         const duration = Number(sourceNode?.metadata?.seconds || generationConfig.audioSeconds) || 60;
                         const initialSeed = sourceNode?.metadata?.seed;
+                        const modelId = sourceNode?.metadata?.modelId || "audio-minimax-music-3";
                         const result = await requestAudioGeneration(generationConfig, effectivePrompt, {
                             signal: controller.signal,
                             duration,
                             seed: initialSeed,
+                            model: modelId,
                             channelId: sourceNode?.metadata?.channelId,
                             workflowId: sourceNode?.metadata?.workflowId,
                         });
@@ -3978,6 +3980,7 @@ function InfiniteCanvasPage() {
                                               ...audioMetadata(audio),
                                               prompt,
                                               effectivePrompt,
+                                              modelId,
                                               channelId: sourceNode?.metadata?.channelId,
                                               workflowId: sourceNode?.metadata?.workflowId,
                                               seconds: String(duration),
@@ -4435,10 +4438,12 @@ function InfiniteCanvasPage() {
                 } else if (mode === "audio") {
                     const duration = Number(node.metadata?.seconds || generationConfig.audioSeconds) || 60;
                     const initialSeed = node.metadata?.seed;
+                    const modelId = node.metadata?.modelId || "audio-minimax-music-3";
                     const result = await requestAudioGeneration(generationConfig, prompt, {
                         signal: controller.signal,
                         duration,
                         seed: initialSeed,
+                        model: modelId,
                         channelId: node.metadata?.channelId,
                         workflowId: node.metadata?.workflowId,
                     });
@@ -4457,6 +4462,7 @@ function InfiniteCanvasPage() {
                                           isTimeout: undefined,
                                           seconds: String(duration),
                                           seed: result.seed,
+                                          modelId,
                                           channelId: node.metadata?.channelId,
                                           workflowId: node.metadata?.workflowId,
                                       },

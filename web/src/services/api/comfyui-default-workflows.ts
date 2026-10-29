@@ -168,6 +168,10 @@ export function getWorkflowForModelProfile(modelId?: string): ComfyuiWorkflow | 
             return DEFAULT_BUILTIN_COMFYUI_I2I_WORKFLOW;
         case "image-qwen-inpaint":
             return DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW;
+        case "text-qwen-35":
+            return DEFAULT_COMFYUI_TEXT_WORKFLOW;
+        case "audio-minimax-music-3":
+            return DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW;
         default:
             return undefined;
     }

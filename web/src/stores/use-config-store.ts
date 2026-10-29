@@ -209,12 +209,20 @@ export const DEFAULT_SUPPORTED_TEXT_MODEL_IDS: string[] = [
 ];
 
 /**
+ * 默认主机支持的音频模型 ID 清单（开箱即用支持 MiniMax Music 03）
+ */
+export const DEFAULT_SUPPORTED_AUDIO_MODEL_IDS: string[] = [
+    "audio-minimax-music-3",
+];
+
+/**
  * 默认主机支持的全量工作流模型清单
  */
 export const DEFAULT_SUPPORTED_MODEL_IDS: string[] = [
     ...DEFAULT_SUPPORTED_VIDEO_MODEL_IDS,
     ...DEFAULT_SUPPORTED_IMAGE_MODEL_IDS,
     ...DEFAULT_SUPPORTED_TEXT_MODEL_IDS,
+    ...DEFAULT_SUPPORTED_AUDIO_MODEL_IDS,
 ];
 
 /**
@@ -250,6 +258,15 @@ export function isModelSupportedByHost(channel: ModelChannel | undefined, modelI
         DEFAULT_SUPPORTED_TEXT_MODEL_IDS.includes(id) || id.startsWith("text-")
     );
     if (!hasAnyTextConfigured && (DEFAULT_SUPPORTED_TEXT_MODEL_IDS.includes(normalizedId) || normalizedId.startsWith("text-"))) {
+        return true;
+    }
+
+    // 开箱即用兼容：若主机尚未显式声明任何音频模型，
+    // 则默认对系统内置音频模型放行，避免历史旧配置导致音频模型意外被阻断
+    const hasAnyAudioConfigured = channel.supportedModelIds.some((id) =>
+        DEFAULT_SUPPORTED_AUDIO_MODEL_IDS.includes(id) || id.startsWith("audio-")
+    );
+    if (!hasAnyAudioConfigured && (DEFAULT_SUPPORTED_AUDIO_MODEL_IDS.includes(normalizedId) || normalizedId.startsWith("audio-"))) {
         return true;
     }
     return false;

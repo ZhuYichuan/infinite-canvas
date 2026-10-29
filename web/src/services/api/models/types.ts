@@ -96,4 +96,5 @@ export interface WorkflowModelProfile {
     slotMapping: Record<string, string>;
     description?: string;
     supportedTools?: ModelSupportedTools;
+    durationOffset?: number;
 }

@@ -3259,88 +3259,7 @@ export type ComfyuiAudioBindings = {
  * Split prompt strictly by [caption] and [lyrics] tags.
  * If neither tag is present, the whole text is passed as caption.
  */
-export function parseAudioPrompt(rawPrompt: string): { caption: string; lyrics: string } {
-    const text = (rawPrompt || "").trim();
-    if (!text) return { caption: "", lyrics: "" };
-
-    const captionMatch = /\[caption\]([\s\S]*?)(?=\[lyrics\]|$)/i.exec(text);
-    const lyricsMatch = /\[lyrics\]([\s\S]*?)(?=\[caption\]|$)/i.exec(text);
-
-    if (captionMatch || lyricsMatch) {
-        return {
-            caption: (captionMatch ? captionMatch[1] : "").trim(),
-            lyrics: (lyricsMatch ? lyricsMatch[1] : "").trim(),
-        };
-    }
-
-    return {
-        caption: text,
-        lyrics: "",
-    };
-}
-
-export function applyAudioBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiAudioBindings): ComfyuiWorkflowJson {
-    const cloned = structuredClone(workflow);
-    type NodeRecord = { class_type?: string; inputs?: Record<string, unknown>; _meta?: { title?: unknown } };
-    let boundSeed = false;
-
-    for (const node of Object.values(cloned)) {
-        if (typeof node !== "object" || node === null) continue;
-        const record = node as NodeRecord;
-        const rawTitle = record._meta?.title;
-        if (typeof rawTitle !== "string" || !record.class_type || !record.inputs) continue;
-        const title = rawTitle.trim().toLowerCase();
-        let slot: string | undefined;
-        let value: unknown;
-
-        if (title === "caption" && params.caption !== undefined) {
-            slot = BINDING_TITLE_TO_INPUT_SLOT.caption?.[record.class_type] ||
-                ("value" in record.inputs ? "value" : "text" in record.inputs ? "text" : "caption" in record.inputs ? "caption" : undefined);
-            value = params.caption;
-        } else if (title === "lyrics" && params.lyrics !== undefined) {
-            slot = BINDING_TITLE_TO_INPUT_SLOT.lyrics?.[record.class_type] ||
-                ("value" in record.inputs ? "value" : "text" in record.inputs ? "text" : "lyrics" in record.inputs ? "lyrics" : undefined);
-            value = params.lyrics;
-        } else if ((title === "duration" || title === "max_duration") && params.duration !== undefined) {
-            slot = BINDING_TITLE_TO_INPUT_SLOT.duration?.[record.class_type] ||
-                ("Number" in record.inputs ? "Number" : "value" in record.inputs ? "value" : "duration" in record.inputs ? "duration" : "max_duration" in record.inputs ? "max_duration" : undefined);
-            // 绑定音频生成时长（秒）。注意：params.duration 已由上层调用包含针对 MiniMax Music 03 产物少 1 秒的 +1s 补偿值
-            value = params.duration;
-        } else if (title === "prompt" && params.prompt !== undefined) {
-            slot = BINDING_TITLE_TO_INPUT_SLOT.prompt[record.class_type] ||
-                ("value" in record.inputs ? "value" : "text" in record.inputs ? "text" : "prompt" in record.inputs ? "prompt" : undefined);
-            value = params.prompt || params.caption || "";
-        } else if (title === "seed" && params.seed !== undefined) {
-            slot = BINDING_TITLE_TO_INPUT_SLOT.seed[record.class_type];
-            if (!slot) {
-                if ("seed" in record.inputs) slot = "seed";
-                else if ("noise_seed" in record.inputs) slot = "noise_seed";
-                else if ("value" in record.inputs) slot = "value";
-            }
-            value = params.seed;
-            boundSeed = true;
-        }
-
-        if (slot) record.inputs[slot] = value;
-    }
-
-    if (!boundSeed && params.seed !== undefined) {
-        for (const node of Object.values(cloned)) {
-            if (typeof node !== "object" || node === null) continue;
-            const record = node as NodeRecord;
-            if (!record.inputs) continue;
-            if (typeof record.inputs.seed === "number") {
-                record.inputs.seed = params.seed;
-                break;
-            } else if (typeof record.inputs.noise_seed === "number") {
-                record.inputs.noise_seed = params.seed;
-                break;
-            }
-        }
-    }
-
-    return cloned;
-}
+// parseAudioPrompt 已迁移至 ./models/audio-models 并统一导出
 
 export type ComfyuiAudioRequest = {
     config: AiConfig;
@@ -3369,7 +3288,12 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
     const baseUrl = (channel.comfyuiProxyUrl || "").trim();
     const token = channel.comfyuiProxyToken;
 
+    const modelProfile = getModelProfile(rawModel || "audio-minimax-music-3");
+
     let workflowItem = req.workflowId ? findWorkflow(req.config, channel.id, req.workflowId, "audio") : undefined;
+    if (!workflowItem && modelProfile) {
+        workflowItem = getWorkflowForModelProfile(modelProfile.id);
+    }
     if (!workflowItem) workflowItem = getDefaultWorkflow(channel, "audio");
     if (!workflowItem && channel.comfyuiAudioWorkflow) {
         workflowItem = {
@@ -3386,27 +3310,17 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
     }
 
     const seed = req.seed !== undefined && req.seed >= 0 ? req.seed : generateRandomSeed();
-    const { caption, lyrics } = parseAudioPrompt(req.prompt);
     const duration = req.duration ?? (Number(req.config.audioSeconds) || 60);
 
-    // =========================================================================
-    // 【特别说明 / 时长偏差补偿处理 (+1s)】
-    // 实测与 ComfyUI 原生工作流验证发现：MiniMax Music 03 音频生成工作流（由 MiniMaxMusic3TextEncode
-    // 与 EmptyMiniMaxMusic3LatentAudio 等节点驱动）实际生成的音频文件时长总是比传入的 max_duration / duration
-    // 参数少 1 秒（例如用户选择 10 秒，模型实际产物仅有 9 秒；选择 60 秒，实际产物仅有 59 秒）。
-    //
-    // 为了使模型最终生成的音频产物时长与用户在画布 UI（设置面板 / 节点秒数选项）中期望的秒数完全吻合：
-    // 此处在向 ComfyUI 提交工作流参数时，对时长默认自动多加 1 秒（即 submittedDuration = duration + 1）。
-    // 前端 UI、画布节点元数据与历史记录中依然保持用户原始选定的目标数值（如 10s、60s），
-    // 仅在向底层 ComfyUI API 提交运行参数时进行该偏差补偿，彻底解决导出音频总短 1 秒的问题。
-    // =========================================================================
-    const submittedDuration = Math.max(1, duration + 1);
-
-    const boundWorkflow = applyAudioBindings(workflowItem.json, {
+    const profileToUse = modelProfile || getModelProfile("audio-minimax-music-3")!;
+    validateModelExecution(profileToUse, {
         prompt: req.prompt,
-        caption,
-        lyrics,
-        duration: submittedDuration,
+        duration,
+    });
+
+    const boundWorkflow = dispatchComfyuiModelWorkflow(profileToUse, workflowItem.json, {
+        prompt: req.prompt,
+        duration,
         seed,
     });
 

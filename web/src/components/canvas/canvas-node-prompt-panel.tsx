@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 
-import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
+import { AudioModelPicker } from "@/components/audio-model-picker";
 import { VideoModelPicker } from "@/components/video-model-picker";
 import { ImageModelPicker } from "@/components/image-model-picker";
 import { TextModelPicker } from "@/components/text-model-picker";
@@ -355,14 +355,23 @@ export function CanvasNodePromptPanel({
                         </>
                     ) : mode === "audio" ? (
                         <>
-                            <ChannelWorkflowPicker
-                                category="audio"
-                                channelId={node.metadata?.channelId}
-                                workflowId={node.metadata?.workflowId}
-                                onChange={(channelId, workflowId) => onConfigChange(node.id, { channelId, workflowId })}
+                            <AudioModelPicker
+                                channelId={node.metadata?.channelId || config.channelId}
+                                modelId={node.metadata?.modelId || "audio-minimax-music-3"}
+                                connectedImages={connectedResources.images}
+                                connectedVideos={connectedResources.videos}
+                                connectedAudios={connectedResources.audios}
+                                promptText={prompt}
+                                onChange={(nextChannelId, nextModelId) => {
+                                    onConfigChange(node.id, {
+                                        channelId: nextChannelId,
+                                        modelId: nextModelId,
+                                    });
+                                }}
                             />
                             <CanvasAudioSettingsPopover
                                 config={config}
+                                modelId={node.metadata?.modelId || "audio-minimax-music-3"}
                                 buttonClassName="!h-10 min-w-0 !max-w-[160px] !justify-start !rounded-full !px-3"
                                 onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))}
                                 onOpenChange={handleSettingsOpenChange}
