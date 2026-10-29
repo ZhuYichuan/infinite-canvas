@@ -30,6 +30,7 @@ import {
     type ComfyuiSystemStats,
     type ComfyuiQueueStats,
     getComfyuiQueueStats,
+    notifyMixedContentBlocked,
 } from "@/services/api/comfyui";
 
 function cleanGpuName(rawName?: string, defaultName = "GPU") {
@@ -186,9 +187,10 @@ export function CanvasComfyuiMonitor() {
                         getComfyuiSystemStats(chUrl, chToken),
                         getComfyuiQueueStats(chUrl, chToken),
                     ]);
-                    if (sys && sys.devices?.[0]) {
-                        const total = sys.devices[0].vram_total;
-                        const free = sys.devices[0].vram_free || 0;
+                    if (sys || q) {
+                        const device = sys?.devices?.[0];
+                        const total = device?.vram_total || 0;
+                        const free = device?.vram_free || 0;
                         const used = total - free;
                         const percent = total > 0 ? Math.round((used / total) * 100) : 0;
                         setChannelSummaries((prev) => ({
@@ -198,7 +200,7 @@ export function CanvasComfyuiMonitor() {
                                 vramPercent: percent,
                                 vramUsed: used,
                                 vramTotal: total,
-                                gpuName: cleanGpuName(sys.devices[0].name, t("canvas.monitor.defaultGpu")),
+                                gpuName: cleanGpuName(device?.name, t("canvas.monitor.defaultGpu")),
                                 runningCount: q?.runningCount || 0,
                                 pendingCount: q?.pendingCount || 0,
                             },
@@ -371,6 +373,8 @@ export function CanvasComfyuiMonitor() {
 
     const hasRunningTasks = (queueStats?.runningCount || 0) > 0;
     const hasPendingTasks = (queueStats?.pendingCount || 0) > 0;
+    const offlineChannels = comfyChannels.filter((channel) => channelSummaries[channel.id]?.online === false);
+    const otherOfflineCount = offlineChannels.filter((channel) => channel.id !== activeChannel?.id).length;
 
     // 顶栏常驻展示文案（多机时展示机器名）
     const machinePrefix = comfyChannels.length > 1 ? `${activeChannel?.name || "ComfyUI"} · ` : "";
@@ -388,6 +392,7 @@ export function CanvasComfyuiMonitor() {
             topBarText = `${machinePrefix}${t("canvas.monitor.ready")}`;
         }
     }
+    if (otherOfflineCount > 0) topBarText += ` · ${otherOfflineCount} 个其他渠道未连接`;
 
     // 悬停/点击 Popover 展开面板
     const content = (
@@ -450,6 +455,25 @@ export function CanvasComfyuiMonitor() {
                             };
                         })}
                     />
+                </div>
+            ) : null}
+
+            {offlineChannels.length > 0 ? (
+                <div className="space-y-1 text-[11px] leading-relaxed" style={{ color: theme.node.muted }}>
+                    <div className="flex items-start gap-1.5">
+                        <Info className="mt-0.5 size-3 shrink-0" />
+                        <span>暂未连接：{offlineChannels.map((channel) => channel.name || "ComfyUI").join("、")}。可继续编辑，提交失败时会显示具体渠道与接口。</span>
+                    </div>
+                    <button
+                        type="button"
+                        className="rounded px-1 py-0.5 hover:bg-black/5 dark:hover:bg-white/10"
+                        onClick={() => {
+                            const channel = offlineChannels.find((item) => item.id === activeChannel?.id) || offlineChannels[0];
+                            notifyMixedContentBlocked(channel.comfyuiProxyUrl || channel.baseUrl || baseUrl);
+                        }}
+                    >
+                        查看连接排查指引
+                    </button>
                 </div>
             ) : null}
 

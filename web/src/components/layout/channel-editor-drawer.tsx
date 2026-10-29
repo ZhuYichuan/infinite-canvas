@@ -42,15 +42,14 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
 
     const handleTestConnection = async () => {
         const url = (draft?.comfyuiProxyUrl || "").trim() || "http://127.0.0.1:8188";
+        const channelName = draft?.name.trim() || t("config.channels.unnamed");
         setTestingConnection(true);
         try {
             const res = await checkComfyuiConnection(url, draft?.comfyuiProxyToken);
             if (res.ok) {
-                message.success("ComfyUI 服务连接成功！");
-            } else if (res.error === "MIXED_CONTENT") {
-                // Guideline modal is automatically displayed via event
+                message.success(`渠道「${channelName}」连接成功（GET /system_stats）`);
             } else {
-                message.error(`连接失败: ${res.error || "无法访问服务，请检查服务是否已启动"}`);
+                message.error(`渠道「${channelName}」连接失败（GET /system_stats）：${res.error || "无法访问服务，请检查服务地址、启动状态与访问权限"}`);
             }
         } finally {
             setTestingConnection(false);
@@ -180,18 +179,18 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                             <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-1 font-medium">
                                     <ShieldAlert className="size-3.5 shrink-0 text-amber-500" />
-                                    HTTPS 访问本地 HTTP 提示
+                                    本地服务连接提示
                                 </span>
                                 <button
                                     type="button"
                                     className="cursor-pointer font-normal text-blue-600 hover:underline dark:text-blue-400"
                                     onClick={() => notifyMixedContentBlocked(draft.comfyuiProxyUrl || "http://127.0.0.1:8188")}
                                 >
-                                    查看放行指引
+                                    查看连接排查指引
                                 </button>
                             </div>
                             <p className="mt-1 text-[11px] leading-relaxed text-stone-600 dark:text-stone-300">
-                                当前站点运行在 HTTPS 下，直连本地 HTTP 会被浏览器安全拦截。请在地址栏左侧点击<strong>「锁头」图标</strong> -&gt; 将<strong>「不安全内容」</strong>设为<strong>「允许」</strong>并刷新；本地 ComfyUI 需携带 <code>--enable-cors-header "*"</code> 启动。
+                                当前页面通过 HTTPS 访问 HTTP 服务，连接可能受浏览器权限影响。可先保存渠道继续使用，提交请求失败时会显示具体渠道与接口；如需排查，请确认服务地址、跨域配置和本地网络访问权限。
                             </p>
                         </div>
                     )}

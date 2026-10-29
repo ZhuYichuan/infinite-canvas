@@ -638,7 +638,8 @@ describe("queryComfyuiJobStatus", () => {
         Object.defineProperty(navigator, "onLine", { value: originalOnLine, configurable: true });
         expect(error).toBeInstanceOf(ComfyuiNetworkError);
         expect((error as ComfyuiNetworkError).isOffline).toBe(true);
-        expect((error as ComfyuiNetworkError).message).toBe("本地网络连接已断开，请检查网络设置");
+        expect((error as ComfyuiNetworkError).message).toContain("本地网络连接已断开，请检查网络设置");
+        expect((error as ComfyuiNetworkError).message).toContain("GET http://192.168.31.188:8188/history/job_123");
     });
 });
 
