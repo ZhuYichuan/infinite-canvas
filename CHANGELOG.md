@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.20.1 - 2026-10-29
+
 + [优化] 模型 DSL 支持声明 supportedTools 衍生工具能力：视频模型（MiniMax H3）声明 faceRefine 与 depthVideo 支持能力，画布节点悬浮工具栏根据模型能力受控呈现「人脸修复」与「深度视频」，未声明或不支持的模型不再盲目展示。
 + [修复] 修复 ComfyUI 校验错误中粗暴匹配子串 "int" 误将 Checkpoint、中断或类型错误误判为缺少 ComfyLiterals 的缺陷，并在错误提示中完整保留 ComfyUI 原生详细报错信息。
 + [修复] 补充 ComfyUI-MiniMaxH3-Myang 与 ComfyUI-VideoHelperSuite 核心依赖插件检测，并将人脸修复工作流的产物保存节点标记规范对齐为 output_video。
