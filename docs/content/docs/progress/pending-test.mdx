@@ -7,6 +7,17 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Node Copy & Prompt Modification Retention Verification (节点复制与提示词改动持久化验证):
+  - **复制节点修改提示词全流程验证**:
+    - 针对已有生成产物的图片/视频/音频/文本节点执行右键复制或快捷键复制；
+    - 选中复制产生的新节点，在底栏/悬浮提示词输入框中修改提示词（如将提示词由 A 改为 B）；
+    - 点击「生成」按钮提交生成；
+    - 在生成过程中或生成完成后，点击画布空白处取消选中，再重新点击该新节点；
+    - 验证提示词面板中展示的依然是修改后的新提示词 B，绝不会被旧草稿复原覆盖为 A；
+  - **二次编辑再次生成提示词独立性验证**:
+    - 在已有结果的原节点上修改提示词并点击「再次生成」；
+    - 点击新生成的子节点，验证新节点提示词为修改后的新提示词，且不包含旧草稿残留。
+
 - Audio Node Workflow Model DSL & AudioModelPicker (音频工作流模型 DSL 与音频选择器验证):
   - **MiniMax Music 03 模型注册与 AudioModelPicker 级联交互**:
     - 在画布上选中音频节点，在悬浮 Inspector 浮层中查看模型选择器；

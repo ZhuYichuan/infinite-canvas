@@ -2343,7 +2343,7 @@ function InfiniteCanvasPage() {
     );
 
     const handleNodePromptChange = useCallback((nodeId: string, prompt: string) => {
-        setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, prompt } } : node)));
+        setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, prompt, composerContent: undefined } } : node)));
     }, []);
 
     const handleConfigNodeChange = useCallback((nodeId: string, patch: Partial<CanvasNodeData["metadata"]>) => {
@@ -3458,7 +3458,7 @@ function InfiniteCanvasPage() {
                 const scene = prompt.trim();
                 if (!scene) return;
                 const controller = startGenerationRequest(nodeId, nodeId, nodeId);
-                setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, prompt: scene, status: NODE_STATUS_LOADING, errorDetails: undefined, seed: nextSeed } } : node)));
+                setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, prompt: scene, composerContent: undefined, status: NODE_STATUS_LOADING, errorDetails: undefined, seed: nextSeed } } : node)));
                 try {
                     const fullPrompt = (builtinPanel.promptPrefix || "") + scene;
                     const context = await hydrateNodeGenerationContext(buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, fullPrompt));
@@ -3477,7 +3477,7 @@ function InfiniteCanvasPage() {
                         : await requestGeneration({ ...generationConfig, count: "1" }, context.prompt, { signal: controller.signal, seed: nextSeed, onProgress }).then((items) => items[0]);
                     const uploaded = await uploadImage(image.dataUrl);
                     setNodes((prev) =>
-                        prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...imageMetadata(uploaded), prompt: scene, model: generationConfig.model, status: NODE_STATUS_SUCCESS, errorDetails: undefined, seed: image.seed ?? nextSeed } } : node)),
+                        prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...imageMetadata(uploaded), prompt: scene, composerContent: undefined, model: generationConfig.model, status: NODE_STATUS_SUCCESS, errorDetails: undefined, seed: image.seed ?? nextSeed } } : node)),
                     );
                     setDialogNodeId(null);
                 } catch (error) {
@@ -3547,6 +3547,7 @@ function InfiniteCanvasPage() {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata, sourceNode.type) : {}),
                             prompt,
                             effectivePrompt,
+                            composerContent: undefined,
                             channelId: sourceNode?.metadata?.channelId,
                             workflowId: sourceNode?.metadata?.workflowId,
                             status: NODE_STATUS_LOADING,
@@ -3584,7 +3585,7 @@ function InfiniteCanvasPage() {
                                             width: rootNode.width,
                                             height: rootNode.height,
                                             title: rootNode.title,
-                                            metadata: { ...node.metadata, ...rootNode.metadata, errorDetails: undefined },
+                                            metadata: { ...node.metadata, ...rootNode.metadata, prompt, effectivePrompt, composerContent: undefined, errorDetails: undefined },
                                         }
                                       : isImageNode
                                         ? {
@@ -3597,7 +3598,7 @@ function InfiniteCanvasPage() {
                                               title: prompt.slice(0, 32) || "Prompt",
                                               width: parentConfig.width,
                                               height: parentConfig.height,
-                                              metadata: { ...node.metadata, content: prompt, prompt, status: NODE_STATUS_SUCCESS, fontSize: 14, errorDetails: undefined },
+                                              metadata: { ...node.metadata, content: prompt, prompt, composerContent: undefined, status: NODE_STATUS_SUCCESS, fontSize: 14, errorDetails: undefined },
                                           }
                                 : node,
                         ),
@@ -3807,6 +3808,7 @@ function InfiniteCanvasPage() {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata, sourceNode.type) : {}),
                             prompt,
                             effectivePrompt,
+                            composerContent: undefined,
                             channelId: sourceNode?.metadata?.channelId,
                             workflowId: sourceNode?.metadata?.workflowId,
                             status: NODE_STATUS_LOADING,
@@ -3836,7 +3838,7 @@ function InfiniteCanvasPage() {
                     pendingChildIds = [videoId];
                     setNodes((prev) =>
                         isEmptyVideoNode
-                            ? prev.map((node) => (node.id === nodeId ? { ...node, ...videoNode } : node))
+                            ? prev.map((node) => (node.id === nodeId ? { ...node, ...videoNode, metadata: { ...node.metadata, ...videoNode.metadata, prompt, effectivePrompt, composerContent: undefined } } : node))
                             : [...prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS } } : node)), videoNode],
                     );
                     if (!isEmptyVideoNode) {
@@ -3885,6 +3887,7 @@ function InfiniteCanvasPage() {
                                               ...videoMetadata(video),
                                               prompt,
                                               effectivePrompt,
+                                              composerContent: undefined,
                                               model: generationConfig.model,
                                               modelId: sourceNode?.metadata?.modelId || generationConfig.model,
                                               supportedTools: getModelProfile(sourceNode?.metadata?.modelId || generationConfig.model)?.supportedTools,
@@ -3923,6 +3926,7 @@ function InfiniteCanvasPage() {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata, sourceNode.type) : {}),
                             prompt,
                             effectivePrompt,
+                            composerContent: undefined,
                             channelId: sourceNode?.metadata?.channelId,
                             workflowId: sourceNode?.metadata?.workflowId,
                             status: NODE_STATUS_LOADING,
@@ -3944,7 +3948,7 @@ function InfiniteCanvasPage() {
                     pendingChildIds = [audioId];
                     setNodes((prev) =>
                         isEmptyAudioNode
-                            ? prev.map((node) => (node.id === nodeId ? { ...node, ...audioNode } : node))
+                            ? prev.map((node) => (node.id === nodeId ? { ...node, ...audioNode, metadata: { ...node.metadata, ...audioNode.metadata, prompt, effectivePrompt, composerContent: undefined } } : node))
                             : [...prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS } } : node)), audioNode],
                     );
                     if (!isEmptyAudioNode) {
@@ -3980,6 +3984,7 @@ function InfiniteCanvasPage() {
                                               ...audioMetadata(audio),
                                               prompt,
                                               effectivePrompt,
+                                              composerContent: undefined,
                                               modelId,
                                               channelId: sourceNode?.metadata?.channelId,
                                               workflowId: sourceNode?.metadata?.workflowId,
@@ -4018,6 +4023,7 @@ function InfiniteCanvasPage() {
                         ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata, sourceNode.type) : {}),
                         prompt,
                         effectivePrompt,
+                        composerContent: undefined,
                         channelId: sourceNode?.metadata?.channelId,
                         workflowId: sourceNode?.metadata?.workflowId,
                         status: NODE_STATUS_LOADING,
@@ -4050,7 +4056,7 @@ function InfiniteCanvasPage() {
                 pendingChildIds = [rootId];
                 setNodes((prev) =>
                     isEmptyTextNode
-                        ? prev.map((node) => (node.id === nodeId ? { ...node, ...rootNode } : node))
+                        ? prev.map((node) => (node.id === nodeId ? { ...node, ...rootNode, metadata: { ...node.metadata, ...rootNode.metadata, prompt, effectivePrompt, composerContent: undefined } } : node))
                         : [
                               ...prev.map((node) =>
                                   node.id === nodeId
@@ -4137,6 +4143,9 @@ function InfiniteCanvasPage() {
                                                   ...(node.metadata?.primaryTextId === textId ? { content } : {}),
                                                   texts: node.metadata?.texts?.map((item) => (item.id === textId ? { ...item, content, status: NODE_STATUS_SUCCESS, jobId: undefined, isTimeout: undefined, seed: slotSeed } : item)),
                                                   seed: nextSeed,
+                                                  prompt,
+                                                  effectivePrompt,
+                                                  composerContent: undefined,
                                               },
                                           }
                                         : node,

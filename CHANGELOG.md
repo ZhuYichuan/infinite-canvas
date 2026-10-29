@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [修复] 修复复制节点或二次编辑后重新点击节点提示词被旧草稿（composerContent）错误复原覆盖的缺陷：复制时提拔活跃草稿并清空草稿残留，在修改提示词与提交生成产物后彻底清理 draft 影子，确保新节点提示词持久保持用户最新修改。
 + [新增] 音频节点接入工作流模型 DSL（WorkflowModelProfile）：注册 MiniMax Music 03 扩散音乐大模型，声明 10s~300s 时长范围与 0 媒体连线约束，并内建潜空间解码偏差补偿（durationOffset: 1）。
 + [优化] 音频参数分流与动态浮层：统一采用 dispatchComfyuiModelWorkflow 绑定 caption、lyrics、duration 与 seed，彻底废弃 applyAudioBindings；引入 AudioModelPicker 级联选择器淘汰旧版 ChannelWorkflowPicker，设置浮层参数与快捷标签完全由模型 Capability 配置动态驱动。
 + [新增] 架构升级：落地任务生命周期驱动接缝（TaskLifecycleDriver Seam），提供 TaskSnapshot 统一 6 大状态归一、TaskArtifact 多模态产物契约与 TaskExecutionError 结构化异常体系，彻底消除业务调度层针对底层特定 ComfyUI 异常类的直接耦合。

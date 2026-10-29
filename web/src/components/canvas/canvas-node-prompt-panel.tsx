@@ -72,7 +72,9 @@ export function CanvasNodePromptPanel({
     const config = buildNodeConfig(globalConfig, node, mode);
     const hasTextContent = node.type === CanvasNodeType.Text && Boolean(node.metadata?.content?.trim());
     const hasImageContent = node.type === CanvasNodeType.Image && Boolean(node.metadata?.content);
-    const isEditingExistingContent = hasTextContent || hasImageContent;
+    const hasVideoContent = node.type === CanvasNodeType.Video && Boolean(node.metadata?.content);
+    const hasAudioContent = node.type === CanvasNodeType.Audio && Boolean(node.metadata?.content);
+    const isEditingExistingContent = hasTextContent || hasImageContent || hasVideoContent || hasAudioContent;
     const canRepeat = node.metadata?.status === "success";
     const isGenerating = isRunning || node.metadata?.status === "loading";
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");

@@ -88,6 +88,11 @@ export function cloneNodeMetadata(metadata?: CanvasNodeMetadata, nodeType?: Canv
     delete cloned.errorDetails;
     delete cloned.isTimeout;
 
+    // 2. 复制时将活跃草稿 (composerContent) 提拔为 official prompt，并清除 draft 避免影子遮蔽
+    const activePrompt = cloned.composerContent ?? cloned.prompt;
+    if (activePrompt !== undefined) cloned.prompt = activePrompt;
+    delete cloned.composerContent;
+
     const targetType = nodeType || (cloned.generationMode as CanvasNodeType) || undefined;
 
     // 2. 识别是否属于 AI 生成类节点（生图/生视频/生音频/AI文本）
