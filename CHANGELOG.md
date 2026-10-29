@@ -2,6 +2,9 @@
 
 ## Unreleased
 
++ [新增] 架构升级：落地任务生命周期驱动接缝（TaskLifecycleDriver Seam），提供 TaskSnapshot 统一 6 大状态归一、TaskArtifact 多模态产物契约与 TaskExecutionError 结构化异常体系，彻底消除业务调度层针对底层特定 ComfyUI 异常类的直接耦合。
++ [优化] 引入任务驱动注册中心（driverRegistry）与统一接续调度器（resumeTask），页面刷新或断线重连时自动执行轻量状态探测、产物秒级恢复与平滑长轮询接入。
+
 ## v0.20.1 - 2026-10-29
 
 + [优化] 模型 DSL 支持声明 supportedTools 衍生工具能力：视频模型（MiniMax H3）声明 faceRefine 与 depthVideo 支持能力，画布节点悬浮工具栏根据模型能力受控呈现「人脸修复」与「深度视频」，未声明或不支持的模型不再盲目展示。

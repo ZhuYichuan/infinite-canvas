@@ -6,7 +6,7 @@ import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 
 import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
-import { generateRandomSeed, requestComfyuiImage } from "@/services/api/comfyui";
+import { generateRandomSeed } from "@/services/api/comfyui";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
 import { getModelProfile } from "@/services/api/models";
@@ -4144,7 +4144,7 @@ function InfiniteCanvasPage() {
                             if (isGenerationCanceled(error)) return null;
                             const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
                             const errorJobId = (error as { jobId?: string })?.jobId;
-                            const isTimeout = (error as { name?: string })?.name === "ComfyuiTimeoutError" || errorDetails.includes("timeout") || errorDetails.includes("超时");
+                            const isTimeout = isTimeoutGenerationError(error);
                             setNodes((prev) =>
                                 prev.map((node) =>
                                     node.id === rootId

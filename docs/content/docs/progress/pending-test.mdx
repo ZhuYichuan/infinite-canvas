@@ -7,6 +7,28 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Task Lifecycle Driver Seam & Multi-Channel State Abstraction (任务生命周期驱动接缝与状态抽象验证):
+  - **任务即时快照与状态归一验证**:
+    - 在画布上发起文生图/图生图/视频/文本反推生成；
+    - 验证排队中（pending）、执行中（running）、成功（success）和出错（error）状态正确归一传递；
+    - 任务排队时，验证排队位次（queuePosition）实时同步到节点并显示；
+    - 网络断开并重试时，验证断线重试态（networkRetry）及重试次数信息正确上报。
+  - **异常分类与重试决策验证**:
+    - 模拟服务不可达或端口错误，验证系统抛出 `TaskExecutionError`（category: "network", isRetryable: true），节点提供清晰重试指引；
+    - 模拟任务超时，验证分类为 `timeout`（isRetryable: true）；
+    - 模拟用户点击取消，验证分类为 `cancelled`；
+    - 模拟服务端查无此任务，验证分类为 `lost`。
+  - **多模态产物解包验证**:
+    - 验证图片任务产物统一解包为 `{ type: "image", url, assetId }`；
+    - 验证视频任务产物统一解包为 `{ type: "video", url, assetId }`；
+    - 验证文本反推产物统一解包为 `{ type: "text", text }`。
+  - **页面刷新接续探测（resumeTask）验证**:
+    - 在任务生成过程中刷新浏览器页面；
+    - 页面加载后自动触发接续恢复：
+      - 若服务端已执行完成，验证秒级命中成功产物并呈现在节点上；
+      - 若任务仍在排队或运行中，验证无缝接入长轮询并继续显示实时进度；
+      - 若服务端已清理任务，精准提示任务已丢失并引导重新发起。
+
 - Model DSL Supported Tools & ComfyUI Validation Fixes (模型 DSL 工具能力声明与悬浮工具栏受控展示验证):
   - **视频模型 DSL 声明衍生工具支持度与工具栏受控呈现**:
     - 在画布上使用 MiniMax H3 视频模型（Omni 或 Frame）生成视频产物；

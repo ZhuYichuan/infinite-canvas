@@ -324,21 +324,21 @@ export async function resumeTask(
 
 ## 阶段划分与实施清单 (Implementation Plan)
 
-- [ ] **Phase 1: 建立核心领域接缝与类型**
+- [x] **Phase 1: 建立核心领域接缝与类型**
   - 创建 `web/src/services/api/task/types.ts` 定义 `TaskSnapshot`、`TaskArtifact`、`TaskLifecycleDriver` 等结构；
   - 创建 `web/src/services/api/task/errors.ts` 定义 `TaskExecutionError` 与 `isTaskRetryable`；
   - 编写 `web/src/services/api/task/__tests__/task-types.test.ts` 进行契约覆盖。
-- [ ] **Phase 2: 实现 ComfyuiTaskDriver 官方适配器**
+- [x] **Phase 2: 实现 ComfyuiTaskDriver 官方适配器**
   - 创建 `web/src/services/api/task/drivers/comfyui-driver.ts`；
   - 内部委托调用 `queryComfyuiJobStatus` 并实现 `ComfyuiTaskStatusResult -> TaskSnapshot` 映射；
   - 内部委托调用 `ComfyuiJobBatchPoller` 并将事件广播转换为 `TaskSnapshot`；
   - 将 ComfyUI 的 5 种底层异常透明捕获并映射为统一的 `TaskExecutionError`；
   - 实现 `ComfyuiTaskDriver` 对多模态产物（图片、视频、文本）的统一解包；
   - 编写 `web/src/services/api/task/__tests__/comfyui-driver.test.ts`（包含 InMemory / Mock 测试）。
-- [ ] **Phase 3: 实现驱动工厂与统一接续恢复**
+- [x] **Phase 3: 实现驱动工厂与统一接续恢复**
   - 创建 `web/src/services/api/task/registry.ts` 与 `web/src/services/api/task/resume.ts`；
   - 编写 `web/src/services/api/task/__tests__/resume.test.ts` 验证瞬时成功、接续轮询与任务丢失场景。
-- [ ] **Phase 4: 重构 Canvas 业务层与服务层**
+- [x] **Phase 4: 重构 Canvas 业务层与服务层**
   - 改造 `web/src/services/api/image.ts`、`video.ts`、`comfyui.ts` 接入统一的驱动接缝；
   - 重构 `web/src/pages/canvas/project.tsx`：清除所有 `ComfyuiJob*Error` 的直接依赖，替换为 `TaskExecutionError` 与 `isTaskRetryable`；
   - 使用统一的 `resumeTask` 替代原先在图片、视频、文本分散手写的恢复逻辑；

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { TaskExecutionError } from "@/services/api/task";
 
 import {
     buildGeneratedNodeConnections,
@@ -421,6 +422,7 @@ describe("hasInterruptedGeneration and countInterruptedTasks", () => {
 
 describe("error classification helpers", () => {
     it("correctly identifies network errors", () => {
+        expect(isNetworkGenerationError(new TaskExecutionError("network err", "network"))).toBe(true);
         expect(isNetworkGenerationError(new Error("Failed to fetch"))).toBe(true);
         expect(isNetworkGenerationError(new Error("无法连接 ComfyUI 服务（http://192.168.31.188:8188）"))).toBe(true);
         expect(isNetworkGenerationError(new Error("本地网络连接已断开，请检查网络设置"))).toBe(true);
@@ -429,6 +431,7 @@ describe("error classification helpers", () => {
     });
 
     it("correctly identifies lost or not found errors", () => {
+        expect(isLostOrNotFoundGenerationError(new TaskExecutionError("task lost", "lost"))).toBe(true);
         expect(isLostOrNotFoundGenerationError({ name: "ComfyuiJobLostError", message: "lost" })).toBe(true);
         expect(isLostOrNotFoundGenerationError({ name: "ComfyuiJobNotFoundError", message: "not found" })).toBe(true);
         expect(isLostOrNotFoundGenerationError(new Error("ComfyUI 任务已丢失"))).toBe(true);
@@ -437,6 +440,7 @@ describe("error classification helpers", () => {
     });
 
     it("correctly identifies cancelled errors without confusing with page refresh", () => {
+        expect(isCancelledGenerationError(new TaskExecutionError("user cancel", "cancelled"))).toBe(true);
         expect(isCancelledGenerationError({ name: "ComfyuiJobCancelledError", message: "cancelled" })).toBe(true);
         expect(isCancelledGenerationError({ name: "ComfyuiAbortedError", message: "aborted" })).toBe(true);
         expect(isCancelledGenerationError(new Error("任务已取消"))).toBe(true);
@@ -445,8 +449,10 @@ describe("error classification helpers", () => {
     });
 
     it("correctly identifies timeout and job errors", () => {
+        expect(isTimeoutGenerationError(new TaskExecutionError("timeout", "timeout"))).toBe(true);
         expect(isTimeoutGenerationError({ name: "ComfyuiTimeoutError", message: "timeout" })).toBe(true);
         expect(isTimeoutGenerationError(new Error("排队超时"))).toBe(true);
+        expect(isJobExecutionError(new TaskExecutionError("failed", "execution_failed"))).toBe(true);
         expect(isJobExecutionError({ name: "ComfyuiJobError", message: "job err" })).toBe(true);
         expect(isJobExecutionError(new Error("other"))).toBe(false);
     });

@@ -1,5 +1,6 @@
 import { defaultConfig, findWorkflow, resolveModelForCapability, type AiConfig } from "@/stores/use-config-store";
 import i18n from "@/i18n";
+import { TaskExecutionError } from "@/services/api/task";
 import { imageToDataUrl, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { resolveMediaUrl } from "@/services/file-storage";
 import { imageMetadata, referenceUrl } from "@/lib/canvas/canvas-node-factory";
@@ -193,6 +194,7 @@ export function isInterruptedGenerationError(errorDetails?: string) {
 
 export function isCancelledGenerationError(error: unknown): boolean {
     if (!error) return false;
+    if (error instanceof TaskExecutionError && error.category === "cancelled") return true;
     const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
     if (name === "ComfyuiJobCancelledError" || name === "ComfyuiAbortedError") return true;
     const msg = error instanceof Error ? error.message : typeof error === "string" ? error : "";
@@ -201,6 +203,7 @@ export function isCancelledGenerationError(error: unknown): boolean {
 
 export function isLostOrNotFoundGenerationError(error: unknown): boolean {
     if (!error) return false;
+    if (error instanceof TaskExecutionError && error.category === "lost") return true;
     const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
     if (name === "ComfyuiJobLostError" || name === "ComfyuiJobNotFoundError") return true;
     const msg = error instanceof Error ? error.message : typeof error === "string" ? error : "";
@@ -209,6 +212,7 @@ export function isLostOrNotFoundGenerationError(error: unknown): boolean {
 
 export function isNetworkGenerationError(error: unknown): boolean {
     if (!error) return false;
+    if (error instanceof TaskExecutionError && error.category === "network") return true;
     const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
     if (name === "ComfyuiNetworkError" || name === "ComfyuiMixedContentError") return true;
     const msg = error instanceof Error ? error.message : typeof error === "string" ? error : "";
@@ -225,6 +229,7 @@ export function isNetworkGenerationError(error: unknown): boolean {
 
 export function isTimeoutGenerationError(error: unknown): boolean {
     if (!error) return false;
+    if (error instanceof TaskExecutionError && error.category === "timeout") return true;
     const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
     if (name === "ComfyuiTimeoutError") return true;
     const msg = error instanceof Error ? error.message : typeof error === "string" ? error : "";
@@ -233,6 +238,7 @@ export function isTimeoutGenerationError(error: unknown): boolean {
 
 export function isJobExecutionError(error: unknown): boolean {
     if (!error) return false;
+    if (error instanceof TaskExecutionError && error.category === "execution_failed") return true;
     const name = typeof error === "object" && error !== null && "name" in error ? String((error as { name?: unknown }).name) : "";
     return name === "ComfyuiJobError";
 }
