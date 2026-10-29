@@ -7,6 +7,17 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Node Visual Obstruction Removal Verification (节点画面无遮挡纯净展示验证):
+  - **图片节点画面遮挡清理验证**:
+    - 在画布上生成或拖入单张/多张图片，观察图片节点卡片；
+    - 验证图片左上角不再有常驻的「下载」按钮，也不会在失败时常驻「重新查询」和「删除」按钮，整张图片完整呈现且无任何 UI 元素覆盖遮挡；
+    - 鼠标悬浮或选中图片节点时，验证顶部悬浮工具栏依然正常呈现「下载图片」、「重新查询/重试」及「删除」等全部功能；
+  - **多图/多文本展开卡片验证**:
+    - 点击多图/多文本批量展开按钮展开子卡片；
+    - 验证子卡片上的操作按钮默认处于隐藏状态（不遮挡画面与文本），仅在鼠标悬浮于具体某张子卡片时优雅淡入；
+  - **视频/音频/文本节点一致性检查**:
+    - 检查视频播放器节点、音频播放器节点及文本节点，确认均无多余浮动按钮遮挡内容。
+
 - Multi-image Reference & ComfySwitchNode Latent Routing Verification (多图参考与潜空间开关路由验证):
   - **单张/多张参考图效果验证**:
     - 在画布上创建一个或多个包含图片的节点，并将其作为输入连线连接到一个图片生成节点；
