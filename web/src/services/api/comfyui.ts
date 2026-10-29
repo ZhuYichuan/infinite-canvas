@@ -542,6 +542,8 @@ export function applyBindings(workflow: ComfyuiWorkflowJson, params: ComfyuiBind
 
 /** Base class for every error raised by the ComfyUI service layer. */
 export class ComfyuiError extends Error {
+    channelName?: string;
+
     constructor(message: string) {
         super(message);
         this.name = "ComfyuiError";
@@ -551,8 +553,9 @@ export class ComfyuiError extends Error {
 export class ComfyuiApiError extends ComfyuiError {
     readonly status?: number;
 
-    constructor(message: string, status?: number) {
-        super(message);
+    constructor(message: string, status?: number, request?: { url: string; method?: string }) {
+        const reason = status === 401 || status === 403 ? "，请检查渠道认证凭据与访问权限" : "";
+        super(request ? `${message}；接口 ${describeComfyuiEndpoint(request.url, request.method)}${status ? ` 返回 HTTP ${status}${reason}` : ""}` : message);
         this.name = "ComfyuiApiError";
         this.status = status;
     }
@@ -640,12 +643,16 @@ export class ComfyuiNetworkError extends ComfyuiError {
     readonly isOffline: boolean;
     readonly jobId?: string;
 
-    constructor(baseUrl: string, jobId?: string, cause?: unknown) {
+    constructor(baseUrl: string, jobId?: string, cause?: unknown, request?: { url: string; method?: string }) {
         const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
         const cleanUrl = baseUrl.trim().replace(/\/+$/, "");
-        const message = isOffline
+        let message = isOffline
             ? "本地网络连接已断开，请检查网络设置"
             : `无法连接 ComfyUI 服务（${cleanUrl}）。服务可能已崩溃或未启动，请检查服务状态与端口`;
+        if (request) {
+            message += `；接口 ${describeComfyuiEndpoint(request.url, request.method)} 未能联通`;
+            if (!isOffline) message += "。请检查渠道地址、跨域（CORS）与浏览器本地网络权限；浏览器未提供更具体的失败原因";
+        }
         super(message);
         this.name = "ComfyuiNetworkError";
         this.baseUrl = cleanUrl;
@@ -668,14 +675,25 @@ export function notifyMixedContentBlocked(url: string) {
     }
 }
 
-export class ComfyuiMixedContentError extends ComfyuiError {
-    readonly baseUrl: string;
-
-    constructor(baseUrl: string) {
-        super(`浏览器安全策略拦截了对本地 HTTP 服务 (${baseUrl}) 的请求。请在浏览器地址栏左侧点击锁头图标 ->「网站设置/此站点的权限」-> 将「不安全内容」设为「允许」后刷新页面。`);
-        this.name = "ComfyuiMixedContentError";
-        this.baseUrl = baseUrl;
+function describeComfyuiEndpoint(url: string, method = "GET") {
+    try {
+        const parsed = new URL(url);
+        return `${method.toUpperCase()} ${parsed.origin}${parsed.pathname}`;
+    } catch {
+        return `${method.toUpperCase()}（渠道地址无效）`;
     }
+}
+
+function addComfyuiChannelContext(error: unknown, channelName: string): unknown {
+    if (!(error instanceof ComfyuiNetworkError || error instanceof ComfyuiApiError)) return error;
+    const name = channelName || "未命名渠道";
+    if (error.channelName === name) return error;
+    // 批量轮询可能把同一异常交给多个订阅，渠道上下文必须各自独立。
+    const contextualError = Object.create(Object.getPrototypeOf(error), Object.getOwnPropertyDescriptors(error)) as typeof error;
+    const message = error.channelName ? error.message.slice(`渠道「${error.channelName}」：`.length) : error.message;
+    contextualError.channelName = name;
+    contextualError.message = `渠道「${name}」：${message}`;
+    return contextualError;
 }
 
 async function comfyuiFetch(url: string, init?: RequestInit, baseUrl = url): Promise<Response> {
@@ -685,10 +703,6 @@ async function comfyuiFetch(url: string, init?: RequestInit, baseUrl = url): Pro
         if (error instanceof ComfyuiError) {
             throw error;
         }
-        if (isMixedContentHttp(baseUrl)) {
-            notifyMixedContentBlocked(baseUrl);
-            throw new ComfyuiMixedContentError(baseUrl);
-        }
         if (
             init?.signal?.aborted ||
             (error instanceof Error && error.name === "AbortError") ||
@@ -696,7 +710,7 @@ async function comfyuiFetch(url: string, init?: RequestInit, baseUrl = url): Pro
         ) {
             throw error;
         }
-        throw new ComfyuiNetworkError(baseUrl, undefined, error);
+        throw new ComfyuiNetworkError(baseUrl, undefined, error, { url, method: init?.method });
     }
 }
 
@@ -829,7 +843,9 @@ async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string,
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
     const clientId = nanoid();
-    const response = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/prompt`, {
+    const url = `${normalizeBaseUrl(baseUrl)}/prompt`;
+    const request = { url, method: "POST" };
+    const response = await comfyuiFetch(url, {
         method: "POST",
         headers,
         body: JSON.stringify({ prompt: workflow, client_id: clientId }),
@@ -847,14 +863,14 @@ async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string,
             // ignore
         }
         const friendlyDetail = translateComfyuiValidationError(errDetail);
-        throw new ComfyuiApiError(`ComfyUI 任务提交失败: ${friendlyDetail}`, response.status);
+        throw new ComfyuiApiError(`ComfyUI 任务提交失败: ${friendlyDetail}`, response.status, request);
     }
     const data = (await response.json()) as { prompt_id?: unknown; node_errors?: Record<string, unknown> };
     if (data?.node_errors && Object.keys(data.node_errors).length > 0) {
         const friendly = translateComfyuiValidationError(JSON.stringify(data.node_errors));
-        throw new ComfyuiApiError(`ComfyUI 工作流校验报错: ${friendly}`);
+        throw new ComfyuiApiError(`ComfyUI 工作流校验报错: ${friendly}`, undefined, request);
     }
-    if (typeof data?.prompt_id !== "string") throw new ComfyuiApiError("ComfyUI /prompt 响应未返回 prompt_id");
+    if (typeof data?.prompt_id !== "string") throw new ComfyuiApiError("ComfyUI /prompt 响应未返回 prompt_id", undefined, request);
     return data.prompt_id;
 }
 
@@ -1567,7 +1583,7 @@ export class ComfyuiJobBatchPoller {
             try {
                 const res = await comfyuiFetch(`${this.baseUrl}/history/${entry.jobId}`, { headers }, this.baseUrl);
                 if (!res.ok) {
-                    throw new ComfyuiApiError(`Failed to poll ComfyUI history: ${res.status}`, res.status);
+                    throw new ComfyuiApiError("ComfyUI 任务状态查询失败", res.status, { url: `${this.baseUrl}/history/${entry.jobId}` });
                 }
                 const data = (await res.json()) as Record<string, ComfyuiJobResponse>;
                 const jobEntry = data?.[entry.jobId];
@@ -1894,12 +1910,14 @@ function imageReferenceSlots(workflow: ComfyuiWorkflowJson) {
 export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<ComfyuiImageResult> {
     const startedAt = Date.now();
     let requestConfig: ReturnType<typeof resolveModelRequestConfig> | undefined;
+    let channelName = "";
     let jobId = req.jobId || "";
     let seed: number | undefined = req.seed;
     try {
         const rawModel = req.model || req.config.imageModel || req.config.model;
         requestConfig = resolveModelRequestConfig(req.config, rawModel);
         const channel = resolveModelChannel(req.config, rawModel);
+        channelName = channel.name;
         const requestModel = modelOptionName(rawModel);
         const channelModel = channel.models.find((model) => model.name === requestModel);
         const references = req.references || [];
@@ -2000,6 +2018,7 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
         void logImageGeneration({ model: requestConfig.model, prompt: req.prompt, provider: "comfyui", jobId, durationMs: Date.now() - startedAt, status: "success", imageCount: items.length, images: items, seed }).catch(() => undefined);
         return { items, jobId, seed };
     } catch (error) {
+        error = addComfyuiChannelContext(error, channelName);
         void logImageGeneration({
             model: requestConfig?.model ?? req.model,
             prompt: req.prompt,
@@ -2036,17 +2055,19 @@ export async function uploadComfyuiAsset(
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const uploadRes = await comfyuiFetch(`${normalizeBaseUrl(baseUrl)}/upload/image`, {
+    const url = `${normalizeBaseUrl(baseUrl)}/upload/image`;
+    const request = { url, method: "POST" };
+    const uploadRes = await comfyuiFetch(url, {
         method: "POST",
         headers,
         body: form,
         signal,
     }, baseUrl);
     if (!uploadRes.ok) {
-        throw new ComfyuiApiError(`Upload asset failed: ${uploadRes.status}`, uploadRes.status);
+        throw new ComfyuiApiError("ComfyUI 参考资源上传失败", uploadRes.status, request);
     }
     const data = (await uploadRes.json()) as { name?: string; subfolder?: string };
-    if (!data?.name) throw new ComfyuiApiError("Upload asset returned missing name");
+    if (!data?.name) throw new ComfyuiApiError("ComfyUI 参考资源上传接口未返回文件名", undefined, request);
     return data.subfolder ? `${data.subfolder}/${data.name}` : data.name;
 }
 
@@ -2066,11 +2087,13 @@ export interface ComfyuiInpaintRequest {
 
 export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise<ComfyuiImageResult> {
     const startedAt = Date.now();
+    let channelName = "";
     let jobId = req.jobId || "";
     let seed: number | undefined = req.seed;
     try {
         const rawModel = req.model || req.config.imageModel || req.config.model;
         const channel = resolveModelChannel(req.config, rawModel);
+        channelName = channel.name;
         const requestModel = modelOptionName(rawModel);
         const channelModel = channel.models.find((model) => model.name === requestModel);
         const channelId = req.channelId || req.config.channelId || channel.id;
@@ -2160,6 +2183,7 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
         void logImageGeneration({ model: "ComfyUI Inpaint", prompt: req.prompt, provider: "comfyui", jobId, durationMs: Date.now() - startedAt, status: "success", imageCount: items.length, images: items, seed }).catch(() => undefined);
         return { items, jobId, seed };
     } catch (error) {
+        error = addComfyuiChannelContext(error, channelName);
         void logImageGeneration({
             model: "ComfyUI Inpaint",
             prompt: req.prompt,
@@ -2483,11 +2507,13 @@ export interface ComfyuiTextRequest {
 
 export async function requestComfyuiText(req: ComfyuiTextRequest): Promise<{ text: string; jobId: string }> {
     const startedAt = Date.now();
+    let channelName = "";
     let jobId = req.jobId || "";
     let seed: number | undefined = req.seed;
     try {
         const rawModel = req.model || req.config.textModel || req.config.model;
         const channel = resolveModelChannel(req.config, rawModel);
+        channelName = channel.name;
         const requestModel = modelOptionName(rawModel);
         const channelModel = channel.models.find((model) => model.name === requestModel);
         const channelId = req.channelId || req.config.channelId || channel.id;
@@ -2611,7 +2637,7 @@ export async function requestComfyuiText(req: ComfyuiTextRequest): Promise<{ tex
         req.onDelta?.(text);
         return { text, jobId };
     } catch (error) {
-        throw error;
+        throw addComfyuiChannelContext(error, channelName);
     }
 }
 
@@ -3090,124 +3116,128 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const baseUrl = (channel.comfyuiProxyUrl || "").trim();
     const token = channel.comfyuiProxyToken;
 
-    let firstFrameAssetId: string | undefined;
-    let lastFrameAssetId: string | undefined;
-    const assetIds: string[] = [];
-    const videoAssetIds: string[] = [];
-    const audioAssetIds: string[] = [];
+    try {
+        let firstFrameAssetId: string | undefined;
+        let lastFrameAssetId: string | undefined;
+        const assetIds: string[] = [];
+        const videoAssetIds: string[] = [];
+        const audioAssetIds: string[] = [];
 
-    if (videoMode === "frame") {
-        // 首尾帧模式 - 严格校验（Fail-loud）：在任何上传之前先构建去重后的参考图并校验数量/类型
-        const frameCandidates: Array<ReferenceImage | undefined> = [req.firstFrame, req.lastFrame, ...(req.references || [])];
-        const frameImages: ReferenceImage[] = [];
-        const seenFrameIds = new Set<string>();
-        for (const candidate of frameCandidates) {
-            if (!candidate) continue;
-            if (seenFrameIds.has(candidate.id)) continue;
-            seenFrameIds.add(candidate.id);
-            frameImages.push(candidate);
-        }
-        if (frameImages.length > 2) {
-            throw new ComfyuiError(`首尾帧模式最多支持 2 张参考图，已连接 ${frameImages.length} 张`);
-        }
-        if ((req.referenceVideos && req.referenceVideos.length > 0) || (req.referenceAudios && req.referenceAudios.length > 0)) {
-            throw new ComfyuiError("首尾帧模式不支持视频或音频参考，请移除后再生成");
-        }
-        const firstFrameImg = frameImages[0];
-        const lastFrameImg = frameImages[1];
-        if (firstFrameImg?.dataUrl) {
-            firstFrameAssetId = await uploadComfyuiAsset(baseUrl, token, firstFrameImg.dataUrl, "first_frame.png", req.signal);
-        }
-        if (lastFrameImg?.dataUrl) {
-            lastFrameAssetId = await uploadComfyuiAsset(baseUrl, token, lastFrameImg.dataUrl, "last_frame.png", req.signal);
-        }
-    } else {
-        // 全能参考模式 - 严格校验（Fail-loud）
-        if (req.references && req.references.length > 9) {
-            throw new Error(`当前视频工作流最多支持 9 张参考图，已连接 ${req.references.length} 张，请精简连线后再生成`);
-        }
-        if (req.referenceVideos && req.referenceVideos.length > 3) {
-            throw new Error(`当前视频工作流最多支持 3 个参考视频，已连接 ${req.referenceVideos.length} 个，请精简连线后再生成`);
-        }
-        if (req.referenceAudios && req.referenceAudios.length > 3) {
-            throw new Error(`当前视频工作流最多支持 3 个参考音频，已连接 ${req.referenceAudios.length} 个，请精简连线后再生成`);
-        }
+        if (videoMode === "frame") {
+            // 首尾帧模式 - 严格校验（Fail-loud）：在任何上传之前先构建去重后的参考图并校验数量/类型
+            const frameCandidates: Array<ReferenceImage | undefined> = [req.firstFrame, req.lastFrame, ...(req.references || [])];
+            const frameImages: ReferenceImage[] = [];
+            const seenFrameIds = new Set<string>();
+            for (const candidate of frameCandidates) {
+                if (!candidate) continue;
+                if (seenFrameIds.has(candidate.id)) continue;
+                seenFrameIds.add(candidate.id);
+                frameImages.push(candidate);
+            }
+            if (frameImages.length > 2) {
+                throw new ComfyuiError(`首尾帧模式最多支持 2 张参考图，已连接 ${frameImages.length} 张`);
+            }
+            if ((req.referenceVideos && req.referenceVideos.length > 0) || (req.referenceAudios && req.referenceAudios.length > 0)) {
+                throw new ComfyuiError("首尾帧模式不支持视频或音频参考，请移除后再生成");
+            }
+            const firstFrameImg = frameImages[0];
+            const lastFrameImg = frameImages[1];
+            if (firstFrameImg?.dataUrl) {
+                firstFrameAssetId = await uploadComfyuiAsset(baseUrl, token, firstFrameImg.dataUrl, "first_frame.png", req.signal);
+            }
+            if (lastFrameImg?.dataUrl) {
+                lastFrameAssetId = await uploadComfyuiAsset(baseUrl, token, lastFrameImg.dataUrl, "last_frame.png", req.signal);
+            }
+        } else {
+            // 全能参考模式 - 严格校验（Fail-loud）
+            if (req.references && req.references.length > 9) {
+                throw new Error(`当前视频工作流最多支持 9 张参考图，已连接 ${req.references.length} 张，请精简连线后再生成`);
+            }
+            if (req.referenceVideos && req.referenceVideos.length > 3) {
+                throw new Error(`当前视频工作流最多支持 3 个参考视频，已连接 ${req.referenceVideos.length} 个，请精简连线后再生成`);
+            }
+            if (req.referenceAudios && req.referenceAudios.length > 3) {
+                throw new Error(`当前视频工作流最多支持 3 个参考音频，已连接 ${req.referenceAudios.length} 个，请精简连线后再生成`);
+            }
 
-        // 上传图片参考资产
-        if (req.references?.length) {
-            for (let i = 0; i < req.references.length; i++) {
-                const dataUrl = req.references[i]?.dataUrl;
-                if (dataUrl) {
-                    const id = await uploadComfyuiAsset(baseUrl, token, dataUrl, `ref_${i + 1}.png`, req.signal);
-                    assetIds.push(id);
+            // 上传图片参考资产
+            if (req.references?.length) {
+                for (let i = 0; i < req.references.length; i++) {
+                    const dataUrl = req.references[i]?.dataUrl;
+                    if (dataUrl) {
+                        const id = await uploadComfyuiAsset(baseUrl, token, dataUrl, `ref_${i + 1}.png`, req.signal);
+                        assetIds.push(id);
+                    }
+                }
+            }
+
+            // 上传视频参考资产
+            if (req.referenceVideos?.length) {
+                const { resolveMediaUrl } = await import("@/services/file-storage");
+                for (let i = 0; i < req.referenceVideos.length; i++) {
+                    const ref = req.referenceVideos[i];
+                    const rawUrl = ref?.url || (ref as unknown as { dataUrl?: string })?.dataUrl || (ref as unknown as { src?: string })?.src || "";
+                    const resolvedUrl = await resolveMediaUrl(ref?.storageKey, rawUrl);
+                    if (resolvedUrl) {
+                        const id = await uploadComfyuiAsset(baseUrl, token, resolvedUrl, `ref_video_${i + 1}.mp4`, req.signal);
+                        videoAssetIds.push(id);
+                    }
+                }
+            }
+
+            // 上传音频参考资产
+            if (req.referenceAudios?.length) {
+                const { resolveMediaUrl } = await import("@/services/file-storage");
+                for (let i = 0; i < req.referenceAudios.length; i++) {
+                    const ref = req.referenceAudios[i];
+                    const rawUrl = ref?.url || (ref as unknown as { dataUrl?: string })?.dataUrl || (ref as unknown as { src?: string })?.src || "";
+                    const resolvedUrl = await resolveMediaUrl(ref?.storageKey, rawUrl);
+                    if (resolvedUrl) {
+                        const id = await uploadComfyuiAsset(baseUrl, token, resolvedUrl, `ref_audio_${i + 1}.mp3`, req.signal);
+                        audioAssetIds.push(id);
+                    }
                 }
             }
         }
 
-        // 上传视频参考资产
-        if (req.referenceVideos?.length) {
-            const { resolveMediaUrl } = await import("@/services/file-storage");
-            for (let i = 0; i < req.referenceVideos.length; i++) {
-                const ref = req.referenceVideos[i];
-                const rawUrl = ref?.url || (ref as unknown as { dataUrl?: string })?.dataUrl || (ref as unknown as { src?: string })?.src || "";
-                const resolvedUrl = await resolveMediaUrl(ref?.storageKey, rawUrl);
-                if (resolvedUrl) {
-                    const id = await uploadComfyuiAsset(baseUrl, token, resolvedUrl, `ref_video_${i + 1}.mp4`, req.signal);
-                    videoAssetIds.push(id);
-                }
-            }
-        }
+        const sizeMatch = (req.config.size || "").match(/^(\d+)x(\d+)$/);
+        const width = sizeMatch ? Number(sizeMatch[1]) : 544;
+        const height = sizeMatch ? Number(sizeMatch[2]) : 960;
+        const duration = req.config.videoSeconds ? Number(req.config.videoSeconds) : 5;
 
-        // 上传音频参考资产
-        if (req.referenceAudios?.length) {
-            const { resolveMediaUrl } = await import("@/services/file-storage");
-            for (let i = 0; i < req.referenceAudios.length; i++) {
-                const ref = req.referenceAudios[i];
-                const rawUrl = ref?.url || (ref as unknown as { dataUrl?: string })?.dataUrl || (ref as unknown as { src?: string })?.src || "";
-                const resolvedUrl = await resolveMediaUrl(ref?.storageKey, rawUrl);
-                if (resolvedUrl) {
-                    const id = await uploadComfyuiAsset(baseUrl, token, resolvedUrl, `ref_audio_${i + 1}.mp3`, req.signal);
-                    audioAssetIds.push(id);
-                }
-            }
-        }
+        const seed = req.seed !== undefined ? req.seed : generateRandomSeed() % 1_000_000_000;
+        const boundWorkflow = modelProfile
+            ? dispatchComfyuiModelWorkflow(modelProfile, videoWorkflow.json, {
+                  prompt: req.prompt,
+                  width,
+                  height,
+                  duration,
+                  seed,
+                  firstFrameAssetId,
+                  lastFrameAssetId,
+                  assetIds,
+                  videoAssetIds,
+                  audioAssetIds,
+              })
+            : applyVideoBindings(videoWorkflow.json, {
+                  prompt: req.prompt,
+                  assetIds,
+                  videoAssetIds,
+                  audioAssetIds,
+                  firstFrameAssetId,
+                  lastFrameAssetId,
+                  videoMode,
+                  seed,
+                  width,
+                  height,
+                  duration,
+              });
+
+        const jobId = await submitJob(boundWorkflow, baseUrl, token);
+        return { jobId, baseUrl, token };
+    } catch (error) {
+        throw addComfyuiChannelContext(error, channel.name);
     }
-
-    const sizeMatch = (req.config.size || "").match(/^(\d+)x(\d+)$/);
-    const width = sizeMatch ? Number(sizeMatch[1]) : 544;
-    const height = sizeMatch ? Number(sizeMatch[2]) : 960;
-    const duration = req.config.videoSeconds ? Number(req.config.videoSeconds) : 5;
-
-    const seed = req.seed !== undefined ? req.seed : generateRandomSeed() % 1_000_000_000;
-    const boundWorkflow = modelProfile
-        ? dispatchComfyuiModelWorkflow(modelProfile, videoWorkflow.json, {
-              prompt: req.prompt,
-              width,
-              height,
-              duration,
-              seed,
-              firstFrameAssetId,
-              lastFrameAssetId,
-              assetIds,
-              videoAssetIds,
-              audioAssetIds,
-          })
-        : applyVideoBindings(videoWorkflow.json, {
-              prompt: req.prompt,
-              assetIds,
-              videoAssetIds,
-              audioAssetIds,
-              firstFrameAssetId,
-              lastFrameAssetId,
-              videoMode,
-              seed,
-              width,
-              height,
-              duration,
-          });
-
-    const jobId = await submitJob(boundWorkflow, baseUrl, token);
-    return { jobId, baseUrl, token };
 }
 
 export async function pollComfyuiVideoJob(
@@ -3235,13 +3265,13 @@ export async function requestComfyuiVideo(req: ComfyuiVideoRequest): Promise<{ u
     const token = channel.comfyuiProxyToken;
 
     let jobId = req.jobId;
-    if (!jobId) {
-        const submitted = await submitComfyuiVideoJob({ ...req, model: rawModel });
-        jobId = submitted.jobId;
-        req.onProgress?.("submitted", { jobId });
-    }
-
     try {
+        if (!jobId) {
+            const submitted = await submitComfyuiVideoJob({ ...req, model: rawModel });
+            jobId = submitted.jobId;
+            req.onProgress?.("submitted", { jobId });
+        }
+
         const signal = req.signal;
         if (signal?.aborted) {
             await cancelJob(jobId, baseUrl, token);
@@ -3268,7 +3298,7 @@ export async function requestComfyuiVideo(req: ComfyuiVideoRequest): Promise<{ u
         if (error instanceof ComfyuiTimeoutError && !error.jobId) {
             throw new ComfyuiTimeoutError(error.timeoutMs, jobId);
         }
-        throw error;
+        throw addComfyuiChannelContext(error, channel.name);
     }
 }
 
@@ -3349,10 +3379,11 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
         seed,
     });
 
-    const jobId = await submitJob(boundWorkflow, baseUrl, token);
-    req.onProgress?.("submitted", { jobId });
-
+    let jobId = "";
     try {
+        jobId = await submitJob(boundWorkflow, baseUrl, token);
+        req.onProgress?.("submitted", { jobId });
+
         const signal = req.signal;
         if (signal?.aborted) {
             await cancelJob(jobId, baseUrl, token);
@@ -3399,7 +3430,7 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
         if (error instanceof ComfyuiTimeoutError && !error.jobId) {
             throw new ComfyuiTimeoutError(error.timeoutMs, jobId);
         }
-        throw error;
+        throw addComfyuiChannelContext(error, channel.name);
     }
 }
 
@@ -3418,11 +3449,8 @@ export async function checkComfyuiConnection(baseUrl: string, token?: string): P
             }
             return { ok: true };
         }
-        return { ok: false, error: `HTTP ${res.status}` };
+        return { ok: false, error: new ComfyuiApiError("连接测试失败", res.status, { url: `${normalizeBaseUrl(baseUrl)}/system_stats` }).message };
     } catch (error) {
-        if (error instanceof ComfyuiMixedContentError) {
-            return { ok: false, error: "MIXED_CONTENT" };
-        }
         return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
 }

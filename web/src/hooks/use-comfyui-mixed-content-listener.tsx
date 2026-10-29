@@ -16,37 +16,35 @@ export function useComfyuiMixedContentListener() {
 
             const corsCmd = `python main.py --listen 127.0.0.1 --port 8188 --enable-cors-header "*"`;
 
-            modal.warning({
-                title: "浏览器安全策略拦截了本地连接",
+            modal.info({
+                title: "本地服务连接排查",
                 icon: <ShieldAlert className="size-5 text-amber-500" />,
                 width: 540,
                 content: (
                     <div className="mt-3 space-y-3.5 text-xs leading-relaxed text-stone-600 dark:text-stone-300">
-                        <p>
-                            当前页面运行在 <strong>HTTPS</strong> 安全模式下，浏览器安全机制默认会<strong>阻止向本地明文 HTTP 服务</strong>（<code>{url}</code>）发起的请求（混合内容保护与私有网络限制）。
-                        </p>
+                        <p>服务地址：<code>{url}</code>。连接失败可能来自服务未启动、地址错误、跨域配置或浏览器权限，请按实际错误排查。</p>
                         <div className="rounded-md border border-amber-200 bg-amber-50/80 p-3.5 dark:border-amber-900/50 dark:bg-amber-950/30">
                             <div className="font-semibold text-amber-900 dark:text-amber-200">
-                                解决步骤（只需配置一次，永久生效）：
+                                建议检查：
                             </div>
                             <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-stone-700 dark:text-stone-300">
                                 <li>
-                                    点击浏览器地址栏最左侧的 <strong>「锁头」图标</strong>（或站点设置/调整图标）；
+                                    确认 ComfyUI 已启动，渠道中的主机地址与端口正确，并可在当前设备的浏览器中打开。
                                 </li>
                                 <li>
-                                    点击 <strong>「网站设置」</strong>（Microsoft Edge 浏览器中为 <strong>「此站点的权限」</strong>）；
+                                    确认 ComfyUI 已启用跨域 (CORS)，下方命令适用于当前设备上的默认端口服务。
                                 </li>
                                 <li>
-                                    在权限列表中找到 <strong>「不安全内容」</strong>（Insecure content），将其从“阻止 (默认)”修改为 <strong>「允许」</strong>；
+                                    如果浏览器提示本地网络访问被拒绝，在地址栏左侧的站点设置中检查<strong>「本地网络访问」</strong>权限；不同浏览器的名称和支持情况可能不同。
                                 </li>
                                 <li>
-                                    配置完成后返回当前页面，点击下方<strong>「刷新页面」</strong>即可正常连接。
+                                    如果 HTTPS 页面连接 HTTP 服务时，浏览器明确报告混合内容被阻止，可在当前站点权限中检查<strong>「不安全内容」</strong>设置。仅凭连接失败无法判断是浏览器拦截。
                                 </li>
                             </ol>
                         </div>
                         <div className="rounded-md border border-stone-200 bg-stone-50 p-2.5 dark:border-stone-800 dark:bg-stone-900">
                             <div className="flex items-center justify-between text-stone-600 dark:text-stone-400">
-                                <span>同时请确保本地 ComfyUI 启动时允许跨域 (CORS)：</span>
+                                <span>本机默认端口启动示例（允许跨域）：</span>
                                 <button
                                     type="button"
                                     className="inline-flex cursor-pointer items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 dark:text-blue-400"
