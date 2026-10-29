@@ -27,6 +27,7 @@
 - [Canvas 生成链路 Bug 修复实施手册](CANVAS_GENERATION_BUG_FIX_MANUAL.md)
 - [ComfyUI Workflow Standard](/docs/development/comfyui-workflow-standard)
 - [Workflow Model & Host Decoupling Spec](/docs/development/workflow-model-host-decoupling-spec)
+- [Task Lifecycle Driver Spec](/docs/development/task-lifecycle-driver-spec)
 - [Multimodal Video Workflow Spec](/docs/development/multimodal-video-workflow-spec)
 - [Canvas Data Structure](/docs/development/canvas-data-structure)
 - [How the Local Codex Connection Works](/docs/development/local-codex-canvas)

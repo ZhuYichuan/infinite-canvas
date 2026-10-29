@@ -1,0 +1,345 @@
+---
+title: 任务生命周期驱动接缝与多渠道状态抽象规范 (Spec)
+description: 基于策略模式与适配器模式的任务查询、自适应轮询、状态归一与接续恢复架构规范
+---
+
+# 任务生命周期驱动接缝与多渠道状态抽象规范 (Spec)
+
+## Problem Statement
+
+在当前无限画布系统中，所有生成任务的状态查询、长轮询调度与接续恢复逻辑均与本地自建 ComfyUI 原生协议高度耦合，存在显著的**架构接缝泄漏（Seam Leakage）**与**业务层侵入**问题：
+
+1. **业务层对底层异常类强耦合**：
+   - 画布业务调度核心 [`project.tsx`](file:///Users/group/Documents/coder/claude_code/infinite-canvas/web/src/pages/canvas/project.tsx#L3683) 中，充斥着针对 `ComfyuiJobLostError`、`ComfyuiJobNotFoundError`、`ComfyuiJobCancelledError`、`ComfyuiNetworkError` 以及 `ComfyuiTimeoutError` 等 5 类特定实现类的 `instanceof` 手动分支检测；
+   - 业务层必须深谙各实现类抛出异常的内部契约，破坏了职责单一原则与信息隐藏。
+2. **多后端渠道扩展受阻**：
+   - 目前任务状态判定（如排队中、执行中、执行成功、任务中断）直接耦合了 ComfyUI 的 `/queue`、`/history` 数据结构及 `status_str` 字段；
+   - 随着模型 DSL 体系的确立，未来系统需无缝扩展支持第三方公网推理 API（如 Fal.ai、Replicate、自定义 Webhook、云端 Serverless 实例）；若继续沿用现状，接入任意新协议都将导致 `project.tsx` 和多模态调用层出现大面积的分裂与侵入。
+3. **轮询机制与状态追踪缺乏统一抽象**：
+   - 生图、图生图、视频插值与文本反推分别在各自的包装层中手写针对特定轮询器（`ComfyuiJobBatchPoller`）的调用与参数组装；
+   - 页面刷新后的「接续恢复（Resume）」逻辑散落多处，针对单图、多图、视频、文本分别手工编排查历史、查队列与重置状态的样板代码，维护成本极高。
+
+---
+
+## Solution
+
+采用面向对象与领域驱动设计中的**策略模式（Strategy Pattern）与适配器模式（Adapter Pattern）**，构建一套**任务生命周期驱动接缝（Task Lifecycle Driver Seam）**，将任务查询、自适应轮询、超时监控、网络重试与多后端状态归一收敛在标准深模块（Deep Module）内部：
+
+```
+                    ┌───────────────────────────────────────────────┐
+                    │          Canvas Business Layer (业务层)        │
+                    │   project.tsx / CanvasNode / RecoveryBanner   │
+                    └───────────────────────┬───────────────────────┘
+                                            │
+                             消费统一极窄契约 (Narrow Interface)
+                                            │
+                                            ▼
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│  Task Lifecycle Seam (统一任务生命周期接缝)                                          │
+│  • TaskSnapshot: phase ("pending"|"running"|"success"|"error"|"cancelled"|"lost") │
+│  • TaskArtifact: image | video | audio | text                                     │
+│  • TaskExecutionError: category ("network"|"timeout"|"cancelled"|"lost"|"failed")  │
+│  • resumeTask(jobId, channel, options): 统一刷新接续探测与自动恢复调度器              │
+└───────────────────────────────────────────┬───────────────────────────────────────┘
+                                            │
+                       依据 channel.apiFormat 由工厂路由至适配器
+                                            │
+           ┌────────────────────────────────┴────────────────────────────────┐
+           ▼                                                                 ▼
+┌──────────────────────────────────────┐                   ┌──────────────────────────────────────┐
+│  ComfyuiTaskDriver (官方内置适配器)   │                   │  FutureExternalDriver (外部云端适配)  │
+├──────────────────────────────────────┤                   ├──────────────────────────────────────┤
+│ • 内部封装 ComfyuiJobBatchPoller      │                   │ • 内部对接第三方 API / Webhook / SSE │
+│ • 聚合单主机单次 /queue 轮询节拍      │                   │ • 单任务轮询或长连接事件流           │
+│ • 提取 filename/subfolder 转为标准产物│                   │ • 映射第三方 JSON 响应为标准快照     │
+│ • 映射 5 类 Comfyui 异常为标准领域错误│                   │ • 错误归一为 TaskExecutionError      │
+└──────────────────────────────────────┘                   └──────────────────────────────────────┘
+```
+
+1. **统一领域状态值对象 (`TaskSnapshot`)**：
+   - 将异构 API 差异巨大的原始 Payload 统一投射为规范的 6 大状态阶段：`pending`（排队中）、`running`（执行中）、`success`（执行成功）、`error`（执行失败）、`cancelled`（任务取消）、`lost`（任务丢失）；
+   - 标准化携带排队位次（`queuePosition`）、执行百分比（`progressPct`）、错误信息（`error`）与多模态产物（`artifacts`）。
+2. **多模态产物归一化 (`TaskArtifact`)**：
+   - 彻底屏蔽各后端底层是返回绝对 URL、文件路径、base64 还是纯文本的差异，以判别联合类型（Discriminated Union）规范输出，上层消费零样板解析。
+3. **驱动适配器模式 (`TaskLifecycleDriver`)**：
+   - 确立最小接口：`queryStatus`（单次主动状态检查）、`poll`（异步挂载进度追踪直至完成）、`cancel`（任务撤销）；
+   - 具体后端的传输机制（如 ComfyUI 的共享批量 `/queue` 节拍、第三方 API 的独立轮询或 SSE 长连接）完全封装在对应驱动适配器内部，外部接口高度稳定。
+4. **统一异常分类与重试决策 (`TaskExecutionError`)**：
+   - 驱动层负责捕获底层的协议与网络错误，将其转译为统一的 `TaskExecutionError`，携带标准类别（`network`、`timeout`、`cancelled`、`lost`、`execution_failed`）与可重试标记（`isRetryable`），业务层彻底消除针对特定厂商 Exception 的依赖。
+5. **接续恢复高阶编排 (`resumeTask`)**：
+   - 将页面刷新后的状态探测、直接获取历史产物、接续未完成轮询以及失效丢失判断封装为单一标准高阶函数，大幅净化画布核心逻辑。
+
+---
+
+## User Stories
+
+1. **作为前端架构师**，我希望画布业务层只面向统一的 `TaskLifecycleDriver` 接口编程，以便未来接入第三方或定制云端推理 API 时业务层代码零侵入。
+2. **作为前端开发者**，我希望在业务层中完全看不到 `ComfyuiJobLostError` 等专有异常类的引用，以便统一根据错误类型（`network`、`timeout` 等）做弹窗提示与重试决策。
+3. **作为前端开发者**，我希望轮询过程中的进度通知由统一的 `TaskSnapshot` 结构传递，以便各模态（图片/视频/文本）享受一致强类型的进度更新。
+4. **作为普通用户**，我希望无论任务是在本地 ComfyUI 还是在外部 API 运行，排队时均能一致地看到排队位次与动态进度反馈。
+5. **作为普通用户**，我希望在任务执行中途网络出现偶发抖动或离线时，系统能在节点上清晰呈现重试次数并在网络恢复后自动接续，无需手动干预。
+6. **作为普通用户**，我希望在刷新浏览器页面后，系统能自动接续拉取未完成的任务，若任务已在服务端跑完则秒级呈现结果，无需重新耗时提交。
+7. **作为普通用户**，我希望在服务端崩溃或任务因重启被清理时，系统能精准提示「任务已丢失」并保留一键重试按钮，杜绝无限死等。
+8. **作为系统维护者**，我希望同一个 ComfyUI 算力主机上的多个并发任务依然能共享单次队列批量查询，以保持对本地算力服务极低的开销与压力。
+9. **作为系统维护者**，我希望生成完成的产物（图片、视频、文本）在进入业务层前已被标准化为 `TaskArtifact`，无需上层再次区分各种底层节点的保存格式。
+10. **作为测试开发人员**，我希望能够注册 `InMemoryTaskDriver`，以便在纯内存单测中毫秒级模拟各种成功、排队、超时和丢失场景，摆脱对 ComfyUI 进程和真实网络的依赖。
+11. **作为测试开发人员**，我希望状态归一化转换函数为纯函数，以便通过静态状态矩阵表格即可实现 100% 的单测覆盖。
+12. **作为产品设计者**，我希望各渠道后端在返回失败原因时，敏感或难懂的英文堆栈能被驱动层拦截并转换为友好的人类可读中文指导。
+
+---
+
+## Implementation Decisions
+
+### 1. 领域模型与值对象规范 (Domain Value Objects)
+
+创建 `web/src/services/api/task/types.ts`：
+
+```typescript
+/**
+ * 任务生命周期统一阶段 (6 大核心状态)
+ */
+export type TaskPhase =
+    | "pending"     // 排队中 (在远端队列等待算力调度)
+    | "running"     // 执行中 (正在计算生成)
+    | "success"     // 执行成功 (生成完毕且产物就绪)
+    | "error"       // 执行失败 (模型推理报错或非法参数)
+    | "cancelled"   // 任务取消 (用户主动中断或远端撤销)
+    | "lost";       // 任务丢失 (远端无此任务痕迹，但本地存在等待上下文)
+
+/**
+ * 多模态统一产物契约
+ */
+export type TaskArtifact =
+    | { type: "image"; url: string; assetId?: string; width?: number; height?: number }
+    | { type: "video"; url: string; assetId?: string; duration?: number }
+    | { type: "audio"; url: string; assetId?: string; duration?: number }
+    | { type: "text"; text: string };
+
+/**
+ * 网络断线重试动态信息
+ */
+export interface TaskNetworkRetryInfo {
+    count: number;
+    maxRetries: number;
+    baseUrl: string;
+    message?: string;
+}
+
+/**
+ * 任务即时快照值对象
+ */
+export interface TaskSnapshot {
+    jobId: string;
+    phase: TaskPhase;
+    queuePosition?: number;              // 排队位次（从 1 开始）
+    progressPct?: number;                // 0 ~ 100 执行进度
+    error?: string;                      // 失败诊断文本
+    artifacts?: TaskArtifact[];          // 成功时的产物列表
+    networkRetry?: TaskNetworkRetryInfo; // 临时断线重试态
+    raw?: unknown;                       // 原始厂商 Payload (供调试与日志)
+}
+```
+
+---
+
+### 2. 统一领域异常体系 (`TaskExecutionError`)
+
+创建 `web/src/services/api/task/errors.ts`：
+
+```typescript
+export type TaskErrorCategory =
+    | "network"           // 网络连接中断或服务宕机 (可自动或手动重试)
+    | "timeout"           // 任务执行超过系统或用户设定的总超时上限
+    | "cancelled"         // 用户主动点击停止或服务端发送中断信号
+    | "lost"              // 任务丢失 (服务端队列与历史均查无此 ID)
+    | "execution_failed"; // 服务端执行报错 (语法错误、显存溢出、节点崩溃等)
+
+export class TaskExecutionError extends Error {
+    readonly category: TaskErrorCategory;
+    readonly jobId?: string;
+    readonly isRetryable: boolean;
+    readonly causeError?: unknown;
+
+    constructor(
+        message: string,
+        category: TaskErrorCategory,
+        options?: { jobId?: string; isRetryable?: boolean; causeError?: unknown },
+    ) {
+        super(message);
+        this.name = "TaskExecutionError";
+        this.category = category;
+        this.jobId = options?.jobId;
+        this.isRetryable = options?.isRetryable ?? (category === "network" || category === "timeout");
+        this.causeError = options?.causeError;
+    }
+}
+
+/**
+ * 便捷判断任务错误是否适宜引导用户再次重试
+ */
+export function isTaskRetryable(error: unknown): boolean {
+    if (error instanceof TaskExecutionError) {
+        return error.isRetryable;
+    }
+    return false;
+}
+```
+
+---
+
+### 3. 驱动核心接口契约 (`TaskLifecycleDriver`)
+
+创建 `web/src/services/api/task/types.ts`：
+
+```typescript
+import type { ModelChannel } from "@/types/config";
+
+export interface TaskPollOptions {
+    signal?: AbortSignal;
+    deadlineMs?: number;
+    onProgress?: (snapshot: TaskSnapshot) => void;
+}
+
+export interface TaskQueryOptions {
+    isLocallyActive?: boolean;
+    isLocallyCancelled?: boolean;
+}
+
+/**
+ * 任务生命周期驱动适配器接口 (The Seam)
+ */
+export interface TaskLifecycleDriver {
+    readonly protocol: string; // 如 "comfyui" | "external_http" | "mock"
+
+    /**
+     * 单次即时探测任务当前状态（无长时轮询副作用）
+     */
+    queryStatus(
+        jobId: string,
+        channel: ModelChannel,
+        options?: TaskQueryOptions,
+    ): Promise<TaskSnapshot>;
+
+    /**
+     * 持续轮询或订阅任务进度，直到进入终端状态 (success / error / cancelled / lost)
+     */
+    poll(
+        jobId: string,
+        channel: ModelChannel,
+        options?: TaskPollOptions,
+    ): Promise<TaskSnapshot>;
+
+    /**
+     * 主动撤销/取消远端正在执行或排队的任务
+     */
+    cancel?(
+        jobId: string,
+        channel: ModelChannel,
+    ): Promise<void>;
+}
+```
+
+---
+
+### 4. 驱动注册中心与工厂模式 (`registry.ts`)
+
+创建 `web/src/services/api/task/registry.ts`：
+
+```typescript
+import type { TaskLifecycleDriver } from "./types";
+import { comfyuiTaskDriver } from "./drivers/comfyui-driver";
+
+const driverRegistry = new Map<string, TaskLifecycleDriver>();
+
+// 默认注册官方 ComfyUI 驱动
+driverRegistry.set("comfyui", comfyuiTaskDriver);
+
+export function registerTaskDriver(protocol: string, driver: TaskLifecycleDriver): void {
+    driverRegistry.set(protocol.toLowerCase(), driver);
+}
+
+export function getTaskDriver(protocol?: string): TaskLifecycleDriver {
+    const key = (protocol || "comfyui").toLowerCase();
+    const driver = driverRegistry.get(key);
+    if (!driver) {
+        // 平滑回退到默认 comfyui 驱动
+        return comfyuiTaskDriver;
+    }
+    return driver;
+}
+```
+
+---
+
+### 5. 高阶接续恢复编排器 (`resumeTask`)
+
+创建 `web/src/services/api/task/resume.ts`：
+
+```typescript
+import { getTaskDriver } from "./registry";
+import { TaskExecutionError } from "./errors";
+import type { TaskSnapshot, TaskPollOptions } from "./types";
+import type { ModelChannel } from "@/types/config";
+
+/**
+ * 统一任务接续恢复调度器
+ * 页面加载或网络恢复时调用：
+ * 1. 先单次轻量探测远端历史与队列
+ * 2. 若已就绪直接返回产物，避免重复建立长轮询
+ * 3. 若仍在排队/执行中，平滑接入长轮询并分发进度
+ * 4. 若已被清理或查无此任务，抛出结构化 TaskExecutionError 引导重试
+ */
+export async function resumeTask(
+    jobId: string,
+    channel: ModelChannel,
+    options?: TaskPollOptions,
+): Promise<TaskSnapshot> {
+    const driver = getTaskDriver(channel.apiFormat);
+
+    // 1. 单次主动探测
+    const initialCheck = await driver.queryStatus(jobId, channel, { isLocallyActive: true });
+
+    if (initialCheck.phase === "success") {
+        return initialCheck;
+    }
+
+    if (initialCheck.phase === "cancelled") {
+        throw new TaskExecutionError("任务已被中断取消", "cancelled", { jobId });
+    }
+
+    if (initialCheck.phase === "lost") {
+        throw new TaskExecutionError("任务在服务端已丢失，请重新发起", "lost", { jobId });
+    }
+
+    if (initialCheck.phase === "error") {
+        throw new TaskExecutionError(initialCheck.error || "任务执行失败", "execution_failed", { jobId });
+    }
+
+    // 2. 依然处于 pending 或 running 状态：无缝接入持续轮询
+    return driver.poll(jobId, channel, options);
+}
+```
+
+---
+
+## 阶段划分与实施清单 (Implementation Plan)
+
+- [ ] **Phase 1: 建立核心领域接缝与类型**
+  - 创建 `web/src/services/api/task/types.ts` 定义 `TaskSnapshot`、`TaskArtifact`、`TaskLifecycleDriver` 等结构；
+  - 创建 `web/src/services/api/task/errors.ts` 定义 `TaskExecutionError` 与 `isTaskRetryable`；
+  - 编写 `web/src/services/api/task/__tests__/task-types.test.ts` 进行契约覆盖。
+- [ ] **Phase 2: 实现 ComfyuiTaskDriver 官方适配器**
+  - 创建 `web/src/services/api/task/drivers/comfyui-driver.ts`；
+  - 内部委托调用 `queryComfyuiJobStatus` 并实现 `ComfyuiTaskStatusResult -> TaskSnapshot` 映射；
+  - 内部委托调用 `ComfyuiJobBatchPoller` 并将事件广播转换为 `TaskSnapshot`；
+  - 将 ComfyUI 的 5 种底层异常透明捕获并映射为统一的 `TaskExecutionError`；
+  - 实现 `ComfyuiTaskDriver` 对多模态产物（图片、视频、文本）的统一解包；
+  - 编写 `web/src/services/api/task/__tests__/comfyui-driver.test.ts`（包含 InMemory / Mock 测试）。
+- [ ] **Phase 3: 实现驱动工厂与统一接续恢复**
+  - 创建 `web/src/services/api/task/registry.ts` 与 `web/src/services/api/task/resume.ts`；
+  - 编写 `web/src/services/api/task/__tests__/resume.test.ts` 验证瞬时成功、接续轮询与任务丢失场景。
+- [ ] **Phase 4: 重构 Canvas 业务层与服务层**
+  - 改造 `web/src/services/api/image.ts`、`video.ts`、`comfyui.ts` 接入统一的驱动接缝；
+  - 重构 `web/src/pages/canvas/project.tsx`：清除所有 `ComfyuiJob*Error` 的直接依赖，替换为 `TaskExecutionError` 与 `isTaskRetryable`；
+  - 使用统一的 `resumeTask` 替代原先在图片、视频、文本分散手写的恢复逻辑；
+  - 全量回归测试通过并更新 `CHANGELOG.md` 与待测试文档。
