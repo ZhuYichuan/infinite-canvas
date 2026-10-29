@@ -485,5 +485,29 @@ export function dispatchComfyuiModelWorkflow(
         }
     }
 
+    // Pass 4: 动态切换潜空间路由开关（例如文生图与图生图/多图参考切换的 ComfySwitchNode）
+    for (const node of Object.values(cloned)) {
+        if (typeof node !== "object" || node === null) continue;
+        if (node.class_type === "ComfySwitchNode" && node.inputs) {
+            const onTrue = node.inputs.on_true;
+            const onFalse = node.inputs.on_false;
+            if (Array.isArray(onTrue) && Array.isArray(onFalse)) {
+                const trueTargetId = String(onTrue[0]);
+                const falseTargetId = String(onFalse[0]);
+                const trueTargetNode = cloned[trueTargetId];
+                const falseTargetNode = cloned[falseTargetId];
+
+                const trueIsEmptyLatent = Boolean(trueTargetNode?.class_type?.includes("EmptyLatent"));
+                const falseIsEmptyLatent = Boolean(falseTargetNode?.class_type?.includes("EmptyLatent"));
+
+                if (trueIsEmptyLatent && !falseIsEmptyLatent) {
+                    node.inputs.switch = assignedImageCount === 0;
+                } else if (falseIsEmptyLatent && !trueIsEmptyLatent) {
+                    node.inputs.switch = assignedImageCount > 0;
+                }
+            }
+        }
+    }
+
     return cloned;
 }

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [修复] 修复多图参考/图生图接入 ComfyUI 时参考效果丢失的缺陷：修复工作流调度引擎（dispatchComfyuiModelWorkflow 及 applyBindings）对潜空间切换开关（ComfySwitchNode）的动态路由控制，当存在参考图时自动切至参考图潜空间（switch: false），零参考图时平滑回退纯文生图空潜空间（switch: true），杜绝生图时参考图被 ComfyUI 忽略的问题。
 + [修复] 修复复制节点或二次编辑后重新点击节点提示词被旧草稿（composerContent）错误复原覆盖的缺陷：复制时提拔活跃草稿并清空草稿残留，在修改提示词与提交生成产物后彻底清理 draft 影子，确保新节点提示词持久保持用户最新修改。
 + [新增] 音频节点接入工作流模型 DSL（WorkflowModelProfile）：注册 MiniMax Music 03 扩散音乐大模型，声明 10s~300s 时长范围与 0 媒体连线约束，并内建潜空间解码偏差补偿（durationOffset: 1）。
 + [优化] 音频参数分流与动态浮层：统一采用 dispatchComfyuiModelWorkflow 绑定 caption、lyrics、duration 与 seed，彻底废弃 applyAudioBindings；引入 AudioModelPicker 级联选择器淘汰旧版 ChannelWorkflowPicker，设置浮层参数与快捷标签完全由模型 Capability 配置动态驱动。

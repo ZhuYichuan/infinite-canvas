@@ -423,6 +423,8 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
                 },
                 class_type: "TextEncodeQwenImage21",
             },
+            "30": { inputs: { width: 1024, height: 1024 }, class_type: "EmptyLatentImage", _meta: { title: "空Latent图像" } },
+            "31": { inputs: { switch: true, on_false: ["20", 2], on_true: ["30", 0] }, class_type: "ComfySwitchNode", _meta: { title: "切换" } },
         };
 
         const dispatched = dispatchComfyuiModelWorkflow(imageQwen21Profile, rawWorkflow, {
@@ -443,6 +445,17 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
         expect((dispatched["20"] as any).inputs["images.image_1"]).toEqual(["11", 0]);
         expect((dispatched["20"] as any).inputs["images.image_2"]).toBeUndefined();
         expect((dispatched["20"] as any).inputs["images.image_3"]).toBeUndefined();
+        expect((dispatched["31"] as any).inputs.switch).toBe(false);
+
+        // 当无参考图时，自动回退纯文生图 (switch = true 走 EmptyLatentImage)
+        const t2iDispatched = dispatchComfyuiModelWorkflow(imageQwen21Profile, rawWorkflow, {
+            prompt: "纯文生图测试",
+            width: 768,
+            height: 1024,
+            seed: 888,
+            assetIds: [],
+        });
+        expect((t2iDispatched["31"] as any).inputs.switch).toBe(true);
     });
 
     it("binds ref_image_01 and ref_mask in Qwen Inpaint workflow", () => {

@@ -7,6 +7,15 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Multi-image Reference & ComfySwitchNode Latent Routing Verification (多图参考与潜空间开关路由验证):
+  - **单张/多张参考图效果验证**:
+    - 在画布上创建一个或多个包含图片的节点，并将其作为输入连线连接到一个图片生成节点；
+    - 在图片生成节点中选择 Qwen-Image 2.1 全能模型，输入提示词并发起生成；
+    - 验证 ComfyUI 接收到的工作流中，Node 510（`ComfySwitchNode`）被正确设置为 `switch: false`，采样器输入（latent_image）采用来自 `TextEncodeQwenImage21` 编码的潜空间，生成的图片具有明确的参考图特征与效果；
+  - **零参考图自动回退纯文生图验证**:
+    - 在未连线任何参考图片的情况下，使用 Qwen-Image 2.1 全能模型直接输入提示词发起生成；
+    - 验证工作流中 `ComfySwitchNode` 被正确设置为 `switch: true`，平滑回退至 `EmptyLatentImage` 进行纯文生图，无任何报错或异常。
+
 - Node Copy & Prompt Modification Retention Verification (节点复制与提示词改动持久化验证):
   - **复制节点修改提示词全流程验证**:
     - 针对已有生成产物的图片/视频/音频/文本节点执行右键复制或快捷键复制；

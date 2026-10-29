@@ -2994,6 +2994,31 @@ export function applyVideoBindings(
         }
     }
 
+    // 动态切换潜空间路由开关（例如文生图与图生图/多图参考切换的 ComfySwitchNode）
+    for (const node of Object.values(cloned)) {
+        if (typeof node !== "object" || node === null) continue;
+        const record = node as NodeRecord;
+        if (record.class_type === "ComfySwitchNode" && record.inputs) {
+            const onTrue = record.inputs.on_true;
+            const onFalse = record.inputs.on_false;
+            if (Array.isArray(onTrue) && Array.isArray(onFalse)) {
+                const trueTargetId = String(onTrue[0]);
+                const falseTargetId = String(onFalse[0]);
+                const trueTargetNode = cloned[trueTargetId] as NodeRecord | undefined;
+                const falseTargetNode = cloned[falseTargetId] as NodeRecord | undefined;
+
+                const trueIsEmptyLatent = Boolean(trueTargetNode?.class_type?.includes("EmptyLatent"));
+                const falseIsEmptyLatent = Boolean(falseTargetNode?.class_type?.includes("EmptyLatent"));
+
+                if (trueIsEmptyLatent && !falseIsEmptyLatent) {
+                    record.inputs.switch = assignedImageCount === 0;
+                } else if (falseIsEmptyLatent && !trueIsEmptyLatent) {
+                    record.inputs.switch = assignedImageCount > 0;
+                }
+            }
+        }
+    }
+
     return cloned;
 }
 
