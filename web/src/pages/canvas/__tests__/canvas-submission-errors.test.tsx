@@ -16,6 +16,10 @@ const harness = vi.hoisted(() => ({
     faceRefineProps: null as unknown as import("@/components/canvas/canvas-face-refine-modal").CanvasFaceRefineModalProps,
     depthVideoProps: null as unknown as import("@/components/canvas/canvas-depth-video-modal").CanvasDepthVideoModalProps,
     toolbarProps: null as unknown as { onFaceRefine: (node: CanvasNodeData) => void; onDepthVideo: (node: CanvasNodeData) => void },
+    inspectorProps: null as unknown as { canvasSize: { width: number; height: number }; viewport: { x: number; y: number; k: number } },
+    canvasRef: null as unknown as React.RefObject<HTMLDivElement | null>,
+    canvasRect: { width: 900, height: 760 },
+    resizeObservers: [] as { callback: ResizeObserverCallback; observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }[],
     nodesRef: null as unknown as { current: CanvasNodeData[] },
     connectionsRef: null as unknown as { current: CanvasConnection[] },
     setNodes: null as unknown as React.Dispatch<React.SetStateAction<CanvasNodeData[]>>,
@@ -63,7 +67,7 @@ vi.mock("@/services/image-storage", async (original) => {
     };
 });
 vi.mock("@/components/canvas/nodes/builtin-nodes", () => ({ registerBuiltinNodes: harness.noop }));
-vi.mock("@/components/canvas/infinite-canvas", () => ({ InfiniteCanvas: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock("@/components/canvas/infinite-canvas", () => ({ InfiniteCanvas: ({ children, containerRef }: { children: React.ReactNode; containerRef: React.RefObject<HTMLDivElement | null> }) => { harness.canvasRef = containerRef; return React.createElement("div", { ref: containerRef, "data-testid": "canvas-surface" }, children); } }));
 vi.mock("@/components/canvas/canvas-node", () => ({ CanvasNode: (props: typeof harness.nodeProps extends Map<string, infer Props> ? Props : never) => { harness.nodeProps.set(props.data.id, props); return null; } }));
 vi.mock("@/components/canvas/canvas-config-composer", () => ({ CanvasConfigComposer: () => null }));
 vi.mock("@/components/canvas/canvas-config-node-panel", () => ({ CanvasConfigNodePanel: () => null }));
@@ -76,7 +80,7 @@ vi.mock("@/components/canvas/canvas-node-upscale-dialog", () => ({ CanvasNodeUps
 vi.mock("@/components/canvas/canvas-face-refine-modal", () => ({ CanvasFaceRefineModal: (props: typeof harness.faceRefineProps) => { harness.faceRefineProps = props; return null; } }));
 vi.mock("@/components/canvas/canvas-depth-video-modal", () => ({ CanvasDepthVideoModal: (props: typeof harness.depthVideoProps) => { harness.depthVideoProps = props; return null; } }));
 vi.mock("@/components/canvas/canvas-node-hover-toolbar", () => ({ CanvasNodeHoverToolbar: (props: typeof harness.toolbarProps) => { harness.toolbarProps = props; return null; }, CanvasNodeInfoModal: () => null }));
-vi.mock("@/components/canvas/canvas-node-inspector-overlay", () => ({ CanvasNodeInspectorOverlay: () => null }));
+vi.mock("@/components/canvas/canvas-node-inspector-overlay", () => ({ CanvasNodeInspectorOverlay: (props: typeof harness.inspectorProps) => { harness.inspectorProps = props; return null; } }));
 vi.mock("@/components/canvas/canvas-mini-map", () => ({ Minimap: () => null }));
 vi.mock("@/components/canvas/canvas-alignment-guides", () => ({ CanvasAlignmentGuides: () => null }));
 vi.mock("@/components/canvas/canvas-multi-selection-overlay", () => ({ CanvasMultiSelectionOverlay: () => null }));
@@ -122,6 +126,18 @@ beforeEach(() => {
     vi.resetAllMocks();
     vi.stubGlobal("React", React);
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    harness.canvasRect = { width: 900, height: 760 };
+    harness.resizeObservers = [];
+    harness.inspectorProps = null as unknown as typeof harness.inspectorProps;
+    vi.stubGlobal("ResizeObserver", class {
+        observe = vi.fn();
+        disconnect = vi.fn();
+        constructor(public callback: ResizeObserverCallback) { harness.resizeObservers.push(this); }
+    });
+    const elementRect = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
+        return this.dataset.testid === "canvas-surface" ? new DOMRect(0, 0, harness.canvasRect.width, harness.canvasRect.height) : elementRect.call(this);
+    });
     harness.nodeProps.clear();
     harness.storedImages.clear();
     harness.config = { ...defaultConfig, count: "1", canvasImageCount: "1" };
@@ -136,7 +152,38 @@ beforeEach(() => {
 
 afterEach(async () => {
     await act(async () => root.unmount());
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
+});
+
+describe("canvas dimensions after project restoration", () => {
+    it("observes the canvas when asynchronous restoration mounts it and gives overlays its real size", async () => {
+        await mount(makeNode(CanvasNodeType.Image));
+        const canvas = harness.canvasRef.current;
+        expect(canvas).not.toBeNull();
+        expect(harness.resizeObservers.some((observer) => observer.observe.mock.calls.some(([element]) => element === canvas)), "the canvas does not exist during the first page effect, so observation must start after restoration").toBe(true);
+        expect(harness.inspectorProps.canvasSize).toEqual({ width: 900, height: 760 });
+    });
+
+    it("updates overlay bounds when the observed canvas changes size", async () => {
+        await mount(makeNode(CanvasNodeType.Image));
+        const observer = harness.resizeObservers.find((item) => item.observe.mock.calls.some(([element]) => element === harness.canvasRef.current));
+        expect(observer, "the mounted canvas must be observed before resize events can update overlay bounds").toBeDefined();
+        harness.canvasRect = { width: 640, height: 520 };
+        await act(async () => observer!.callback([], observer as unknown as ResizeObserver));
+        expect(harness.inspectorProps.canvasSize).toEqual({ width: 640, height: 520 });
+    });
+
+    it("preserves the restored viewport while measuring and resizing the canvas", async () => {
+        const savedViewport = { x: 123, y: 456, k: 0.4 };
+        harness.project.viewport = savedViewport;
+        await mount(makeNode(CanvasNodeType.Image));
+        expect(harness.inspectorProps.viewport).toEqual(savedViewport);
+        const observer = harness.resizeObservers.find((item) => item.observe.mock.calls.some(([element]) => element === harness.canvasRef.current))!;
+        harness.canvasRect = { width: 640, height: 520 };
+        await act(async () => observer.callback([], observer as unknown as ResizeObserver));
+        expect(harness.inspectorProps.viewport).toEqual(savedViewport);
+    });
 });
 
 describe("canvas submission failure settlement through the page callbacks", () => {

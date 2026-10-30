@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import type { CanvasNodeData, ViewportTransform } from "@/types/canvas";
 import { CANVAS_NODE_TOOLBAR_HEIGHT, getCanvasNodeToolbarPlacement } from "@/lib/canvas/canvas-node-toolbar-placement";
 
@@ -55,7 +55,7 @@ export function CanvasNodeInspectorOverlay({
             className={`thin-scrollbar pointer-events-auto absolute z-[70] overflow-y-auto overscroll-contain -translate-x-1/2 transition-transform duration-150 ${
                 placement === "top" ? "-translate-y-full" : "translate-y-0"
             }`}
-            style={{ left, top, width: panelWidth, maxHeight }}
+            style={{ left, top, width: panelWidth, maxHeight, "--canvas-node-panel-max-height": `${maxHeight}px` } as CSSProperties}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}

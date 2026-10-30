@@ -258,12 +258,13 @@ export function CanvasNodePromptPanel({
     return (
         <div
             data-canvas-no-zoom
-            className="rounded-2xl border p-3 shadow-2xl backdrop-blur"
-            style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
+            className="flex min-h-0 flex-col rounded-2xl border p-3 shadow-2xl backdrop-blur"
+            style={{ maxHeight: "var(--canvas-node-panel-max-height, none)", background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
             onWheel={(event) => event.stopPropagation()}
         >
+            <div data-canvas-node-panel-body className="thin-scrollbar min-h-0 overflow-y-auto overscroll-contain">
             {savedToolInputSummary || <CanvasNodeReferenceBar
                 nodeId={node.id}
                 nodes={nodes}
@@ -309,9 +310,10 @@ export function CanvasNodePromptPanel({
                 style={{ background: "transparent", color: theme.node.text }}
                 placeholder={promptPlaceholder}
             />
+            </div>
 
-            <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div data-canvas-node-panel-actions className="mt-2 flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2">
+                <div className="thin-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain [&>*]:shrink-0">
                     <Tooltip title={t("canvas.promptPanel.expandEditor")}>
                         <Button type="text" className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0" style={{ color: theme.node.text }} icon={<Maximize2 className="size-3.5" />} onClick={openExpandedEditor} aria-label={t("canvas.promptPanel.expandEditor")} />
                     </Tooltip>

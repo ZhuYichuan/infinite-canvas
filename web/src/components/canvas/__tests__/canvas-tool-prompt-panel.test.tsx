@@ -59,9 +59,9 @@ afterEach(async () => {
     vi.unstubAllGlobals();
 });
 
-async function render(workflowId: string, status: "idle" | "success" | "error" = "idle", prompt = "修复人物面部", hasContent = status === "success", connectedNodes: CanvasNodeData[] = []) {
+async function render(workflowId: string, status: "idle" | "success" | "error" = "idle", prompt = "修复人物面部", hasContent = status === "success", connectedNodes: CanvasNodeData[] = [], type: CanvasNodeData["type"] = CanvasNodeType.Video) {
     const node: CanvasNodeData = {
-        id: "tool", type: CanvasNodeType.Video, title: "工具结果", position: { x: 0, y: 0 }, width: 360, height: 240,
+        id: "tool", type, title: "工具结果", position: { x: 0, y: 0 }, width: 360, height: 240,
         metadata: {
             workflowId, channelId: "tool-host", status, prompt, ...(hasContent ? { content: "blob:result" } : {}),
             generationReferences: [{ nodeId: "original", kind: "video", storageKey: "video:original" }, { nodeId: "face-1", kind: "image", storageKey: "image:face-1" }, { nodeId: "face-2", kind: "image", storageKey: "image:face-2" }],
@@ -145,4 +145,34 @@ it("retains the normal video model controls and availability guard for video gen
     const button = Array.from(container.querySelectorAll("button")).find((item) => item.textContent === "再次生成");
     expect(button?.disabled).toBe(true);
     expect(onGenerate).not.toHaveBeenCalled();
+});
+
+it.each([
+    [CanvasNodeType.Video, "faceRefine", "再次修复"],
+    [CanvasNodeType.Video, "depthVideo", "再次提取"],
+    [CanvasNodeType.Video, "omniVideo", "再次生成"],
+    [CanvasNodeType.Image, "image", "再次生成"],
+    [CanvasNodeType.Text, "text", "再次生成"],
+    [CanvasNodeType.Audio, "audio", "再次生成"],
+] as const)("%s %s: keeps generation actions outside the shrinking scroll body", async (type, workflowId, label) => {
+    harness.availability.mockReturnValue({ isAvailable: true, reasons: [] });
+    const { onGenerate } = await render(workflowId, "success", "保留完整操作", true, [], type);
+    const panel = container.firstElementChild as HTMLElement;
+    const body = panel.querySelector<HTMLElement>("[data-canvas-node-panel-body]")!;
+    const actions = panel.querySelector<HTMLElement>("[data-canvas-node-panel-actions]")!;
+    // These are the panel's layout contracts. Real clipping and hit testing are
+    // checked in the browser, since happy-dom does not perform CSS layout.
+    expect(panel.style.maxHeight).toBe("var(--canvas-node-panel-max-height, none)");
+    expect(panel.classList.contains("flex-col")).toBe(true);
+    expect(body.parentElement).toBe(panel);
+    expect(body.classList.contains("min-h-0")).toBe(true);
+    expect(body.classList.contains("overflow-y-auto")).toBe(true);
+    expect(body.querySelector("textarea")).not.toBeNull();
+    expect(actions.parentElement).toBe(panel);
+    expect(body.contains(actions)).toBe(false);
+    expect(actions.classList.contains("shrink-0")).toBe(true);
+    const submit = Array.from(actions.querySelectorAll("button")).find((button) => button.textContent === label)!;
+    expect(submit.disabled).toBe(false);
+    await act(async () => submit.click());
+    expect(onGenerate).toHaveBeenCalledWith("tool", type, "保留完整操作", "repeat");
 });

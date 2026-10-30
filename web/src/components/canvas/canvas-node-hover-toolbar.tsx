@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { App, Modal, Segmented, Tooltip } from "antd";
 import { CheckSquare, Download, Ellipsis, Eye, FolderPlus, Image as ImageIcon, Info, Layers, Maximize2, MessageSquare, Minus, Music, Music2, Plus, RefreshCw, Settings2, SmilePlus, Trash2, Ungroup, Upload, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -21,6 +21,7 @@ import { getCanvasNodeToolbarPlacement } from "@/lib/canvas/canvas-node-toolbar-
 type CanvasNodeHoverToolbarProps = {
     node: CanvasNodeData | null;
     viewport: ViewportTransform;
+    canvasSize: { width: number; height: number };
     onKeep: (nodeId: string) => void;
     onLeave: () => void;
     onInfo: (node: CanvasNodeData) => void;
@@ -65,6 +66,7 @@ type ToolbarTool = {
 export function CanvasNodeHoverToolbar({
     node,
     viewport,
+    canvasSize,
     onKeep,
     onLeave,
     onInfo,
@@ -112,6 +114,18 @@ export function CanvasNodeHoverToolbar({
     const { message } = App.useApp();
     const { t } = useTranslation();
     const copyText = useCopyText();
+    const toolbarRef = useRef<HTMLDivElement>(null);
+    const [toolbarWidth, setToolbarWidth] = useState(0);
+
+    useLayoutEffect(() => {
+        const element = toolbarRef.current;
+        if (!element) return;
+        const measure = () => setToolbarWidth(element.getBoundingClientRect().width);
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [node, canvasSize.width]);
 
     useEffect(() => {
         try {
@@ -129,6 +143,9 @@ export function CanvasNodeHoverToolbar({
 
     const activeNode = node;
     const { left, top, placement } = getCanvasNodeToolbarPlacement(node, viewport);
+    const maxWidth = Math.max(0, canvasSize.width - 32);
+    const width = Math.min(toolbarWidth, maxWidth);
+    const clampedLeft = Math.max(16 + width / 2, Math.min(canvasSize.width - 16 - width / 2, left));
     const isImage = node.type === CanvasNodeType.Image;
     const isVideo = node.type === CanvasNodeType.Video;
     const isAudio = node.type === CanvasNodeType.Audio;
@@ -259,10 +276,12 @@ export function CanvasNodeHoverToolbar({
     return (
         <>
             <div
-                className={`absolute z-[70] flex h-12 -translate-x-1/2 items-center overflow-visible rounded-[18px] border border-black/10 bg-white text-[15px] text-[#242529] shadow-[0_8px_28px_rgba(15,23,42,.12)] transition-transform duration-150 ${
+                ref={toolbarRef}
+                data-canvas-node-toolbar
+                className={`thin-scrollbar absolute z-[70] flex h-12 -translate-x-1/2 items-center overflow-x-auto rounded-[18px] border border-black/10 bg-white text-[15px] text-[#242529] shadow-[0_8px_28px_rgba(15,23,42,.12)] transition-transform duration-150 [&>*]:shrink-0 ${
                     placement === "top" ? "-translate-y-full" : "translate-y-0"
                 }`}
-                style={{ left, top }}
+                style={{ left: clampedLeft, top, width: "max-content", maxWidth }}
                 onMouseEnter={() => onKeep(node.id)}
                 onMouseLeave={() => {
                     if (!imageToolSettingsOpen) onLeave();

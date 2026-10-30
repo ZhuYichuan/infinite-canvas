@@ -37,7 +37,7 @@ function elementHeight(element: HTMLElement): number {
 
 function elementRect(element: HTMLElement): DOMRect {
     const height = elementHeight(element);
-    const width = Number.parseFloat(element.style.width) || 720;
+    const width = Math.min(Number.parseFloat(element.style.width) || 720, Number.parseFloat(element.style.maxWidth) || Infinity);
     const left = (Number.parseFloat(element.style.left) || 0) - (element.classList.contains("-translate-x-1/2") ? width / 2 : 0);
     const top = (Number.parseFloat(element.style.top) || 0) - (element.classList.contains("-translate-y-full") ? height : 0);
     return new DOMRect(left, top, width, height);
@@ -50,6 +50,11 @@ beforeEach(() => {
     vi.stubGlobal("innerHeight", 877);
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () { return elementRect(this); });
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function () { return elementHeight(this); });
+    vi.stubGlobal("ResizeObserver", class {
+        constructor(private callback: ResizeObserverCallback) {}
+        observe(element: Element) { this.callback([{ target: element } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+        disconnect() {}
+    });
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -62,23 +67,23 @@ afterEach(async () => {
     vi.unstubAllGlobals();
 });
 
-async function renderOverlays({ type = CanvasNodeType.Video, panelHeight = 316, nodeTop = 95, nodeHeight = 415, viewport = { x: 0, y: 0, k: 1 }, canvasSize = { width: 1208, height: 877 }, showToolbar = true }: {
-    type?: CanvasNodeData["type"]; panelHeight?: number; nodeTop?: number; nodeHeight?: number;
+async function renderOverlays({ type = CanvasNodeType.Video, panelHeight = 316, nodeLeft = 489, nodeTop = 95, nodeHeight = 415, viewport = { x: 0, y: 0, k: 1 }, canvasSize = { width: 1208, height: 877 }, showToolbar = true }: {
+    type?: CanvasNodeData["type"]; panelHeight?: number; nodeLeft?: number; nodeTop?: number; nodeHeight?: number;
     viewport?: ViewportTransform; canvasSize?: { width: number; height: number }; showToolbar?: boolean;
 } = {}) {
     const node: CanvasNodeData = {
-        id: "video", type, title: "测试节点", position: { x: 489, y: nodeTop }, width: 229, height: nodeHeight,
+        id: "video", type, title: "测试节点", position: { x: nodeLeft, y: nodeTop }, width: 229, height: nodeHeight,
         metadata: { content: "blob:resource" },
     };
     const toolbarNode = showToolbar ? node : null;
     const toolbarActions = Object.fromEntries(["onKeep", "onLeave", "onInfo", "onDecreaseFont", "onIncreaseFont", "onToggleDialog", "onGenerateImage", "onUpload", "onDownload", "onSaveAsset", "onMaskEdit", "onCrop", "onSplit", "onUpscale", "onSuperResolve", "onAngle", "onViewImage", "onReversePrompt", "onRetry", "onToggleFreeResize", "onDelete"].map((name) => [name, vi.fn()]));
     await act(async () => root.render(React.createElement(React.Fragment, null,
-        React.createElement(CanvasNodeHoverToolbar, { ...toolbarActions, node: toolbarNode, viewport } as React.ComponentProps<typeof CanvasNodeHoverToolbar>),
+        React.createElement(CanvasNodeHoverToolbar, { ...toolbarActions, node: toolbarNode, viewport, canvasSize } as React.ComponentProps<typeof CanvasNodeHoverToolbar>),
         React.createElement(CanvasNodeInspectorOverlay, { node, viewport, toolbarNode, canvasSize, renderPanel: () => React.createElement("div", { "data-testid": "prompt", style: { height: panelHeight } }) }),
     )));
     const toolbarElement = Array.from(container.children).find((element) => element.querySelector("button")) as HTMLElement | undefined;
     const inspectorElement = container.querySelector('[data-testid="prompt"]')!.parentElement!;
-    return { toolbar: toolbarElement?.getBoundingClientRect(), inspector: inspectorElement.getBoundingClientRect(), inspectorElement };
+    return { toolbar: toolbarElement?.getBoundingClientRect(), toolbarElement, toolbarActions, inspector: inspectorElement.getBoundingClientRect(), inspectorElement };
 }
 
 it("keeps the prompt and toolbar separate when both must appear below a tall node", async () => {
@@ -131,6 +136,27 @@ it("uses canvas dimensions when side panels make it smaller than the window", as
     expect(inspector.left).toBeGreaterThanOrEqual(16);
     expect(inspector.right).toBeLessThanOrEqual(600 - 16);
     expect(inspector.bottom).toBeLessThanOrEqual(780 - 92);
+});
+
+it.each([
+    ["left edge", -114, 1208],
+    ["right edge", 1500, 1208],
+    ["narrow canvas", 489, 420],
+] as const)("keeps the real toolbar inside the %s and retains its final action through horizontal scrolling", async (_edge, nodeLeft, width) => {
+    const { toolbar, toolbarElement, toolbarActions } = await renderOverlays({ nodeLeft, canvasSize: { width, height: 877 } });
+    expect(toolbar!.left).toBeGreaterThanOrEqual(16);
+    expect(toolbar!.right).toBeLessThanOrEqual(width - 16);
+    expect(toolbarElement!.classList.contains("overflow-x-auto")).toBe(true);
+    expect(toolbarElement!.classList.contains("[&>*]:shrink-0")).toBe(true);
+    const finalAction = Array.from(toolbarElement!.querySelectorAll("button")).at(-1)!;
+    expect(finalAction.getAttribute("aria-label")).toBe("canvas.nodeToolbar.replaceVideo");
+    await act(async () => finalAction.click());
+    expect(toolbarActions.onUpload).toHaveBeenCalledWith(expect.objectContaining({ id: "video" }));
+});
+
+it("shares its available height with the actual panel rather than only clipping the overlay wrapper", async () => {
+    const { inspectorElement } = await renderOverlays();
+    expect(inspectorElement.style.getPropertyValue("--canvas-node-panel-max-height")).toBe(inspectorElement.style.maxHeight);
 });
 
 for (const k of [0.2, 1, 3]) {
