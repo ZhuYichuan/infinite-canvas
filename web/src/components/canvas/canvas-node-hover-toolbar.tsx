@@ -16,6 +16,7 @@ import { ImageToolSettingsModal, type ImageToolbarSettingsTool } from "./canvas-
 import { IMAGE_QUICK_TOOLS_STORAGE_KEY, buildImageToolbarTools, defaultImageQuickToolIds, type ImageQuickToolId } from "./canvas-image-toolbar-tools";
 import { localizeErrorDetails } from "@/lib/canvas/canvas-generation-helpers";
 import { getModelProfile } from "@/services/api/models";
+import { getCanvasNodeToolbarPlacement } from "@/lib/canvas/canvas-node-toolbar-placement";
 
 type CanvasNodeHoverToolbarProps = {
     node: CanvasNodeData | null;
@@ -127,17 +128,7 @@ export function CanvasNodeHoverToolbar({
     if (!node) return null;
 
     const activeNode = node;
-    const nodeTopScreen = viewport.y + node.position.y * viewport.k;
-    const nodeBottomScreen = viewport.y + (node.position.y + node.height) * viewport.k;
-    const left = viewport.x + (node.position.x + node.width / 2) * viewport.k;
-
-    // 为节点顶部标题预留清晰的安全纵向空间，避免工具栏与标题重叠
-    const titleGap = Math.max(28 * viewport.k, 24) + 8;
-    const toolbarHeight = 48;
-    const safeTopMargin = 60;
-    const isTopOverflow = nodeTopScreen - titleGap - toolbarHeight < safeTopMargin;
-    const placement: "top" | "bottom" = isTopOverflow ? "bottom" : "top";
-    const top = isTopOverflow ? nodeBottomScreen + 16 : nodeTopScreen - titleGap;
+    const { left, top, placement } = getCanvasNodeToolbarPlacement(node, viewport);
     const isImage = node.type === CanvasNodeType.Image;
     const isVideo = node.type === CanvasNodeType.Video;
     const isAudio = node.type === CanvasNodeType.Audio;

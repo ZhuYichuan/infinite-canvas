@@ -4551,6 +4551,8 @@ function InfiniteCanvasPage() {
         [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateNode, runningNodeIds],
     );
 
+    const visibleToolbarNode = isNodeDragging || isNodeResizing || nodeImageSettingsOpen || expandedBatchNodeIds.has(toolbarNode?.id || "") || editingTitleNodeId === toolbarNode?.id ? null : toolbarNode;
+
     if (!projectLoaded) return <CanvasRefreshShell />;
 
     return (
@@ -4764,7 +4766,7 @@ function InfiniteCanvasPage() {
                 ) : null}
 
                 <CanvasNodeHoverToolbar
-                    node={isNodeDragging || isNodeResizing || nodeImageSettingsOpen || expandedBatchNodeIds.has(toolbarNode?.id || "") || editingTitleNodeId === toolbarNode?.id ? null : toolbarNode}
+                    node={visibleToolbarNode}
                     viewport={viewport}
                     extraTools={toolbarNode ? buildNodeToolbarItems(toolbarNode) : undefined}
                     onKeep={keepNodeToolbar}
@@ -4798,6 +4800,8 @@ function InfiniteCanvasPage() {
                 <CanvasNodeInspectorOverlay
                     node={!isViewer && !isNodeDragging && !isNodeResizing && !selectionBox && inspectorNode && inspectorNode.type !== CanvasNodeType.Group && !getNodeDefinition(inspectorNode.type)?.hidePanel ? inspectorNode : null}
                     viewport={viewport}
+                    toolbarNode={visibleToolbarNode}
+                    canvasSize={size}
                     renderPanel={renderNodePanel}
                 />
 

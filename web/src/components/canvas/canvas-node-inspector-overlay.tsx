@@ -1,9 +1,12 @@
 import { type ReactNode } from "react";
 import type { CanvasNodeData, ViewportTransform } from "@/types/canvas";
+import { CANVAS_NODE_TOOLBAR_HEIGHT, getCanvasNodeToolbarPlacement } from "@/lib/canvas/canvas-node-toolbar-placement";
 
 type CanvasNodeInspectorOverlayProps = {
     node: CanvasNodeData | null;
     viewport: ViewportTransform;
+    toolbarNode: CanvasNodeData | null;
+    canvasSize: { width: number; height: number };
     visible?: boolean;
     renderPanel: (node: CanvasNodeData) => ReactNode;
 };
@@ -11,13 +14,15 @@ type CanvasNodeInspectorOverlayProps = {
 export function CanvasNodeInspectorOverlay({
     node,
     viewport,
+    toolbarNode,
+    canvasSize,
     visible = true,
     renderPanel,
 }: CanvasNodeInspectorOverlayProps) {
     if (!node || !visible) return null;
 
-    const screenWidth = typeof window !== "undefined" ? window.innerWidth : 1920;
-    const screenHeight = typeof window !== "undefined" ? window.innerHeight : 1080;
+    const screenWidth = canvasSize.width;
+    const screenHeight = canvasSize.height;
     const panelWidth = Math.min(720, screenWidth - 32);
 
     const nodeTopScreen = viewport.y + node.position.y * viewport.k;
@@ -29,25 +34,28 @@ export function CanvasNodeInspectorOverlay({
     const maxLeft = screenWidth - 16 - panelWidth / 2;
     const left = Math.max(minLeft, Math.min(maxLeft, rawLeft));
 
-    // 边缘避让：默认在节点下方；当底部空间不足 220px 且上方空间充裕时，自动翻折至节点上方
+    // 同一节点的工具栏位于底部时，输入框始终排在工具栏下面；其它情况沿用原来的翻折规则。
     const titleGap = Math.max(28 * viewport.k, 24) + 8;
-    const toolbarHeight = 48;
+    const toolbar = toolbarNode?.id === node.id ? getCanvasNodeToolbarPlacement(toolbarNode, viewport) : null;
+    const toolbarBelow = toolbar?.placement === "bottom";
     const requiredBottomSpace = 220;
     const isBottomOverflow = nodeBottomScreen + requiredBottomSpace > screenHeight;
-    const canFlipTop = nodeTopScreen - titleGap - toolbarHeight > 220;
-    const placement: "bottom" | "top" = isBottomOverflow && canFlipTop ? "top" : "bottom";
+    const canFlipTop = nodeTopScreen - titleGap - CANVAS_NODE_TOOLBAR_HEIGHT > 220;
+    const placement: "bottom" | "top" = !toolbarBelow && isBottomOverflow && canFlipTop ? "top" : "bottom";
 
     const top =
         placement === "top"
-            ? nodeTopScreen - titleGap - toolbarHeight - 12
-            : nodeBottomScreen + 16;
+            ? nodeTopScreen - titleGap - CANVAS_NODE_TOOLBAR_HEIGHT - 12
+            : toolbarBelow ? toolbar.top + CANVAS_NODE_TOOLBAR_HEIGHT + 12 : nodeBottomScreen + 16;
+    // 底部画布操作区：距底部 20px + 高度 56px + 面板间隔 16px。
+    const maxHeight = Math.max(0, placement === "top" ? top - 60 : screenHeight - 92 - top);
 
     return (
         <div
-            className={`pointer-events-auto absolute z-[70] w-[min(720px,calc(100vw-32px))] -translate-x-1/2 transition-transform duration-150 ${
+            className={`thin-scrollbar pointer-events-auto absolute z-[70] overflow-y-auto overscroll-contain -translate-x-1/2 transition-transform duration-150 ${
                 placement === "top" ? "-translate-y-full" : "translate-y-0"
             }`}
-            style={{ left, top }}
+            style={{ left, top, width: panelWidth, maxHeight }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
