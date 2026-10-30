@@ -54,11 +54,12 @@ describe("translateComfyuiValidationError (Missing Plugin Friendly Translation)"
         expect(translated).toContain(rawErr);
     });
 
-    it("translates generic Prompt outputs failed validation into core plugin check guidance", () => {
+    it("keeps generic validation errors separate from missing-plugin guidance", () => {
         const rawErr = `Prompt outputs failed validation: SomeUnknownNode`;
         const translated = translateComfyuiValidationError(rawErr);
         expect(translated).toContain("ComfyUI 节点校验失败");
-        expect(translated).toContain("ComfyUI-KJNodes");
+        expect(translated).not.toContain("ComfyUI-KJNodes");
+        expect(translated).not.toContain("git clone");
         expect(translated).toContain(rawErr);
     });
 

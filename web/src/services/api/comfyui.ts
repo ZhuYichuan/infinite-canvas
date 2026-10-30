@@ -2,7 +2,7 @@ import localforage from "localforage";
 
 import { nanoid } from "nanoid";
 import i18n from "@/i18n";
-import { findWorkflow, getDefaultWorkflow, modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig, type ChannelModel, type WorkflowCategory } from "@/stores/use-config-store";
+import { findWorkflow, getDefaultWorkflow, modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig, type ChannelModel, type ModelChannel, type WorkflowCategory } from "@/stores/use-config-store";
 import {
     DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW,
     DEFAULT_COMFYUI_I2I_WORKFLOW,
@@ -550,14 +550,21 @@ export class ComfyuiError extends Error {
     }
 }
 
+type ComfyuiNodeErrors = Record<string, {
+    class_type?: string;
+    errors?: { type?: string; message?: string; details?: string; extra_info?: { input_name?: string; input_config?: unknown; received_value?: unknown } }[];
+}>;
+
 export class ComfyuiApiError extends ComfyuiError {
     readonly status?: number;
+    readonly nodeErrors?: ComfyuiNodeErrors;
 
-    constructor(message: string, status?: number, request?: { url: string; method?: string }) {
+    constructor(message: string, status?: number, request?: { url: string; method?: string }, nodeErrors?: ComfyuiNodeErrors) {
         const reason = status === 401 || status === 403 ? "，请检查渠道认证凭据与访问权限" : "";
         super(request ? `${message}；接口 ${describeComfyuiEndpoint(request.url, request.method)}${status ? ` 返回 HTTP ${status}${reason}` : ""}` : message);
         this.name = "ComfyuiApiError";
         this.status = status;
+        this.nodeErrors = nodeErrors;
     }
 }
 
@@ -827,14 +834,31 @@ export const COMFYUI_CORE_PLUGINS = [
 ];
 
 export function translateComfyuiValidationError(errMsg: string): string {
-    const lower = errMsg.toLowerCase();
+    let nodes: ComfyuiNodeErrors = {};
+    try {
+        const parsed = JSON.parse(errMsg);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) nodes = parsed;
+    } catch { /* Non-JSON errors still carry explicit class-not-found messages. */ }
+    const entries = Object.entries(nodes).filter(([, node]) => node && Array.isArray(node.errors));
+    const missingClass = /class[_ ]not[_ ]found|node_type_not_found|node_class_not_found|cannot execute because node .+ does not exist/i;
+    const missingDetails = entries.length
+        ? entries.flatMap(([, node]) => node.errors!.filter((error) => missingClass.test(`${error.type} ${error.message}`)).map((error) => `${node.class_type} ${error.message}`)).join(" ")
+        : missingClass.test(errMsg) ? errMsg : "";
+    const guidance: string[] = [];
     for (const plugin of COMFYUI_CORE_PLUGINS) {
-        if (plugin.keywords.some((kw) => lower.includes(kw))) {
-            return `缺少核心依赖插件「${plugin.name}」(${plugin.desc})。请在 ComfyUI 的 custom_nodes 目录安装：git clone ${plugin.url}\n原始错误: ${errMsg}`;
+        if (plugin.keywords.some((kw) => missingDetails.toLowerCase().includes(kw))) {
+            guidance.push(`缺少核心依赖插件「${plugin.name}」(${plugin.desc})。请在 ComfyUI 的 custom_nodes 目录安装：git clone ${plugin.url}`);
         }
     }
-    if (lower.includes("prompt outputs failed validation") || lower.includes("class not found")) {
-        return `ComfyUI 节点校验失败，请检查是否已在 ComfyUI 安装所需的核心插件（如 ComfyUI-KJNodes、ComfyLiterals 等）。\n原始错误: ${errMsg}`;
+    const details = entries.flatMap(([id, node]) => node.errors!.map((error) => {
+        const input = error.extra_info?.input_name || error.details;
+        const reason = error.type === "required_input_missing" ? `缺少输入「${input}」`
+            : error.type === "value_not_in_list" ? `输入「${input}」的值不在可用选项中：${error.details}`
+            : [error.message, error.details].filter(Boolean).join("：");
+        return `节点 ${id}（${node.class_type || "未知类型"}）：${reason}`;
+    }));
+    if (guidance.length || details.length || /prompt outputs failed validation/i.test(errMsg) || missingDetails) {
+        return [`ComfyUI 节点校验失败`, ...guidance, ...details, `原始错误: ${errMsg}`].join("\n");
     }
     return errMsg;
 }
@@ -852,18 +876,20 @@ async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string,
     }, baseUrl);
     if (!response.ok) {
         let errDetail = `${response.status}`;
+        let nodeErrors: ComfyuiNodeErrors | undefined;
         try {
-            const errJson = (await response.json()) as { error?: { message?: string; details?: string; type?: string }; node_errors?: Record<string, unknown> };
+            const errJson = (await response.json()) as { error?: { message?: string; details?: string; type?: string }; node_errors?: ComfyuiNodeErrors };
             if (errJson?.node_errors && Object.keys(errJson.node_errors).length) {
+                nodeErrors = errJson.node_errors;
                 errDetail = JSON.stringify(errJson.node_errors);
             } else if (errJson?.error?.message) {
-                errDetail = errJson.error.details ? `${errJson.error.message}: ${errJson.error.details}` : errJson.error.message;
+                errDetail = [errJson.error.type, errJson.error.message, errJson.error.details].filter(Boolean).join(": ");
             }
         } catch {
             // ignore
         }
         const friendlyDetail = translateComfyuiValidationError(errDetail);
-        throw new ComfyuiApiError(`ComfyUI 任务提交失败: ${friendlyDetail}`, response.status, request);
+        throw new ComfyuiApiError(`ComfyUI 任务提交失败: ${friendlyDetail}`, response.status, request, nodeErrors);
     }
     const data = (await response.json()) as { prompt_id?: unknown; node_errors?: Record<string, unknown> };
     if (data?.node_errors && Object.keys(data.node_errors).length > 0) {
@@ -888,7 +914,7 @@ function workflowHasYoloPaths(workflow: ComfyuiWorkflowJson): boolean {
 
 /**
  * Submit a bound workflow to ComfyUI's /prompt endpoint; returns prompt_id as jobId.
- * 自动识别目标主机操作系统（Windows 或 Linux）并适配 bbox / segm 等模型路径分隔符；失败时具备反向翻转重试兜底机制。
+ * 适配检测器路径；仅在 HTTP 400 明确拒绝任务且提供等价路径选项时修正后重试一次。
  */
 export async function submitJob(workflow: ComfyuiWorkflowJson, baseUrl: string, token?: string): Promise<string> {
     if (!workflow || typeof workflow !== "object" || Object.keys(workflow).length === 0) {
@@ -906,28 +932,25 @@ export async function submitJob(workflow: ComfyuiWorkflowJson, baseUrl: string, 
     try {
         return await submitJobInternal(adaptedWorkflow, baseUrl, token);
     } catch (error) {
-        // 2. 兜底重试：检查是否因模型路径格式/校验引起的错误，自动翻转斜杠方向重试
-        const errMsg = error instanceof Error ? error.message : String(error);
-        const hasPathMismatchError =
-            errMsg.includes("Value not in list") ||
-            errMsg.includes("bbox") ||
-            errMsg.includes("segm") ||
-            errMsg.includes("FileNotFoundError") ||
-            errMsg.includes("required_input_missing");
-
-        if (hasPathMismatchError) {
-            const flippedOs = targetOs === "windows" ? "linux" : "windows";
-            const flippedWorkflow = adaptWorkflowModelPaths(workflow, flippedOs);
-            if (flippedWorkflow !== adaptedWorkflow) {
-                try {
-                    const retryJobId = await submitJobInternal(flippedWorkflow, baseUrl, token);
-                    comfyHostOsCache.set(normalizeBaseUrl(baseUrl), flippedOs);
-                    return retryJobId;
-                } catch {
-                    // 若翻转重试依旧失败，抛出原异常
+        if (!(error instanceof ComfyuiApiError) || error.status !== 400 || !error.nodeErrors) throw error;
+        const corrected = structuredClone(adaptedWorkflow);
+        let changed = false;
+        for (const [id, nodeError] of Object.entries(error.nodeErrors)) {
+            const node = corrected[id] as { inputs?: Record<string, unknown> } | undefined;
+            for (const issue of Array.isArray(nodeError?.errors) ? nodeError.errors : []) {
+                if (issue.type !== "value_not_in_list") continue;
+                const input = issue.extra_info?.input_name;
+                const value = input && node?.inputs?.[input];
+                const options = issue.extra_info?.input_config;
+                if (typeof value !== "string" || !/(?:^|[\\/])(bbox|segm)[\\/]/i.test(value) || !Array.isArray(options) || !Array.isArray(options[0])) continue;
+                const candidate = options[0].find((option: unknown) => typeof option === "string" && option.replace(/\\/g, "/") === value.replace(/\\/g, "/"));
+                if (typeof candidate === "string" && candidate !== value) {
+                    node!.inputs![input!] = candidate;
+                    changed = true;
                 }
             }
         }
+        if (changed) return await submitJobInternal(corrected, baseUrl, token);
         throw error;
     }
 }
@@ -3066,9 +3089,34 @@ export interface ComfyuiVideoRequest {
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
 }
 
+export function validateVideoToolInputs(category: "faceRefine" | "depthVideo", input: {
+    prompt: string;
+    referenceImages?: ReferenceImage[];
+    referenceVideos?: ReferenceVideo[];
+    referenceAudios?: ReferenceAudio[];
+}): void {
+    const name = category === "faceRefine" ? "人脸修复" : "深度视频";
+    if (input.referenceVideos?.length !== 1) throw new ComfyuiApiError(`${name}需要且只能提供 1 个源视频，请重新选择原视频后执行`);
+    const source = input.referenceVideos[0];
+    if (!source.url?.trim() && !source.storageKey?.trim()) throw new ComfyuiApiError(`${name}的源视频不可用，请重新选择原视频后执行`);
+    if (input.referenceAudios?.length) throw new ComfyuiApiError(`${name}不支持额外参考音频，请移除后执行`);
+    if (input.referenceImages && input.referenceImages.length > 9) throw new ComfyuiApiError(`${name}最多支持 9 张参考图`);
+    if (category === "faceRefine") {
+        if (!input.prompt.trim()) throw new ComfyuiApiError("人脸修复需要填写提示词");
+        if (!input.referenceImages?.length || input.referenceImages.some((image) => !image.dataUrl?.trim())) throw new ComfyuiApiError("人脸修复需要至少 1 张有效参考图");
+    }
+}
+
+function resolveVideoRequestChannel(req: ComfyuiVideoRequest, rawModel: string): ModelChannel {
+    if (!req.channelId) return resolveModelChannel(req.config, rawModel);
+    const channel = req.config.channels.find((item) => item.id === req.channelId);
+    if (!channel) throw new ComfyuiApiError(`所选渠道「${req.channelId}」不存在，请重新选择渠道后执行`);
+    return channel;
+}
+
 export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{ jobId: string; baseUrl: string; token?: string }> {
     const rawModel = req.model || req.config.videoModel || req.config.model;
-    const channel = resolveModelChannel(req.config, rawModel);
+    const channel = resolveVideoRequestChannel(req, rawModel);
     const requestModel = modelOptionName(rawModel);
     const channelModel = channel.models.find((model) => model.name === requestModel);
     const initialVideoMode = req.videoMode || (req.config.videoMode === "frame" ? "frame" : "omni");
@@ -3079,9 +3127,13 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
         : Array.isArray(channel.workflows)
           ? getDefaultWorkflow(channel, initialVideoMode === "frame" ? "frameVideo" : "omniVideo")
           : undefined;
-    const modelProfile = getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel || initialVideoMode);
+    if (workflowId && targetWorkflowItem?.id !== workflowId) {
+        throw addComfyuiChannelContext(new ComfyuiApiError(`所选工作流「${workflowId}」不存在，请重新选择工作流后执行`), channel.name);
+    }
+    const isVideoTool = targetWorkflowItem?.category === "faceRefine" || targetWorkflowItem?.category === "depthVideo";
+    const modelProfile = isVideoTool ? undefined : getModelProfile(req.model || targetWorkflowItem?.id || targetWorkflowItem?.name || rawModel || initialVideoMode);
     const isFrameWorkflow = targetWorkflowItem?.category === "frameVideo";
-    const isFrameMode = modelProfile?.category === "frameVideo" || isFrameWorkflow || initialVideoMode === "frame";
+    const isFrameMode = !isVideoTool && (modelProfile?.category === "frameVideo" || isFrameWorkflow || initialVideoMode === "frame");
     const videoMode = isFrameMode ? "frame" : "omni";
     if (modelProfile) {
         validateModelExecution(modelProfile, {
@@ -3117,6 +3169,14 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const token = channel.comfyuiProxyToken;
 
     try {
+        let toolSourceUrl: string | undefined;
+        if (isVideoTool) {
+            validateVideoToolInputs(targetWorkflowItem.category, { prompt: req.prompt, referenceImages: req.references, referenceVideos: req.referenceVideos, referenceAudios: req.referenceAudios });
+            const { resolveMediaUrl } = await import("@/services/file-storage");
+            const source = req.referenceVideos![0];
+            toolSourceUrl = await resolveMediaUrl(source.storageKey, source.url);
+            if (!toolSourceUrl?.trim()) throw new ComfyuiApiError("工具的源视频不可用，请重新选择原视频后执行");
+        }
         let firstFrameAssetId: string | undefined;
         let lastFrameAssetId: string | undefined;
         const assetIds: string[] = [];
@@ -3177,7 +3237,7 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
                 for (let i = 0; i < req.referenceVideos.length; i++) {
                     const ref = req.referenceVideos[i];
                     const rawUrl = ref?.url || (ref as unknown as { dataUrl?: string })?.dataUrl || (ref as unknown as { src?: string })?.src || "";
-                    const resolvedUrl = await resolveMediaUrl(ref?.storageKey, rawUrl);
+                    const resolvedUrl = toolSourceUrl || await resolveMediaUrl(ref?.storageKey, rawUrl);
                     if (resolvedUrl) {
                         const id = await uploadComfyuiAsset(baseUrl, token, resolvedUrl, `ref_video_${i + 1}.mp4`, req.signal);
                         videoAssetIds.push(id);
@@ -3260,7 +3320,7 @@ export async function pollComfyuiVideoJob(
 
 export async function requestComfyuiVideo(req: ComfyuiVideoRequest): Promise<{ url: string; mimeType: string; jobId: string }> {
     const rawModel = req.model || req.config.videoModel || req.config.model;
-    const channel = resolveModelChannel(req.config, rawModel);
+    const channel = resolveVideoRequestChannel(req, rawModel);
     const baseUrl = (channel.comfyuiProxyUrl || "").trim();
     const token = channel.comfyuiProxyToken;
 
@@ -3325,6 +3385,7 @@ export type ComfyuiAudioRequest = {
     seed?: number;
     workflowId?: string;
     signal?: AbortSignal;
+    jobId?: string;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
 };
 
@@ -3367,22 +3428,15 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
     const seed = req.seed !== undefined && req.seed >= 0 ? req.seed : generateRandomSeed();
     const duration = req.duration ?? (Number(req.config.audioSeconds) || 60);
 
-    const profileToUse = modelProfile || getModelProfile("audio-minimax-music-3")!;
-    validateModelExecution(profileToUse, {
-        prompt: req.prompt,
-        duration,
-    });
-
-    const boundWorkflow = dispatchComfyuiModelWorkflow(profileToUse, workflowItem.json, {
-        prompt: req.prompt,
-        duration,
-        seed,
-    });
-
-    let jobId = "";
+    let jobId = req.jobId || "";
     try {
-        jobId = await submitJob(boundWorkflow, baseUrl, token);
-        req.onProgress?.("submitted", { jobId });
+        if (!jobId) {
+            const profileToUse = modelProfile || getModelProfile("audio-minimax-music-3")!;
+            validateModelExecution(profileToUse, { prompt: req.prompt, duration });
+            const boundWorkflow = dispatchComfyuiModelWorkflow(profileToUse, workflowItem.json, { prompt: req.prompt, duration, seed });
+            jobId = await submitJob(boundWorkflow, baseUrl, token);
+            req.onProgress?.("submitted", { jobId });
+        }
 
         const signal = req.signal;
         if (signal?.aborted) {

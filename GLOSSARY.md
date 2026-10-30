@@ -22,6 +22,10 @@ _Avoid_: Node Selector, Add Node Popup, Double Click Menu
 
 ## Task Lifecycle & Execution
 
+**Generation Settlement**:
+The outcome of one canvas generation attempt across its result Node Card, its image or text candidates, and its originating configuration. Completed resources remain available when other candidates or a later attempt fail.
+_Avoid_: Node finalization, batch completion, generation cleanup
+
 **TaskLifecycleDriver**:
 The provider-specific adapter at the task lifecycle seam responsible for querying, polling, and aborting tasks on a specific backend protocol (e.g. ComfyUI, external HTTP, in-memory test driver).
 _Avoid_: TaskPoller, JobHandler, BackendService
