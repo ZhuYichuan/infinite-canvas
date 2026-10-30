@@ -3325,6 +3325,7 @@ export type ComfyuiAudioRequest = {
     seed?: number;
     workflowId?: string;
     signal?: AbortSignal;
+    jobId?: string;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
 };
 
@@ -3367,22 +3368,15 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
     const seed = req.seed !== undefined && req.seed >= 0 ? req.seed : generateRandomSeed();
     const duration = req.duration ?? (Number(req.config.audioSeconds) || 60);
 
-    const profileToUse = modelProfile || getModelProfile("audio-minimax-music-3")!;
-    validateModelExecution(profileToUse, {
-        prompt: req.prompt,
-        duration,
-    });
-
-    const boundWorkflow = dispatchComfyuiModelWorkflow(profileToUse, workflowItem.json, {
-        prompt: req.prompt,
-        duration,
-        seed,
-    });
-
-    let jobId = "";
+    let jobId = req.jobId || "";
     try {
-        jobId = await submitJob(boundWorkflow, baseUrl, token);
-        req.onProgress?.("submitted", { jobId });
+        if (!jobId) {
+            const profileToUse = modelProfile || getModelProfile("audio-minimax-music-3")!;
+            validateModelExecution(profileToUse, { prompt: req.prompt, duration });
+            const boundWorkflow = dispatchComfyuiModelWorkflow(profileToUse, workflowItem.json, { prompt: req.prompt, duration, seed });
+            jobId = await submitJob(boundWorkflow, baseUrl, token);
+            req.onProgress?.("submitted", { jobId });
+        }
 
         const signal = req.signal;
         if (signal?.aborted) {

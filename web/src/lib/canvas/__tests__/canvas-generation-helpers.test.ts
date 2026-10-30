@@ -7,7 +7,6 @@ import {
     countInterruptedTasks,
     duplicateIncomingConnections,
     findRetrySourceNode,
-    formatCompactErrorMessage,
     formatNodeLoadingText,
     generateNextSeed,
     hasInterruptedGeneration,
@@ -458,22 +457,6 @@ describe("error classification helpers", () => {
     });
 });
 
-describe("formatCompactErrorMessage", () => {
-    it("extracts host and port from full ComfyUI connection error", () => {
-        const full = "无法连接 ComfyUI 服务（http://192.168.31.188:8188）。服务可能已崩溃或未启动，请检查服务状态与端口";
-        expect(formatCompactErrorMessage(full)).toBe("无法连接 ComfyUI (192.168.31.188:8188)");
-    });
-
-    it("formats offline message concisely", () => {
-        const full = "本地网络连接已断开，请检查网络设置";
-        expect(formatCompactErrorMessage(full)).toBe("本地网络已断开");
-    });
-
-    it("translates raw Failed to fetch into Chinese", () => {
-        expect(formatCompactErrorMessage("Failed to fetch")).toBe("无法连接 ComfyUI 服务");
-    });
-});
-
 describe("formatNodeLoadingText", () => {
     it("prioritizes network retry text when present", () => {
         expect(formatNodeLoadingText({ networkRetryText: "服务重连中 (2/5)...", queuePosition: 3 })).toBe("服务重连中 (2/5)...");
@@ -485,6 +468,17 @@ describe("formatNodeLoadingText", () => {
 });
 
 describe("updateNodeGenerationProgress", () => {
+    it("keeps accepted text job IDs on their own candidate", () => {
+        const node = makeNode(CanvasNodeType.Text, {
+            status: "loading",
+            texts: [{ id: "first", content: "", status: "loading" }, { id: "second", content: "", status: "loading" }],
+        }, "batch");
+        const [updated] = updateNodeGenerationProgress([node], "batch", "submitted", { jobId: "accepted-text" }, "first");
+        expect(updated.metadata?.texts?.[0].jobId).toBe("accepted-text");
+        expect(updated.metadata?.texts?.[1].jobId).toBeUndefined();
+        expect(updated.metadata?.jobId).toBeUndefined();
+    });
+
     it("updates target node progress status and transient fields", () => {
         const node = makeNode(CanvasNodeType.Image, { status: "loading" }, "node-1");
         const updated1 = updateNodeGenerationProgress([node], "node-1", "pending", { queuePosition: 2 });

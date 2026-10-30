@@ -5,7 +5,7 @@ import { audioMimeType, normalizeAudioFormatValue, normalizeAudioSpeedValue, nor
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
 import { runModelPlugin } from "./model-plugin";
-import { requestComfyuiAudio } from "./comfyui";
+import { requestComfyuiAudio, type ComfyuiAudioRequest } from "./comfyui";
 
 type RequestOptions = { signal?: AbortSignal };
 const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
@@ -23,6 +23,8 @@ function aiHeaders(config: AiConfig) {
 
 export type AudioRequestOptions = {
     signal?: AbortSignal;
+    jobId?: string;
+    onProgress?: ComfyuiAudioRequest["onProgress"];
     duration?: number;
     seed?: number;
     channelId?: string;
@@ -44,6 +46,8 @@ export async function requestAudioGeneration(
         seed: options?.seed,
         workflowId: options?.workflowId,
         signal: options?.signal,
+        jobId: options?.jobId,
+        onProgress: options?.onProgress,
     });
     return { blob: res.blob, seed: res.seed, jobId: res.jobId };
 }
