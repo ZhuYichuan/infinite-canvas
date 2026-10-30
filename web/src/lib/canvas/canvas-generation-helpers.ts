@@ -9,7 +9,21 @@ import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-p
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
 import type { ReferenceImage } from "@/types/image";
 import { nanoid } from "nanoid";
-import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasGenerationIntent, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
+import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasGenerationIntent, type CanvasGenerationReferenceSnapshot, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
+
+export function getVideoToolCategory(config: AiConfig, node?: CanvasNodeData) {
+    const workflowId = node?.metadata?.workflowId || config.workflowId;
+    if (!workflowId) return undefined;
+    const workflow = findWorkflow(config, node?.metadata?.channelId || config.channelId, workflowId);
+    return workflow?.id === workflowId && (workflow.category === "faceRefine" || workflow.category === "depthVideo") ? workflow.category : undefined;
+}
+
+export function snapshotVideoToolInputs(source: CanvasNodeData, images: ReferenceImage[] = []): CanvasGenerationReferenceSnapshot[] {
+    return [
+        { nodeId: source.id, kind: "video", storageKey: source.metadata?.storageKey, url: source.metadata?.storageKey ? undefined : source.metadata?.content, mimeType: source.metadata?.mimeType || "video/mp4" },
+        ...images.map((image): CanvasGenerationReferenceSnapshot => ({ nodeId: image.id, kind: "image", storageKey: image.storageKey, url: image.storageKey ? undefined : image.url || image.dataUrl, mimeType: image.type })),
+    ];
+}
 
 export function imageExtension(dataUrl: string) {
     return dataUrl.match(/^data:image[/]([^;]+)/)?.[1] || dataUrl.match(/image[/]([^;]+)/)?.[1] || "png";
@@ -134,10 +148,11 @@ export function getInputSummary(inputs: NodeGenerationInput[]) {
 }
 
 export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasNodeGenerationMode): AiConfig {
-    const rawModel = node?.metadata?.modelId || node?.metadata?.model;
-    const model = resolveModelForCapability(config, rawModel, mode);
+    const videoTool = mode === "video" && getVideoToolCategory(config, node);
+    const rawModel = videoTool ? undefined : node?.metadata?.modelId || node?.metadata?.model;
     const channelId = node?.metadata?.channelId || config.channelId;
     const workflowId = node?.metadata?.workflowId || config.workflowId;
+    const model = videoTool ? workflowId! : resolveModelForCapability(config, rawModel, mode);
     let videoMode = node?.metadata?.videoMode;
     if (mode === "video" && node?.metadata?.modelId) {
         videoMode = node.metadata.modelId.includes("frame") ? "frame" : "omni";
@@ -147,7 +162,7 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         if (wf?.category === "frameVideo") videoMode = "frame";
         else if (wf?.category === "omniVideo" || wf?.category === "faceRefine") videoMode = "omni";
     }
-    if (videoMode === "frame" && (workflowId ? findWorkflow(config, channelId, workflowId)?.category === "faceRefine" : false)) {
+    if (videoTool) {
         videoMode = "omni";
     }
     if (!videoMode) {

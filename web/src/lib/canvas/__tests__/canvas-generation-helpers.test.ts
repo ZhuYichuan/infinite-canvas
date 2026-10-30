@@ -3,12 +3,14 @@ import { TaskExecutionError } from "@/services/api/task";
 
 import {
     buildGeneratedNodeConnections,
+    buildGenerationConfig,
     buildPastedNodeConnections,
     countInterruptedTasks,
     duplicateIncomingConnections,
     findRetrySourceNode,
     formatNodeLoadingText,
     generateNextSeed,
+    getVideoToolCategory,
     hasInterruptedGeneration,
     isCancelledGenerationError,
     isGenerationCanceled,
@@ -24,6 +26,33 @@ import {
 } from "@/lib/canvas/canvas-generation-helpers";
 import { CanvasNodeType } from "@/types/canvas";
 import type { CanvasConnection, CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
+import { defaultConfig, encodeChannelModel, isAiConfigReady, type AiConfig } from "@/stores/use-config-store";
+
+describe("video tool configuration", () => {
+    const sourceModel = "frame-video-minimax-h3-fp8-4step-pdmd";
+    const config: AiConfig = {
+        ...defaultConfig,
+        channelId: "source-host",
+        videoModel: encodeChannelModel("source-host", sourceModel),
+        channels: [
+            { ...defaultConfig.channels[0], id: "source-host", comfyuiProxyUrl: "", models: [{ name: sourceModel, capability: "video" }] },
+            { ...defaultConfig.channels[0], id: "tool-host", comfyuiProxyUrl: "http://tool-host:8188", workflows: [{ id: "face-tool", name: "修复", category: "faceRefine", createdAt: 0, json: {} }] },
+        ],
+    };
+
+    it("checks readiness on the tool host even when the source model host is unconfigured", () => {
+        const node = makeNode(CanvasNodeType.Video, { channelId: "tool-host", workflowId: "face-tool", modelId: encodeChannelModel("source-host", sourceModel), videoMode: "frame" });
+        const result = buildGenerationConfig(config, node, "video");
+        expect(result.videoMode).toBe("omni");
+        expect(result.model).toBe("face-tool");
+        expect(isAiConfigReady(result, result.model)).toBe(true);
+    });
+
+    it("does not classify missing workflow selections using an unrelated default tool", () => {
+        expect(getVideoToolCategory(config, makeNode(CanvasNodeType.Video, { channelId: "tool-host" }))).toBeUndefined();
+        expect(getVideoToolCategory(config, makeNode(CanvasNodeType.Video, { channelId: "tool-host", workflowId: "deleted-workflow" }))).toBeUndefined();
+    });
+});
 
 // Small shared factory so each test case can build minimal nodes with one call.
 function makeNode(type: CanvasNodeData["type"], metadata: CanvasNodeMetadata = {}, id?: string): CanvasNodeData {

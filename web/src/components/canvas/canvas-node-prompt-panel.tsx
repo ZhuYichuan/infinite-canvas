@@ -70,12 +70,23 @@ export function CanvasNodePromptPanel({
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const mode = modeOverride ?? defaultMode(node.type);
     const config = buildNodeConfig(globalConfig, node, mode);
+    const nodeWorkflow = mode === "video" && node.metadata?.workflowId ? findWorkflow(globalConfig, node.metadata.channelId || globalConfig.channelId, node.metadata.workflowId) : undefined;
+    const workflowCategory = nodeWorkflow?.id === node.metadata?.workflowId ? nodeWorkflow?.category : undefined;
+    const videoTool = workflowCategory === "faceRefine" || workflowCategory === "depthVideo" ? workflowCategory : undefined;
     const hasTextContent = node.type === CanvasNodeType.Text && Boolean(node.metadata?.content?.trim());
     const hasImageContent = node.type === CanvasNodeType.Image && Boolean(node.metadata?.content);
     const hasVideoContent = node.type === CanvasNodeType.Video && Boolean(node.metadata?.content);
     const hasAudioContent = node.type === CanvasNodeType.Audio && Boolean(node.metadata?.content);
+    const hasSavedToolResult = Boolean(videoTool && hasVideoContent);
+    const savedVideoInput = node.metadata?.generationReferences?.find((reference) => reference.kind === "video");
+    const savedToolInputSummary = hasSavedToolResult ? (
+        <div className="mb-2 space-y-1 text-xs" style={{ color: theme.node.muted }}>
+            <div>{t("canvas.promptPanel.toolInputs", { title: nodes.find((input) => input.id === savedVideoInput?.nodeId)?.title || t("assets.kinds.video"), count: node.metadata?.generationReferences?.filter((reference) => reference.kind === "image").length || 0 })}</div>
+            <div className="text-[11px]">{t("canvas.promptPanel.toolInputsHint")}</div>
+        </div>
+    ) : null;
     const isEditingExistingContent = hasTextContent || hasImageContent || hasVideoContent || hasAudioContent;
-    const canRepeat = node.metadata?.status === "success";
+    const canRepeat = node.metadata?.status === "success" || hasSavedToolResult;
     const isGenerating = isRunning || node.metadata?.status === "loading";
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
     const [expanded, setExpanded] = useState(false);
@@ -93,9 +104,13 @@ export function CanvasNodePromptPanel({
         }
         return { images, videos, audios };
     }, [connectedNodes, nodes]);
+    const savedDraftImageCount = videoTool && !hasVideoContent && connectedResources.images === 0
+        ? node.metadata?.generationReferences?.filter((reference) => reference.kind === "image" && !nodes.some((input) => input.id === reference.nodeId)).length || 0
+        : 0;
+    const savedDraftReferenceHint = savedDraftImageCount > 0 ? <div className="mb-2 text-[11px]" style={{ color: theme.node.muted }}>{t("canvas.promptPanel.savedToolImages", { count: savedDraftImageCount })}</div> : null;
 
     const videoModelAvailability = useMemo(() => {
-        if (mode !== "video") return { isAvailable: true, reasons: [] };
+        if (mode !== "video" || videoTool) return { isAvailable: true, reasons: [] };
         const effectiveModelId = node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd");
         const profile = getModelProfile(effectiveModelId) || BUILTIN_VIDEO_WORKFLOW_MODELS[0];
         const activeChannel = globalConfig.channels.find((c) => c.id === (node.metadata?.channelId || globalConfig.channelId)) || globalConfig.channels[0];
@@ -107,7 +122,7 @@ export function CanvasNodePromptPanel({
             promptText: prompt,
             activeChannel,
         });
-    }, [mode, node.metadata?.modelId, node.metadata?.videoMode, node.metadata?.channelId, config.videoMode, globalConfig.channels, globalConfig.channelId, connectedResources, prompt]);
+    }, [mode, videoTool, node.metadata?.modelId, node.metadata?.videoMode, node.metadata?.channelId, config.videoMode, globalConfig.channels, globalConfig.channelId, connectedResources, prompt]);
 
     const imageModelAvailability = useMemo(() => {
         if (mode !== "image") return { isAvailable: true, reasons: [] };
@@ -166,7 +181,14 @@ export function CanvasNodePromptPanel({
         else onPromptChange(node.id, value);
     };
 
-    const canSubmitEmptyPrompt = mode === "text" && connectedResources.images > 0;
+    const canSubmitEmptyPrompt = videoTool === "depthVideo" || (mode === "text" && connectedResources.images > 0);
+    const promptPlaceholder = videoTool === "faceRefine"
+        ? t("canvas.faceRefine.modal.promptPlaceholder")
+        : videoTool === "depthVideo"
+        ? t("canvas.promptPanel.depthVideoPrompt")
+        : mode === "text" && connectedResources.images > 0
+        ? "输入看图指令（留空默认执行生图提示词反推）..."
+        : t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`);
 
     const submit = (intent: CanvasGenerationIntent = canRepeat ? "repeat" : "new") => {
         const text = prompt.trim();
@@ -242,7 +264,7 @@ export function CanvasNodePromptPanel({
             onPointerDown={(event) => event.stopPropagation()}
             onWheel={(event) => event.stopPropagation()}
         >
-            <CanvasNodeReferenceBar
+            {savedToolInputSummary || <CanvasNodeReferenceBar
                 nodeId={node.id}
                 nodes={nodes}
                 connectedNodes={connectedNodes}
@@ -250,7 +272,8 @@ export function CanvasNodePromptPanel({
                 onStartSelection={onStartReferenceSelection}
                 onReorder={onReorderReferences}
                 onLocateNode={onLocateNode}
-            />
+            />}
+            {savedDraftReferenceHint}
             {mode === "text" && connectedResources.images > 0 && (
                 <div className="mb-2 flex items-center gap-1.5 overflow-x-auto text-xs py-0.5">
                     <span className="shrink-0 text-stone-400 dark:text-stone-500">快捷指令:</span>
@@ -279,16 +302,12 @@ export function CanvasNodePromptPanel({
             )}
             <CanvasPromptChipInput
                 value={prompt}
-                references={mentionReferences}
+                references={hasSavedToolResult ? [] : mentionReferences}
                 onChange={updatePrompt}
                 onSubmit={submit}
                 className="thin-scrollbar h-40 w-full cursor-text resize-none rounded-xl px-3 py-2 text-sm leading-5 outline-none"
                 style={{ background: "transparent", color: theme.node.text }}
-                placeholder={
-                    mode === "text" && connectedResources.images > 0
-                        ? "输入看图指令（留空默认执行生图提示词反推）..."
-                        : t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`)
-                }
+                placeholder={promptPlaceholder}
             />
 
             <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -323,7 +342,9 @@ export function CanvasNodePromptPanel({
                                 onOpenChange={handleSettingsOpenChange}
                             />
                         </>
-                    ) : mode === "video" ? (
+                    ) : mode === "video" ? videoTool ? (
+                        <span className="truncate text-xs" style={{ color: theme.node.placeholder }}>{t(videoTool === "faceRefine" ? "canvas.faceRefine.title" : "canvas.nodeToolbar.depthVideo")}</span>
+                    ) : (
                         <>
                             <VideoModelPicker
                                 channelId={node.metadata?.channelId || config.channelId}
@@ -416,6 +437,16 @@ export function CanvasNodePromptPanel({
                             <Square className="size-3.5 fill-current" />
                             <span className="text-xs font-medium">{t("canvas.promptPanel.stop")}</span>
                         </span>
+                    </Button>
+                ) : videoTool ? (
+                    <Button
+                        type="primary"
+                        className="ml-auto !h-10 shrink-0 !rounded-full !px-4"
+                        icon={canRepeat ? <RefreshCw className="size-3.5" /> : undefined}
+                        disabled={!canRepeat && !prompt.trim() && !canSubmitEmptyPrompt}
+                        onClick={() => submit(canRepeat ? "repeat" : "new")}
+                    >
+                        {t(`canvas.promptPanel.${videoTool}${canRepeat ? "Repeat" : "Start"}`)}
                     </Button>
                 ) : canRepeat ? (
                     !isCurrentModelAvailable ? (
@@ -535,7 +566,7 @@ export function CanvasNodePromptPanel({
                     className={cn("flex flex-col pt-2", isFullscreen ? "flex-1 min-h-0" : "")}
                     onWheelCapture={(event) => event.stopPropagation()}
                 >
-                    <CanvasNodeReferenceBar
+                    {savedToolInputSummary || <CanvasNodeReferenceBar
                         nodeId={node.id}
                         nodes={nodes}
                         connectedNodes={connectedNodes}
@@ -549,10 +580,11 @@ export function CanvasNodePromptPanel({
                             closeExpandedEditor();
                             onLocateNode?.(targetId);
                         }}
-                    />
+                    />}
+                    {savedDraftReferenceHint}
                     <CanvasPromptChipInput
                         value={prompt}
-                        references={mentionReferences}
+                        references={hasSavedToolResult ? [] : mentionReferences}
                         onChange={updatePrompt}
                         containerClassName={isFullscreen ? "flex-1 min-h-0 flex flex-col" : ""}
                         className={cn(
@@ -560,11 +592,7 @@ export function CanvasNodePromptPanel({
                             isFullscreen ? "flex-1 min-h-[50vh] h-full" : "h-[52dvh] min-h-80"
                         )}
                         style={{ background: "transparent", borderColor: theme.toolbar.border, color: theme.node.text }}
-                        placeholder={
-                            mode === "text" && connectedResources.images > 0
-                                ? "输入看图指令（留空默认执行生图提示词反推）..."
-                                : t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`)
-                        }
+                        placeholder={promptPlaceholder}
                     />
                 </div>
             </Modal>
