@@ -72,7 +72,7 @@ describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
         });
     });
 
-    it("registers frame-video-minimax-h3-fp8-4step-pdmd with 4 steps and strictly 2 frames quota", () => {
+    it("registers frame-video-minimax-h3-fp8-4step-pdmd with 4 steps and 0-2 frames quota", () => {
         const profile = getModelProfile("frame-video-minimax-h3-fp8-4step-pdmd");
         expect(profile).toBeDefined();
         expect(profile?.capability).toBe("video");
@@ -80,7 +80,7 @@ describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
         expect(profile?.steps).toBe(4);
         expect(profile?.precision).toBe("fp8");
         expect(profile?.vramTier).toBe("8GB");
-        expect(profile?.capabilityConfig.references.minImages).toBe(2);
+        expect(profile?.capabilityConfig.references.minImages).toBe(0);
         expect(profile?.capabilityConfig.references.maxImages).toBe(2);
         expect(profile?.capabilityConfig.references.maxVideos).toBe(0);
         expect(profile?.capabilityConfig.references.maxAudios).toBe(0);
@@ -279,10 +279,18 @@ describe("Workflow Model Profiles (Image Workflow Models)", () => {
 });
 
 describe("validateModelExecution (Fail-loud validation)", () => {
-    it("rejects frame video when image count is not exactly 2", () => {
+    it("allows frame video with 0 to 2 images and rejects when exceeding 2", () => {
+        expect(() =>
+            validateModelExecution(videoMinimaxH3FrameFp8PdmdProfile, { imagesCount: 0 })
+        ).not.toThrow();
+
         expect(() =>
             validateModelExecution(videoMinimaxH3FrameFp8PdmdProfile, { imagesCount: 1 })
-        ).toThrow("至少需要 2 张参考图片");
+        ).not.toThrow();
+
+        expect(() =>
+            validateModelExecution(videoMinimaxH3FrameFp8PdmdProfile, { imagesCount: 2 })
+        ).not.toThrow();
 
         expect(() =>
             validateModelExecution(videoMinimaxH3FrameFp8PdmdProfile, { imagesCount: 3 })
@@ -404,6 +412,30 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
 
         expect((dispatched["10"] as any).inputs.image).toBe("asset_first.png");
         expect((dispatched["11"] as any).inputs.image).toBe("asset_last.png");
+    });
+
+    it("prunes first_frame and last_frame for Frame video workflow when 0 images provided", () => {
+        const rawWorkflow = {
+            "1": { inputs: { value: "prompt" }, class_type: "PrimitiveStringMultiline", _meta: { title: "prompt" } },
+            "10": { inputs: { image: "first.png" }, class_type: "LoadImage", _meta: { title: "first_frame" } },
+            "11": { inputs: { image: "last.png" }, class_type: "LoadImage", _meta: { title: "last_frame" } },
+            "20": {
+                inputs: {
+                    first_frame: ["10", 0],
+                    last_frame: ["11", 0],
+                },
+                class_type: "MiniMaxH3ImageToVideo",
+            },
+        };
+
+        const dispatched = dispatchComfyuiModelWorkflow(videoMinimaxH3FrameFp8PdmdProfile, rawWorkflow, {
+            prompt: "从破损空间站飞向恒星",
+        });
+
+        expect(dispatched["10"]).toBeUndefined();
+        expect(dispatched["11"]).toBeUndefined();
+        expect((dispatched["20"] as any).inputs.first_frame).toBeUndefined();
+        expect((dispatched["20"] as any).inputs.last_frame).toBeUndefined();
     });
 
     it("binds parameters and prunes unassigned slots in Qwen 2.1 image workflow", () => {

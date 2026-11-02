@@ -94,9 +94,18 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
         });
 
         it("detects when connected images are less than model minImages (blocking: false)", () => {
-            // Frame model requires at least 2 images
+            const mockModelProfile = {
+                ...videoMinimaxH3FrameFp8PdmdProfile,
+                capabilityConfig: {
+                    ...videoMinimaxH3FrameFp8PdmdProfile.capabilityConfig,
+                    references: {
+                        ...videoMinimaxH3FrameFp8PdmdProfile.capabilityConfig.references,
+                        minImages: 2,
+                    },
+                },
+            };
             const ctx: ConstraintContext = {
-                targetModel: videoMinimaxH3FrameFp8PdmdProfile,
+                targetModel: mockModelProfile,
                 connectedImages: 1,
                 connectedVideos: 0,
                 connectedAudios: 0,
@@ -107,6 +116,24 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
             expect(result.passed).toBe(false);
             expect(result.blocking).toBe(false);
             expect(result.reason).toBe("该模型至少需要 2 张参考图，当前仅连接 1 张");
+        });
+
+        it("passes when frame model is connected with 0 to 2 images", () => {
+            expect(rule.check({
+                targetModel: videoMinimaxH3FrameFp8PdmdProfile,
+                connectedImages: 0,
+                connectedVideos: 0,
+                connectedAudios: 0,
+                promptText: "",
+            }).passed).toBe(true);
+
+            expect(rule.check({
+                targetModel: videoMinimaxH3FrameFp8PdmdProfile,
+                connectedImages: 2,
+                connectedVideos: 0,
+                connectedAudios: 0,
+                promptText: "",
+            }).passed).toBe(true);
         });
 
         it("passes when connected images is within allowed range", () => {
@@ -268,9 +295,18 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
 
     describe("Decoupled isSelectable vs isAvailable (resolves chicken-and-egg paradox)", () => {
         it("allows selecting a model that requires inputs even when 0 inputs are connected (isSelectable=true, isAvailable=false)", () => {
-            // For example: blank node switching to Frame video model (minImages: 2)
+            const mockModelRequiringInput = {
+                ...videoMinimaxH3FrameFp8PdmdProfile,
+                capabilityConfig: {
+                    ...videoMinimaxH3FrameFp8PdmdProfile.capabilityConfig,
+                    references: {
+                        ...videoMinimaxH3FrameFp8PdmdProfile.capabilityConfig.references,
+                        minImages: 2,
+                    },
+                },
+            };
             const ctx: ConstraintContext = {
-                targetModel: videoMinimaxH3FrameFp8PdmdProfile,
+                targetModel: mockModelRequiringInput,
                 connectedImages: 0,
                 connectedVideos: 0,
                 connectedAudios: 0,
@@ -282,6 +318,22 @@ describe("Model Constraint Engine (Specification Pattern)", () => {
             expect(result.isSelectable).toBe(true);
             expect(result.warningReasons).toContain("该模型至少需要 2 张参考图，当前仅连接 0 张");
             expect(result.blockingReasons).toHaveLength(0);
+        });
+
+        it("evaluates Frame video model as fully available with 0 connected images", () => {
+            const ctx: ConstraintContext = {
+                targetModel: videoMinimaxH3FrameFp8PdmdProfile,
+                connectedImages: 0,
+                connectedVideos: 0,
+                connectedAudios: 0,
+                promptText: "a cinematic space journey",
+            };
+
+            const result = evaluateModelAvailability(ctx);
+            expect(result.isAvailable).toBe(true);
+            expect(result.isSelectable).toBe(true);
+            expect(result.warningReasons).toEqual([]);
+            expect(result.blockingReasons).toEqual([]);
         });
 
         it("allows selecting Inpaint model when 0 or 1 image connected, but blocks when > 2 images", () => {

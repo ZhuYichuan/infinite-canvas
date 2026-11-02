@@ -3135,9 +3135,21 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
     const isFrameWorkflow = targetWorkflowItem?.category === "frameVideo";
     const isFrameMode = !isVideoTool && (modelProfile?.category === "frameVideo" || isFrameWorkflow || initialVideoMode === "frame");
     const videoMode = isFrameMode ? "frame" : "omni";
+    const frameImages: ReferenceImage[] = [];
+    if (isFrameMode) {
+        const frameCandidates: Array<ReferenceImage | undefined> = [req.firstFrame, req.lastFrame, ...(req.references || [])];
+        const seenFrameIds = new Set<string>();
+        for (const candidate of frameCandidates) {
+            if (!candidate) continue;
+            const id = candidate.id || candidate.url || candidate.dataUrl || String(frameImages.length);
+            if (seenFrameIds.has(id)) continue;
+            seenFrameIds.add(id);
+            frameImages.push(candidate);
+        }
+    }
     if (modelProfile) {
         validateModelExecution(modelProfile, {
-            imagesCount: (req.references?.length || 0) + (req.firstFrame ? 1 : 0) + (req.lastFrame ? 1 : 0),
+            imagesCount: isFrameMode ? frameImages.length : (req.references?.length || 0),
             videosCount: req.referenceVideos?.length || 0,
             audiosCount: req.referenceAudios?.length || 0,
             size: req.config.size,
@@ -3184,16 +3196,7 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
         const audioAssetIds: string[] = [];
 
         if (videoMode === "frame") {
-            // 首尾帧模式 - 严格校验（Fail-loud）：在任何上传之前先构建去重后的参考图并校验数量/类型
-            const frameCandidates: Array<ReferenceImage | undefined> = [req.firstFrame, req.lastFrame, ...(req.references || [])];
-            const frameImages: ReferenceImage[] = [];
-            const seenFrameIds = new Set<string>();
-            for (const candidate of frameCandidates) {
-                if (!candidate) continue;
-                if (seenFrameIds.has(candidate.id)) continue;
-                seenFrameIds.add(candidate.id);
-                frameImages.push(candidate);
-            }
+            // 首尾帧模式 - 严格校验（Fail-loud）：在任何上传之前先校验数量/类型
             if (frameImages.length > 2) {
                 throw new ComfyuiError(`首尾帧模式最多支持 2 张参考图，已连接 ${frameImages.length} 张`);
             }
