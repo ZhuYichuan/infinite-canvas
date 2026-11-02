@@ -586,8 +586,6 @@ export default {
             "dragOrClickToInsert": "Drag or click to insert onto canvas",
             "systemAssets": "System Presets",
             "myAssets": "My Assets",
-            "searchPoses": "Search poses by name or ID...",
-            "noMatchingPoses": "No matching poses found",
             "searchPrompts": "Search prompts",
             "noPrompts": "No prompts",
             "promptCopied": "Prompt copied",
@@ -611,10 +609,7 @@ export default {
             "search": "Search assets",
             "empty": "No assets",
             "tabMyAssets": "My Assets",
-            "tabPosePresets": "Pose Presets",
-            "searchPoses": "Search poses by name or ID...",
-            "emptyPoses": "No matching pose presets found",
-            "insertAngle": "Insert Perspective"
+            "tabSystemPresets": "System presets"
         },
         "imageTools": {
             "copyPrompt": "Copy prompt",
@@ -2064,6 +2059,26 @@ export default {
     "locale": {
         "zhCN": "简体中文",
         "enUS": "English"
+    },
+    "systemPresets": {
+        "categories": {
+            "pose": "Pose",
+            "costume": "Outfit",
+            "portrait": "Hairstyle"
+        },
+        "renditions": {
+            "line": "Line art",
+            "depth": "Depth"
+        },
+        "search": "Search name, ID or prompt...",
+        "allGroups": "All",
+        "empty": "No matching preset assets",
+        "loadFailed": "Failed to load preset assets",
+        "retry": "Retry",
+        "sensitive": "Sensitive",
+        "sensitiveHint": "When off, duo interaction, lingerie and swimwear categories are hidden",
+        "insert": "Insert",
+        "dragOrClick": "Drag or click to insert"
     },
     "workflowsPage": {
         "title": "Workflow Management & Model Configuration",

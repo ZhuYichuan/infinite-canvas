@@ -3214,7 +3214,9 @@ function InfiniteCanvasPage() {
                 setSelectedConnectionId(null);
                 setDialogNodeId(id);
             } else {
-                await insertAssistantImage({ id: `asset-${Date.now()}`, prompt: payload.title, dataUrl: payload.dataUrl, storageKey: payload.storageKey }, targetPosition);
+                // 预设资产可携带提示词（服装关键词 / 发型描述），优先作为节点 prompt 与标题
+                const prompt = payload.promptText?.trim() || payload.title;
+                await insertAssistantImage({ id: `asset-${Date.now()}`, prompt, dataUrl: payload.dataUrl, storageKey: payload.storageKey }, targetPosition);
             }
             setAssetPickerOpen(false);
         },

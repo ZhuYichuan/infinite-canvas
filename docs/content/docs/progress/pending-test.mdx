@@ -7,6 +7,19 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- 系统预设资产图库（姿态 / 服装 / 发型）：
+  - 打开生图工作台与视频工作台的「查看我的资产」弹窗，切到「系统预设」页签；验证默认展示姿态类目、系列与分组筛选、缩略图网格正常加载，切到「服装」「发型」类目时筛选条件重置且网格重新加载。
+  - 在画布页打开资产侧栏，切到「系统预设」；验证双列卡片布局不挤压、窄栏下分页可用、拖拽卡片到画布空白处能生成图片节点，双击卡片外区域不误触插入。
+  - 姿态类目切换「线稿 / 深度」，验证同一姿态的缩略图内容随之变化但姿态列表不变；切换机位芯片后缩略图与插入结果都跟随所选机位。
+  - 点击插入后检查生成的图片节点：图片来自 CDN 原寸图并已落本地存储（刷新后仍可见），标题带机位后缀；插入服装或发型时，节点提示词自动带上对应的英文关键词或发型描述，工作台提示词框同理（已有输入时追加在后）。
+  - 关闭「敏感内容」开关时，双人互动、内衣、泳装等分类不出现在系列列表中；打开后出现，且默认不自动跳转。
+  - 断网或 CDN 不可用时打开「系统预设」，验证展示加载失败与重试入口，不出现空白面板或崩溃。
+
+- 预设资产索引同步脚本：
+  - 运行 `node scripts/sync-system-presets.mjs`，验证三个数据文件重新生成后 `prettier --check` 通过、再次运行输出「无变化」。
+  - 运行 `node scripts/sync-system-presets.mjs --check`，在数据与 CDN 一致时退出码为 0；手工改动任一数据文件后退出码为 1 并指出具体文件。
+  - 临时从 `scripts/system-presets/zh-labels.json` 删除一个分类标签后重跑，验证脚本报错并指明缺失的日文字段，而不是生成半成品数据。
+
 - 深度视频国际化字典键去重与文案完整性：
   - 启动或打包项目（Vite），验证控制台不再出现 `Duplicate key "depthVideo" in object literal` 的警告。
   - 打开深度视频设置弹窗，验证标题、说明、渠道选择等弹窗文案（`canvas.depthVideo.modal.*`）正常显示。
@@ -1119,6 +1132,7 @@ The current release needs manual verification in these areas:
 - Agent inline references: type `/` to select an enabled Skill or `@` to select a canvas asset at the caret; tokens should remain aligned with text, support keyboard navigation and hover previews, and preserve their positions after sending or refreshing.
 - Agent message metadata: image attachments, Skills, canvas references, and local previews should survive page refreshes and Agent restarts through exact `clientMessageId`, `threadId`, and `turnId` ownership; protocol upgrades must not reset the independent storage format, unknown or damaged storage must refuse writes without overwriting files, no records may be silently pruned by count or size, and deleting a thread should remove its metadata and preview assets without relying on browser IndexedDB or text matching.
 - Prompt Center layout, source synchronization, search, asset insertion, prompt detail dialogs, and compact split-layout prompt pickers in the image and video workbenches.
+- System preset gallery: pose (line art and depth renditions), outfit and hairstyle presets should load from their public CDNs, filter by series/group/keyword, hide sensitive categories by default, insert the full-resolution image into a node with its prompt text attached, and degrade to a retryable error state when a CDN is unreachable.
 - Workbench history image cleanup: after generating content in the image or video workbench, deleting an asset, canvas image node, canvas content, or canvas project must not remove thumbnails, results, or references from generation history; deleting a generation record should still remove its dedicated local files.
 - Settings import/export and WebDAV-related configuration.
 - Canvas node duplication (right-click "Duplicate" and keyboard copy-paste) integrity and semantics: unifying deep-cloning with `cloneNodeMetadata` across both right-click and Ctrl+C/V paths; resetting transient generation state (`status`, `jobId`, `errorDetails`, `isTimeout`) to ungenerated ready state with the "AI 生成" button; regenerating unique IDs and clearing `jobId`/errors for batch `images` and `texts` sub-items to prevent retry resume interference; cascading duplication for Group nodes to include all children and internal connections; and auto-validating group containment on single-node duplication.
