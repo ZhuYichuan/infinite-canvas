@@ -4,6 +4,7 @@
 
 + [新增] 视频模型新增 2 款 INT8 旋转量化 4步 PDMD 模型（`omni-video-minimax-h3-int8-4step-pdmd` / `frame-video-minimax-h3-int8-4step-pdmd`），底模为 `minimax_h3_{ref2va,fl2va}_int8_convrot.safetensors`（全量未剪枝，约 34 GB），与对应 FP8 4步 PDMD 的能力契约（参考资源配额、尺寸档位、时长区间、槽位映射、衍生工具）逐字段一致，用于未启用 FP8 硬件加速的运行环境；同步内置 API 工作流资产、渠道工作流清单、ComfyUI 工作流编辑器白名单与工作流手册下载与权重清单。
 + [修复] 修复选中模型后切换「全能参考 / 首尾帧」模式或切换渠道工作流时，`modelId` 被硬编码改写回 FP8 默认模型的问题；现按当前模型的量化家族与采样档位解析同族对应模型（新增 `resolveVideoModelIdForMode` 与 `resolveVideoModelIdFromWorkflowId`）。
++ [修复] 修复新增内置模型在已有主机上永久不可用的问题：`supportedModelIds` 在创建主机时写死且无任何 UI 编辑入口，导致旧配置下模型选择器全量置灰（提示「当前主机未启用该模型支持」）。现将 2 款 INT8 模型纳入默认支持清单，并在 `createModelChannel` 中新增与 `mergeBuiltinWorkflows` 同构的内置模型集演进逻辑：仅当主机清单包含全部旧默认视频模型时自动补齐新增内置模型，显式裁剪的子集与空数组不受影响。
 + [重构] 移除 `WorkflowModelProfile` 中无任何运行时消费方的 `precision`、`vramTier` 与 `capabilityConfig.vram` 三个字段：它们仅被测试断言读取，UI 自 v0.22 起已不再展示，保留只能承载无法核验的推测数据；同时补齐 `WorkflowReferencesConfig.minAudios` 缺失的类型声明。
 
 ## v0.22.1 - 2026-11-02

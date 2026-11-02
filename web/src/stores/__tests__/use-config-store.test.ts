@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
     COMFYUI_DEFAULT_MODELS,
+    DEFAULT_SUPPORTED_IMAGE_MODEL_IDS,
+    LEGACY_DEFAULT_SUPPORTED_VIDEO_MODEL_IDS,
     createModelChannel,
     defaultConfig,
     isAiConfigReady,
@@ -390,6 +392,8 @@ describe("default built-in ComfyUI channel", () => {
             "omni-video-minimax-h3-fp8",
             "frame-video-minimax-h3-fp8-4step-pdmd",
             "frame-video-minimax-h3-fp8",
+            "omni-video-minimax-h3-int8-4step-pdmd",
+            "frame-video-minimax-h3-int8-4step-pdmd",
             "image-qwen-2.1",
             "image-z-turbo",
             "image-flux2-dev",
@@ -404,7 +408,7 @@ describe("default built-in ComfyUI channel", () => {
         expect(customChannel.name).toBe("自定义 ComfyUI");
         expect(customChannel.models.length).toBe(8);
         expect(customChannel.workflows?.length).toBe(15);
-        expect(customChannel.supportedModelIds?.length).toBe(10);
+        expect(customChannel.supportedModelIds?.length).toBe(12);
         expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
         expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);
@@ -435,6 +439,40 @@ describe("isModelSupportedByHost & updateChannelSupportedModels", () => {
         expect(isModelSupportedByHost(restrictedChannel, "omni-video-minimax-h3-fp8-4step-pdmd")).toBe(true);
         expect(isModelSupportedByHost(restrictedChannel, "omni-video-minimax-h3-fp8")).toBe(false);
         expect(isModelSupportedByHost(restrictedChannel, "frame-video-minimax-h3-fp8")).toBe(false);
+    });
+
+    it("evolves legacy default supportedModelIds by appending newly added builtin models", () => {
+        // 旧版默认清单（INT8 量化模型纳入默认前）：4 视频 + 4 图 + 1 文 + 1 音
+        const legacyDefaultIds = [
+            ...LEGACY_DEFAULT_SUPPORTED_VIDEO_MODEL_IDS,
+            ...DEFAULT_SUPPORTED_IMAGE_MODEL_IDS,
+            "text-qwen-35",
+            "audio-minimax-music-3",
+        ];
+        const migrated = createModelChannel({ id: "legacy-188", name: "188", supportedModelIds: legacyDefaultIds });
+
+        expect(migrated.supportedModelIds).toContain("omni-video-minimax-h3-int8-4step-pdmd");
+        expect(migrated.supportedModelIds).toContain("frame-video-minimax-h3-int8-4step-pdmd");
+        expect(migrated.supportedModelIds?.slice(0, legacyDefaultIds.length)).toEqual(legacyDefaultIds);
+        expect(isModelSupportedByHost(migrated, "omni-video-minimax-h3-int8-4step-pdmd")).toBe(true);
+        expect(isModelSupportedByHost(migrated, "frame-video-minimax-h3-int8-4step-pdmd")).toBe(true);
+
+        // 幂等：重复归一不会不断增长
+        const normalizedAgain = createModelChannel(migrated);
+        expect(normalizedAgain.supportedModelIds).toEqual(migrated.supportedModelIds);
+    });
+
+    it("does not pollute explicitly curated subsets", () => {
+        const curated = createModelChannel({
+            supportedModelIds: ["omni-video-minimax-h3-fp8-4step-pdmd", "image-qwen-2.1"],
+        });
+        expect(curated.supportedModelIds).toEqual(["omni-video-minimax-h3-fp8-4step-pdmd", "image-qwen-2.1"]);
+        expect(isModelSupportedByHost(curated, "omni-video-minimax-h3-int8-4step-pdmd")).toBe(false);
+    });
+
+    it("keeps an explicitly empty supportedModelIds empty (open-by-default)", () => {
+        const openChannel = createModelChannel({ supportedModelIds: [] });
+        expect(openChannel.supportedModelIds).toEqual([]);
     });
 
     it("allows image models by default when channel has only legacy video supportedModelIds", () => {

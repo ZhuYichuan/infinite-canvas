@@ -13,8 +13,16 @@ The current release needs manual verification in these areas:
   - 选中 INT8 模型生成一次视频，确认提交的工作流 `UNETLoader.unet_name` 为 `*_int8_convrot.safetensors`，LoRA 与 EasyCache 节点保留、未连满参考插槽被正确剔除；
   - 选中 INT8 模型后打开参数面板切换「全能 ↔ 首尾帧」模式，确认模型保持 INT8 家族（不会被静默改写为 FP8）；从 FP8 20步 切换时的结果与旧行为一致；
   - 在渠道工作流下拉中选择 INT8 工作流后，确认节点 `modelId` 同步为对应 INT8 模型，后续生成命中 INT8 工作流而非 FP8 默认工作流；
-  - 确认未把 INT8 模型写入 `DEFAULT_SUPPORTED_VIDEO_MODEL_IDS`：新初始化的主机需在渠道设置中手动勾选后才能使用，避免主机无权重时静默选中导致 `value_not_in_list`；
+  - 确认 INT8 模型已纳入默认支持清单，但不改动默认模型：新建主机可直接选用 INT8 模型，视频节点默认模型仍为 FP8 4步 PDMD；
   - 在工作流手册页确认「INT8 4步 PDMD (无 FP8 硬件)」变体的 API / UI 工作流下载与权重清单正确（权重标注为全量未剪枝约 34 GB，非低显存档位）。
+
+- 内置模型支持清单演进（旧主机自动补齐新增模型）：
+  - 使用一份旧版本创建的本地配置（主机「支持的模型」为旧默认 4 视频 + 4 图 + 1 文 + 1 音）启动页面，打开画布视频节点的模型选择器；
+  - 确认「MiniMax H3 全能 (INT8 4步 PDMD)」与「MiniMax H3 首尾帧 (INT8 4步 PDMD)」不再置灰，不再提示「当前主机未启用该模型支持」，可直接选中并提交；
+  - 确认原有 4 款 FP8 模型仍可选、默认模型未变化（全能/首尾帧仍为 FP8 4步 PDMD）；
+  - 反复刷新页面，确认支持清单不会重复增长；
+  - 构造一份显式裁剪过的支持清单（仅含 `omni-video-minimax-h3-fp8-4step-pdmd`），确认不会被自动补齐，INT8 模型仍为不可选；
+  - 主机上未放置 `minimax_h3_*_int8_convrot.safetensors` 时选中 INT8 模型提交，确认报错为 ComfyUI 的 `value_not_in_list` 具体原因，而非静默回退到 FP8 工作流。
 
 - 模型 Profile 冗余字段清理：
   - 确认视频模型选择器、参数面板与生成提交流程中不再依赖已删除的 `precision` / `vramTier` / `capabilityConfig.vram`，无任何空白或报错；
