@@ -7,6 +7,19 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- MiniMax H3 INT8 旋转量化视频模型（无 FP8 硬件加速）：
+  - 在 ComfyUI 主机上准备 `models/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors`（或 `minimax_h3_fl2va_int8_convrot.safetensors`）以及既有的 PDMD 4步 LoRA、nvfp4_awq 文本编码器与双 VAE；
+  - 画布视频节点打开模型选择器，确认新增「MiniMax H3 全能 (INT8 4步 PDMD)」与「MiniMax H3 首尾帧 (INT8 4步 PDMD)」两项，且与 FP8 同类模型的尺寸档位、时长滑杆与快捷胶囊完全一致；
+  - 选中 INT8 模型生成一次视频，确认提交的工作流 `UNETLoader.unet_name` 为 `*_int8_convrot.safetensors`，LoRA 与 EasyCache 节点保留、未连满参考插槽被正确剔除；
+  - 选中 INT8 模型后打开参数面板切换「全能 ↔ 首尾帧」模式，确认模型保持 INT8 家族（不会被静默改写为 FP8）；从 FP8 20步 切换时的结果与旧行为一致；
+  - 在渠道工作流下拉中选择 INT8 工作流后，确认节点 `modelId` 同步为对应 INT8 模型，后续生成命中 INT8 工作流而非 FP8 默认工作流；
+  - 确认未把 INT8 模型写入 `DEFAULT_SUPPORTED_VIDEO_MODEL_IDS`：新初始化的主机需在渠道设置中手动勾选后才能使用，避免主机无权重时静默选中导致 `value_not_in_list`；
+  - 在工作流手册页确认「INT8 4步 PDMD (无 FP8 硬件)」变体的 API / UI 工作流下载与权重清单正确（权重标注为全量未剪枝约 34 GB，非低显存档位）。
+
+- 模型 Profile 冗余字段清理：
+  - 确认视频模型选择器、参数面板与生成提交流程中不再依赖已删除的 `precision` / `vramTier` / `capabilityConfig.vram`，无任何空白或报错；
+  - 逐个切换 6 款视频模型的尺寸、时长与参考资源，确认 UI 行为与清理前一致（这些字段原本即无运行时消费者）。
+
 - MiniMax H3 首尾帧视频生成 0 图与 2 图连线支持：
   - 画布创建视频节点，选择「MiniMax H3 首尾帧 (FP8 4步 PDMD)」或「MiniMax H3 首尾帧 (FP8 20步)」模型；
   - 在未连入任何参考图片（0 张参考图）情况下，输入提示词，验证提示词面板不再弹出「该模型至少需要 2 张参考图，当前仅连接 0 张」阻断警告，生成按钮保持可用且能正常提交生成；

@@ -14,6 +14,8 @@ import {
     textQwen35ChatProfile,
     textQwen35VlmProfile,
     listModelsByCapability,
+    resolveVideoModelIdForMode,
+    resolveVideoModelIdFromWorkflowId,
     validateModelExecution,
     videoMinimaxH3FrameFp8PdmdProfile,
     videoMinimaxH3FrameFp8Profile,
@@ -27,10 +29,17 @@ import {
     parseImageSizeTierAndRatio,
 } from "../index";
 
-describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
-    it("registers exactly 4 FP8 models and excludes BF16", () => {
-        expect(BUILTIN_VIDEO_WORKFLOW_MODELS.length).toBe(4);
-        expect(BUILTIN_VIDEO_WORKFLOW_MODELS.every((m) => m.precision === "fp8")).toBe(true);
+describe("Workflow Model Profiles (MiniMax H3 6 Video Models)", () => {
+    it("registers 4 FP8 + 2 INT8 models and excludes BF16", () => {
+        expect(BUILTIN_VIDEO_WORKFLOW_MODELS.length).toBe(6);
+        expect(BUILTIN_VIDEO_WORKFLOW_MODELS.map((m) => m.id)).toEqual([
+            "omni-video-minimax-h3-fp8-4step-pdmd",
+            "omni-video-minimax-h3-fp8",
+            "frame-video-minimax-h3-fp8-4step-pdmd",
+            "frame-video-minimax-h3-fp8",
+            "omni-video-minimax-h3-int8-4step-pdmd",
+            "frame-video-minimax-h3-int8-4step-pdmd",
+        ]);
 
         // BF16 models should be completely purged
         expect(getModelProfile("omni-video-minimax-h3-bf16-turbo")).toBeUndefined();
@@ -39,19 +48,12 @@ describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
         expect(getModelProfile("frame-video-minimax-h3-bf16-20step")).toBeUndefined();
     });
 
-    it("registers omni-video-minimax-h3-fp8-4step-pdmd with 4 steps and 8GB VRAM tier", () => {
+    it("registers omni-video-minimax-h3-fp8-4step-pdmd with 4 steps", () => {
         const profile = getModelProfile("omni-video-minimax-h3-fp8-4step-pdmd");
         expect(profile).toBeDefined();
         expect(profile?.capability).toBe("video");
         expect(profile?.category).toBe("omniVideo");
         expect(profile?.steps).toBe(4);
-        expect(profile?.precision).toBe("fp8");
-        expect(profile?.vramTier).toBe("8GB");
-        expect(profile?.capabilityConfig.vram?.recommendedDuration).toEqual({
-            min: 3,
-            max: 5,
-            description: "推荐 8G/16G 显存，极速分镜 3~5 秒",
-        });
         expect(profile?.capabilityConfig.references.maxImages).toBe(9);
         expect(profile?.capabilityConfig.references.maxVideos).toBe(3);
         expect(profile?.capabilityConfig.references.maxAudios).toBe(3);
@@ -59,17 +61,10 @@ describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
         expect(profile?.capabilityConfig.duration?.tags).toEqual([5, 10, 15]);
     });
 
-    it("registers omni-video-minimax-h3-fp8 with 20 steps and 16GB VRAM tier", () => {
+    it("registers omni-video-minimax-h3-fp8 with 20 steps", () => {
         const profile = getModelProfile("omni-video-minimax-h3-fp8");
         expect(profile).toBeDefined();
         expect(profile?.steps).toBe(20);
-        expect(profile?.precision).toBe("fp8");
-        expect(profile?.vramTier).toBe("16GB");
-        expect(profile?.capabilityConfig.vram?.recommendedDuration).toEqual({
-            min: 5,
-            max: 8,
-            description: "推荐 16G/24G 显存，标准分镜 5~8 秒",
-        });
     });
 
     it("registers frame-video-minimax-h3-fp8-4step-pdmd with 4 steps and 0-2 frames quota", () => {
@@ -78,30 +73,58 @@ describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
         expect(profile?.capability).toBe("video");
         expect(profile?.category).toBe("frameVideo");
         expect(profile?.steps).toBe(4);
-        expect(profile?.precision).toBe("fp8");
-        expect(profile?.vramTier).toBe("8GB");
         expect(profile?.capabilityConfig.references.minImages).toBe(0);
         expect(profile?.capabilityConfig.references.maxImages).toBe(2);
         expect(profile?.capabilityConfig.references.maxVideos).toBe(0);
         expect(profile?.capabilityConfig.references.maxAudios).toBe(0);
-        expect(profile?.capabilityConfig.vram?.recommendedDuration).toEqual({
-            min: 3,
-            max: 5,
-            description: "推荐 8G/16G 显存，极速插值 3~5 秒",
-        });
     });
 
-    it("registers frame-video-minimax-h3-fp8 with 20 steps and 16GB VRAM tier", () => {
+    it("registers frame-video-minimax-h3-fp8 with 20 steps", () => {
         const profile = getModelProfile("frame-video-minimax-h3-fp8");
         expect(profile).toBeDefined();
         expect(profile?.steps).toBe(20);
-        expect(profile?.precision).toBe("fp8");
-        expect(profile?.vramTier).toBe("16GB");
-        expect(profile?.capabilityConfig.vram?.recommendedDuration).toEqual({
-            min: 5,
-            max: 8,
-            description: "推荐 16G/24G 显存，标准平滑插值 5~8 秒",
-        });
+    });
+
+    it("registers INT8 ConvRot models with the exact same capability contract as their FP8 siblings", () => {
+        const omniFp8 = getModelProfile("omni-video-minimax-h3-fp8-4step-pdmd")!;
+        const omniInt8 = getModelProfile("omni-video-minimax-h3-int8-4step-pdmd")!;
+        expect(omniInt8).toBeDefined();
+        expect(omniInt8.category).toBe("omniVideo");
+        expect(omniInt8.steps).toBe(4);
+        expect(omniInt8.capabilityConfig).toEqual(omniFp8.capabilityConfig);
+        expect(omniInt8.slotMapping).toEqual(omniFp8.slotMapping);
+        expect(omniInt8.supportedTools).toEqual(omniFp8.supportedTools);
+
+        const frameFp8 = getModelProfile("frame-video-minimax-h3-fp8-4step-pdmd")!;
+        const frameInt8 = getModelProfile("frame-video-minimax-h3-int8-4step-pdmd")!;
+        expect(frameInt8).toBeDefined();
+        expect(frameInt8.category).toBe("frameVideo");
+        expect(frameInt8.steps).toBe(4);
+        expect(frameInt8.capabilityConfig).toEqual(frameFp8.capabilityConfig);
+        expect(frameInt8.slotMapping).toEqual(frameFp8.slotMapping);
+        expect(frameInt8.supportedTools).toEqual(frameFp8.supportedTools);
+    });
+
+    it("resolves sibling models across omni/frame mode switches without dropping the INT8 family", () => {
+        expect(resolveVideoModelIdForMode("omni-video-minimax-h3-int8-4step-pdmd", "frame"))
+            .toBe("frame-video-minimax-h3-int8-4step-pdmd");
+        expect(resolveVideoModelIdForMode("frame-video-minimax-h3-int8-4step-pdmd", "omni"))
+            .toBe("omni-video-minimax-h3-int8-4step-pdmd");
+        expect(resolveVideoModelIdForMode("omni-video-minimax-h3-fp8-4step-pdmd", "frame"))
+            .toBe("frame-video-minimax-h3-fp8-4step-pdmd");
+        expect(resolveVideoModelIdForMode("omni-video-minimax-h3-fp8", "frame"))
+            .toBe("frame-video-minimax-h3-fp8");
+        expect(resolveVideoModelIdForMode(undefined, "frame"))
+            .toBe("frame-video-minimax-h3-fp8-4step-pdmd");
+    });
+
+    it("resolves video model id from channel workflow id", () => {
+        expect(resolveVideoModelIdFromWorkflowId("builtin-omni-video-minimax-h3-int8-4step-pdmd"))
+            .toBe("omni-video-minimax-h3-int8-4step-pdmd");
+        expect(resolveVideoModelIdFromWorkflowId("builtin-frame-video-minimax-h3-fp8-4step-pdmd"))
+            .toBe("frame-video-minimax-h3-fp8-4step-pdmd");
+        expect(resolveVideoModelIdFromWorkflowId("builtin-t2i-qwen-image-21")).toBeUndefined();
+        expect(resolveVideoModelIdFromWorkflowId(undefined)).toBeUndefined();
     });
 
     it("resolves model profile by category keyword and legacy aliases", () => {
@@ -129,12 +152,14 @@ describe("Workflow Model Profiles (MiniMax H3 4 FP8 Models)", () => {
 
     it("lists models by capability", () => {
         const videoModels = listModelsByCapability("video");
-        expect(videoModels.length).toBe(4);
+        expect(videoModels.length).toBe(6);
         expect(videoModels.map((m) => m.id)).toEqual([
             "omni-video-minimax-h3-fp8-4step-pdmd",
             "omni-video-minimax-h3-fp8",
             "frame-video-minimax-h3-fp8-4step-pdmd",
             "frame-video-minimax-h3-fp8",
+            "omni-video-minimax-h3-int8-4step-pdmd",
+            "frame-video-minimax-h3-int8-4step-pdmd",
         ]);
 
         const imageModels = listModelsByCapability("image");

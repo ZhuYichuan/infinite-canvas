@@ -384,7 +384,7 @@ describe("default built-in ComfyUI channel", () => {
             "MiniMax H3 首尾帧视频",
             "MiniMax Music 03",
         ]);
-        expect(defaultConfig.channels[0].workflows?.length).toBe(13);
+        expect(defaultConfig.channels[0].workflows?.length).toBe(15);
         expect(defaultConfig.channels[0].supportedModelIds).toEqual([
             "omni-video-minimax-h3-fp8-4step-pdmd",
             "omni-video-minimax-h3-fp8",
@@ -395,6 +395,7 @@ describe("default built-in ComfyUI channel", () => {
             "image-flux2-dev",
             "image-qwen-inpaint",
             "text-qwen-35",
+            "audio-minimax-music-3",
         ]);
     });
 
@@ -402,8 +403,8 @@ describe("default built-in ComfyUI channel", () => {
         const customChannel = createModelChannel({ id: "my-custom", name: "自定义 ComfyUI" });
         expect(customChannel.name).toBe("自定义 ComfyUI");
         expect(customChannel.models.length).toBe(8);
-        expect(customChannel.workflows?.length).toBe(13);
-        expect(customChannel.supportedModelIds?.length).toBe(9);
+        expect(customChannel.workflows?.length).toBe(15);
+        expect(customChannel.supportedModelIds?.length).toBe(10);
         expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
         expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);

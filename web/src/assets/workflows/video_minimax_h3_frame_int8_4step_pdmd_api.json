@@ -1,0 +1,319 @@
+{
+  "92": {
+    "inputs": {
+      "filename_prefix": "video/MiniMax_H3",
+      "format": "auto",
+      "format.codec": "auto",
+      "codec": "auto",
+      "video": [
+        "138",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "output_video"
+    }
+  },
+  "114": {
+    "inputs": {
+      "image": "fisrt.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "first_frame"
+    }
+  },
+  "121": {
+    "inputs": {
+      "value": 960
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "122": {
+    "inputs": {
+      "value": 544
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "123": {
+    "inputs": {
+      "Number": "5"
+    },
+    "class_type": "Float",
+    "_meta": {
+      "title": "duration"
+    }
+  },
+  "124": {
+    "inputs": {
+      "image": "last.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "last_frame"
+    }
+  },
+  "125": {
+    "inputs": {
+      "value": 0
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "seed"
+    }
+  },
+  "126": {
+    "inputs": {
+      "value": "Keep the exact camera position, the same three-fleet composition and the same pale gas giant backdrop as the reference image, but now the standoff has just broken into open battle. Blue-white lance beams and glowing tracer salvos cross the open space between the fleets; visible shield envelopes ripple into glowing domes around the ships. A cruiser on the center line has taken a hit and its flank blooms into a spray of molten debris tumbling slowly outward. The left wedge of blocky gunmetal warships has driven forward and now sits noticeably closer to camera, and the surviving ships have spread into a broken mass of overlapping dark silhouettes backlit by the gas giant's limb. Drifting debris field, glowing plasma trails, brighter volumetric lighting, cinematic, extremely high detail."
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "prompt"
+    }
+  },
+  "127": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "128": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "129": {
+    "inputs": {
+      "samples": [
+        "133",
+        0
+      ],
+      "vae": [
+        "128",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE解码（音频）"
+    }
+  },
+  "130": {
+    "inputs": {
+      "samples": [
+        "133",
+        0
+      ],
+      "vae": [
+        "127",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "131": {
+    "inputs": {
+      "sampler_name": "res_multistep"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "K采样器选择"
+    }
+  },
+  "132": {
+    "inputs": {
+      "scheduler": "simple",
+      "steps": 4,
+      "denoise": 1,
+      "model": [
+        "142",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "基本调度器"
+    }
+  },
+  "133": {
+    "inputs": {
+      "noise": [
+        "137",
+        0
+      ],
+      "guider": [
+        "134",
+        0
+      ],
+      "sampler": [
+        "131",
+        0
+      ],
+      "sigmas": [
+        "132",
+        0
+      ],
+      "latent_image": [
+        "139",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "自定义采样器（高级）"
+    }
+  },
+  "134": {
+    "inputs": {
+      "model": [
+        "142",
+        0
+      ],
+      "conditioning": [
+        "139",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "基本引导器"
+    }
+  },
+  "135": {
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "select_models_diffusion_models"
+    }
+  },
+  "136": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "137": {
+    "inputs": {
+      "noise_seed": [
+        "125",
+        0
+      ]
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "随机噪波"
+    }
+  },
+  "138": {
+    "inputs": {
+      "fps": 24,
+      "bit_depth": 8,
+      "color_space": "sRGB",
+      "codec": "none",
+      "images": [
+        "130",
+        0
+      ],
+      "audio": [
+        "129",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "创建视频"
+    }
+  },
+  "139": {
+    "inputs": {
+      "prompt": [
+        "126",
+        0
+      ],
+      "width": [
+        "121",
+        0
+      ],
+      "height": [
+        "122",
+        0
+      ],
+      "length": [
+        "140",
+        1
+      ],
+      "clip": [
+        "136",
+        0
+      ],
+      "vae": [
+        "127",
+        0
+      ],
+      "first_frame": [
+        "114",
+        0
+      ],
+      "last_frame": [
+        "124",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3ImageToVideo",
+    "_meta": {
+      "title": "MiniMax H3 图像转视频"
+    }
+  },
+  "140": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "123",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "数学表达式"
+    }
+  },
+  "142": {
+    "inputs": {
+      "lora_name": "minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+        "135",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器（仅模型）"
+    }
+  }
+}

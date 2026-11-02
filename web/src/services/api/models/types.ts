@@ -5,6 +5,7 @@ export interface WorkflowReferencesConfig {
     maskSupported?: boolean;
     minVideos?: number;
     maxVideos?: number;
+    minAudios?: number;
     maxAudios?: number;
 }
 
@@ -22,17 +23,6 @@ export interface WorkflowDurationConfig {
     step?: number;
     tags?: number[];
     default: number;
-}
-
-export type VideoVramTier = "8GB" | "16GB" | "24GB" | "32GB";
-
-export interface WorkflowVramConfig {
-    tier: VideoVramTier;
-    recommendedDuration: {
-        min: number;
-        max: number;
-        description: string;
-    };
 }
 
 export interface TextCapabilityConfig {
@@ -54,7 +44,6 @@ export interface WorkflowCapabilityConfig {
     references: WorkflowReferencesConfig;
     size?: WorkflowSizeConfig;
     duration?: WorkflowDurationConfig;
-    vram?: WorkflowVramConfig;
     textConfig?: TextCapabilityConfig;
     features?: Record<string, { supported: boolean; default?: boolean }>;
 }
@@ -90,8 +79,6 @@ export interface WorkflowModelProfile {
     protocol: "comfyui";
     category: ModelCategoryType;
     steps?: number;
-    precision?: "fp8" | "bf16";
-    vramTier?: VideoVramTier;
     capabilityConfig: WorkflowCapabilityConfig;
     slotMapping: Record<string, string>;
     description?: string;

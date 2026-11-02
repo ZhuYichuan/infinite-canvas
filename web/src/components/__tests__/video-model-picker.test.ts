@@ -4,13 +4,15 @@ import { isModelSupportedByHost } from "@/stores/use-config-store";
 import type { ModelChannel } from "@/types/config";
 
 describe("VideoModelPicker Data Contract & Hierarchy", () => {
-    it("BUILTIN_VIDEO_WORKFLOW_MODELS only contains 4 FP8 models without BF16", () => {
-        expect(BUILTIN_VIDEO_WORKFLOW_MODELS).toHaveLength(4);
+    it("BUILTIN_VIDEO_WORKFLOW_MODELS contains 4 FP8 + 2 INT8 models without BF16", () => {
+        expect(BUILTIN_VIDEO_WORKFLOW_MODELS).toHaveLength(6);
         const ids = BUILTIN_VIDEO_WORKFLOW_MODELS.map((m) => m.id);
         expect(ids).toContain("omni-video-minimax-h3-fp8-4step-pdmd");
         expect(ids).toContain("omni-video-minimax-h3-fp8");
         expect(ids).toContain("frame-video-minimax-h3-fp8-4step-pdmd");
         expect(ids).toContain("frame-video-minimax-h3-fp8");
+        expect(ids).toContain("omni-video-minimax-h3-int8-4step-pdmd");
+        expect(ids).toContain("frame-video-minimax-h3-int8-4step-pdmd");
 
         // Ensure BF16 models are purged
         ids.forEach((id) => {
@@ -18,16 +20,17 @@ describe("VideoModelPicker Data Contract & Hierarchy", () => {
         });
     });
 
-    it("model profile names and VRAM tiers are human readable without raw IDs", () => {
-        BUILTIN_VIDEO_WORKFLOW_MODELS.forEach((model) => {
+    it("model profile names are human readable and unique without raw IDs", () => {
+        const names = BUILTIN_VIDEO_WORKFLOW_MODELS.map((model) => {
             expect(model.name).not.toBe("video_minimax_h3_omni");
             expect(model.name).not.toBe("video_minimax_h3_frame");
-            expect(model.vramTier).toBeDefined();
-            expect(["8GB", "16GB", "24GB", "32GB"]).toContain(model.vramTier);
+            expect(model.name.length).toBeGreaterThan(0);
+            return model.name;
         });
+        expect(new Set(names).size).toBe(names.length);
     });
 
-    it("all 4 video models define tags: [5, 10, 15] in capabilityConfig.duration for quick presets", () => {
+    it("all video models define tags: [5, 10, 15] in capabilityConfig.duration for quick presets", () => {
         BUILTIN_VIDEO_WORKFLOW_MODELS.forEach((model) => {
             expect(model.capabilityConfig.duration).toBeDefined();
             expect(model.capabilityConfig.duration?.tags).toEqual([5, 10, 15]);

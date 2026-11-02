@@ -6,7 +6,7 @@
 
 | 规格类型 | API 工作流（画布直连） | 适用环境与特点 |
 | :--- | :--- | :--- |
-| **INT8 4步 PDMD (低显存 / 无 FP8 硬件版)** | [minimax_h3_ref2v_int8_convrot_4step_pdmd_api.json](./minimax_h3_ref2v_int8_convrot_4step_pdmd_api.json) | INT8 旋转量化底模替换 FP8 裁剪底模，同样挂载 PDMD 4步蒸馏 LoRA + EasyCache，不依赖 FP8 硬件加速，适合低显存显卡、CPU 与 Apple Silicon 等无 FP8 支持的平台 |
+| **INT8 4步 PDMD (无 FP8 硬件版)** | [minimax_h3_ref2v_int8_convrot_4step_pdmd_api.json](./minimax_h3_ref2v_int8_convrot_4step_pdmd_api.json) | INT8 旋转量化底模（`int8_convrot`，全量未剪枝，约 34 GB）替换 FP8 裁剪底模，同样挂载 PDMD 4步蒸馏 LoRA + EasyCache，采样参数与 FP8 4步 PDMD 完全一致，用于未启用 FP8 硬件加速的运行环境 |
 | **FP8 4步 PDMD (极致极速版)** | [minimax_h3_ref2v_4step_pdmd_api.json](./minimax_h3_ref2v_4step_pdmd_api.json) | 挂载 PDMD 4步蒸馏 LoRA + EasyCache 特征缓存加速，4 步极速出片，显存占用低，推理耗时极短 |
 | **FP8 20步 (默认推荐)** | [minimax_h3_ref2va_fp8_20step_api.json](./minimax_h3_ref2va_fp8_20step_api.json) | 显存优化版，适合 RTX 3090/4090 或 16G~24G 单卡消费级与常规云端 |
 | **BF16 8步 Turbo (极速版)** | [minimax_h3_ref2va_bf16_8step_turbo_api.json](./minimax_h3_ref2va_bf16_8step_turbo_api.json) | 挂载 Turbo LoRA 加速，8 步极速出片，适合 24G+ / A100 / H100 专业显卡 |
@@ -24,7 +24,7 @@
 ### 必要权重文件（存放在 ComfyUI `models/` 目录）
 
 #### 1. 核心扩散模型 (`models/diffusion_models/`)
-- **INT8 规格 (低显存 / 无 FP8 硬件)**: `models/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors`
+- **INT8 规格 (无 FP8 硬件加速)**: `models/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors`（全量未剪枝，约 34 GB）
 - **FP8 规格**: `models/diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors`
 - **BF16 规格**: `models/diffusion_models/minimax_h3_ref2va_bf16.safetensors`
 
@@ -57,4 +57,4 @@
 3. **严格硬件锁死分辨率矩阵**：
    - 遵循规范，视频尺寸严禁手动输入数字，严格锁定在 0.2M~0.98M 的 9 档硬件对齐预设中（16:9 与 9:16 对称对调，上限 0.98 MP）。
 4. **多档规格自由切换**：
-   - 支持「INT8 4步 PDMD（低显存 / 无 FP8 硬件）」、「FP8 4步 PDMD（极致极速）」、「FP8 20步（标准显存优化）」、「BF16 8步 Turbo（性能加速）」与「BF16 20步（全量高精）」工作流，兼顾个人电脑单卡极速体验、专业服务器算力最大化与极致画质输出。
+   - 支持「INT8 4步 PDMD（无 FP8 硬件加速）」、「FP8 4步 PDMD（极致极速）」、「FP8 20步（标准显存优化）」、「BF16 8步 Turbo（性能加速）」与「BF16 20步（全量高精）」工作流，兼顾个人电脑单卡极速体验、专业服务器算力最大化与极致画质输出。

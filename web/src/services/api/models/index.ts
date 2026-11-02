@@ -7,12 +7,14 @@ import type {
 import {
     videoMinimaxH3OmniFp8PdmdProfile,
     videoMinimaxH3OmniFp8Profile,
+    videoMinimaxH3OmniInt8PdmdProfile,
     videoMinimaxH3OmniProfile,
     MINIMAX_H3_SIZES,
 } from "./video-minimax-h3-omni";
 import {
     videoMinimaxH3FrameFp8PdmdProfile,
     videoMinimaxH3FrameFp8Profile,
+    videoMinimaxH3FrameInt8PdmdProfile,
     videoMinimaxH3FrameProfile,
 } from "./video-minimax-h3-frame";
 import {
@@ -44,13 +46,16 @@ export * from "./audio-models";
 export * from "./constraint-engine";
 
 /**
- * 系统内置视频工作流模型清单（4 款精品 FP8 模型）
+ * 系统内置视频工作流模型清单（4 款 FP8 + 2 款 INT8 量化模型）
+ * 顺序敏感：FP8 4步 PDMD 必须首位，作为视频节点的默认回退模型
  */
 export const BUILTIN_VIDEO_WORKFLOW_MODELS: WorkflowModelProfile[] = [
     videoMinimaxH3OmniFp8PdmdProfile,
     videoMinimaxH3OmniFp8Profile,
     videoMinimaxH3FrameFp8PdmdProfile,
     videoMinimaxH3FrameFp8Profile,
+    videoMinimaxH3OmniInt8PdmdProfile,
+    videoMinimaxH3FrameInt8PdmdProfile,
 ];
 
 /**
@@ -183,6 +188,45 @@ export function getModelProfile(modelIdOrCategory?: string): WorkflowModelProfil
  */
 export function listModelsByCapability(capability: ModelCapabilityType): WorkflowModelProfile[] {
     return BUILTIN_WORKFLOW_MODELS.filter((m) => m.capability === capability);
+}
+
+/**
+ * 视频模型家族标识（量化规格 + 采样档位），用于在「全能参考 / 首尾帧」之间切换时
+ * 保留当前模型家族，避免静默回退到 FP8 默认模型。
+ * 形如 `omni-video-minimax-h3-{fp8|int8}[-4step-pdmd]`。
+ */
+const VIDEO_MODEL_ID_PATTERN = /^(?:omni|frame)-video-minimax-h3-(fp8|int8)(-4step-pdmd)?$/;
+
+/**
+ * 根据当前模型与目标模式（omni / frame）解析出同家族的对应模型 ID。
+ * 当前模型不属于已知视频家族时，回退到该方法对应的 FP8 4步 PDMD 默认模型。
+ */
+export function resolveVideoModelIdForMode(
+    currentModelId: string | undefined,
+    nextMode: "omni" | "frame",
+): string {
+    const fallback = `${nextMode}-video-minimax-h3-fp8-4step-pdmd`;
+    const currentProfile = getModelProfile(currentModelId);
+    const family = VIDEO_MODEL_ID_PATTERN.exec(currentProfile?.id ?? "");
+    if (!family) return fallback;
+
+    const candidate = `${nextMode}-video-minimax-h3-${family[1]}${family[2] ?? ""}`;
+    return BUILTIN_WORKFLOW_MODELS.some((m) => m.id === candidate) ? candidate : fallback;
+}
+
+/**
+ * 从渠道工作流 ID（形如 `builtin-omni-video-minimax-h3-int8-4step-pdmd`）反解出
+ * 对应的视频模型 ID；无法识别时返回 undefined，交由调用方回退。
+ */
+export function resolveVideoModelIdFromWorkflowId(workflowId: string | undefined): string | undefined {
+    if (!workflowId) return undefined;
+    const family = VIDEO_MODEL_ID_PATTERN.exec(
+        /(?:omni|frame)-video-minimax-h3-(?:fp8|int8)(?:-4step-pdmd)?/.exec(workflowId)?.[0] ?? "",
+    );
+    if (!family) return undefined;
+
+    const modelId = family[0];
+    return BUILTIN_WORKFLOW_MODELS.some((m) => m.id === modelId) ? modelId : undefined;
 }
 
 export interface ModelValidationParams {

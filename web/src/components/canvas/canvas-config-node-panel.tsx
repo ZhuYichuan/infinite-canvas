@@ -9,6 +9,7 @@ import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, ge
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { normalizeVideoSizeValue } from "@/components/video-settings-panel";
+import { getModelProfile, resolveVideoModelIdForMode, resolveVideoModelIdFromWorkflowId } from "@/services/api/models";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
 import { CanvasAudioSettingsPopover } from "./canvas-audio-settings-popover";
@@ -125,7 +126,8 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         if (mode === "video") {
                             const nextVideoMode = workflow?.category === "frameVideo" ? "frame" : workflow?.category === "omniVideo" ? "omni" : (node.metadata?.videoMode || config.videoMode);
                             patch.videoMode = nextVideoMode;
-                            patch.modelId = nextVideoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd";
+                            patch.modelId = resolveVideoModelIdFromWorkflowId(workflowId)
+                                ?? (nextVideoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd");
                         }
                         onConfigChange(node.id, patch);
                     }}
@@ -143,7 +145,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         config={config}
                         placement="topRight"
                         buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2"
-                        onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, config))}
+                        onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, config, node.metadata?.modelId))}
                     />
                 ) : mode === "image" ? (
                     <CanvasImageSettingsPopover config={config} placement="topRight" autoAdjustOverflow={false} buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })} />
@@ -245,14 +247,17 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     };
 }
 
-function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig) {
+function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig, currentModelId?: string) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     if (key === "videoMode") {
         const patch: Record<string, unknown> = {
             videoMode: value,
-            modelId: value === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd",
+            modelId: resolveVideoModelIdForMode(
+                currentModelId || config?.videoModel || config?.model,
+                value === "frame" ? "frame" : "omni",
+            ),
         };
         if (config) {
             const channel = resolveModelChannel(config, config.model || config.videoModel);

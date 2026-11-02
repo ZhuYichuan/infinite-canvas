@@ -1,0 +1,560 @@
+{
+  "1": {
+    "inputs": {
+      "filename_prefix": "video/MiniMax_H3",
+      "format": "auto",
+      "format.codec": "auto",
+      "codec": "auto",
+      "video": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "output_video"
+    }
+  },
+  "5": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "6": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": [
+        "11",
+        1
+      ],
+      "vae": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE解码（音频）"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "9": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "K采样器选择"
+    }
+  },
+  "10": {
+    "inputs": {
+      "scheduler": "simple",
+      "steps": [
+        "74",
+        0
+      ],
+      "denoise": 1,
+      "model": [
+        "85",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "基本调度器"
+    }
+  },
+  "11": {
+    "inputs": {
+      "noise": [
+        "15",
+        0
+      ],
+      "guider": [
+        "12",
+        0
+      ],
+      "sampler": [
+        "9",
+        0
+      ],
+      "sigmas": [
+        "10",
+        0
+      ],
+      "latent_image": [
+        "17",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "自定义采样器（高级）"
+    }
+  },
+  "12": {
+    "inputs": {
+      "model": [
+        "85",
+        0
+      ],
+      "conditioning": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "基本引导器"
+    }
+  },
+  "13": {
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "select_models_diffusion_models"
+    }
+  },
+  "14": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "15": {
+    "inputs": {
+      "noise_seed": [
+        "125",
+        0
+      ]
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "随机噪波"
+    }
+  },
+  "16": {
+    "inputs": {
+      "fps": 24,
+      "bit_depth": 8,
+      "color_space": "sRGB",
+      "codec": "none",
+      "images": [
+        "8",
+        0
+      ],
+      "audio": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "创建视频"
+    }
+  },
+  "17": {
+    "inputs": {
+      "prompt": [
+        "18",
+        0
+      ],
+      "width": [
+        "120",
+        0
+      ],
+      "height": [
+        "121",
+        0
+      ],
+      "length": [
+        "126",
+        1
+      ],
+      "ref_image_size": "match",
+      "clip": [
+        "14",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "audio_vae": [
+        "6",
+        0
+      ],
+      "ref_images.ref_image_0": [
+        "21",
+        0
+      ],
+      "ref_images.ref_image_1": [
+        "68",
+        0
+      ],
+      "ref_images.ref_image_2": [
+        "69",
+        0
+      ],
+      "ref_images.ref_image_3": [
+        "93",
+        0
+      ],
+      "ref_images.ref_image_4": [
+        "94",
+        0
+      ],
+      "ref_images.ref_image_5": [
+        "92",
+        0
+      ],
+      "ref_images.ref_image_6": [
+        "98",
+        0
+      ],
+      "ref_videos.ref_video_0": [
+        "100",
+        0
+      ],
+      "ref_videos.ref_video_1": [
+        "103",
+        0
+      ],
+      "ref_videos.ref_video_2": [
+        "106",
+        0
+      ],
+      "ref_audios.ref_audio_0": [
+        "108",
+        0
+      ],
+      "ref_audios.ref_audio_1": [
+        "110",
+        0
+      ],
+      "ref_audios.ref_audio_2": [
+        "112",
+        0
+      ],
+      "ref_images.ref_image_7": [
+        "96",
+        0
+      ],
+      "ref_images.ref_image_8": [
+        "97",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3ReferenceToVideo",
+    "_meta": {
+      "title": "MiniMax H3 参考转视频"
+    }
+  },
+  "18": {
+    "inputs": {
+      "value": "subject_definitions: <Picture 1> is the opening frame of this shot, a vertical 9:16 medium shot across a banquet head table, tilted down about ten degrees. <Subject 1> is Gu Xingzhou (S3) in <Picture 3>, the man around twenty-eight in a well-fitted dark suit with a straight tie and a gold wristwatch on his left wrist, seated on the left. <Subject 2> is Lin Huilan in <Picture 4>, the woman in a dark red stand-collar Chinese-style suit, at the right edge and softly out of focus. <Subject 3> is Shen Yan in <Picture 5>, the man around thirty with a short old scar at the outer end of his left eyebrow, in a worn grey-blue jacket with frayed cuffs, standing at the right rear. <Subject 4> is the red envelope in <Picture 6>: a deep red paper envelope with a creased corner, flap opened and inside empty, lying flat at the centre of the table. <Subject 5> is the banquet setting in <Picture 2>: the head tabletop, guest tables and warm overhead light from above. A deep red paper envelope with a creased corner lies open and empty on the tabletop and returns to the same spot in front of her. summary: The guest picks the empty envelope up, glances into it and puts it back where it was, saying over his shoulder that being empty proves the son-in-law has nothing to offer. retention_analysis: <Picture 1> (appears in [Shot 1]): fully_preserved - the medium framing, the downward tilt and the envelope already on the table open the shot exactly as supplied. <Subject 1> (appears in [Shot 1]): fully_preserved - face, neat hairline, suit fit, tie and wristwatch stay identical. <Subject 2> (appears in [Shot 1]): fully_preserved - shoulder line and stand-collar suit stay identical. <Subject 3> (appears in [Shot 1]): fully_preserved - face, the eyebrow scar and the worn grey-blue jacket with frayed cuffs stay identical; he stays still and silent. <Subject 4> (appears in [Shot 1]): fully_preserved - the deep red paper, the creased corner and the opened empty mouth stay identical; its position on the table follows this shot. <Subject 5> (appears in [Shot 1]): partially_preserved - tabletop, table layout and top-light direction are kept. detailed_description: [Shot 1] From the supplied opening frame, Gu Xingzhou reaches his right hand across about half the table width, picks the deep red paper envelope with a creased corner up off the tabletop, tilts it toward his face and looks into the open mouth for about a beat. He sets it back down on the exact spot in front of Lin Huilan and draws his hand back to his own place. Through all of that he speaks slowly and smiling, one corner of his mouth lifted, stopping for a beat at the dash: <d>[Chinese] 空的也好。说明沈先生实在——实在没什么可拿出来的。</d> Neither of the others speaks while he does; Lin Huilan's and Shen Yan's lips stay closed. Meanwhile a second wave of laughter rises over the last two seconds, louder than the first. Camera: locked off, medium shot, held so the viewer sees the envelope leave and return to the same spot. No subtitles, captions or dialogue text overlays are generated at any moment in this shot. overall_soundscape: Low banquet ambience under the line, a light paper sound as he lifts and sets the envelope down, then a second wave of laughter from the room over the last two seconds, louder than the earlier one. No new music entry. non_diegetic_music: N/A"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "prompt"
+    }
+  },
+  "21": {
+    "inputs": {
+      "image": "11.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_01"
+    }
+  },
+  "68": {
+    "inputs": {
+      "image": "2.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_02"
+    }
+  },
+  "69": {
+    "inputs": {
+      "image": "22.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_03"
+    }
+  },
+  "74": {
+    "inputs": {
+      "value": 4
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "4步"
+    }
+  },
+  "75": {
+    "inputs": {
+      "lora_name": "minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器（仅模型）"
+    }
+  },
+  "85": {
+    "inputs": {
+      "reuse_threshold": 0.2,
+      "start_percent": 0.15,
+      "end_percent": 0.95,
+      "verbose": true,
+      "model": [
+        "75",
+        0
+      ]
+    },
+    "class_type": "EasyCache",
+    "_meta": {
+      "title": "EasyCache"
+    }
+  },
+  "92": {
+    "inputs": {
+      "image": "33.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_06"
+    }
+  },
+  "93": {
+    "inputs": {
+      "image": "3.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_04"
+    }
+  },
+  "94": {
+    "inputs": {
+      "image": "7.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_05"
+    }
+  },
+  "96": {
+    "inputs": {
+      "image": "7.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_08"
+    }
+  },
+  "97": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_09"
+    }
+  },
+  "98": {
+    "inputs": {
+      "image": "7.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_07"
+    }
+  },
+  "99": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_01"
+    }
+  },
+  "100": {
+    "inputs": {
+      "video": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "102": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_02"
+    }
+  },
+  "103": {
+    "inputs": {
+      "video": [
+        "102",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "105": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_03"
+    }
+  },
+  "106": {
+    "inputs": {
+      "video": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "108": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_01"
+    }
+  },
+  "110": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_02"
+    }
+  },
+  "112": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_03"
+    }
+  },
+  "120": {
+    "inputs": {
+      "Number": "544"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "121": {
+    "inputs": {
+      "Number": "960"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "125": {
+    "inputs": {
+      "value": 439773329982754
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "seed"
+    }
+  },
+  "126": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "127",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "数学表达式"
+    }
+  },
+  "127": {
+    "inputs": {
+      "value": 5
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "duration"
+    }
+  }
+}

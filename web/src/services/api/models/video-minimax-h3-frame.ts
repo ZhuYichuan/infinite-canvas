@@ -26,8 +26,6 @@ export const videoMinimaxH3FrameFp8PdmdProfile: WorkflowModelProfile = {
     protocol: "comfyui",
     category: "frameVideo",
     steps: 4,
-    precision: "fp8",
-    vramTier: "8GB",
     capabilityConfig: {
         version: 1,
         references: {
@@ -53,14 +51,6 @@ export const videoMinimaxH3FrameFp8PdmdProfile: WorkflowModelProfile = {
             step: 1,
             tags: [5, 10, 15],
             default: 5,
-        },
-        vram: {
-            tier: "8GB",
-            recommendedDuration: {
-                min: 3,
-                max: 5,
-                description: "推荐 8G/16G 显存，极速插值 3~5 秒",
-            },
         },
     },
     slotMapping: FRAME_SLOT_MAPPING,
@@ -82,8 +72,6 @@ export const videoMinimaxH3FrameFp8Profile: WorkflowModelProfile = {
     protocol: "comfyui",
     category: "frameVideo",
     steps: 20,
-    precision: "fp8",
-    vramTier: "16GB",
     capabilityConfig: {
         version: 1,
         references: {
@@ -110,17 +98,56 @@ export const videoMinimaxH3FrameFp8Profile: WorkflowModelProfile = {
             tags: [5, 10, 15],
             default: 5,
         },
-        vram: {
-            tier: "16GB",
-            recommendedDuration: {
-                min: 5,
-                max: 8,
-                description: "推荐 16G/24G 显存，标准平滑插值 5~8 秒",
-            },
-        },
     },
     slotMapping: FRAME_SLOT_MAPPING,
     description: "MiniMax H3 首尾帧插值视频标准版 (FP8 Scaled)，支持 0~2 张参考图，平滑细腻过渡，适合高质量关键帧演化。",
+    supportedTools: {
+        faceRefine: true,
+        depthVideo: true,
+    },
+};
+
+/**
+ * MiniMax H3 首尾帧插值视频 (INT8 4步 PDMD 极速版)
+ * 底模替换为 INT8 旋转量化权重（int8_convrot），绕开 FP8 硬件加速依赖，
+ * 首尾帧插槽、尺寸与时长能力与 FP8 4步 PDMD 完全一致
+ */
+export const videoMinimaxH3FrameInt8PdmdProfile: WorkflowModelProfile = {
+    id: "frame-video-minimax-h3-int8-4step-pdmd",
+    name: "MiniMax H3 首尾帧 (INT8 4步 PDMD)",
+    capability: "video",
+    protocol: "comfyui",
+    category: "frameVideo",
+    steps: 4,
+    capabilityConfig: {
+        version: 1,
+        references: {
+            promptMaxChars: 20000,
+            minImages: 0,
+            maxImages: 2,
+            maskSupported: false,
+            minVideos: 0,
+            maxVideos: 0,
+            minAudios: 0,
+            maxAudios: 0,
+        },
+        size: {
+            parameter: "size",
+            values: MINIMAX_H3_SIZES,
+            default: "1280x736",
+            allowCustom: false,
+        },
+        duration: {
+            selection: "range",
+            min: 1,
+            max: 15,
+            step: 1,
+            tags: [5, 10, 15],
+            default: 5,
+        },
+    },
+    slotMapping: FRAME_SLOT_MAPPING,
+    description: "MiniMax H3 首尾帧插值视频 (INT8 旋转量化底模 + 4步 PDMD)，支持 0~2 张参考图，用于不启用 FP8 硬件加速的运行环境。",
     supportedTools: {
         faceRefine: true,
         depthVideo: true,

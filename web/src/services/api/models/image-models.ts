@@ -117,7 +117,6 @@ export const imageQwen21Profile: WorkflowModelProfile = {
     capability: "image",
     protocol: "comfyui",
     category: "t2i",
-    precision: "bf16",
     capabilityConfig: {
         version: 1,
         references: {
@@ -205,7 +204,6 @@ export const imageFlux2DevProfile: WorkflowModelProfile = {
     protocol: "comfyui",
     category: "i2i",
     steps: 20,
-    precision: "bf16",
     capabilityConfig: {
         version: 1,
         references: {

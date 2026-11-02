@@ -10,7 +10,7 @@ import { VideoModelPicker } from "@/components/video-model-picker";
 import { ImageModelPicker } from "@/components/image-model-picker";
 import { TextModelPicker } from "@/components/text-model-picker";
 import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, isModelSupportedByHost, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
-import { BUILTIN_VIDEO_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile, imageQwen21Profile, textQwen35Profile } from "@/services/api/models";
+import { BUILTIN_VIDEO_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile, imageQwen21Profile, resolveVideoModelIdForMode, textQwen35Profile } from "@/services/api/models";
 import { getNodeResourceCounts } from "@/lib/canvas/canvas-node-geometry";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -374,7 +374,7 @@ export function CanvasNodePromptPanel({
                                 }}
                                 config={config}
                                 buttonClassName="!h-10 min-w-0 !max-w-[160px] !justify-start !rounded-full !px-3"
-                                onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, config))}
+                                onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value, config, node.metadata?.modelId))}
                                 onOpenChange={handleSettingsOpenChange}
                             />
                         </>
@@ -646,14 +646,17 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
     };
 }
 
-function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig) {
+function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig, currentModelId?: string) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
     if (key === "videoMode") {
         const patch: Record<string, unknown> = {
             videoMode: value,
-            modelId: value === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd",
+            modelId: resolveVideoModelIdForMode(
+                currentModelId || config?.videoModel || config?.model,
+                value === "frame" ? "frame" : "omni",
+            ),
         };
         if (config) {
             const channel = resolveModelChannel(config, config.model || config.videoModel);

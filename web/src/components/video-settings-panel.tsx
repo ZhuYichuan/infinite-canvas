@@ -7,6 +7,7 @@ import { type CanvasTheme } from "@/lib/canvas-theme";
 import { type AiConfig } from "@/stores/use-config-store";
 import {
     getModelProfile,
+    resolveVideoModelIdForMode,
     type WorkflowModelProfile,
     videoMinimaxH3OmniProfile,
 } from "@/services/api/models";
@@ -97,12 +98,8 @@ export function VideoSettingsPanel({
     const secondsNum = Math.min(maxDuration, Math.max(minDuration, Number.isFinite(rawSeconds) && rawSeconds > 0 ? rawSeconds : defaultDuration));
 
     const handleSelectMode = (nextMode: "omni" | "frame") => {
-        const is20Step = profile.steps === 20;
-        const nextModelId = nextMode === "frame"
-            ? (is20Step ? "frame-video-minimax-h3-fp8" : "frame-video-minimax-h3-fp8-4step-pdmd")
-            : (is20Step ? "omni-video-minimax-h3-fp8" : "omni-video-minimax-h3-fp8-4step-pdmd");
         onParamChange?.({
-            modelId: nextModelId,
+            modelId: resolveVideoModelIdForMode(profile.id, nextMode),
             videoMode: nextMode,
         });
         onConfigChange?.("videoMode", nextMode);
