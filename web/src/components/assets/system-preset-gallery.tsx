@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Empty, Input, Pagination, Spin, Switch, Tag, Tooltip } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { Empty, Input, Pagination, Spin, Switch, Tag, Tooltip, theme as antdTheme } from "antd";
 import { Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -20,6 +20,7 @@ import {
     type SystemPresetCategory,
     type SystemPresetDataset,
 } from "@/lib/assets/system-presets";
+import type { CanvasTheme } from "@/lib/canvas-theme";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -28,15 +29,61 @@ type Props = {
     onInsert: (payload: InsertAssetPayload) => void;
     /** 画布侧边栏为窄栏，采用双列卡片；弹窗为四列。 */
     variant?: "modal" | "panel";
+    /** 画布面板调色板。传入后图库跟随画布主题取色，不再依赖 Tailwind 深色变体。 */
+    canvasTheme?: CanvasTheme;
     className?: string;
 };
+
+type PresetPalette = {
+    muted: string;
+    chipBg: string;
+    chipText: string;
+    activeBg: string;
+    activeText: string;
+    cardBg: string;
+    cardBorder: string;
+    cardHoverBorder: string;
+    cardText: string;
+};
+
+/** 画布侧栏用画布调色板（与面板底色同源），弹窗用 antd token（已随 ConfigProvider 切换明暗）。 */
+function usePresetPalette(canvasTheme?: CanvasTheme): PresetPalette {
+    const { token } = antdTheme.useToken();
+    return useMemo(() => {
+        if (canvasTheme) {
+            return {
+                muted: canvasTheme.node.muted,
+                chipBg: canvasTheme.toolbar.itemHover,
+                chipText: canvasTheme.node.muted,
+                activeBg: canvasTheme.toolbar.activeBg,
+                activeText: canvasTheme.toolbar.activeText,
+                cardBg: canvasTheme.node.panel,
+                cardBorder: canvasTheme.node.stroke,
+                cardHoverBorder: canvasTheme.node.activeStroke,
+                cardText: canvasTheme.node.text,
+            };
+        }
+        return {
+            muted: token.colorTextSecondary,
+            chipBg: token.colorFillSecondary,
+            chipText: token.colorTextSecondary,
+            activeBg: token.colorBgSpotlight,
+            activeText: token.colorTextLightSolid,
+            cardBg: token.colorBgContainer,
+            cardBorder: token.colorBorderSecondary,
+            cardHoverBorder: token.colorBorder,
+            cardText: token.colorText,
+        };
+    }, [canvasTheme, token]);
+}
 
 /**
  * 系统预设资产图库：姿态（线稿/深度）、服装、发型三类共用一套浏览与插入交互。
  * 被资产选择弹窗（生图/视频工作台、画布）与画布侧边栏复用。
  */
-export function SystemPresetGallery({ category, onCategoryChange, onInsert, variant = "modal", className }: Props) {
+export function SystemPresetGallery({ category, onCategoryChange, onInsert, variant = "modal", canvasTheme, className }: Props) {
     const { t } = useTranslation();
+    const palette = usePresetPalette(canvasTheme);
     const [dataset, setDataset] = useState<SystemPresetDataset | null>(null);
     const [loadError, setLoadError] = useState(false);
     const [reloadToken, setReloadToken] = useState(0);
@@ -105,7 +152,7 @@ export function SystemPresetGallery({ category, onCategoryChange, onInsert, vari
         return (
             <div className="flex flex-col items-center gap-2 py-16 text-xs text-stone-500">
                 <span>{t("systemPresets.loadFailed")}</span>
-                <button type="button" className="text-stone-800 underline dark:text-stone-200" onClick={() => setReloadToken((value) => value + 1)}>
+                <button type="button" className="underline" style={{ color: palette.cardText }} onClick={() => setReloadToken((value) => value + 1)}>
                     {t("systemPresets.retry")}
                 </button>
             </div>
@@ -125,23 +172,25 @@ export function SystemPresetGallery({ category, onCategoryChange, onInsert, vari
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="thin-scrollbar flex items-center gap-1 overflow-x-auto">
                     {SYSTEM_PRESET_CATEGORIES.map((item) => (
-                        <ChipButton key={item} active={item === category} onClick={() => onCategoryChange?.(item)}>
+                        <ChipButton key={item} palette={palette} active={item === category} onClick={() => onCategoryChange?.(item)}>
                             {t(`systemPresets.categories.${item}`)}
                         </ChipButton>
                     ))}
-                    {isPose ? <span className="mx-1 h-4 w-px shrink-0 bg-stone-200 dark:bg-stone-700" aria-hidden /> : null}
+                    {isPose ? <span className="mx-1 h-4 w-px shrink-0" style={{ background: palette.cardBorder }} aria-hidden /> : null}
                     {isPose
                         ? POSE_RENDITIONS.map((item) => (
-                              <ChipButton key={item} active={item === rendition} onClick={() => setRendition(item)}>
+                              <ChipButton key={item} palette={palette} active={item === rendition} onClick={() => setRendition(item)}>
                                   {t(`systemPresets.renditions.${item}`)}
                               </ChipButton>
                           ))
                         : null}
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-stone-400">{totalCount}</span>
+                    <span className="text-[11px]" style={{ color: palette.muted }}>
+                        {totalCount}
+                    </span>
                     <Tooltip title={t("systemPresets.sensitiveHint")}>
-                        <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-stone-500 dark:text-stone-400">
+                        <label className="flex cursor-pointer items-center gap-1.5 text-[11px]" style={{ color: palette.muted }}>
                             {t("systemPresets.sensitive")}
                             <Switch size="small" checked={includeSensitive} onChange={setIncludeSensitive} />
                         </label>
@@ -184,7 +233,7 @@ export function SystemPresetGallery({ category, onCategoryChange, onInsert, vari
                 {visibleAssets.length ? (
                     <div className={cn("grid gap-2 pb-1 pr-0.5", gridColumns)}>
                         {visibleAssets.map((asset) => (
-                            <PresetCard key={asset.id} asset={asset} category={category} rendition={rendition} onInsert={onInsert} />
+                            <PresetCard key={asset.id} asset={asset} category={category} rendition={rendition} palette={palette} onInsert={onInsert} />
                         ))}
                     </div>
                 ) : (
@@ -201,22 +250,20 @@ export function SystemPresetGallery({ category, onCategoryChange, onInsert, vari
     );
 }
 
-function ChipButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function ChipButton({ active, palette, children, onClick }: { active: boolean; palette: PresetPalette; children: React.ReactNode; onClick: () => void }) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={cn(
-                "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition",
-                active ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900" : "bg-black/5 text-stone-600 hover:bg-black/10 dark:bg-white/10 dark:text-stone-300 dark:hover:bg-white/20",
-            )}
+            className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition"
+            style={active ? { background: palette.activeBg, color: palette.activeText } : { background: palette.chipBg, color: palette.chipText }}
         >
             {children}
         </button>
     );
 }
 
-function PresetCard({ asset, category, rendition, onInsert }: { asset: SystemPresetAsset; category: SystemPresetCategory; rendition: PoseRendition; onInsert: (payload: InsertAssetPayload) => void }) {
+function PresetCard({ asset, category, rendition, palette, onInsert }: { asset: SystemPresetAsset; category: SystemPresetCategory; rendition: PoseRendition; palette: PresetPalette; onInsert: (payload: InsertAssetPayload) => void }) {
     const { t } = useTranslation();
     const defaultAngle = defaultPoseAngle(asset.angles);
     const [angle, setAngle] = useState<PoseAngleKey>(defaultAngle);
@@ -247,10 +294,17 @@ function PresetCard({ asset, category, rendition, onInsert }: { asset: SystemPre
         <div
             draggable
             onDragStart={handleDragStart}
-            className="group relative flex cursor-grab flex-col overflow-hidden rounded-lg border border-stone-200 bg-white transition hover:-translate-y-0.5 hover:border-stone-400 hover:shadow-md active:cursor-grabbing dark:border-stone-700 dark:bg-stone-900 dark:hover:border-stone-500"
+            className="group relative flex cursor-grab flex-col overflow-hidden rounded-lg border transition hover:-translate-y-0.5 hover:border-(--preset-hover-border) hover:shadow-md active:cursor-grabbing"
+            style={
+                {
+                    background: palette.cardBg,
+                    borderColor: palette.cardBorder,
+                    "--preset-hover-border": palette.cardHoverBorder,
+                } as React.CSSProperties
+            }
             title={t("systemPresets.dragOrClick")}
         >
-            <div className="relative aspect-[3/4] w-full overflow-hidden bg-stone-100 dark:bg-stone-800">
+            <div className="relative aspect-[3/4] w-full overflow-hidden" style={{ background: palette.chipBg }}>
                 <img src={thumbUrl} alt={asset.name} loading="lazy" decoding="async" className="size-full object-contain transition duration-200 group-hover:scale-105" />
                 <button
                     type="button"
@@ -267,7 +321,9 @@ function PresetCard({ asset, category, rendition, onInsert }: { asset: SystemPre
 
             <div className="flex flex-1 flex-col justify-between gap-1 p-1.5">
                 <Tooltip title={asset.promptText || asset.name}>
-                    <div className="line-clamp-1 text-[11px] font-medium text-stone-800 dark:text-stone-200">{asset.name}</div>
+                    <div className="line-clamp-1 text-[11px] font-medium" style={{ color: palette.cardText }}>
+                        {asset.name}
+                    </div>
                 </Tooltip>
                 {asset.angles?.length ? (
                     <div className="flex items-center gap-0.5">
@@ -275,10 +331,8 @@ function PresetCard({ asset, category, rendition, onInsert }: { asset: SystemPre
                             <Tooltip key={item} title={POSE_ANGLE_LABELS[item]}>
                                 <button
                                     type="button"
-                                    className={cn(
-                                        "flex-1 rounded py-0.5 text-center text-[10px] font-medium transition",
-                                        item === angle ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900" : "bg-black/5 text-stone-600 hover:bg-black/10 dark:bg-white/10 dark:text-stone-300 dark:hover:bg-white/20",
-                                    )}
+                                    className="flex-1 rounded py-0.5 text-center text-[10px] font-medium transition"
+                                    style={item === angle ? { background: palette.activeBg, color: palette.activeText } : { background: palette.chipBg, color: palette.chipText }}
                                     onClick={(event) => {
                                         event.stopPropagation();
                                         setAngle(item);
@@ -290,15 +344,11 @@ function PresetCard({ asset, category, rendition, onInsert }: { asset: SystemPre
                         ))}
                     </div>
                 ) : asset.promptText ? (
-                    <div className="line-clamp-2 text-[10px] leading-4 text-stone-500 dark:text-stone-400">{asset.promptText}</div>
+                    <div className="line-clamp-2 text-[10px] leading-4" style={{ color: palette.muted }}>
+                        {asset.promptText}
+                    </div>
                 ) : null}
             </div>
         </div>
     );
-}
-
-export function usePresetCategoryState(initial: SystemPresetCategory = "pose") {
-    const [category, setCategory] = useState<SystemPresetCategory>(initial);
-    const onChange = useCallback((next: SystemPresetCategory) => setCategory(next), []);
-    return [category, onChange] as const;
 }

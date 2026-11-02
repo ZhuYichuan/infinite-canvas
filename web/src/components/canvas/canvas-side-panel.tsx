@@ -462,7 +462,7 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
             <div className="min-h-0 flex-1 overflow-hidden">
                 {assetSource === "system" ? (
                     <div className="flex h-full flex-col px-3 pb-2 pt-1">
-                        <SystemPresetGallery category={presetCategory} onCategoryChange={setPresetCategory} onInsert={onInsert} variant="panel" />
+                        <SystemPresetGallery category={presetCategory} onCategoryChange={setPresetCategory} onInsert={onInsert} variant="panel" canvasTheme={theme} />
                     </div>
                 ) : (
                     <UserAssetsSection onInsert={onInsert} theme={theme} />
