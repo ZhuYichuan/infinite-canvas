@@ -586,8 +586,6 @@ export default {
             "dragOrClickToInsert": "拖拽或点击插入画布",
             "systemAssets": "系统预设",
             "myAssets": "我的素材",
-            "searchPoses": "搜索姿态、动作、编号...",
-            "noMatchingPoses": "未找到匹配姿态",
             "searchPrompts": "搜索提示词",
             "noPrompts": "暂无提示词",
             "promptCopied": "已复制提示词",
@@ -611,10 +609,7 @@ export default {
             "search": "搜索资产",
             "empty": "没有资产",
             "tabMyAssets": "我的素材",
-            "tabPosePresets": "预设姿态库",
-            "searchPoses": "搜索姿态名称或编号...",
-            "emptyPoses": "未找到匹配的姿态预设",
-            "insertAngle": "插入此视角"
+            "tabSystemPresets": "系统预设"
         },
         "imageTools": {
             "copyPrompt": "复制提示词",
@@ -2064,6 +2059,26 @@ export default {
     "locale": {
         "zhCN": "简体中文",
         "enUS": "English"
+    },
+    "systemPresets": {
+        "categories": {
+            "pose": "姿态",
+            "costume": "服装",
+            "portrait": "发型"
+        },
+        "renditions": {
+            "line": "线稿",
+            "depth": "深度"
+        },
+        "search": "搜索名称、编号或提示词...",
+        "allGroups": "全部",
+        "empty": "未找到匹配的预设资产",
+        "loadFailed": "预设资产加载失败",
+        "retry": "重试",
+        "sensitive": "敏感内容",
+        "sensitiveHint": "关闭时隐藏双人互动、内衣、泳装等敏感分类",
+        "insert": "插入",
+        "dragOrClick": "拖拽或点击插入"
     },
     "workflowsPage": {
         "title": "工作流管理与大模型配置",
