@@ -547,15 +547,6 @@ export default {
             "noAudioTrack": "This video does not contain an audio track",
             "separateFailed": "Failed to separate audio, please try again"
         },
-        "depthVideo": {
-            "titleSuffix": "Depth",
-            "converting": "Extracting video depth…",
-            "converted": "Video depth extraction complete",
-            "noVideo": "Please select a valid video node",
-            "noChannel": "No available ComfyUI channel found",
-            "noWorkflow": "No depth video workflow configured for current channel. Please configure it in channel settings.",
-            "convertFailed": "Failed to extract video depth, please try again"
-        },
         "videoPlayer": {
             "play": "Play",
             "pause": "Pause",
@@ -1020,6 +1011,13 @@ export default {
             }
         },
         "depthVideo": {
+            "titleSuffix": "Depth",
+            "converting": "Extracting video depth…",
+            "converted": "Video depth extraction complete",
+            "noVideo": "Please select a valid video node",
+            "noChannel": "No available ComfyUI channel found",
+            "noWorkflow": "No depth video workflow configured for current channel. Please configure it in channel settings.",
+            "convertFailed": "Failed to extract video depth, please try again",
             "modal": {
                 "title": "Video Depth Estimation / Depth Video",
                 "description": "Derive monocular temporal continuous grayscale depth video for source video. Select the ComfyUI host (channel) and corresponding workflow to execute this task.",

@@ -547,15 +547,6 @@ export default {
             "noAudioTrack": "该视频未包含音频轨道",
             "separateFailed": "分离音频失败，请重试"
         },
-        "depthVideo": {
-            "titleSuffix": "深度",
-            "converting": "正在提取视频时序深度…",
-            "converted": "深度视频提取完成",
-            "noVideo": "请选择包含有效视频的视频节点",
-            "noChannel": "未找到可用的 ComfyUI 渠道",
-            "noWorkflow": "当前渠道未配置深度视频提取工作流，请先在渠道设置中配置",
-            "convertFailed": "深度视频提取失败，请重试"
-        },
         "videoPlayer": {
             "play": "播放",
             "pause": "暂停",
@@ -1020,6 +1011,13 @@ export default {
             }
         },
         "depthVideo": {
+            "titleSuffix": "深度",
+            "converting": "正在提取视频时序深度…",
+            "converted": "深度视频提取完成",
+            "noVideo": "请选择包含有效视频的视频节点",
+            "noChannel": "未找到可用的 ComfyUI 渠道",
+            "noWorkflow": "当前渠道未配置深度视频提取工作流，请先在渠道设置中配置",
+            "convertFailed": "深度视频提取失败，请重试",
             "modal": {
                 "title": "视频深度估计 / 深度视频",
                 "description": "为原视频派生单目时序连续灰度深度视频。请选择执行此任务的 ComfyUI 主机（渠道）及对应工作流。",

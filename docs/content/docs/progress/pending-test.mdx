@@ -7,6 +7,11 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- 深度视频国际化字典键去重与文案完整性：
+  - 启动或打包项目（Vite），验证控制台不再出现 `Duplicate key "depthVideo" in object literal` 的警告。
+  - 打开深度视频设置弹窗，验证标题、说明、渠道选择等弹窗文案（`canvas.depthVideo.modal.*`）正常显示。
+  - 触发深度视频任务（包括提取中、已就绪、未就绪、无渠道等状态），验证相关提示文案（`canvas.depthVideo.*`）正常显示且不为空。
+
 - 画布节点底部工具栏与提示词面板叠放：
   - 分别选中图片、音频、视频、文本、配置及插件节点，使工具栏出现在节点底部，再打开提示词面板；验证工具栏保持原位置，输入框排列在工具栏下方，两者间距 12px，不互相覆盖。
   - 在短窗口中重复上述操作，验证输入框仍在工具栏下方，参考资源与提示词正文独立滚动，模型、参数及生成按钮无需滚动整张面板即可看见并点击，不因避让而挪到工具栏上方。
