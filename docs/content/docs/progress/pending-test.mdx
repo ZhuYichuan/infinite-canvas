@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- 配置弹窗「新增渠道」改为保存后才落库：
+  - 打开配置 → 渠道 → 点击「新增渠道」，确认只是弹出渠道编辑抽屉，渠道列表数量不变；直接点「取消」后列表仍无新增项，刷新页面也不会多出渠道；
+  - 再次点击「新增渠道」，填写名称与服务地址后点「保存」，确认渠道被新增到列表且排在末尾；
+  - 点击已有渠道右侧的编辑（铅笔）图标，修改名称后保存，确认是就地更新而不是新增一条；
+  - 在未保存的新渠道抽屉里点「测试连接」，确认能正常诊断（不依赖是否已落库）。
+
 - MiniMax H3 INT8 旋转量化视频模型（无 FP8 硬件加速）：
   - 在 ComfyUI 主机上准备 `models/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors`（或 `minimax_h3_fl2va_int8_convrot.safetensors`）以及既有的 PDMD 4步 LoRA、nvfp4_awq 文本编码器与双 VAE；
   - 画布视频节点打开模型选择器，确认新增「MiniMax H3 全能 (INT8 4步 PDMD)」与「MiniMax H3 首尾帧 (INT8 4步 PDMD)」两项，且与 FP8 同类模型的尺寸档位、时长滑杆与快捷胶囊完全一致；
