@@ -2,6 +2,9 @@
 
 ## Unreleased
 
++ [新增] 视频模型新增 2 款 INT8 6步 Pika 模型（`omni-video-minimax-h3-int8-6step-pika` / `frame-video-minimax-h3-int8-6step-pika`）：底模沿用 INT8 旋转量化权重，蒸馏 LoRA 换为 Pika Flex（`pika_h3_flex_{ref2va,fl2va}_v1_bf16`，各约 1.96 GB），采样步数提升至 6 步并由工作流内 `step` 节点控制；参考资源配额、尺寸档位、时长区间、槽位映射与衍生工具与 INT8 4步 PDMD 完全一致。同步内置 API 工作流资产、渠道工作流清单、编辑器白名单、默认支持清单与工作流手册（首尾帧版含 UI 下载）。
++ [优化] 对齐新工作流的模型注入标注：全能版 CLIP 加载器标题统一为 `select_models_clip`、LoRA 节点拼写修正为 `lora1`，使其可在工作流编辑器与工作流页中直接下拉切换大模型；`resolveVideoModelIdForMode` / `resolveVideoModelIdFromWorkflowId` 的家族后缀扩展支持 `-6step-pika`，避免 6 步模型在切换「全能 ↔ 首尾帧」时被静默回退为 FP8 默认模型。
+
 + [新增] 视频模型新增 2 款 INT8 旋转量化 4步 PDMD 模型（`omni-video-minimax-h3-int8-4step-pdmd` / `frame-video-minimax-h3-int8-4step-pdmd`），底模为 `minimax_h3_{ref2va,fl2va}_int8_convrot.safetensors`（全量未剪枝，约 34 GB），与对应 FP8 4步 PDMD 的能力契约（参考资源配额、尺寸档位、时长区间、槽位映射、衍生工具）逐字段一致，用于未启用 FP8 硬件加速的运行环境；同步内置 API 工作流资产、渠道工作流清单、ComfyUI 工作流编辑器白名单与工作流手册下载与权重清单。
 + [修复] 修复选中模型后切换「全能参考 / 首尾帧」模式或切换渠道工作流时，`modelId` 被硬编码改写回 FP8 默认模型的问题；现按当前模型的量化家族与采样档位解析同族对应模型（新增 `resolveVideoModelIdForMode` 与 `resolveVideoModelIdFromWorkflowId`）。
 + [修复] 修复新增内置模型在已有主机上永久不可用的问题：`supportedModelIds` 在创建主机时写死且无任何 UI 编辑入口，导致旧配置下模型选择器全量置灰（提示「当前主机未启用该模型支持」）。现将 2 款 INT8 模型纳入默认支持清单，并在 `createModelChannel` 中新增与 `mergeBuiltinWorkflows` 同构的内置模型集演进逻辑：仅当主机清单包含全部旧默认视频模型时自动补齐新增内置模型，显式裁剪的子集与空数组不受影响。

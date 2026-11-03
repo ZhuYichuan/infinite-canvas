@@ -16,6 +16,16 @@ The current release needs manual verification in these areas:
   - 确认 INT8 模型已纳入默认支持清单，但不改动默认模型：新建主机可直接选用 INT8 模型，视频节点默认模型仍为 FP8 4步 PDMD；
   - 在工作流手册页确认「INT8 4步 PDMD (无 FP8 硬件)」变体的 API / UI 工作流下载与权重清单正确（权重标注为全量未剪枝约 34 GB，非低显存档位）。
 
+- MiniMax H3 INT8 6步 Pika 视频模型（Pika Flex 蒸馏 LoRA）：
+  - 在主机 `models/loras/` 下准备 `pika_h3_flex_ref2va_v1_bf16.safetensors` / `pika_h3_flex_fl2va_v1_bf16.safetensors`（各约 1.96 GB），底模沿用 INT8 `*_int8_convrot.safetensors`；
+  - 画布视频模型选择器确认新增「MiniMax H3 全能 (INT8 6步 Pika)」与「MiniMax H3 首尾帧 (INT8 6步 Pika)」，共 8 款视频模型且顺序稳定；
+  - 选中 6步 Pika 生成一次，确认提交的 `BasicScheduler.steps` 引用标题为 `step` 的 PrimitiveInt 节点（值为 6），`LoraLoaderModelOnly.lora_name` 为 Pika Flex、`strength_model` 为 1；
+  - 确认全能版提交内容保留 EasyCache 节点且参数未被改动（`reuse_threshold 0.2 / start_percent 0.15 / end_percent 0.95`），首尾帧版与 4步 PDMD 一致不带 EasyCache；
+  - **重点复核 6 步下的实际画质**：EasyCache 在 0.15~0.95 区间内会跳过相似步，6 步总量下可能跳过 2~3 步；若出现细节糊化、纹理漂移或音频对齐异常，需关闭 EasyCache 或提高 `start_percent` 后再评估（本次按需求未改动该节点参数）；
+  - 选中 6步 Pika 后切换「全能 ↔ 首尾帧」模式，确认模型停留在 6步 Pika 家族，不回退到 FP8 4步 PDMD；
+  - 在渠道工作流下拉中选择 6步 Pika 工作流，确认节点 `modelId` 同步为对应 6步 Pika 模型；
+  - 打开工作流编辑器 / 工作流页，确认两个 6步 Pika 工作流的 `select_models_diffusion_models` 与 `select_models_clip` 节点均出现大模型下拉并可切换。
+
 - 内置模型支持清单演进（旧主机自动补齐新增模型）：
   - 使用一份旧版本创建的本地配置（主机「支持的模型」为旧默认 4 视频 + 4 图 + 1 文 + 1 音）启动页面，打开画布视频节点的模型选择器；
   - 确认「MiniMax H3 全能 (INT8 4步 PDMD)」与「MiniMax H3 首尾帧 (INT8 4步 PDMD)」不再置灰，不再提示「当前主机未启用该模型支持」，可直接选中并提交；

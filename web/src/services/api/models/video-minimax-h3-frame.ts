@@ -155,6 +155,52 @@ export const videoMinimaxH3FrameInt8PdmdProfile: WorkflowModelProfile = {
 };
 
 /**
+ * MiniMax H3 首尾帧插值视频 (INT8 6步 Pika 质感版)
+ * 底模同 INT8 旋转量化权重，蒸馏 LoRA 换为 Pika Flex（6 步，由 `step` 节点提供）
+ */
+export const videoMinimaxH3FrameInt8PikaProfile: WorkflowModelProfile = {
+    id: "frame-video-minimax-h3-int8-6step-pika",
+    name: "MiniMax H3 首尾帧 (INT8 6步 Pika)",
+    capability: "video",
+    protocol: "comfyui",
+    category: "frameVideo",
+    steps: 6,
+    capabilityConfig: {
+        version: 1,
+        references: {
+            promptMaxChars: 20000,
+            minImages: 0,
+            maxImages: 2,
+            maskSupported: false,
+            minVideos: 0,
+            maxVideos: 0,
+            minAudios: 0,
+            maxAudios: 0,
+        },
+        size: {
+            parameter: "size",
+            values: MINIMAX_H3_SIZES,
+            default: "1280x736",
+            allowCustom: false,
+        },
+        duration: {
+            selection: "range",
+            min: 1,
+            max: 15,
+            step: 1,
+            tags: [5, 10, 15],
+            default: 5,
+        },
+    },
+    slotMapping: FRAME_SLOT_MAPPING,
+    description: "MiniMax H3 首尾帧插值视频 (INT8 旋转量化底模 + Pika Flex 6步蒸馏 LoRA)，支持 0~2 张参考图，换更充分的细节与平滑过渡。",
+    supportedTools: {
+        faceRefine: true,
+        depthVideo: true,
+    },
+};
+
+/**
  * 历史别名兼容
  */
 export const videoMinimaxH3FrameProfile = videoMinimaxH3FrameFp8PdmdProfile;

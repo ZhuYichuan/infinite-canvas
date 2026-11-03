@@ -386,7 +386,7 @@ describe("default built-in ComfyUI channel", () => {
             "MiniMax H3 首尾帧视频",
             "MiniMax Music 03",
         ]);
-        expect(defaultConfig.channels[0].workflows?.length).toBe(15);
+        expect(defaultConfig.channels[0].workflows?.length).toBe(17);
         expect(defaultConfig.channels[0].supportedModelIds).toEqual([
             "omni-video-minimax-h3-fp8-4step-pdmd",
             "omni-video-minimax-h3-fp8",
@@ -394,6 +394,8 @@ describe("default built-in ComfyUI channel", () => {
             "frame-video-minimax-h3-fp8",
             "omni-video-minimax-h3-int8-4step-pdmd",
             "frame-video-minimax-h3-int8-4step-pdmd",
+            "omni-video-minimax-h3-int8-6step-pika",
+            "frame-video-minimax-h3-int8-6step-pika",
             "image-qwen-2.1",
             "image-z-turbo",
             "image-flux2-dev",
@@ -407,8 +409,8 @@ describe("default built-in ComfyUI channel", () => {
         const customChannel = createModelChannel({ id: "my-custom", name: "自定义 ComfyUI" });
         expect(customChannel.name).toBe("自定义 ComfyUI");
         expect(customChannel.models.length).toBe(8);
-        expect(customChannel.workflows?.length).toBe(15);
-        expect(customChannel.supportedModelIds?.length).toBe(12);
+        expect(customChannel.workflows?.length).toBe(17);
+        expect(customChannel.supportedModelIds?.length).toBe(14);
         expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
         expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);
@@ -453,6 +455,8 @@ describe("isModelSupportedByHost & updateChannelSupportedModels", () => {
 
         expect(migrated.supportedModelIds).toContain("omni-video-minimax-h3-int8-4step-pdmd");
         expect(migrated.supportedModelIds).toContain("frame-video-minimax-h3-int8-4step-pdmd");
+        expect(migrated.supportedModelIds).toContain("omni-video-minimax-h3-int8-6step-pika");
+        expect(migrated.supportedModelIds).toContain("frame-video-minimax-h3-int8-6step-pika");
         expect(migrated.supportedModelIds?.slice(0, legacyDefaultIds.length)).toEqual(legacyDefaultIds);
         expect(isModelSupportedByHost(migrated, "omni-video-minimax-h3-int8-4step-pdmd")).toBe(true);
         expect(isModelSupportedByHost(migrated, "frame-video-minimax-h3-int8-4step-pdmd")).toBe(true);

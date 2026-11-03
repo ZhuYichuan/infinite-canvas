@@ -4,8 +4,8 @@ import { isModelSupportedByHost } from "@/stores/use-config-store";
 import type { ModelChannel } from "@/types/config";
 
 describe("VideoModelPicker Data Contract & Hierarchy", () => {
-    it("BUILTIN_VIDEO_WORKFLOW_MODELS contains 4 FP8 + 2 INT8 models without BF16", () => {
-        expect(BUILTIN_VIDEO_WORKFLOW_MODELS).toHaveLength(6);
+    it("BUILTIN_VIDEO_WORKFLOW_MODELS contains 4 FP8 + 4 INT8 models without BF16", () => {
+        expect(BUILTIN_VIDEO_WORKFLOW_MODELS).toHaveLength(8);
         const ids = BUILTIN_VIDEO_WORKFLOW_MODELS.map((m) => m.id);
         expect(ids).toContain("omni-video-minimax-h3-fp8-4step-pdmd");
         expect(ids).toContain("omni-video-minimax-h3-fp8");
@@ -13,6 +13,8 @@ describe("VideoModelPicker Data Contract & Hierarchy", () => {
         expect(ids).toContain("frame-video-minimax-h3-fp8");
         expect(ids).toContain("omni-video-minimax-h3-int8-4step-pdmd");
         expect(ids).toContain("frame-video-minimax-h3-int8-4step-pdmd");
+        expect(ids).toContain("omni-video-minimax-h3-int8-6step-pika");
+        expect(ids).toContain("frame-video-minimax-h3-int8-6step-pika");
 
         // Ensure BF16 models are purged
         ids.forEach((id) => {

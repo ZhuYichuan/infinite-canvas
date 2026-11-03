@@ -8,6 +8,7 @@ import {
     videoMinimaxH3OmniFp8PdmdProfile,
     videoMinimaxH3OmniFp8Profile,
     videoMinimaxH3OmniInt8PdmdProfile,
+    videoMinimaxH3OmniInt8PikaProfile,
     videoMinimaxH3OmniProfile,
     MINIMAX_H3_SIZES,
 } from "./video-minimax-h3-omni";
@@ -15,6 +16,7 @@ import {
     videoMinimaxH3FrameFp8PdmdProfile,
     videoMinimaxH3FrameFp8Profile,
     videoMinimaxH3FrameInt8PdmdProfile,
+    videoMinimaxH3FrameInt8PikaProfile,
     videoMinimaxH3FrameProfile,
 } from "./video-minimax-h3-frame";
 import {
@@ -46,7 +48,7 @@ export * from "./audio-models";
 export * from "./constraint-engine";
 
 /**
- * 系统内置视频工作流模型清单（4 款 FP8 + 2 款 INT8 量化模型）
+ * 系统内置视频工作流模型清单（4 款 FP8 + 4 款 INT8 量化模型）
  * 顺序敏感：FP8 4步 PDMD 必须首位，作为视频节点的默认回退模型
  */
 export const BUILTIN_VIDEO_WORKFLOW_MODELS: WorkflowModelProfile[] = [
@@ -56,6 +58,8 @@ export const BUILTIN_VIDEO_WORKFLOW_MODELS: WorkflowModelProfile[] = [
     videoMinimaxH3FrameFp8Profile,
     videoMinimaxH3OmniInt8PdmdProfile,
     videoMinimaxH3FrameInt8PdmdProfile,
+    videoMinimaxH3OmniInt8PikaProfile,
+    videoMinimaxH3FrameInt8PikaProfile,
 ];
 
 /**
@@ -191,11 +195,12 @@ export function listModelsByCapability(capability: ModelCapabilityType): Workflo
 }
 
 /**
- * 视频模型家族标识（量化规格 + 采样档位），用于在「全能参考 / 首尾帧」之间切换时
+ * 视频模型家族标识（量化规格 + 蒸馏档位），用于在「全能参考 / 首尾帧」之间切换时
  * 保留当前模型家族，避免静默回退到 FP8 默认模型。
- * 形如 `omni-video-minimax-h3-{fp8|int8}[-4step-pdmd]`。
+ * 形如 `omni-video-minimax-h3-{fp8|int8}[-4step-pdmd|-6step-pika]`。
  */
-const VIDEO_MODEL_ID_PATTERN = /^(?:omni|frame)-video-minimax-h3-(fp8|int8)(-4step-pdmd)?$/;
+const VIDEO_MODEL_VARIANT_SUFFIXES = ["-4step-pdmd", "-6step-pika"] as const;
+const VIDEO_MODEL_ID_PATTERN = /^(?:omni|frame)-video-minimax-h3-(fp8|int8)(-4step-pdmd|-6step-pika)?$/;
 
 /**
  * 根据当前模型与目标模式（omni / frame）解析出同家族的对应模型 ID。
@@ -215,18 +220,15 @@ export function resolveVideoModelIdForMode(
 }
 
 /**
- * 从渠道工作流 ID（形如 `builtin-omni-video-minimax-h3-int8-4step-pdmd`）反解出
+ * 从渠道工作流 ID（形如 `builtin-omni-video-minimax-h3-int8-6step-pika`）反解出
  * 对应的视频模型 ID；无法识别时返回 undefined，交由调用方回退。
  */
 export function resolveVideoModelIdFromWorkflowId(workflowId: string | undefined): string | undefined {
     if (!workflowId) return undefined;
-    const family = VIDEO_MODEL_ID_PATTERN.exec(
-        /(?:omni|frame)-video-minimax-h3-(?:fp8|int8)(?:-4step-pdmd)?/.exec(workflowId)?.[0] ?? "",
-    );
-    if (!family) return undefined;
-
-    const modelId = family[0];
-    return BUILTIN_WORKFLOW_MODELS.some((m) => m.id === modelId) ? modelId : undefined;
+    const suffixPattern = VIDEO_MODEL_VARIANT_SUFFIXES.join("|");
+    const found = new RegExp(`(?:omni|frame)-video-minimax-h3-(?:fp8|int8)(?:${suffixPattern})?`).exec(workflowId)?.[0];
+    if (!found) return undefined;
+    return BUILTIN_WORKFLOW_MODELS.some((m) => m.id === found) ? found : undefined;
 }
 
 export interface ModelValidationParams {

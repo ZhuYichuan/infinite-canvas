@@ -1,0 +1,560 @@
+{
+  "1": {
+    "inputs": {
+      "filename_prefix": "video/MiniMax_H3",
+      "format": "auto",
+      "format.codec": "auto",
+      "codec": "auto",
+      "video": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "output_video"
+    }
+  },
+  "5": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "6": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": [
+        "11",
+        1
+      ],
+      "vae": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE解码（音频）"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "9": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "K采样器选择"
+    }
+  },
+  "10": {
+    "inputs": {
+      "scheduler": "simple",
+      "steps": [
+        "74",
+        0
+      ],
+      "denoise": 1,
+      "model": [
+        "85",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "基本调度器"
+    }
+  },
+  "11": {
+    "inputs": {
+      "noise": [
+        "15",
+        0
+      ],
+      "guider": [
+        "12",
+        0
+      ],
+      "sampler": [
+        "9",
+        0
+      ],
+      "sigmas": [
+        "10",
+        0
+      ],
+      "latent_image": [
+        "17",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "自定义采样器（高级）"
+    }
+  },
+  "12": {
+    "inputs": {
+      "model": [
+        "85",
+        0
+      ],
+      "conditioning": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "基本引导器"
+    }
+  },
+  "13": {
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "select_models_diffusion_models"
+    }
+  },
+  "14": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "select_models_clip"
+    }
+  },
+  "15": {
+    "inputs": {
+      "noise_seed": [
+        "125",
+        0
+      ]
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "随机噪波"
+    }
+  },
+  "16": {
+    "inputs": {
+      "fps": 24,
+      "bit_depth": 8,
+      "color_space": "sRGB",
+      "codec": "none",
+      "images": [
+        "8",
+        0
+      ],
+      "audio": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "创建视频"
+    }
+  },
+  "17": {
+    "inputs": {
+      "prompt": [
+        "18",
+        0
+      ],
+      "width": [
+        "120",
+        0
+      ],
+      "height": [
+        "121",
+        0
+      ],
+      "length": [
+        "126",
+        1
+      ],
+      "ref_image_size": "match",
+      "clip": [
+        "14",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "audio_vae": [
+        "6",
+        0
+      ],
+      "ref_images.ref_image_0": [
+        "21",
+        0
+      ],
+      "ref_images.ref_image_1": [
+        "68",
+        0
+      ],
+      "ref_images.ref_image_2": [
+        "69",
+        0
+      ],
+      "ref_images.ref_image_3": [
+        "93",
+        0
+      ],
+      "ref_images.ref_image_4": [
+        "94",
+        0
+      ],
+      "ref_images.ref_image_5": [
+        "92",
+        0
+      ],
+      "ref_images.ref_image_6": [
+        "98",
+        0
+      ],
+      "ref_videos.ref_video_0": [
+        "100",
+        0
+      ],
+      "ref_videos.ref_video_1": [
+        "103",
+        0
+      ],
+      "ref_videos.ref_video_2": [
+        "106",
+        0
+      ],
+      "ref_audios.ref_audio_0": [
+        "108",
+        0
+      ],
+      "ref_audios.ref_audio_1": [
+        "110",
+        0
+      ],
+      "ref_audios.ref_audio_2": [
+        "112",
+        0
+      ],
+      "ref_images.ref_image_7": [
+        "96",
+        0
+      ],
+      "ref_images.ref_image_8": [
+        "97",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3ReferenceToVideo",
+    "_meta": {
+      "title": "MiniMax H3 参考转视频"
+    }
+  },
+  "18": {
+    "inputs": {
+      "value": "subject_definitions:\n<Subject 1> is the young East Asian woman in the two reference portraits — her facial features, hairstyle, and footwear come from <Picture 2>, and her floral outfit comes from <Picture 1> — with a slim build and fair skin, large dark almond eyes, thin arched brows, a small straight nose, soft pink lips, and a gentle closed-lip smile, long straight black hair parted at the centre and worn half-up at the back, a fine gold chain necklace with a small pendant, a white short-sleeve floral romper with pink and dusty-rose rose prints, a crossover wrap V-neck, a side tie knot at the left waist, a ruffled flutter hem above mid-thigh, white ankle socks, and white platform slide sandals with a wide strap and a thick flat sole.\n<Subject 2> is the leafy Shanghai street environment described for the target video, a narrow paved lane in the former French Concession lined with mature plane trees whose branches arch overhead, low historic shikumen and villa facades with balconies and iron railings, warm shop-window glow, a green vintage public telephone booth at the kerb, and scattered fallen leaves on the pavement.\n<Subject 3> is the black portable street speaker resting on the pavement beside the tree trunk, its grille turned toward the dancing area, functioning as the visible in-scene source of the music that plays through the dance.\n\nsummary:\n[reference generation] The target video is a 10-second live-action sequence in which <Subject 1>, the young woman built from the two reference portraits, dances on a tree-lined Shanghai street. Her facial features, hairstyle, and white platform slide sandals follow <Picture 2>, while her floral romper follows <Picture 1>, and the street setting, the choreography, and the visible music source are newly created. The clip opens on a full-body view of her starting the routine, cuts to a closer view of her upper body and footwork, arcs around to her profile as the routine builds, and ends on the same tree-lined street as the light deepens to dusk. <Subject 3> supplies the music that plays during the dance.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1], [Shot 2], [Shot 3], [Shot 4]): fully_preserved - the facial features taken from <Picture 2>, namely the large dark almond eyes, thin arched brows, small straight nose, soft pink lips, gentle closed-lip smile, and long straight black hair parted at the centre and worn half-up at the back, are kept intact, and her white platform slide sandals with a wide strap and a thick flat sole also follow <Picture 2>; her white short-sleeve floral romper with its pink and dusty-rose rose print, crossover wrap neckline, side tie knot at the left waist, ruffled flutter hem, and white ankle socks follow <Picture 1>, as does the fine gold chain necklace. Only her pose, expression, and position change from shot to shot.\n<Subject 2> (appears in [Shot 1], [Shot 2], [Shot 3], [Shot 4]): partially_preserved - the plane-tree canopy, shikumen facades, warm shopfront glow, green telephone booth, and leaf-strewn pavement are retained as the constant setting, while the time-of-day light deepens from bright afternoon to dusk and the framing changes with each shot.\n<Subject 3> (appears in [Shot 1], [Shot 2], [Shot 3], [Shot 4]): fully_preserved - the same black portable speaker stays on the pavement near the tree with its grille turned toward her; it is framed directly in [Shot 1] and [Shot 3] and sits just outside the frame in [Shot 2] and [Shot 4], where only the music it plays continues, unbroken from the opening shot through to the end.\n\ndetailed_description:\nThe target video is a live-action, naturalistic street-dance sequence with soft golden-hour light and a shallow, cinematic depth of field.\n[Shot 1] A full-body wide shot establishes the tree-lined lane in the former French Concession, where <Subject 1> stands on the leaf-strewn pavement between <Subject 3>, the black portable speaker resting near the tree trunk, and a sunlit row of shikumen facades. Her face is angled toward the lens, showing the delicate features of <Picture 2> — large dark almond eyes, thin arched brows, a small straight nose, soft pink lips, and a gentle closed-lip smile — above the crossover wrap neckline of the floral romper from <Picture 1>, the ruffled hem sitting above mid-thigh and the thick white platform slides planted flat on the stone. The camera pushes in with small amplitude at slow speed as she looks down once, sets her weight on her right foot, and lifts her arms into a loose, easy swing, beginning the routine. Her long black hair shifts across her shoulder, the ruffled hem flicks with the first turn, and the music from <Subject 3> is clearly audible at the start, establishing the tempo she moves to.\n[Shot 2] At 00:03.000, the camera cuts to a medium shot from chest to knee as she travels sideways along the pavement in two quick steps, her hands tracing loose circles in front of her hips and her smile widening into the performance. The camera trucks right with small amplitude at slow speed, keeping her centered while the plane-tree canopy drifts behind her, the gold chain at her collarbone catching the light, and the music from <Subject 3> continuing uninterrupted.\n[Shot 3] At 00:06.000, the camera cuts to a wider three-quarter view and arcs around her at a fast speed, passing from her front across to her side so that the profile of <Picture 2> is briefly revealed in clear daylight — the line of her nose and cheek, and the hair gathered at the back of her head — as she spins once with one arm extended and the other tucked in. She lands and drops into a low, springy bounce that lifts her hair upward before it falls back over her shoulder, the ruffled hem lifting with the motion and the thick soles of her slides flattening against the pavement and scattering the leaves around her ankles, while the speaker's music keeps driving the rhythm from off to the side.\n[Shot 4] At 00:08.500, the camera cuts to a medium full-body shot as she slows the routine down, the movement resolving into a relaxed sway with her arms lowering and her weight shifting onto her left foot, one hand lifted near her shoulder. The camera pushes in with small amplitude at slow speed, her face filling more of the frame as the warm light deepens to dusk and the shop windows behind her brighten, the street settling into the closing bars of the music from <Subject 3>.\n\noverall_soundscape:\nA quiet residential lane ambience runs underneath, with light wind moving through the plane-tree canopy and distant street traffic at a low level. The flat soles of her slides scuff and tap on the pavement as she steps, spins, and lands, with leaves shifting under her feet. Bicycle bells and a passing motorbike are heard far off down the lane, and the leaves overhead rustle continuously. The black portable speaker's music plays at a moderate volume from beside the tree throughout, with a faint low electrical hum from its casing.\n\nnon_diegetic_music: N/A"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "prompt"
+    }
+  },
+  "21": {
+    "inputs": {
+      "image": "测试姿态_角色主体：使用 _image2_ 中的人物（需严格保留其长相、五_imag (1).png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_01"
+    }
+  },
+  "68": {
+    "inputs": {
+      "image": "测试姿态_人物_小美_imag.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_02"
+    }
+  },
+  "69": {
+    "inputs": {
+      "image": "22.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_03"
+    }
+  },
+  "74": {
+    "inputs": {
+      "value": 6
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "step"
+    }
+  },
+  "75": {
+    "inputs": {
+      "lora_name": "pika_h3_flex_ref2va_v1_bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "lora1"
+    }
+  },
+  "85": {
+    "inputs": {
+      "reuse_threshold": 0.2,
+      "start_percent": 0.15,
+      "end_percent": 0.95,
+      "verbose": true,
+      "model": [
+        "75",
+        0
+      ]
+    },
+    "class_type": "EasyCache",
+    "_meta": {
+      "title": "EasyCache"
+    }
+  },
+  "92": {
+    "inputs": {
+      "image": "33.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_06"
+    }
+  },
+  "93": {
+    "inputs": {
+      "image": "3.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_04"
+    }
+  },
+  "94": {
+    "inputs": {
+      "image": "7.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_05"
+    }
+  },
+  "96": {
+    "inputs": {
+      "image": "7.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_08"
+    }
+  },
+  "97": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_09"
+    }
+  },
+  "98": {
+    "inputs": {
+      "image": "7.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_07"
+    }
+  },
+  "99": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_01"
+    }
+  },
+  "100": {
+    "inputs": {
+      "video": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "102": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_02"
+    }
+  },
+  "103": {
+    "inputs": {
+      "video": [
+        "102",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "105": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_03"
+    }
+  },
+  "106": {
+    "inputs": {
+      "video": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "108": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_01"
+    }
+  },
+  "110": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_02"
+    }
+  },
+  "112": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_03"
+    }
+  },
+  "120": {
+    "inputs": {
+      "Number": "768"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "121": {
+    "inputs": {
+      "Number": "1344"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "125": {
+    "inputs": {
+      "value": 804480769635701
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "seed"
+    }
+  },
+  "126": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "127",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "数学表达式"
+    }
+  },
+  "127": {
+    "inputs": {
+      "value": 8
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "duration"
+    }
+  }
+}

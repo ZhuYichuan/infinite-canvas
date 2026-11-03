@@ -182,7 +182,7 @@ export const COMFYUI_CLOUD_DEFAULT_MODELS: ChannelModel[] = COMFYUI_BUILTIN_DEFA
 export const COMFYUI_DEFAULT_MODELS: ChannelModel[] = COMFYUI_BUILTIN_DEFAULT_MODELS;
 
 /**
- * 默认主机支持的视频模型 ID 清单（开箱即用支持 4 款 MiniMax H3 FP8 + 2 款 INT8 量化模型）
+ * 默认主机支持的视频模型 ID 清单（开箱即用支持 4 款 MiniMax H3 FP8 + 4 款 INT8 量化模型）
  */
 export const DEFAULT_SUPPORTED_VIDEO_MODEL_IDS: string[] = [
     "omni-video-minimax-h3-fp8-4step-pdmd",
@@ -191,6 +191,8 @@ export const DEFAULT_SUPPORTED_VIDEO_MODEL_IDS: string[] = [
     "frame-video-minimax-h3-fp8",
     "omni-video-minimax-h3-int8-4step-pdmd",
     "frame-video-minimax-h3-int8-4step-pdmd",
+    "omni-video-minimax-h3-int8-6step-pika",
+    "frame-video-minimax-h3-int8-6step-pika",
 ];
 
 /**

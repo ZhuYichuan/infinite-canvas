@@ -167,6 +167,51 @@ export const videoMinimaxH3OmniInt8PdmdProfile: WorkflowModelProfile = {
 };
 
 /**
+ * MiniMax H3 全能参考视频 (INT8 6步 Pika 质感版)
+ * 底模同 INT8 旋转量化权重，蒸馏 LoRA 换为 Pika Flex（6 步），换取更充分的细节与光影演变
+ */
+export const videoMinimaxH3OmniInt8PikaProfile: WorkflowModelProfile = {
+    id: "omni-video-minimax-h3-int8-6step-pika",
+    name: "MiniMax H3 全能 (INT8 6步 Pika)",
+    capability: "video",
+    protocol: "comfyui",
+    category: "omniVideo",
+    steps: 6,
+    capabilityConfig: {
+        version: 1,
+        references: {
+            promptMaxChars: 20000,
+            minImages: 0,
+            maxImages: 9,
+            maskSupported: false,
+            minVideos: 0,
+            maxVideos: 3,
+            maxAudios: 3,
+        },
+        size: {
+            parameter: "size",
+            values: MINIMAX_H3_SIZES,
+            default: "1280x736",
+            allowCustom: false,
+        },
+        duration: {
+            selection: "range",
+            min: 1,
+            max: 15,
+            step: 1,
+            tags: [5, 10, 15],
+            default: 5,
+        },
+    },
+    slotMapping: OMNI_SLOT_MAPPING,
+    description: "MiniMax H3 全能参考视频 (INT8 旋转量化底模 + Pika Flex 6步蒸馏 LoRA + EasyCache)，相对 4 步 PDMD 换取更充分的细节与光影演变。",
+    supportedTools: {
+        faceRefine: true,
+        depthVideo: true,
+    },
+};
+
+/**
  * 历史别名兼容
  */
 export const videoMinimaxH3OmniProfile = videoMinimaxH3OmniFp8PdmdProfile;
