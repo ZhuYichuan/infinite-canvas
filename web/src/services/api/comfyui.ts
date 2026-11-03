@@ -12,6 +12,10 @@ import {
     DEFAULT_COMFYUI_VIDEO_WORKFLOW,
     getWorkflowForModelProfile,
 } from "./comfyui-default-workflows";
+import {
+    buildProgressTopology,
+    ComfyuiProgressChannel,
+} from "./comfyui-progress-channel";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
@@ -725,6 +729,72 @@ function normalizeBaseUrl(baseUrl: string) {
     return baseUrl.trim().replace(/\/+$/, "");
 }
 
+const COMFYUI_CLIENT_ID_STORAGE_PREFIX = "infinite-canvas:comfyui-client-id:";
+const comfyClientIdCache = new Map<string, string>();
+
+/**
+ * 按 baseUrl 取稳定的 clientId。
+ * 提交任务与进度 WebSocket 必须共用同一个值：ComfyUI 把执行进度定向推送给
+ * 提交 prompt 时携带的 client_id，若每次提交都换新值，进度连接在下一个任务
+ * 开始执行时就会失效。持久化到 localStorage 以便刷新页面后重新接上。
+ */
+export function getComfyuiClientId(baseUrl: string): string {
+    const key = normalizeBaseUrl(baseUrl);
+    const cached = comfyClientIdCache.get(key);
+    if (cached) return cached;
+
+    let stored: string | null = null;
+    try {
+        stored = window.localStorage?.getItem(COMFYUI_CLIENT_ID_STORAGE_PREFIX + key) ?? null;
+    } catch {
+        stored = null;
+    }
+
+    const clientId = stored || nanoid();
+    comfyClientIdCache.set(key, clientId);
+
+    if (!stored) {
+        try {
+            window.localStorage?.setItem(COMFYUI_CLIENT_ID_STORAGE_PREFIX + key, clientId);
+        } catch {
+            // 隐私模式下写入会抛错：内存缓存已生效，不影响本次会话
+        }
+    }
+
+    return clientId;
+}
+
+/** 仅供测试：清空内存中的 clientId 缓存，模拟页面重载。 */
+export function resetComfyuiClientIds() {
+    comfyClientIdCache.clear();
+}
+
+const progressChannels = new Map<string, ComfyuiProgressChannel>();
+
+/** 按 baseUrl 取进度通道单例（同一 clientId 只能有一条活连接）。 */
+export function getProgressChannel(baseUrl: string): ComfyuiProgressChannel {
+    const normalized = normalizeBaseUrl(baseUrl);
+    let channel = progressChannels.get(normalized);
+    if (!channel) {
+        channel = new ComfyuiProgressChannel({ baseUrl: normalized, clientId: getComfyuiClientId(normalized) });
+        progressChannels.set(normalized, channel);
+    }
+    return channel;
+}
+
+export function resetComfyuiProgressChannels() {
+    for (const channel of progressChannels.values()) {
+        channel.dispose();
+    }
+    progressChannels.clear();
+}
+
+/** 登记任务拓扑，让进度通道能算出百分比与节点标签。 */
+function registerProgressTask(jobId: string, baseUrl: string, workflow: ComfyuiWorkflowJson) {
+    if (!jobId || !workflow) return;
+    getProgressChannel(baseUrl).registerTask(jobId, buildProgressTopology(workflow));
+}
+
 const comfyHostOsCache = new Map<string, "windows" | "linux">();
 
 /**
@@ -866,7 +936,7 @@ export function translateComfyuiValidationError(errMsg: string): string {
 async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string, token?: string): Promise<string> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
-    const clientId = nanoid();
+    const clientId = getComfyuiClientId(baseUrl);
     const url = `${normalizeBaseUrl(baseUrl)}/prompt`;
     const request = { url, method: "POST" };
     const response = await comfyuiFetch(url, {
@@ -897,6 +967,7 @@ async function submitJobInternal(workflow: ComfyuiWorkflowJson, baseUrl: string,
         throw new ComfyuiApiError(`ComfyUI 工作流校验报错: ${friendly}`, undefined, request);
     }
     if (typeof data?.prompt_id !== "string") throw new ComfyuiApiError("ComfyUI /prompt 响应未返回 prompt_id", undefined, request);
+    registerProgressTask(data.prompt_id, baseUrl, workflow);
     return data.prompt_id;
 }
 
@@ -1369,6 +1440,8 @@ interface TrackedJobEntry {
     status: "pending" | "running" | "checking_history" | "unknown";
     queuePosition?: number;
     subscriptions: TrackedJobSubscription[];
+    progress?: { progressPct?: number; nodeLabel?: string };
+    unsubscribeProgress?: () => void;
 }
 
 /**
@@ -1378,13 +1451,16 @@ interface TrackedJobEntry {
  */
 export class ComfyuiJobBatchPoller {
     readonly baseUrl: string;
+    private readonly progressChannel: ComfyuiProgressChannel | null;
     private jobs = new Map<string, TrackedJobEntry>();
     private isRunning = false;
     private hasRunningJobs = false;
     private consecutiveNetworkErrors = 0;
+    private wakeLoop: (() => void) | null = null;
 
-    constructor(baseUrl: string) {
+    constructor(baseUrl: string, progressChannel?: ComfyuiProgressChannel | null) {
         this.baseUrl = normalizeBaseUrl(baseUrl);
+        this.progressChannel = progressChannel ?? getProgressChannel(this.baseUrl);
     }
 
     poll(
@@ -1440,7 +1516,8 @@ export class ComfyuiJobBatchPoller {
             if (entry.status === "pending" && entry.queuePosition !== undefined) {
                 onProgress?.("pending", { queuePosition: entry.queuePosition });
             } else if (entry.status === "running") {
-                onProgress?.("running");
+                if (entry.progress) onProgress?.("running", { ...entry.progress });
+                else onProgress?.("running");
             }
 
             this.ensureLoop();
@@ -1458,8 +1535,52 @@ export class ComfyuiJobBatchPoller {
             entry.subscriptions.splice(idx, 1);
         }
         if (entry.subscriptions.length === 0) {
-            this.jobs.delete(jobId);
+            this.dropEntry(entry);
         }
+    }
+
+    /** 任务出队：先停掉进程通道订阅，再从调度表里摘掉。 */
+    private dropEntry(entry: TrackedJobEntry) {
+        this.jobs.delete(entry.jobId);
+        entry.unsubscribeProgress?.();
+        entry.unsubscribeProgress = undefined;
+        this.progressChannel?.forgetTask(entry.jobId);
+    }
+
+    /** 任务开始执行后接入进度通道：排队阶段没有进度，不建连。 */
+    private startProgress(entry: TrackedJobEntry) {
+        if (entry.unsubscribeProgress || !this.progressChannel) return;
+        if (!this.progressChannel.hasTask(entry.jobId)) return;
+        entry.unsubscribeProgress = this.progressChannel.subscribe(
+            entry.jobId,
+            (snapshot) => {
+                entry.progress = { progressPct: snapshot.progressPct, nodeLabel: snapshot.nodeLabel };
+                if (this.jobs.get(entry.jobId) !== entry) return;
+                for (const sub of entry.subscriptions) {
+                    sub.onProgress?.("running", { ...snapshot });
+                }
+            },
+            // executing: null 意味着服务端已把该任务写入 history，不必再等一个轮询节拍
+            { onExecutionEnd: () => this.wake() },
+        );
+    }
+
+    private sleep(ms: number) {
+        return new Promise<void>((resolve) => {
+            const timer = setTimeout(() => {
+                this.wakeLoop = null;
+                resolve();
+            }, ms);
+            this.wakeLoop = () => {
+                clearTimeout(timer);
+                this.wakeLoop = null;
+                resolve();
+            };
+        });
+    }
+
+    private wake() {
+        this.wakeLoop?.();
     }
 
     private ensureLoop() {
@@ -1473,7 +1594,7 @@ export class ComfyuiJobBatchPoller {
             await this.tick();
             if (!this.isRunning || this.jobs.size === 0) break;
             const interval = this.hasRunningJobs ? JOB_POLL_INTERVAL_RUNNING_MS : JOB_POLL_INTERVAL_PENDING_MS;
-            await new Promise((resolve) => setTimeout(resolve, interval));
+            await this.sleep(interval);
         }
         this.isRunning = false;
     }
@@ -1583,8 +1704,10 @@ export class ComfyuiJobBatchPoller {
                 entry.unseenTicks = 0;
                 entry.status = "running";
                 entry.queuePosition = undefined;
+                this.startProgress(entry);
                 for (const sub of entry.subscriptions) {
-                    sub.onProgress?.("running");
+                    if (entry.progress) sub.onProgress?.("running", { ...entry.progress });
+                    else sub.onProgress?.("running");
                 }
             } else {
                 entry.unseenTicks++;
@@ -1612,7 +1735,7 @@ export class ComfyuiJobBatchPoller {
                 const jobEntry = data?.[entry.jobId];
 
                 if (jobEntry) {
-                    this.jobs.delete(entry.jobId);
+                    this.dropEntry(entry);
                     if (isComfyuiJobInterrupted(jobEntry)) {
                         for (const sub of entry.subscriptions) {
                             if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
@@ -1640,7 +1763,7 @@ export class ComfyuiJobBatchPoller {
                 } else {
                     const isLost = entry.seenInQueue ? entry.unseenTicks >= 2 : entry.unseenTicks >= 3;
                     if (isLost) {
-                        this.jobs.delete(entry.jobId);
+                        this.dropEntry(entry);
                         for (const sub of entry.subscriptions) {
                             if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
                             sub.reject(new ComfyuiJobLostError(entry.jobId));
@@ -1651,7 +1774,7 @@ export class ComfyuiJobBatchPoller {
                 if (error instanceof ComfyuiNetworkError) {
                     continue;
                 }
-                this.jobs.delete(entry.jobId);
+                this.dropEntry(entry);
                 for (const sub of entry.subscriptions) {
                     if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
                     sub.reject(error);
@@ -1664,10 +1787,14 @@ export class ComfyuiJobBatchPoller {
         this.isRunning = false;
         this.hasRunningJobs = false;
         this.consecutiveNetworkErrors = 0;
+        this.wakeLoop = null;
         for (const entry of this.jobs.values()) {
             for (const sub of entry.subscriptions) {
                 if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
             }
+            entry.unsubscribeProgress?.();
+            entry.unsubscribeProgress = undefined;
+            this.progressChannel?.forgetTask(entry.jobId);
         }
         this.jobs.clear();
     }
@@ -1690,6 +1817,7 @@ export function resetComfyuiBatchPollers() {
         poller.clear();
     }
     batchPollers.clear();
+    resetComfyuiProgressChannels();
 }
 
 export function pollJobRaw(

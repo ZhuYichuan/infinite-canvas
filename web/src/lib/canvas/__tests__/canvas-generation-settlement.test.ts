@@ -28,6 +28,13 @@ describe("failCanvasGeneration", () => {
         expect(original.metadata?.status).toBe("loading");
     });
 
+    it("clears the live progress figure when a run fails", () => {
+        const original = node(CanvasNodeType.Image, { status: "loading", progressPct: 62, progressNodeLabel: "KSampler 21/50" });
+        const [failed] = failCanvasGeneration([original], { nodeId: original.id, error: new Error(connectionError) });
+        expect(failed.metadata?.progressPct).toBeUndefined();
+        expect(failed.metadata?.progressNodeLabel).toBeUndefined();
+    });
+
     it("mirrors failure on the distinct Config origin while preserving successful media inputs", () => {
         const result = node(CanvasNodeType.Video, { status: "loading", generationOriginNodeId: "config" });
         const source = node(CanvasNodeType.Config, { status: "loading", jobId: "stale" }, "config");

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n from "@/i18n";
-import { adaptWorkflowModelPaths, applyBindings, cancelJob, collectVideoAssetIds, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobCancelledError, ComfyuiJobError, ComfyuiJobLostError, ComfyuiJobNotFoundError, ComfyuiNetworkError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, parseSize, pollComfyuiVideoJob, pollJob, pollJobRaw, queryComfyuiJobStatus, requestComfyuiImage, resetComfyuiBatchPollers, submitComfyuiVideoJob, submitJob, validateComfyuiWorkflow } from "@/services/api/comfyui";
+import { adaptWorkflowModelPaths, applyBindings, cancelJob, collectVideoAssetIds, ComfyuiAbortedError, ComfyuiApiError, ComfyuiJobCancelledError, ComfyuiJobError, ComfyuiJobLostError, ComfyuiJobNotFoundError, ComfyuiNetworkError, ComfyuiNoWorkflowError, ComfyuiTimeoutError, downloadAsset, generateRandomSeed, getComfyuiClientId, parseSize, pollComfyuiVideoJob, pollJob, pollJobRaw, queryComfyuiJobStatus, requestComfyuiImage, resetComfyuiBatchPollers, resetComfyuiClientIds, submitComfyuiVideoJob, submitJob, validateComfyuiWorkflow } from "@/services/api/comfyui";
 import type { ComfyuiWorkflowJson } from "@/services/api/comfyui";
 import { defaultConfig, findWorkflow, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { DEFAULT_BUILTIN_COMFYUI_DEPTH_VIDEO_WORKFLOW, DEFAULT_BUILTIN_COMFYUI_FACE_REFINE_WORKFLOW, DEFAULT_LOCAL_COMFYUI_T2I_WORKFLOW } from "@/services/api/comfyui-default-workflows";
@@ -244,6 +244,55 @@ describe("submitJob", () => {
         fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ prompt_id: "job_abc" }) });
         await expect(submitJob({ "1": {} }, " http://10.7.8.12:8188 ")).resolves.toBe("job_abc");
         expect(fetchMock.mock.calls[0][0]).toBe("http://10.7.8.12:8188/prompt");
+    });
+});
+
+describe("comfyui client id", () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+        resetComfyuiClientIds();
+        window.localStorage.clear();
+        fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        window.localStorage.clear();
+        resetComfyuiClientIds();
+    });
+
+    it("reuses one client id for every submission to the same base url", async () => {
+        fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ prompt_id: "job_1" }) });
+        await submitJob({ "1": {} }, "http://127.0.0.1:8188");
+        await submitJob({ "1": {} }, "http://127.0.0.1:8188");
+        const bodies = fetchMock.mock.calls.map((call) => JSON.parse(String((call[1] as RequestInit).body)));
+        expect(bodies[0].client_id).toBeTruthy();
+        expect(bodies[1].client_id).toBe(bodies[0].client_id);
+    });
+
+    it("keeps one client id per base url", () => {
+        expect(getComfyuiClientId("http://127.0.0.1:8188")).not.toBe(getComfyuiClientId("http://127.0.0.1:8189"));
+    });
+
+    it("survives a reload by reading the id back from storage", () => {
+        const id = getComfyuiClientId("http://127.0.0.1:8188");
+        resetComfyuiClientIds();
+        expect(getComfyuiClientId("http://127.0.0.1:8188")).toBe(id);
+    });
+
+    it("still returns a stable id when storage is unavailable", () => {
+        vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+            throw new Error("storage blocked");
+        });
+        vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+            throw new Error("storage blocked");
+        });
+        const id = getComfyuiClientId("http://127.0.0.1:8188");
+        expect(id).toBeTruthy();
+        expect(getComfyuiClientId("http://127.0.0.1:8188")).toBe(id);
     });
 });
 

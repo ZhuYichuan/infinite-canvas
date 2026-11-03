@@ -3317,14 +3317,8 @@ function InfiniteCanvasPage() {
                     const fullPrompt = (builtinPanel.promptPrefix || "") + scene;
                     const context = await hydrateNodeGenerationContext(buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, fullPrompt));
                     const refs = context.referenceImages;
-                    const onProgress = (status: string, detail?: { jobId?: string; queuePosition?: number }) => {
-                        if (status === "submitted" && detail?.jobId) {
-                            setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, jobId: detail.jobId } } : node)));
-                        } else if (status === "pending" && typeof detail?.queuePosition === "number") {
-                            setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, queuePosition: detail.queuePosition } } : node)));
-                        } else if (status === "running") {
-                            setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, queuePosition: undefined } } : node)));
-                        }
+                    const onProgress = (status: string, detail?: { jobId?: string; queuePosition?: number; message?: string; progressPct?: number; progressNodeLabel?: string }) => {
+                        setNodes((prev) => updateNodeGenerationProgress(prev, nodeId, status, detail));
                     };
                     const image = refs.length
                         ? await requestEdit({ ...generationConfig, count: "1" }, context.prompt, refs, undefined, { signal: controller.signal, seed: nextSeed, onProgress }).then((items) => items[0])
@@ -3681,13 +3675,7 @@ function InfiniteCanvasPage() {
                                 referenceAudios: generationContext.referenceAudios,
                                 seed: nextSeed,
                                 onProgress: (status, detail) => {
-                                    if (status === "submitted" && detail?.jobId) {
-                                        setNodes((prev) => prev.map((node) => (node.id === videoId ? { ...node, metadata: { ...node.metadata, jobId: detail.jobId } } : node)));
-                                    } else if (status === "pending" && typeof detail?.queuePosition === "number") {
-                                        setNodes((prev) => prev.map((node) => (node.id === videoId ? { ...node, metadata: { ...node.metadata, queuePosition: detail.queuePosition } } : node)));
-                                    } else if (status === "running") {
-                                        setNodes((prev) => prev.map((node) => (node.id === videoId ? { ...node, metadata: { ...node.metadata, queuePosition: undefined } } : node)));
-                                    }
+                                    setNodes((prev) => updateNodeGenerationProgress(prev, videoId, status, detail));
                                 },
                             }),
                         );

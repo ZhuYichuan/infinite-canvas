@@ -494,6 +494,22 @@ describe("formatNodeLoadingText", () => {
     it("formats queue position when in queue", () => {
         expect(formatNodeLoadingText({ queuePosition: 4 })).toBe("排队中 (第 4 位)");
     });
+
+    it("shows progress with the node label once running", () => {
+        expect(formatNodeLoadingText({ progressPct: 62, progressNodeLabel: "KSampler 21/50" })).toBe("62% · KSampler 21/50");
+    });
+
+    it("shows the bare percentage when the node is unknown", () => {
+        expect(formatNodeLoadingText({ progressPct: 62 })).toBe("62%");
+    });
+
+    it("prefers progress over a stale queue position", () => {
+        expect(formatNodeLoadingText({ progressPct: 5, queuePosition: 4 })).toBe("5%");
+    });
+
+    it("prefers reconnect text over progress", () => {
+        expect(formatNodeLoadingText({ networkRetryText: "服务重连中 (2/5)...", progressPct: 62 })).toBe("服务重连中 (2/5)...");
+    });
 });
 
 describe("updateNodeGenerationProgress", () => {
@@ -519,6 +535,18 @@ describe("updateNodeGenerationProgress", () => {
         const updated3 = updateNodeGenerationProgress(updated2, "node-1", "running");
         expect(updated3[0].metadata?.queuePosition).toBeUndefined();
         expect(updated3[0].metadata?.networkRetryText).toBeUndefined();
+    });
+
+    it("writes progress onto the node while running and clears it on settlement", () => {
+        const node = makeNode(CanvasNodeType.Image, { status: "loading" }, "node-progress");
+        const running = updateNodeGenerationProgress([node], "node-progress", "running", { progressPct: 62, progressNodeLabel: "KSampler 21/50" });
+        expect(running[0].metadata?.progressPct).toBe(62);
+        expect(running[0].metadata?.progressNodeLabel).toBe("KSampler 21/50");
+        expect(running[0].metadata?.queuePosition).toBeUndefined();
+
+        const settled = updateNodeGenerationProgress(running, "node-progress", "pending", { queuePosition: 2 });
+        expect(settled[0].metadata?.progressPct).toBeUndefined();
+        expect(settled[0].metadata?.progressNodeLabel).toBeUndefined();
     });
 
     it("updates target slot image within batch node", () => {

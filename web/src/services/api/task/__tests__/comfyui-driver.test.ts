@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ModelChannel } from "@/stores/use-config-store";
 import {
+    getProgressChannel,
+    resetComfyuiBatchPollers,
     ComfyuiAbortedError,
     ComfyuiJobCancelledError,
     ComfyuiJobError,
@@ -205,6 +207,87 @@ describe("ComfyuiTaskDriver", () => {
             expect(snapshot.artifacts?.[0].url).toContain("filename=done.png");
 
             vi.restoreAllMocks();
+        });
+
+        it("bridges live progress percentages into the running snapshot", async () => {
+            vi.useFakeTimers();
+            resetComfyuiBatchPollers();
+
+            const sockets: Array<{ onmessage: ((event: { data: unknown }) => void) | null; url: string }> = [];
+            class StubWebSocket {
+                onopen = null;
+                onmessage: ((event: { data: unknown }) => void) | null = null;
+                onclose = null;
+                constructor(readonly url: string) {
+                    sockets.push(this as unknown as { onmessage: ((event: { data: unknown }) => void) | null; url: string });
+                }
+                close() {}
+            }
+            vi.stubGlobal("WebSocket", StubWebSocket);
+
+            let queueCalls = 0;
+            vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+                const urlStr = String(url);
+                if (urlStr.includes("/queue")) {
+                    queueCalls++;
+                    return {
+                        ok: true,
+                        status: 200,
+                        json: async () => ({ queue_running: queueCalls === 1 ? [[0, "job_live"]] : [], queue_pending: [] }),
+                    } as unknown as Response;
+                }
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        job_live: {
+                            status: { status_str: "success", completed: true, messages: [] },
+                            outputs: { "9": { images: [{ filename: "live.png", type: "output" }] } },
+                        },
+                    }),
+                } as unknown as Response;
+            });
+
+            getProgressChannel(mockChannel.baseUrl).registerTask("job_live", {
+                nodeCount: 5,
+                classTypes: { "1": "LoadImage", "2": "CLIPTextEncode", "3": "KSampler" },
+            });
+
+            const snapshots: Array<{ phase: string; progressPct?: number; progressNode?: unknown }> = [];
+            const polling = comfyuiTaskDriver.poll("job_live", mockChannel, {
+                onProgress: (snapshot) => snapshots.push(snapshot as { phase: string; progressPct?: number; progressNode?: unknown }),
+            });
+
+            await vi.advanceTimersByTimeAsync(0);
+            expect(sockets).toHaveLength(1);
+
+            sockets[0].onmessage?.({
+                data: JSON.stringify({
+                    type: "progress_state",
+                    data: {
+                        prompt_id: "job_live",
+                        nodes: {
+                            "1": { state: "finished", value: 1, max: 1, node_id: "1" },
+                            "2": { state: "finished", value: 1, max: 1, node_id: "2" },
+                            "3": { state: "running", value: 30, max: 60, node_id: "3", display_node_id: "3" },
+                        },
+                    },
+                }),
+            });
+
+            const live = snapshots.filter((snapshot) => typeof snapshot.progressPct === "number").at(-1);
+            expect(live).toMatchObject({
+                phase: "running",
+                progressPct: 50,
+                progressNode: { classType: "KSampler", step: 30, steps: 60 },
+            });
+
+            await vi.advanceTimersByTimeAsync(2000);
+            await polling;
+
+            resetComfyuiBatchPollers();
+            vi.unstubAllGlobals();
+            vi.useRealTimers();
         });
 
         it("handles poll progress events bridging network_retry and pending", async () => {

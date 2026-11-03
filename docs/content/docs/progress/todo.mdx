@@ -7,3 +7,5 @@ description: Planned follow-up work
 
 - Replace the Claude Code CLI adapter with a Claude Agent SDK adapter and improve the tool queue, following the [Local Agent Integration Plan](/docs/progress/local-agent-integration-plan).
 - Add Skill installation from web search, Skill resource-file management, and controlled local-memory persistence.
+- 生成进度当前由前端按节点数加权估算（ComfyUI 本地 8188 不提供整体百分比）。等自建 ComfyUI 升到 v0.6.0+ 后改用 `/api/jobs/{id}/cancel` 按 id 精准取消，消除现有「查队列 + /interrupt」之间的竞态窗口。
+- 若本地 ComfyUI 将来在 8188 暴露 Comfy API v2 的 `/api/v2/jobs/{id}`（带 `value` / `nodes_done` / `step` 的 Progress），可换用服务端算好的整体百分比，替代前端估算。

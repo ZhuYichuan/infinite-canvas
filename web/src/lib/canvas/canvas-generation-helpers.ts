@@ -302,11 +302,15 @@ export function localizeErrorDetails(errorDetails?: string): string | undefined 
 }
 
 /**
- * 计算节点加载中文案（排队位次、重连中或常规生成中）
+ * 计算节点加载中文案（优先级：重连提示 > 真实进度 > 排队位次 > 常规生成中）
  */
-export function formatNodeLoadingText(meta?: { queuePosition?: number; networkRetryText?: string }): string {
+export function formatNodeLoadingText(meta?: { queuePosition?: number; networkRetryText?: string; progressPct?: number; progressNodeLabel?: string }): string {
     if (meta?.networkRetryText) {
         return meta.networkRetryText;
+    }
+    if (typeof meta?.progressPct === "number") {
+        const pct = `${Math.round(meta.progressPct)}%`;
+        return meta.progressNodeLabel ? `${pct} · ${meta.progressNodeLabel}` : pct;
     }
     if (typeof meta?.queuePosition === "number" && meta.queuePosition > 0) {
         return `排队中 (第 ${meta.queuePosition} 位)`;
@@ -531,13 +535,15 @@ export function updateNodeGenerationProgress(
     nodes: CanvasNodeData[],
     targetNodeId: string,
     status: string,
-    detail?: { jobId?: string; queuePosition?: number; message?: string },
+    detail?: { jobId?: string; queuePosition?: number; message?: string; progressPct?: number; progressNodeLabel?: string },
     slotId?: string,
 ): CanvasNodeData[] {
+    const hasProgress = status === "running" && typeof detail?.progressPct === "number";
     const patch = {
         ...(status === "submitted" && detail?.jobId ? { jobId: detail.jobId, networkRetryText: undefined } : {}),
-        ...(status === "pending" && typeof detail?.queuePosition === "number" ? { queuePosition: detail.queuePosition, networkRetryText: undefined } : {}),
+        ...(status === "pending" && typeof detail?.queuePosition === "number" ? { queuePosition: detail.queuePosition, networkRetryText: undefined, progressPct: undefined, progressNodeLabel: undefined } : {}),
         ...(status === "running" ? { queuePosition: undefined, networkRetryText: undefined } : {}),
+        ...(hasProgress ? { progressPct: detail!.progressPct, progressNodeLabel: detail!.progressNodeLabel } : {}),
         ...(status === "network_retry" ? { networkRetryText: detail?.message || "服务重连中..." } : {}),
     };
     return nodes.map((node) => {
