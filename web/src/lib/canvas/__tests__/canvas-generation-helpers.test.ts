@@ -9,6 +9,7 @@ import {
     duplicateIncomingConnections,
     findRetrySourceNode,
     formatNodeLoadingText,
+    formatProgressCaption,
     generateNextSeed,
     getVideoToolCategory,
     hasInterruptedGeneration,
@@ -495,20 +496,30 @@ describe("formatNodeLoadingText", () => {
         expect(formatNodeLoadingText({ queuePosition: 4 })).toBe("排队中 (第 4 位)");
     });
 
-    it("shows progress with the node label once running", () => {
-        expect(formatNodeLoadingText({ progressPct: 62, progressNodeLabel: "KSampler 21/50" })).toBe("62% · KSampler 21/50");
-    });
-
-    it("shows the bare percentage when the node is unknown", () => {
-        expect(formatNodeLoadingText({ progressPct: 62 })).toBe("62%");
-    });
-
-    it("prefers progress over a stale queue position", () => {
-        expect(formatNodeLoadingText({ progressPct: 5, queuePosition: 4 })).toBe("5%");
+    it("keeps the caption free of percentages once progress takes over", () => {
+        expect(formatNodeLoadingText({ progressPct: 62, queuePosition: 4 })).toBe("排队中 (第 4 位)");
     });
 
     it("prefers reconnect text over progress", () => {
         expect(formatNodeLoadingText({ networkRetryText: "服务重连中 (2/5)...", progressPct: 62 })).toBe("服务重连中 (2/5)...");
+    });
+});
+
+describe("formatProgressCaption", () => {
+    it("localizes long backend class names into short labels", () => {
+        expect(formatProgressCaption({ progressNodeClassType: "SamplerCustomAdvanced", progressNodeStep: 21, progressNodeSteps: 50 })).toBe("采样 21/50");
+    });
+
+    it("hides node classes it has no label for instead of leaking the raw name", () => {
+        expect(formatProgressCaption({ progressNodeClassType: "SomePrivateCustomNode", progressNodeStep: 1, progressNodeSteps: 2 })).toBeUndefined();
+    });
+
+    it("omits the step counter for stages that have no steps", () => {
+        expect(formatProgressCaption({ progressNodeClassType: "VAEDecode" })).toBe("解码");
+    });
+
+    it("returns nothing when no node has been reported yet", () => {
+        expect(formatProgressCaption({})).toBeUndefined();
     });
 });
 
@@ -539,21 +550,22 @@ describe("updateNodeGenerationProgress", () => {
 
     it("writes progress onto the node while running and clears it on settlement", () => {
         const node = makeNode(CanvasNodeType.Image, { status: "loading" }, "node-progress");
-        const running = updateNodeGenerationProgress([node], "node-progress", "running", { progressPct: 62, progressNodeLabel: "KSampler 21/50" });
+        const running = updateNodeGenerationProgress([node], "node-progress", "running", { progressPct: 62, progressNodeClassType: "KSampler", progressNodeStep: 21, progressNodeSteps: 50 });
         expect(running[0].metadata?.progressPct).toBe(62);
-        expect(running[0].metadata?.progressNodeLabel).toBe("KSampler 21/50");
+        expect(running[0].metadata?.progressNodeClassType).toBe("KSampler");
+        expect(running[0].metadata?.progressNodeStep).toBe(21);
         expect(running[0].metadata?.queuePosition).toBeUndefined();
 
         const settled = updateNodeGenerationProgress(running, "node-progress", "pending", { queuePosition: 2 });
         expect(settled[0].metadata?.progressPct).toBeUndefined();
-        expect(settled[0].metadata?.progressNodeLabel).toBeUndefined();
+        expect(settled[0].metadata?.progressNodeClassType).toBeUndefined();
     });
 
     it("drops the percentage when a running update carries no number", () => {
-        const node = makeNode(CanvasNodeType.Image, { status: "loading", progressPct: 62, progressNodeLabel: "KSampler 21/50" }, "node-lost");
+        const node = makeNode(CanvasNodeType.Image, { status: "loading", progressPct: 62, progressNodeClassType: "KSampler" }, "node-lost");
         const [updated] = updateNodeGenerationProgress([node], "node-lost", "running");
         expect(updated.metadata?.progressPct).toBeUndefined();
-        expect(updated.metadata?.progressNodeLabel).toBeUndefined();
+        expect(updated.metadata?.progressNodeClassType).toBeUndefined();
     });
 
     it("updates target slot image within batch node", () => {

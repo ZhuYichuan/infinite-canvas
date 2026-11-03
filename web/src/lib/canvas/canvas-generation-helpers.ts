@@ -301,21 +301,42 @@ export function localizeErrorDetails(errorDetails?: string): string | undefined 
     return errorDetails;
 }
 
+type ProgressMeta = {
+    progressPct?: number;
+    progressNodeClassType?: string;
+    progressNodeStep?: number;
+    progressNodeSteps?: number;
+};
+
 /**
- * 计算节点加载中文案（优先级：重连提示 > 真实进度 > 排队位次 > 常规生成中）
+ * 计算节点加载中文案（优先级：重连提示 > 排队位次 > 常规生成中）。
+ * 进度本身由进度条呈现，不进这里，避免同一屏出现两套进度表达。
  */
-export function formatNodeLoadingText(meta?: { queuePosition?: number; networkRetryText?: string; progressPct?: number; progressNodeLabel?: string }): string {
+export function formatNodeLoadingText(meta?: { queuePosition?: number; networkRetryText?: string } & ProgressMeta): string {
     if (meta?.networkRetryText) {
         return meta.networkRetryText;
-    }
-    if (typeof meta?.progressPct === "number") {
-        const pct = `${Math.round(meta.progressPct)}%`;
-        return meta.progressNodeLabel ? `${pct} · ${meta.progressNodeLabel}` : pct;
     }
     if (typeof meta?.queuePosition === "number" && meta.queuePosition > 0) {
         return `排队中 (第 ${meta.queuePosition} 位)`;
     }
     return i18n.t("canvas.node.generating");
+}
+
+/**
+ * 进度条下方的阶段说明：把后端 class_type 翻成当前语言的短标签。
+ * 未收录的类型一律不显示，宁可少一行字也不把 SamplerCustomAdvanced 这类名字漏给用户。
+ */
+export function formatProgressCaption(meta?: ProgressMeta): string | undefined {
+    const classType = meta?.progressNodeClassType;
+    if (!classType) return undefined;
+    const labels = i18n.t("canvas.node.progressNodeLabels", { returnObjects: true }) as Record<string, string> | string;
+    const label = typeof labels === "object" && labels ? labels[classType] : undefined;
+    if (!label) return undefined;
+    const steps = meta?.progressNodeSteps;
+    if (typeof steps === "number" && steps > 1) {
+        return `${label} ${Math.round(meta?.progressNodeStep ?? 0)}/${Math.round(steps)}`;
+    }
+    return label;
 }
 
 export function hasInterruptedGeneration(node: CanvasNodeData): boolean {
@@ -537,12 +558,16 @@ export type NodeGenerationProgressDetail = {
     queuePosition?: number;
     message?: string;
     progressPct?: number;
-    progressNodeLabel?: string;
+    progressNodeClassType?: string;
+    progressNodeStep?: number;
+    progressNodeSteps?: number;
 };
 
 /**
  * 统一更新画布节点在生成生命周期中的进度与瞬态字段（submitted、pending、running、network_retry）
  */
+const CLEARED_PROGRESS = { progressPct: undefined, progressNodeClassType: undefined, progressNodeStep: undefined, progressNodeSteps: undefined };
+
 export function updateNodeGenerationProgress(
     nodes: CanvasNodeData[],
     targetNodeId: string,
@@ -553,11 +578,11 @@ export function updateNodeGenerationProgress(
     const hasProgress = status === "running" && typeof detail?.progressPct === "number";
     const patch = {
         ...(status === "submitted" && detail?.jobId ? { jobId: detail.jobId, networkRetryText: undefined } : {}),
-        ...(status === "pending" && typeof detail?.queuePosition === "number" ? { queuePosition: detail.queuePosition, networkRetryText: undefined, progressPct: undefined, progressNodeLabel: undefined } : {}),
+        ...(status === "pending" && typeof detail?.queuePosition === "number" ? { queuePosition: detail.queuePosition, networkRetryText: undefined, ...CLEARED_PROGRESS } : {}),
         ...(status === "running"
             ? hasProgress
-                ? { queuePosition: undefined, networkRetryText: undefined, progressPct: detail!.progressPct, progressNodeLabel: detail!.progressNodeLabel }
-                : { queuePosition: undefined, networkRetryText: undefined, progressPct: undefined, progressNodeLabel: undefined }
+                ? { queuePosition: undefined, networkRetryText: undefined, progressPct: detail!.progressPct, progressNodeClassType: detail!.progressNodeClassType, progressNodeStep: detail!.progressNodeStep, progressNodeSteps: detail!.progressNodeSteps }
+                : { queuePosition: undefined, networkRetryText: undefined, ...CLEARED_PROGRESS }
             : {}),
         ...(status === "network_retry" ? { networkRetryText: detail?.message || "服务重连中..." } : {}),
     };

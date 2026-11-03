@@ -26,9 +26,9 @@ describe("cloneNodeMetadata", () => {
     });
 
     it("does not carry a running task's progress into the clone", () => {
-        const cloned = cloneNodeMetadata({ status: "loading", progressPct: 62, progressNodeLabel: "KSampler 21/50" }, CanvasNodeType.Image);
+        const cloned = cloneNodeMetadata({ status: "loading", progressPct: 62, progressNodeClassType: "KSampler" }, CanvasNodeType.Image);
         expect(cloned?.progressPct).toBeUndefined();
-        expect(cloned?.progressNodeLabel).toBeUndefined();
+        expect(cloned?.progressNodeClassType).toBeUndefined();
     });
 
     it("clears composerContent even when only prompt is present", () => {

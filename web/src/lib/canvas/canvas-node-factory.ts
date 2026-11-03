@@ -86,7 +86,9 @@ export function cloneNodeMetadata(metadata?: CanvasNodeMetadata, nodeType?: Canv
     delete cloned.queuePosition;
     delete cloned.networkRetryText;
     delete cloned.progressPct;
-    delete cloned.progressNodeLabel;
+    delete cloned.progressNodeClassType;
+    delete cloned.progressNodeStep;
+    delete cloned.progressNodeSteps;
     delete cloned.errorDetails;
     delete cloned.isTimeout;
 

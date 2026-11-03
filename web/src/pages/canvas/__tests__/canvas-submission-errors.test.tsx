@@ -294,7 +294,7 @@ describe("canvas submission failure settlement through the page callbacks", () =
         let release: ((value: string) => void) | undefined;
         harness.requestText.mockImplementationOnce(async (_config, _messages, _onDelta, options) => {
             options.onProgress("submitted", { jobId: "text-job" });
-            options.onProgress("running", { progressPct: 62, progressNodeLabel: "KSampler 21/50" });
+            options.onProgress("running", { progressPct: 62, progressNodeClassType: "KSampler", progressNodeStep: 21, progressNodeSteps: 50 });
             return new Promise<string>((resolve) => {
                 release = resolve;
             });
@@ -305,7 +305,7 @@ describe("canvas submission failure settlement through the page callbacks", () =
             await Promise.resolve();
         });
         const result = [...harness.nodeProps.values()].find(({ data }) => data.id !== "source")?.data;
-        expect(result?.metadata?.texts?.[0]).toMatchObject({ progressPct: 62, progressNodeLabel: "KSampler 21/50" });
+        expect(result?.metadata?.texts?.[0]).toMatchObject({ progressPct: 62, progressNodeClassType: "KSampler" });
         expect(result?.metadata?.texts?.[1]?.progressPct).toBeUndefined();
 
         release?.("完成");

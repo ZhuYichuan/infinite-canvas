@@ -97,7 +97,7 @@ describe("ComfyuiJobBatchPoller × progress channel", () => {
             },
         });
 
-        expect(updates.at(-1)).toMatchObject({ status: "running", detail: { progressPct: 50, progressNodeLabel: "KSampler 30/60" } });
+        expect(updates.at(-1)).toMatchObject({ status: "running", detail: { progressPct: 50, progressNodeClassType: "KSampler", progressNodeStep: 30, progressNodeSteps: 60 } });
     });
 
     it("stops reporting a percentage once the progress connection drops", async () => {

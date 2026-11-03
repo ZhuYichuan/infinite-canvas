@@ -52,7 +52,9 @@ export type CanvasNodeImage = {
     queuePosition?: number;
     networkRetryText?: string;
     progressPct?: number;
-    progressNodeLabel?: string;
+    progressNodeClassType?: string;
+    progressNodeStep?: number;
+    progressNodeSteps?: number;
     isTimeout?: boolean;
 };
 
@@ -65,7 +67,9 @@ export type CanvasNodeText = {
     queuePosition?: number;
     networkRetryText?: string;
     progressPct?: number;
-    progressNodeLabel?: string;
+    progressNodeClassType?: string;
+    progressNodeStep?: number;
+    progressNodeSteps?: number;
     isTimeout?: boolean;
 };
 
@@ -80,7 +84,9 @@ export type CanvasNodeMetadata = {
     queuePosition?: number;
     networkRetryText?: string;
     progressPct?: number;
-    progressNodeLabel?: string;
+    progressNodeClassType?: string;
+    progressNodeStep?: number;
+    progressNodeSteps?: number;
     isTimeout?: boolean;
     status?: CanvasNodeStatus;
     errorDetails?: string;

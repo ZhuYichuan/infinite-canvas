@@ -1558,10 +1558,9 @@ export class ComfyuiJobBatchPoller {
         if (!progress || typeof progress.progressPct !== "number") return undefined;
         return {
             progressPct: progress.progressPct,
-            ...(progress.nodeLabel ? { progressNodeLabel: progress.nodeLabel } : {}),
-            ...(progress.nodeClassType ? { nodeClassType: progress.nodeClassType } : {}),
-            ...(typeof progress.nodeStep === "number" ? { nodeStep: progress.nodeStep } : {}),
-            ...(typeof progress.nodeSteps === "number" ? { nodeSteps: progress.nodeSteps } : {}),
+            ...(progress.nodeClassType ? { progressNodeClassType: progress.nodeClassType } : {}),
+            ...(typeof progress.nodeStep === "number" ? { progressNodeStep: progress.nodeStep } : {}),
+            ...(typeof progress.nodeSteps === "number" ? { progressNodeSteps: progress.nodeSteps } : {}),
         };
     }
 

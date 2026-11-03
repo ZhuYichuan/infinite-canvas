@@ -14,7 +14,7 @@ import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin"
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasVideoPlayer } from "./canvas-video-player";
 import { useTranslation } from "react-i18next";
-import { formatNodeLoadingText } from "@/lib/canvas/canvas-generation-helpers";
+import { formatNodeLoadingText, formatProgressCaption } from "@/lib/canvas/canvas-generation-helpers";
 import { CanvasGenerationError } from "./canvas-generation-error";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -587,11 +587,29 @@ function GroupNodeContent({ node, theme, groupChildCount, scale }: NodeContentRe
     );
 }
 
+function GenerationProgress({ theme, pct, caption }: { theme: NodeContentRendererProps["theme"]; pct?: number; caption?: string }) {
+    if (typeof pct !== "number") return null;
+    const width = Math.max(0, Math.min(100, pct));
+    return (
+        <div className="flex w-24 flex-col items-center gap-1.5">
+            <div className="h-[3px] w-full overflow-hidden rounded-full" style={{ background: theme.node.stroke }}>
+                <div className="h-full rounded-full transition-[width] duration-300 ease-out" style={{ width: `${width}%`, background: theme.node.activeStroke }} />
+            </div>
+            {caption ? (
+                <span className="text-[10px] tracking-[0.1em]" style={{ color: theme.node.activeStroke }}>
+                    {caption}
+                </span>
+            ) : null}
+        </div>
+    );
+}
+
 function LoadingContent({ theme, node }: Pick<NodeContentRendererProps, "theme"> & { node?: CanvasNodeData }) {
     const loadingText = formatNodeLoadingText(node?.metadata);
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.activeStroke }}>
             <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />
+            <GenerationProgress theme={theme} pct={node?.metadata?.progressPct} caption={formatProgressCaption(node?.metadata)} />
             <span className="text-[10px] tracking-[0.2em]">{loadingText}</span>
         </div>
     );
@@ -756,6 +774,7 @@ function TextSlotStatus({ text }: { text: CanvasNodeText }) {
             ) : (
                 <span className="text-xs">{t("apiErrors.noContent")}</span>
             )}
+            {loading ? <GenerationProgress theme={theme} pct={text.progressPct} caption={formatProgressCaption(text)} /> : null}
             {loading ? <span className="text-[10px] tracking-[0.2em]">{loadingText}</span> : null}
         </div>
     );
@@ -970,6 +989,7 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
             ) : loading ? (
                 <>
                     <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />
+                    <GenerationProgress theme={theme} pct={image?.progressPct} caption={formatProgressCaption(image)} />
                     <span className="text-[10px] tracking-[0.2em]">{loadingText}</span>
                 </>
             ) : (
