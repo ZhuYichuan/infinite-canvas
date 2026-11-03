@@ -99,6 +99,7 @@ import {
     snapshotVideoToolInputs,
     shouldMarkGenerationSourceStatus,
     updateNodeGenerationProgress,
+    type NodeGenerationProgressDetail,
 } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition, isBuiltinNodeType as isBuiltinType, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { registerBuiltinNodes } from "@/components/canvas/nodes/builtin-nodes";
@@ -3317,7 +3318,7 @@ function InfiniteCanvasPage() {
                     const fullPrompt = (builtinPanel.promptPrefix || "") + scene;
                     const context = await hydrateNodeGenerationContext(buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, fullPrompt));
                     const refs = context.referenceImages;
-                    const onProgress = (status: string, detail?: { jobId?: string; queuePosition?: number; message?: string; progressPct?: number; progressNodeLabel?: string }) => {
+                    const onProgress = (status: string, detail?: NodeGenerationProgressDetail) => {
                         setNodes((prev) => updateNodeGenerationProgress(prev, nodeId, status, detail));
                     };
                     const image = refs.length
@@ -3486,7 +3487,7 @@ function InfiniteCanvasPage() {
                         imageIds.map(async (imageId, index) => {
                             const slotSeed = (nextSeed + index) % 9007199254740991;
                             try {
-                                const handleBatchProgress = (status: string, detail?: { jobId?: string; queuePosition?: number; message?: string }) => {
+                                const handleBatchProgress = (status: string, detail?: NodeGenerationProgressDetail) => {
                                     setNodes((prev) => updateNodeGenerationProgress(prev, rootId, status, detail, imageId));
                                 };
                                 const image = referenceImages.length
@@ -3922,22 +3923,22 @@ function InfiniteCanvasPage() {
                                     maxLength: sourceNode?.metadata?.maxLength,
                                     thinking: sourceNode?.metadata?.thinking,
                                     onProgress: (status, detail) => {
-                                        if (status === "submitted" && detail?.jobId) {
-                                            setNodes((prev) =>
-                                                prev.map((n) =>
-                                                    n.id === rootId
-                                                        ? {
-                                                              ...n,
-                                                              metadata: {
-                                                                  ...n.metadata,
-                                                                  ...(textCount === 1 ? { jobId: detail.jobId, isTimeout: undefined } : {}),
-                                                                  texts: n.metadata?.texts?.map((item) => (item.id === textId ? { ...item, jobId: detail.jobId, isTimeout: undefined } : item)),
-                                                              },
-                                                          }
-                                                        : n,
-                                                ),
+                                        setNodes((prev) => {
+                                            const next = updateNodeGenerationProgress(prev, rootId, status, detail, textId);
+                                            if (status !== "submitted" || !detail?.jobId) return next;
+                                            return next.map((n) =>
+                                                n.id === rootId
+                                                    ? {
+                                                          ...n,
+                                                          metadata: {
+                                                              ...n.metadata,
+                                                              ...(textCount === 1 ? { jobId: detail.jobId, isTimeout: undefined } : {}),
+                                                              texts: n.metadata?.texts?.map((item) => (item.id === textId ? { ...item, jobId: detail.jobId, isTimeout: undefined } : item)),
+                                                          },
+                                                      }
+                                                    : n,
                                             );
-                                        }
+                                        });
                                     },
                                 },
                             );
@@ -4242,7 +4243,7 @@ function InfiniteCanvasPage() {
                 } else {
                     const referenceImages = context.referenceImages;
                     const useEdit = saved.generationType === "edit" || referenceImages.length > 0;
-                    const handleRetryProgress = (status: string, detail?: { jobId?: string; queuePosition?: number; message?: string }) => {
+                    const handleRetryProgress = (status: string, detail?: NodeGenerationProgressDetail) => {
                         setNodes((prev) => updateNodeGenerationProgress(prev, node.id, status, detail, imageId));
                     };
                     const image = useEdit

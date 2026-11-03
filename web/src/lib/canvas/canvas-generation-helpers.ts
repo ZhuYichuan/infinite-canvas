@@ -529,13 +529,25 @@ export function buildPastedNodeConnections(
 }
 
 /**
+ * 生成生命周期回调可携带的瞬态字段，键名与画布节点 metadata 保持一致。
+ * 各调用点共用该类型，避免新增字段时逐处补写而漏掉某条链路。
+ */
+export type NodeGenerationProgressDetail = {
+    jobId?: string;
+    queuePosition?: number;
+    message?: string;
+    progressPct?: number;
+    progressNodeLabel?: string;
+};
+
+/**
  * 统一更新画布节点在生成生命周期中的进度与瞬态字段（submitted、pending、running、network_retry）
  */
 export function updateNodeGenerationProgress(
     nodes: CanvasNodeData[],
     targetNodeId: string,
     status: string,
-    detail?: { jobId?: string; queuePosition?: number; message?: string; progressPct?: number; progressNodeLabel?: string },
+    detail?: NodeGenerationProgressDetail,
     slotId?: string,
 ): CanvasNodeData[] {
     const hasProgress = status === "running" && typeof detail?.progressPct === "number";

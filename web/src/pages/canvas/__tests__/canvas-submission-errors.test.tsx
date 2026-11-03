@@ -289,6 +289,31 @@ describe("canvas submission failure settlement through the page callbacks", () =
         expect(harness.nodeProps.get("source")?.data.metadata).toMatchObject({ status: "error", jobId: "accepted-audio" });
     });
 
+    it("surfaces live progress on the text slot it belongs to", async () => {
+        await mount(makeNode(CanvasNodeType.Config, { textCount: 2 }));
+        let release: ((value: string) => void) | undefined;
+        harness.requestText.mockImplementationOnce(async (_config, _messages, _onDelta, options) => {
+            options.onProgress("submitted", { jobId: "text-job" });
+            options.onProgress("running", { progressPct: 62, progressNodeLabel: "KSampler 21/50" });
+            return new Promise<string>((resolve) => {
+                release = resolve;
+            });
+        });
+        let generating: Promise<void> = Promise.resolve();
+        await act(async () => {
+            generating = harness.generateRef.current("source", "text", "测试提示词");
+            await Promise.resolve();
+        });
+        const result = [...harness.nodeProps.values()].find(({ data }) => data.id !== "source")?.data;
+        expect(result?.metadata?.texts?.[0]).toMatchObject({ progressPct: 62, progressNodeLabel: "KSampler 21/50" });
+        expect(result?.metadata?.texts?.[1]?.progressPct).toBeUndefined();
+
+        release?.("完成");
+        await act(async () => {
+            await generating;
+        });
+    });
+
     it("preserves successful batch text and exposes the failed text's exact cause", async () => {
         const error = failure();
         await mount(makeNode(CanvasNodeType.Config, { textCount: 2 }));
