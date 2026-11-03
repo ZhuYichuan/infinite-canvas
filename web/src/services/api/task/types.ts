@@ -37,7 +37,12 @@ export interface TaskSnapshot {
     jobId: string;
     phase: TaskPhase;
     queuePosition?: number;              // 排队位次（从 1 开始）
-    progressPct?: number;                // 0 ~ 100 执行进度
+    progressPct?: number;                // 0 ~ 99 执行进度估算（成功前不上 100）
+    progressNode?: {                     // 当前执行节点（用于展示 21/50 这类步数）
+        classType: string;
+        step?: number;
+        steps?: number;
+    };
     error?: string;                      // 失败诊断文本
     artifacts?: TaskArtifact[];          // 成功时的产物列表
     networkRetry?: TaskNetworkRetryInfo; // 临时断线重试态

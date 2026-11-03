@@ -542,8 +542,11 @@ export function updateNodeGenerationProgress(
     const patch = {
         ...(status === "submitted" && detail?.jobId ? { jobId: detail.jobId, networkRetryText: undefined } : {}),
         ...(status === "pending" && typeof detail?.queuePosition === "number" ? { queuePosition: detail.queuePosition, networkRetryText: undefined, progressPct: undefined, progressNodeLabel: undefined } : {}),
-        ...(status === "running" ? { queuePosition: undefined, networkRetryText: undefined } : {}),
-        ...(hasProgress ? { progressPct: detail!.progressPct, progressNodeLabel: detail!.progressNodeLabel } : {}),
+        ...(status === "running"
+            ? hasProgress
+                ? { queuePosition: undefined, networkRetryText: undefined, progressPct: detail!.progressPct, progressNodeLabel: detail!.progressNodeLabel }
+                : { queuePosition: undefined, networkRetryText: undefined, progressPct: undefined, progressNodeLabel: undefined }
+            : {}),
         ...(status === "network_retry" ? { networkRetryText: detail?.message || "服务重连中..." } : {}),
     };
     return nodes.map((node) => {

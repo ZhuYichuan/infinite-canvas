@@ -222,6 +222,23 @@ describe("ComfyuiProgressChannel", () => {
         expect(ends).toHaveLength(1);
     });
 
+    it("gives a new subscription a fresh reconnect allowance after giving up", () => {
+        const { channel, sockets, unsubscribe } = setup();
+        for (let i = 0; i < 4; i++) {
+            const socket = sockets.at(-1)!;
+            socket.drop();
+            vi.advanceTimersByTime(60_000);
+        }
+        expect(sockets).toHaveLength(4);
+        unsubscribe();
+
+        const lateUpdates: ProgressSnapshot[] = [];
+        channel.registerTask("job-late", TOPOLOGY);
+        const lateOff = channel.subscribe("job-late", (snapshot) => lateUpdates.push(snapshot));
+        expect(sockets).toHaveLength(5);
+        lateOff();
+    });
+
     it("gives up immediately when the socket cannot be created", () => {
         const createSocket = vi.fn(() => {
             throw new Error("SecurityError: mixed content");

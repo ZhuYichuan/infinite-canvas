@@ -1440,7 +1440,7 @@ interface TrackedJobEntry {
     status: "pending" | "running" | "checking_history" | "unknown";
     queuePosition?: number;
     subscriptions: TrackedJobSubscription[];
-    progress?: { progressPct?: number; nodeLabel?: string };
+    progress?: { progressPct?: number; nodeLabel?: string; nodeClassType?: string; nodeStep?: number; nodeSteps?: number };
     unsubscribeProgress?: () => void;
 }
 
@@ -1457,6 +1457,7 @@ export class ComfyuiJobBatchPoller {
     private hasRunningJobs = false;
     private consecutiveNetworkErrors = 0;
     private wakeLoop: (() => void) | null = null;
+    private wakePending = false;
 
     constructor(baseUrl: string, progressChannel?: ComfyuiProgressChannel | null) {
         this.baseUrl = normalizeBaseUrl(baseUrl);
@@ -1516,7 +1517,8 @@ export class ComfyuiJobBatchPoller {
             if (entry.status === "pending" && entry.queuePosition !== undefined) {
                 onProgress?.("pending", { queuePosition: entry.queuePosition });
             } else if (entry.status === "running") {
-                if (entry.progress) onProgress?.("running", { ...entry.progress });
+                const detail = this.progressDetail(entry.progress);
+                if (detail) onProgress?.("running", { ...detail });
                 else onProgress?.("running");
             }
 
@@ -1542,9 +1544,25 @@ export class ComfyuiJobBatchPoller {
     /** 任务出队：先停掉进程通道订阅，再从调度表里摘掉。 */
     private dropEntry(entry: TrackedJobEntry) {
         this.jobs.delete(entry.jobId);
+        this.releaseProgress(entry);
+    }
+
+    private releaseProgress(entry: TrackedJobEntry) {
         entry.unsubscribeProgress?.();
         entry.unsubscribeProgress = undefined;
         this.progressChannel?.forgetTask(entry.jobId);
+    }
+
+    /** 把通道快照翻译成调用方可消费的 detail：只带真正已知的字段。 */
+    private progressDetail(progress?: TrackedJobEntry["progress"]): Record<string, unknown> | undefined {
+        if (!progress || typeof progress.progressPct !== "number") return undefined;
+        return {
+            progressPct: progress.progressPct,
+            ...(progress.nodeLabel ? { progressNodeLabel: progress.nodeLabel } : {}),
+            ...(progress.nodeClassType ? { nodeClassType: progress.nodeClassType } : {}),
+            ...(typeof progress.nodeStep === "number" ? { nodeStep: progress.nodeStep } : {}),
+            ...(typeof progress.nodeSteps === "number" ? { nodeSteps: progress.nodeSteps } : {}),
+        };
     }
 
     /** 任务开始执行后接入进度通道：排队阶段没有进度，不建连。 */
@@ -1554,10 +1572,12 @@ export class ComfyuiJobBatchPoller {
         entry.unsubscribeProgress = this.progressChannel.subscribe(
             entry.jobId,
             (snapshot) => {
-                entry.progress = { progressPct: snapshot.progressPct, nodeLabel: snapshot.nodeLabel };
+                entry.progress = { ...snapshot };
+                const detail = this.progressDetail(entry.progress);
                 if (this.jobs.get(entry.jobId) !== entry) return;
                 for (const sub of entry.subscriptions) {
-                    sub.onProgress?.("running", { ...snapshot });
+                    if (detail) sub.onProgress?.("running", { ...detail });
+                    else sub.onProgress?.("running");
                 }
             },
             // executing: null 意味着服务端已把该任务写入 history，不必再等一个轮询节拍
@@ -1566,6 +1586,10 @@ export class ComfyuiJobBatchPoller {
     }
 
     private sleep(ms: number) {
+        if (this.wakePending) {
+            this.wakePending = false;
+            return Promise.resolve();
+        }
         return new Promise<void>((resolve) => {
             const timer = setTimeout(() => {
                 this.wakeLoop = null;
@@ -1580,7 +1604,12 @@ export class ComfyuiJobBatchPoller {
     }
 
     private wake() {
-        this.wakeLoop?.();
+        if (this.wakeLoop) {
+            this.wakeLoop();
+            return;
+        }
+        // tick 正在执行中：记下来，等这一轮结束后的 sleep 立即返回，不再等满一个节拍
+        this.wakePending = true;
     }
 
     private ensureLoop() {
@@ -1705,8 +1734,9 @@ export class ComfyuiJobBatchPoller {
                 entry.status = "running";
                 entry.queuePosition = undefined;
                 this.startProgress(entry);
+                const detail = this.progressDetail(entry.progress);
                 for (const sub of entry.subscriptions) {
-                    if (entry.progress) sub.onProgress?.("running", { ...entry.progress });
+                    if (detail) sub.onProgress?.("running", { ...detail });
                     else sub.onProgress?.("running");
                 }
             } else {
@@ -1788,13 +1818,12 @@ export class ComfyuiJobBatchPoller {
         this.hasRunningJobs = false;
         this.consecutiveNetworkErrors = 0;
         this.wakeLoop = null;
+        this.wakePending = false;
         for (const entry of this.jobs.values()) {
             for (const sub of entry.subscriptions) {
                 if (sub.signal && sub.onAbort) sub.signal.removeEventListener("abort", sub.onAbort);
             }
-            entry.unsubscribeProgress?.();
-            entry.unsubscribeProgress = undefined;
-            this.progressChannel?.forgetTask(entry.jobId);
+            this.releaseProgress(entry);
         }
         this.jobs.clear();
     }

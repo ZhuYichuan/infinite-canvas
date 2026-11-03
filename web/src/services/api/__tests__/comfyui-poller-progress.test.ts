@@ -97,7 +97,26 @@ describe("ComfyuiJobBatchPoller × progress channel", () => {
             },
         });
 
-        expect(updates.at(-1)).toMatchObject({ status: "running", detail: { progressPct: 50, nodeLabel: "KSampler 30/60", nodeClassType: "KSampler" } });
+        expect(updates.at(-1)).toMatchObject({ status: "running", detail: { progressPct: 50, progressNodeLabel: "KSampler 30/60" } });
+    });
+
+    it("stops reporting a percentage once the progress connection drops", async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes("/queue")) return createQueueResponse(true);
+            return { ok: true, status: 200, json: async () => ({}) };
+        });
+        const { updates } = setup();
+
+        await vi.advanceTimersByTimeAsync(0);
+        sockets[0].emit("progress_state", {
+            prompt_id: JOB,
+            nodes: { "3": { state: "running", value: 30, max: 60, node_id: "3", display_node_id: "3" } },
+        });
+        expect(updates.at(-1)?.detail).toMatchObject({ progressPct: 10 });
+
+        sockets[0].onclose?.();
+        const last = updates.at(-1);
+        expect(last?.detail?.progressPct).toBeUndefined();
     });
 
     it("settles immediately when the server reports execution end", async () => {

@@ -549,6 +549,13 @@ describe("updateNodeGenerationProgress", () => {
         expect(settled[0].metadata?.progressNodeLabel).toBeUndefined();
     });
 
+    it("drops the percentage when a running update carries no number", () => {
+        const node = makeNode(CanvasNodeType.Image, { status: "loading", progressPct: 62, progressNodeLabel: "KSampler 21/50" }, "node-lost");
+        const [updated] = updateNodeGenerationProgress([node], "node-lost", "running");
+        expect(updated.metadata?.progressPct).toBeUndefined();
+        expect(updated.metadata?.progressNodeLabel).toBeUndefined();
+    });
+
     it("updates target slot image within batch node", () => {
         const node = makeNode(CanvasNodeType.Image, {
             status: "loading",

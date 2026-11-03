@@ -127,6 +127,8 @@ export class ComfyuiProgressChannel {
         if (this.disabled) {
             onUpdate({ progressPct: undefined });
         } else {
+            // 上一次任务把重连额度耗尽后，新任务应当重新获得完整额度
+            if (!this.socket) this.reconnectAttempts = 0;
             this.connect();
         }
 
