@@ -38,6 +38,22 @@ _Avoid_: JobResult, StatusResponse, TaskPayload
 The normalized domain exception representing task failure with standardized categories (`network`, `timeout`, `cancelled`, `lost`, `execution_failed`), decoupling callers from vendor-specific error prototypes.
 _Avoid_: ComfyuiError, VendorException, ApiError
 
+**Queue Position**:
+A task's 1-based place in the remote pending queue, meaningful only while the task has not started executing.
+_Avoid_: Queue index, wait number, remaining count
+
+**Node Progress**:
+The step counter of the one node currently executing inside a task — the only progress figure the local backend reports.
+_Avoid_: Step progress, sampler progress, inner progress
+
+**Overall Progress**:
+A client-side monotonic estimate of how far one task has come, built from finished node count plus the current node's step fraction, and deliberately capped short of completion until the task reaches a terminal phase.
+_Avoid_: Real progress, server progress, percentage
+
+**Progress Channel**:
+The per-host live event subscription carrying execution events for the tasks one browser tab submitted; an enhancement layer over task polling, never the authority on a task's final state.
+_Avoid_: WebSocket connection, progress stream, live feed
+
 ## Multimodal Workflow Model DSL
 
 **WorkflowModelProfile**:
