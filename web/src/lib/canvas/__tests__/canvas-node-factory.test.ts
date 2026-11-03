@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cloneNodeMetadata } from "@/lib/canvas/canvas-node-factory";
+import { applyNodeConfigPatch, cloneNodeMetadata } from "@/lib/canvas/canvas-node-factory";
 import { CanvasNodeType } from "@/types/canvas";
 import type { CanvasNodeMetadata } from "@/types/canvas";
 
@@ -108,5 +108,29 @@ describe("cloneNodeMetadata", () => {
         const cloned = cloneNodeMetadata(manualUploadMeta, CanvasNodeType.Image);
         expect(cloned?.content).toBe("https://example.com/uploaded.png");
         expect(cloned?.status).toBe("success");
+    });
+});
+
+describe("applyNodeConfigPatch", () => {
+    it("clears video workflow binding when patched with an explicit undefined", () => {
+        const node = {
+            id: "video-1",
+            type: CanvasNodeType.Video,
+            title: "video",
+            position: { x: 0, y: 0 },
+            width: 320,
+            height: 240,
+            metadata: {
+                modelId: "omni-video-minimax-h3-int8-6step-pika",
+                workflowId: "builtin-omni-video-minimax-h3-fp8-4step-pdmd",
+                videoMode: "omni",
+            },
+        } as unknown as Parameters<typeof applyNodeConfigPatch>[0];
+
+        const next = applyNodeConfigPatch(node, { modelId: "omni-video-minimax-h3-int8-4step-pdmd", workflowId: undefined });
+        expect(next.metadata?.modelId).toBe("omni-video-minimax-h3-int8-4step-pdmd");
+        // workflowId 必须被真正清除，否则执行侧会优先采用它并跳过 modelId 对应的内置工作流
+        expect(next.metadata?.workflowId).toBeUndefined();
+        expect(Object.prototype.hasOwnProperty.call(next.metadata, "workflowId")).toBe(true);
     });
 });

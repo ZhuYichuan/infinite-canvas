@@ -10,11 +10,13 @@ The current release needs manual verification in these areas:
 - MiniMax H3 INT8 旋转量化视频模型（无 FP8 硬件加速）：
   - 在 ComfyUI 主机上准备 `models/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors`（或 `minimax_h3_fl2va_int8_convrot.safetensors`）以及既有的 PDMD 4步 LoRA、nvfp4_awq 文本编码器与双 VAE；
   - 画布视频节点打开模型选择器，确认新增「MiniMax H3 全能 (INT8 4步 PDMD)」与「MiniMax H3 首尾帧 (INT8 4步 PDMD)」两项，且与 FP8 同类模型的尺寸档位、时长滑杆与快捷胶囊完全一致；
-  - 选中 INT8 模型生成一次视频，确认提交的工作流 `UNETLoader.unet_name` 为 `*_int8_convrot.safetensors`，LoRA 与 EasyCache 节点保留、未连满参考插槽被正确剔除；
+  - 选中 INT8 模型生成一次视频，确认提交的工作流 `UNETLoader.unet_name` 为 `*_int8_convrot.safetensors`、PDMD LoRA 节点保留、未连满参考插槽被正确剔除；EasyCache 仅全能参考版有（首尾帧版与 FP8 同类一致，无该节点）；
   - 选中 INT8 模型后打开参数面板切换「全能 ↔ 首尾帧」模式，确认模型保持 INT8 家族（不会被静默改写为 FP8）；从 FP8 20步 切换时的结果与旧行为一致；
+  - **关键回归**：切模式或更换模型后，节点上的 `workflowId` 应被清空（执行侧以 `workflowId` 优先于 `modelId` 派生工作流），提交后实际执行的工作流 `UNETLoader.unet_name` 必须与所选模型一致；验证方式：先切一次模式、再从模型选择器切到 INT8 模型并生成，确认最终跑的是 INT8 工作流而非 FP8 默认工作流；
   - 在渠道工作流下拉中选择 INT8 工作流后，确认节点 `modelId` 同步为对应 INT8 模型，后续生成命中 INT8 工作流而非 FP8 默认工作流；
   - 确认 INT8 模型已纳入默认支持清单，但不改动默认模型：新建主机可直接选用 INT8 模型，视频节点默认模型仍为 FP8 4步 PDMD；
-  - 在工作流手册页确认「INT8 4步 PDMD (无 FP8 硬件)」变体的 API / UI 工作流下载与权重清单正确（权重标注为全量未剪枝约 34 GB，非低显存档位）。
+  - 在工作流手册页确认「INT8 4步 PDMD (无 FP8 硬件)」变体的 API / UI 工作流下载与权重清单正确（权重标注为全量未剪枝约 34 GB，非低显存档位）；
+  - 工作流手册的「全能参考」分组新增「INT8 6步 Pika (质感版)」变体：因 UI 图待重新导出，该变体只提供 API 下载项（下载菜单中不出现 UI 项，主按钮回退为 API 文件），权重清单为 Pika Flex LoRA；「首尾帧」分组的同名变体则同时提供 API 与 UI 下载。
 
 - MiniMax H3 INT8 6步 Pika 视频模型（Pika Flex 蒸馏 LoRA）：
   - 在主机 `models/loras/` 下准备 `pika_h3_flex_ref2va_v1_bf16.safetensors` / `pika_h3_flex_fl2va_v1_bf16.safetensors`（各约 1.96 GB），底模沿用 INT8 `*_int8_convrot.safetensors`；

@@ -129,8 +129,9 @@ type WorkflowVariant = {
     badgeColor?: string;
     baseModel: string;
     description: string;
-    uiFileName: string;
-    uiDownloadUrl: string;
+    // UI 可视化工作流可能暂时缺失（等待从 ComfyUI 重新导出），缺失时手册只提供 API 下载
+    uiFileName?: string;
+    uiDownloadUrl?: string;
     apiFileName: string;
     apiDownloadUrl: string;
     models: WorkflowModelSpec[];
@@ -417,6 +418,29 @@ const WORKFLOWS: WorkflowItem[] = [
                     { category: "音频 VAE", folder: "models/vae/", files: ["minimax_h3_audio_vae_fp32.safetensors"] },
                 ],
                 tips: "INT8 旋转量化底模（全量未剪枝，约 34 GB）+ 4 步 PDMD 蒸馏 LoRA + EasyCache；其余插件与权重同 FP8 4步 PDMD。",
+            },
+            {
+                id: "int8_6step_pika",
+                label: "INT8 6步 Pika (质感版)",
+                badge: "6 步 Pika / INT8 旋转量化",
+                badgeColor: "orange",
+                baseModel: "MiniMax H3 ref2va (INT8 ConvRot + Pika Flex LoRA)",
+                description: "底模同 INT8 旋转量化权重，蒸馏 LoRA 换为 Pika Flex（采样 6 步，由工作流内 step 节点控制），同样接入 EasyCache；相对 4 步 PDMD 换取更充分的细节与光影演变。",
+                // UI 图与 API 副本不同源，待从 ComfyUI 重新导出后补充 UI 下载项
+                apiFileName: "minimax_h3_ref2v_int8_convrot_6step_pika_api.json",
+                apiDownloadUrl: "/workflows/minimax_h3_ref2v_int8_convrot_6step_pika_api.json",
+                plugins: [
+                    { name: "ComfyUI-KJNodes", url: "https://github.com/kijai/ComfyUI-KJNodes" },
+                    { name: "ComfyLiterals", url: "https://github.com/M1kep/ComfyLiterals" },
+                ],
+                models: [
+                    { category: "LoRA", folder: "models/loras/", files: ["pika_h3_flex_ref2va_v1_bf16.safetensors"] },
+                    { category: "扩散模型", folder: "models/diffusion_models/", files: ["minimax_h3_ref2va_int8_convrot.safetensors"] },
+                    { category: "文本编码器", folder: "models/text_encoders/", files: ["qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"] },
+                    { category: "视频 VAE", folder: "models/vae/", files: ["minimax_h3_video_vae_fp16.safetensors"] },
+                    { category: "音频 VAE", folder: "models/vae/", files: ["minimax_h3_audio_vae_fp32.safetensors"] },
+                ],
+                tips: "INT8 旋转量化底模（全量未剪枝，约 34 GB）+ Pika Flex 6 步蒸馏 LoRA（约 1.96 GB）+ EasyCache；UI 可视化工作流待补。",
             },
         ],
     },
@@ -829,7 +853,7 @@ export default function GuidePage() {
             // 收集所有 9 大能力矩阵下的全部变体文件（包括 UI 与 API 格式）
             for (const wf of WORKFLOWS) {
                 for (const variant of wf.variants) {
-                    if (!collectedFiles.has(variant.uiFileName)) {
+                    if (variant.uiFileName && variant.uiDownloadUrl && !collectedFiles.has(variant.uiFileName)) {
                         collectedFiles.add(variant.uiFileName);
                         const res = await fetch(variant.uiDownloadUrl);
                         if (res.ok) {
@@ -863,7 +887,7 @@ export default function GuidePage() {
                         return [
                             `  * 规格: ${v.label} [${v.badge}]`,
                             `    - 核心底模: ${v.baseModel}`,
-                            `    - UI 连线文件: ${v.uiFileName}`,
+                            `    - UI 连线文件: ${v.uiFileName ?? "（待补导出）"}`,
                             `    - API 格式文件: ${v.apiFileName}`,
                             `    - 依赖模型放置:`,
                             ...v.models.map((m) => `      [${m.category}] ${m.folder}: ${m.files.join(", ")}`),
@@ -1386,21 +1410,25 @@ export default function GuidePage() {
                                 wf.variants.find((v) => v.id === currentVariantId) || wf.variants[0];
 
                             const downloadMenuItems: MenuProps["items"] = [
-                                {
-                                    key: "ui",
-                                    label: (
-                                        <div className="flex items-center gap-2 py-0.5">
-                                            <Layers className="size-3.5 text-blue-500" />
-                                            <div>
-                                                <div className="text-xs font-medium">{isZh ? "下载 UI 可视化工作流 (.json)" : "Download UI Workflow (.json)"}</div>
-                                                <div className="text-[10px] text-stone-400 font-mono">
-                                                    {activeVariant.uiFileName}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ),
-                                    onClick: () => handleDownloadSingle(activeVariant.uiDownloadUrl, activeVariant.uiFileName),
-                                },
+                                ...(activeVariant.uiFileName && activeVariant.uiDownloadUrl
+                                    ? [
+                                          {
+                                              key: "ui",
+                                              label: (
+                                                  <div className="flex items-center gap-2 py-0.5">
+                                                      <Layers className="size-3.5 text-blue-500" />
+                                                      <div>
+                                                          <div className="text-xs font-medium">{isZh ? "下载 UI 可视化工作流 (.json)" : "Download UI Workflow (.json)"}</div>
+                                                          <div className="text-[10px] text-stone-400 font-mono">
+                                                              {activeVariant.uiFileName}
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              ),
+                                              onClick: () => handleDownloadSingle(activeVariant.uiDownloadUrl!, activeVariant.uiFileName!),
+                                          },
+                                      ]
+                                    : []),
                                 {
                                     key: "api",
                                     label: (
@@ -1459,8 +1487,8 @@ export default function GuidePage() {
                                                     icon={<Download className="size-3.5" />}
                                                     onClick={() =>
                                                         handleDownloadSingle(
-                                                            activeVariant.uiDownloadUrl,
-                                                            activeVariant.uiFileName
+                                                            activeVariant.uiDownloadUrl ?? activeVariant.apiDownloadUrl,
+                                                            activeVariant.uiFileName ?? activeVariant.apiFileName
                                                         )
                                                     }
                                                     className="rounded-r-none"

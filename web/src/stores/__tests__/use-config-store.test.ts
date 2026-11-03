@@ -466,6 +466,12 @@ describe("isModelSupportedByHost & updateChannelSupportedModels", () => {
         expect(normalizedAgain.supportedModelIds).toEqual(migrated.supportedModelIds);
     });
 
+    it("does not evolve a curated video-only list that never came from the defaults", () => {
+        const videoOnly = createModelChannel({ supportedModelIds: [...LEGACY_DEFAULT_SUPPORTED_VIDEO_MODEL_IDS] });
+        expect(videoOnly.supportedModelIds).toEqual([...LEGACY_DEFAULT_SUPPORTED_VIDEO_MODEL_IDS]);
+        expect(isModelSupportedByHost(videoOnly, "omni-video-minimax-h3-int8-6step-pika")).toBe(false);
+    });
+
     it("does not pollute explicitly curated subsets", () => {
         const curated = createModelChannel({
             supportedModelIds: ["omni-video-minimax-h3-fp8-4step-pdmd", "image-qwen-2.1"],

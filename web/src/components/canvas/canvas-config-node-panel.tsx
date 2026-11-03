@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
 import { ChannelWorkflowPicker } from "@/components/channel-workflow-picker";
-import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { normalizeVideoSizeValue } from "@/components/video-settings-panel";
@@ -264,15 +264,14 @@ function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig,
             if (value === "frame") {
                 const frameModel = channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
                 if (frameModel) patch.model = encodeChannelModel(channel.id, frameModel.name);
-                const defaultFrameWf = getDefaultWorkflow(channel, "frameVideo");
-                if (defaultFrameWf) patch.workflowId = defaultFrameWf.id;
             } else if (value === "omni") {
                 const omniModel = channel.models.find((m) => m.name === "ComfyUI Video" || (!m.name.toLowerCase().includes("frame") && !m.name.includes("首尾帧") && m.capability === "video"));
                 if (omniModel) patch.model = encodeChannelModel(channel.id, omniModel.name);
-                const defaultOmniWf = getDefaultWorkflow(channel, "omniVideo");
-                if (defaultOmniWf) patch.workflowId = defaultOmniWf.id;
             }
         }
+        // 清空节点级工作流绑定：执行时 workflowId 优先于 modelId 派生，
+        // 若保留旧的类别默认工作流，切换后的模型（如 INT8 量化版）会被静默跳过。
+        patch.workflowId = undefined;
         return patch;
     }
     return { [key]: value };

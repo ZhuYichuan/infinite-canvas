@@ -52,6 +52,8 @@ Comfy/Comfy-Api/
     │   ├── README.md
     │   ├── minimax_h3_ref2v_int8_convrot_4step_pdmd_api.json # INT8 旋转量化 4 步极速 (无 FP8 硬件加速, 带 EasyCache)
     │   ├── minimax_h3_ref2v_int8_convrot_4step_pdmd_workflow.json # INT8 量化 4 步极速 UI 工作流
+    │   ├── minimax_h3_ref2v_int8_convrot_6step_pika_api.json     # INT8 旋转量化 + Pika Flex 6 步蒸馏
+    │   ├── minimax_h3_ref2v_int8_convrot_6step_pika_workflow.json# 同上 UI 工作流（当前为 API 格式副本，待重新导出）
     │   ├── minimax_h3_ref2v_4step_pdmd_api.json       # 极致极速 PDMD 4 步 (带 EasyCache)
     │   ├── minimax_h3_ref2v_4step_pdmd_workflow.json  # 极致极速 PDMD 4 步 UI 工作流
     │   ├── minimax_h3_ref2va_fp8_20step_api.json      # 消费级 20 步
@@ -62,6 +64,8 @@ Comfy/Comfy-Api/
     │   ├── README.md
     │   ├── minimax_h3_fl2va_int8_convrot_4step_pdmd_api.json # INT8 旋转量化 4 步极速 (无 FP8 硬件加速)
     │   ├── minimax_h3_fl2va_int8_convrot_4step_pdmd_workflow.json # INT8 量化 4 步极速 UI 工作流
+    │   ├── minimax_h3_fl2va_int8_convrot_6step_pika_api.json     # INT8 旋转量化 + Pika Flex 6 步蒸馏
+    │   ├── minimax_h3_fl2va_int8_convrot_6step_pika_workflow.json# 同上 UI 工作流
     │   ├── minimax_h3_fl2va_fp8_4step_pdmd_api.json   # 极致极速 PDMD 4 步
     │   ├── minimax_h3_fl2va_fp8_4step_pdmd_workflow.json # 极致极速 PDMD 4 步 UI 工作流
     │   ├── minimax_h3_fl2va_fp8_20step_api.json       # 消费级 20 步

@@ -9,7 +9,7 @@ import { AudioModelPicker } from "@/components/audio-model-picker";
 import { VideoModelPicker } from "@/components/video-model-picker";
 import { ImageModelPicker } from "@/components/image-model-picker";
 import { TextModelPicker } from "@/components/text-model-picker";
-import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, getDefaultWorkflow, isModelSupportedByHost, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { decodeChannelModel, defaultConfig, encodeChannelModel, findWorkflow, isModelSupportedByHost, resolveModelChannel, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { BUILTIN_VIDEO_WORKFLOW_MODELS, evaluateModelAvailability, getModelProfile, imageQwen21Profile, resolveVideoModelIdForMode, textQwen35Profile } from "@/services/api/models";
 import { getNodeResourceCounts } from "@/lib/canvas/canvas-node-geometry";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -361,6 +361,8 @@ export function CanvasNodePromptPanel({
                                         channelId: nextChannelId,
                                         modelId: nextModelId,
                                         videoMode: nextVideoMode,
+                                        // 换模型时丢弃旧的节点级工作流绑定，交给 modelId 派生对应工作流
+                                        workflowId: undefined,
                                     });
                                 }}
                             />
@@ -663,15 +665,14 @@ function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig,
             if (value === "frame") {
                 const frameModel = channel.models.find((m) => m.name === "ComfyUI Frame Video" || m.name.toLowerCase().includes("frame") || m.name.includes("首尾帧"));
                 if (frameModel) patch.model = encodeChannelModel(channel.id, frameModel.name);
-                const defaultFrameWf = getDefaultWorkflow(channel, "frameVideo");
-                if (defaultFrameWf) patch.workflowId = defaultFrameWf.id;
             } else if (value === "omni") {
                 const omniModel = channel.models.find((m) => m.name === "ComfyUI Video" || (!m.name.toLowerCase().includes("frame") && !m.name.includes("首尾帧") && m.capability === "video"));
                 if (omniModel) patch.model = encodeChannelModel(channel.id, omniModel.name);
-                const defaultOmniWf = getDefaultWorkflow(channel, "omniVideo");
-                if (defaultOmniWf) patch.workflowId = defaultOmniWf.id;
             }
         }
+        // 清空节点级工作流绑定：执行时 workflowId 优先于 modelId 派生，
+        // 若保留旧的类别默认工作流，切换后的模型（如 INT8 量化版）会被静默跳过。
+        patch.workflowId = undefined;
         return patch;
     }
     return { [key]: value };

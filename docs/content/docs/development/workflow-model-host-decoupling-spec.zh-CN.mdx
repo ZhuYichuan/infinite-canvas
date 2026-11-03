@@ -155,9 +155,9 @@ sequenceDiagram
 
 ## 7. 实施步骤清单
 
-1. **第一阶段：模型层规范化（收敛为 4 个 FP8 模型 + 2 个 INT8 量化模型）**
+1. **第一阶段：模型层规范化（收敛为 4 个 FP8 模型 + 4 个 INT8 量化模型）**
    - 移除 BF16 8 步 Turbo 与 BF16 20 步模型定义；
-   - 在 `models/` 下创建 4 个 discrete FP8 Profile 与 2 个 INT8 ConvRot 4步 PDMD Profile；
+   - 在 `models/` 下创建 4 个 discrete FP8 Profile 与 4 个 INT8 ConvRot Profile（含 4步 PDMD 与 6步 Pika 两种蒸馏档位）；
    - 能力契约（参考资源配额、尺寸档位、时长区间）以 `capabilityConfig` 为唯一事实源，
      量化规格与显存档位不单独建模（曾经的 `precision` / `vramTier` / `capabilityConfig.vram`
      无任何运行时消费方，已移除，避免写入无法被验证的推测数据）；

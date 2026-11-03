@@ -798,20 +798,21 @@ function mergeBuiltinWorkflows(existingWorkflows: ComfyWorkflowItem[] | undefine
 }
 
 /**
- * 内置模型支持清单演进（与 mergeBuiltinWorkflows 同构）：
- * 若主机清单包含全部旧版默认视频模型，则说明它来自旧版默认值，
- * 自动补齐当前默认清单中新增的内置模型；显式裁剪过子集的清单不会被污染。
- * 空数组仍保持空数组（表示「开箱即用全支持」）。
+ * 内置视频模型支持清单演进（与 mergeBuiltinWorkflows 同构）：
+ * 仅当主机清单看上去来自旧版默认值——包含全部旧默认视频模型、且包含至少一个非视频内置模型——
+ * 才把新增的内置视频模型补到末尾；显式裁剪的视频子集与空数组不被污染。
  */
 function mergeBuiltinSupportedModelIds(existing: string[] | undefined): string[] {
     if (!Array.isArray(existing) || existing.length === 0) {
         return Array.isArray(existing) ? existing : [];
     }
-    const isLegacyDefaultDerived = LEGACY_DEFAULT_SUPPORTED_VIDEO_MODEL_IDS.every((id) => existing.includes(id));
+    const isLegacyDefaultDerived =
+        LEGACY_DEFAULT_SUPPORTED_VIDEO_MODEL_IDS.every((id) => existing.includes(id)) &&
+        existing.some((id) => DEFAULT_SUPPORTED_IMAGE_MODEL_IDS.includes(id) || id.startsWith("image-") || id.startsWith("text-") || id.startsWith("audio-"));
     if (!isLegacyDefaultDerived) return existing;
 
     const result = [...existing];
-    for (const id of DEFAULT_SUPPORTED_MODEL_IDS) {
+    for (const id of DEFAULT_SUPPORTED_VIDEO_MODEL_IDS) {
         if (!result.includes(id)) result.push(id);
     }
     return result;

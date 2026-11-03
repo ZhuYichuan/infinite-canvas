@@ -200,7 +200,9 @@ export function listModelsByCapability(capability: ModelCapabilityType): Workflo
  * 形如 `omni-video-minimax-h3-{fp8|int8}[-4step-pdmd|-6step-pika]`。
  */
 const VIDEO_MODEL_VARIANT_SUFFIXES = ["-4step-pdmd", "-6step-pika"] as const;
-const VIDEO_MODEL_ID_PATTERN = /^(?:omni|frame)-video-minimax-h3-(fp8|int8)(-4step-pdmd|-6step-pika)?$/;
+const VIDEO_MODEL_SUFFIX_PATTERN = `(?:${VIDEO_MODEL_VARIANT_SUFFIXES.join("|")})`;
+const VIDEO_MODEL_ID_PATTERN = new RegExp(`^(?:omni|frame)-video-minimax-h3-(fp8|int8)(${VIDEO_MODEL_SUFFIX_PATTERN})?$`);
+const VIDEO_MODEL_ID_SEARCH_PATTERN = new RegExp(`(?:omni|frame)-video-minimax-h3-(?:fp8|int8)${VIDEO_MODEL_SUFFIX_PATTERN}?`);
 
 /**
  * 根据当前模型与目标模式（omni / frame）解析出同家族的对应模型 ID。
@@ -225,8 +227,7 @@ export function resolveVideoModelIdForMode(
  */
 export function resolveVideoModelIdFromWorkflowId(workflowId: string | undefined): string | undefined {
     if (!workflowId) return undefined;
-    const suffixPattern = VIDEO_MODEL_VARIANT_SUFFIXES.join("|");
-    const found = new RegExp(`(?:omni|frame)-video-minimax-h3-(?:fp8|int8)(?:${suffixPattern})?`).exec(workflowId)?.[0];
+    const found = VIDEO_MODEL_ID_SEARCH_PATTERN.exec(workflowId)?.[0];
     if (!found) return undefined;
     return BUILTIN_WORKFLOW_MODELS.some((m) => m.id === found) ? found : undefined;
 }
