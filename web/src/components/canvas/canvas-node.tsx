@@ -1077,8 +1077,9 @@ function ConnectionHandleDot({
     const dragStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const safeScale = scale > 0 ? scale : 1;
     const isRight = side === "right";
+    const dragThreshold = isRight ? 46 : 38;
 
-    // 鼠标在触点范围悬浮移动时，触点粘连跟随鼠标移动一段距离
+    // 鼠标在触点感应范围悬浮移动时，触点磁吸粘连跟随鼠标移动
     const handlePointerMove = (event: React.PointerEvent) => {
         if (isDraggingRef.current) return;
         const container = containerRef.current;
@@ -1092,8 +1093,9 @@ function ConnectionHandleDot({
         const distance = Math.hypot(dx, dy);
 
         if (distance > 0) {
-            // 磁吸跟随：最大位移 14px，带阻尼
-            const pull = Math.min(distance, 18) * 0.55;
+            // 放大粘连感应范围与跟随位移（加号最大跟随提升至 28px，感受更明显的粘连）
+            const maxFollow = isRight ? 28 : 18;
+            const pull = Math.min(distance * 0.7, maxFollow);
             setStickyOffset({
                 x: (dx / distance) * pull,
                 y: (dy / distance) * pull,
@@ -1119,16 +1121,15 @@ function ConnectionHandleDot({
 
         const onWindowPointerMove = (moveEvent: PointerEvent) => {
             if (!isDraggingRef.current) return;
-            // 屏幕物理像素与容器内 1:1 对齐（已由容器外层 1/safeScale 抵消画布缩放）
             const dx = moveEvent.clientX - dragStartPosRef.current.x;
             const dy = moveEvent.clientY - dragStartPosRef.current.y;
             const distance = Math.hypot(dx, dy);
 
-            if (distance < 36) {
+            if (distance < dragThreshold) {
                 // 拖拽拉伸
                 setStickyOffset({ x: dx * 0.65, y: dy * 0.65 });
             } else {
-                // 达到 36px 阈值：触点弹回原位并抽出连线
+                // 达到拖拽阈值：触点弹回原位并抽出连线
                 isDraggingRef.current = false;
                 setStickyOffset(null);
                 window.removeEventListener("pointermove", onWindowPointerMove);
@@ -1147,8 +1148,8 @@ function ConnectionHandleDot({
             const dy = Math.abs(upEvent.clientY - dragStartPosRef.current.y);
             setStickyOffset(null);
 
-            // 未达到 36px 阈值松开时触发点击
-            if (dx < 36 && dy < 36) {
+            // 未达到阈值松开时触发点击
+            if (dx < dragThreshold && dy < dragThreshold) {
                 onClick?.(upEvent as unknown as React.MouseEvent);
             }
         };
@@ -1158,12 +1159,14 @@ function ConnectionHandleDot({
     };
 
     const isVisible = visible || isHovered || Boolean(stickyOffset);
+    const containerSize = isRight ? "size-20" : "size-14";
+    const bridgeClass = isRight ? "w-8 -left-8" : "w-6 -right-6";
 
     return (
         <div
             ref={containerRef}
             data-connection-handle
-            className={`absolute z-30 flex size-12 cursor-crosshair items-center justify-center transition-opacity duration-150 ${
+            className={`absolute z-30 flex ${containerSize} cursor-crosshair items-center justify-center transition-opacity duration-150 ${
                 isVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
             }`}
             style={{
@@ -1179,7 +1182,7 @@ function ConnectionHandleDot({
             title={isRight ? "点击快捷创建 / 拖拽连线" : "拖拽连线"}
             aria-label="连接触点"
         >
-            <div className={`pointer-events-auto absolute top-0 h-full w-4 ${isRight ? "-left-4" : "-right-4"}`} />
+            <div className={`pointer-events-auto absolute top-0 h-full ${bridgeClass}`} />
             {isRight ? (
                 <div
                     className={`flex size-6.5 items-center justify-center rounded-full border shadow-sm ${
@@ -1191,8 +1194,8 @@ function ConnectionHandleDot({
                         color: theme.node.text,
                         transform: stickyOffset ? `translate(${stickyOffset.x}px, ${stickyOffset.y}px)` : "translate(0, 0)",
                         transition: stickyOffset
-                            ? "transform 50ms ease-out"
-                            : "transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 150ms ease",
+                            ? "transform 40ms ease-out"
+                            : "transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 150ms ease",
                     }}
                 >
                     <Plus className="size-3.5 stroke-[2.5]" />
@@ -1205,8 +1208,8 @@ function ConnectionHandleDot({
                         borderColor: theme.node.muted,
                         transform: stickyOffset ? `translate(${stickyOffset.x}px, ${stickyOffset.y}px)` : "translate(0, 0)",
                         transition: stickyOffset
-                            ? "transform 50ms ease-out"
-                            : "transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 150ms ease",
+                            ? "transform 40ms ease-out"
+                            : "transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 150ms ease",
                     }}
                 />
             )}
