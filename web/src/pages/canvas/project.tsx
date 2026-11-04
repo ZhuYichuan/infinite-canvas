@@ -74,6 +74,7 @@ import {
     snapNodesIntoGroup,
     syncGroupMembershipAfterTransform,
     ungroupCanvasGroup,
+    validateInputConnection,
 } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
@@ -1225,6 +1226,36 @@ function InfiniteCanvasPage() {
         if (isViewerRef.current) return;
         setConnections((prev) => prev.filter((connection) => connection.fromNodeId !== fromNodeId || connection.toNodeId !== toNodeId));
     }, []);
+
+    const connectNodeReference = useCallback(
+        (fromNodeId: string, toNodeId: string): boolean => {
+            if (isViewerRef.current) return false;
+            if (fromNodeId === toNodeId) return false;
+            if (connectionsRef.current.some((c) => c.fromNodeId === fromNodeId && c.toNodeId === toNodeId)) {
+                return true;
+            }
+            const rejection = getConnectionRejectionDetail(fromNodeId, toNodeId, nodesRef.current, connectionsRef.current);
+            if (rejection) {
+                message.warning(rejection.defaultMessage);
+                return false;
+            }
+            const validated = validateInputConnection(fromNodeId, toNodeId, nodesRef.current, connectionsRef.current);
+            if (!validated) {
+                message.warning(t("canvas.projectPage.configConnection", { defaultValue: "连接不兼容或无法连接" }));
+                return false;
+            }
+            const newConn: CanvasConnection = {
+                id: nanoid(),
+                fromNodeId: validated.fromNodeId,
+                toNodeId: validated.toNodeId,
+                kind: "input",
+            };
+            connectionsRef.current = [...connectionsRef.current, newConn];
+            setConnections((prev) => [...prev, newConn]);
+            return true;
+        },
+        [message, t],
+    );
 
     const reorderNodeReferences = useCallback((toNodeId: string, orderedSourceNodeIds: string[]) => {
         if (isViewerRef.current) return;
@@ -4510,6 +4541,7 @@ function InfiniteCanvasPage() {
                     onGenerate={handleGenerateNode}
                     onStop={confirmStopGeneration}
                     onDisconnectReference={disconnectNodeReference}
+                    onConnectReference={connectNodeReference}
                     onStartReferenceSelection={startNodeReferenceSelection}
                     onReorderReferences={reorderNodeReferences}
                     onLocateNode={focusNode}
@@ -4520,7 +4552,7 @@ function InfiniteCanvasPage() {
                     }}
                 />
             ),
-        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, focusNode, handleConfigNodeChange, handleGenerateNode, handleNodePromptChange, mentionReferencesByNodeId, nodes, renderPluginPanel, reorderNodeReferences, runningNodeIds, startNodeReferenceSelection],
+        [configInputsById, confirmStopGeneration, connectNodeReference, connectedNodesByNodeId, disconnectNodeReference, focusNode, handleConfigNodeChange, handleGenerateNode, handleNodePromptChange, mentionReferencesByNodeId, nodes, renderPluginPanel, reorderNodeReferences, runningNodeIds, startNodeReferenceSelection],
     );
 
     const renderNodeContentPanel = useCallback(

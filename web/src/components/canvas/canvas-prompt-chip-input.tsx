@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { isImeComposing, isPlainEnterKey } from "@/lib/keyboard-event";
 import { useThemeStore } from "@/stores/use-theme-store";
-import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import type { CanvasResourceReference, CategorizedCanvasResources } from "@/lib/canvas/canvas-resource-references";
+import { CanvasResourceMentionMenu } from "./canvas-resource-mention-menu";
 
 type Props = {
     value: string;
@@ -23,6 +24,9 @@ type Props = {
     placeholder?: string;
     allowClear?: boolean;
     onClear?: () => void;
+    categorizedResources?: CategorizedCanvasResources;
+    onConnectResource?: (sourceNodeId: string) => boolean | Promise<boolean>;
+    triggerMentionRef?: React.MutableRefObject<(() => void) | null>;
 };
 
 type MentionState = {
@@ -38,7 +42,21 @@ type Token =
 // Display labels stay localized, while the persisted value uses stable `@[node:<nodeId>]` tokens, so
 // serialization is independent of locale or label changes. Nodes that are missing or disconnected
 // keep their raw token as plain text instead of being dropped.
-export function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, containerClassName, style, placeholder, allowClear = true, onClear }: Props) {
+export function CanvasPromptChipInput({
+    value,
+    references,
+    onChange,
+    onSubmit,
+    className,
+    containerClassName,
+    style,
+    placeholder,
+    allowClear = true,
+    onClear,
+    categorizedResources,
+    onConnectResource,
+    triggerMentionRef,
+}: Props) {
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const editorRef = useRef<HTMLDivElement>(null);
@@ -83,6 +101,25 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
         lastEmittedRef.current = value;
     }, [tokens, referenceByNodeId, theme, value]);
 
+    // 绑定外部命令式唤起 @ 菜单的 ref
+    useEffect(() => {
+        if (!triggerMentionRef) return;
+        triggerMentionRef.current = () => {
+            const editor = editorRef.current;
+            if (!editor) return;
+            editor.focus();
+            const text = textBeforeCaret();
+            if (!/@$/.test(text)) {
+                document.execCommand("insertText", false, "@");
+            }
+            const selection = window.getSelection();
+            if (selection?.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+                savedRangeRef.current = selection.getRangeAt(0).cloneRange();
+            }
+            setMention({ query: "", rect: caretRect() });
+        };
+    }, [triggerMentionRef]);
+
     const emit = (next: string) => {
         lastEmittedRef.current = next;
         onChange(next);
@@ -98,7 +135,7 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
     const syncMention = () => {
         const text = textBeforeCaret();
         const match = /@([^\s@]*)$/.exec(text);
-        if (!match || !activeReferences.length) {
+        if (!match || (!categorizedResources && !activeReferences.length)) {
             closeMention();
             return;
         }
@@ -117,6 +154,14 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
     };
 
     const insertReference = (reference: CanvasResourceReference) => {
+        if (!reference.connected && onConnectResource) {
+            const success = onConnectResource(reference.nodeId);
+            if (success === false) {
+                closeMention();
+                return;
+            }
+        }
+
         const editor = editorRef.current;
         if (!editor) return;
         const selection = window.getSelection();
@@ -134,6 +179,9 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
         const space = document.createTextNode(" ");
         const activeRange = selection?.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)
             ? selection.getRangeAt(0)
+            : range && editor.contains(range.commonAncestorContainer)
+            ? range
+            : null;
             : range && editor.contains(range.commonAncestorContainer)
             ? range
             : null;
@@ -260,7 +308,16 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
                     </button>
                 </Popconfirm>
             ) : null}
-            {mention && candidates.length ? (
+            {mention && categorizedResources ? (
+                <CanvasResourceMentionMenu
+                    rect={mention.rect}
+                    query={mention.query}
+                    categorized={categorizedResources}
+                    theme={theme}
+                    onSelect={insertReference}
+                    onClose={closeMention}
+                />
+            ) : mention && candidates.length ? (
                 <MentionMenu rect={mention.rect} references={candidates} activeIndex={Math.min(activeIndex, candidates.length - 1)} theme={theme} onSelect={insertReference} />
             ) : null}
             {imagePreview ? <Image src={imagePreview} alt={i18n.t("canvas.composer.imagePreview")} style={{ display: "none" }} preview={{ visible: true, src: imagePreview, onVisibleChange: (visible) => !visible && setImagePreview(null) }} /> : null}

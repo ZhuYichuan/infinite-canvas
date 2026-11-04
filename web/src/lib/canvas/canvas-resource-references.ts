@@ -16,10 +16,95 @@ export type CanvasResourceReference = {
     previewUrl?: string;
     text?: string;
     active: boolean;
+    connected?: boolean;
 };
 
 export function buildNodeMentionReferences(node: CanvasNodeData, nodes: CanvasNodeData[], connections: CanvasConnection[]) {
     return labelResourceNodes(getMentionResourceNodes(node.id, nodes, connections), true);
+}
+
+export type CategorizedCanvasResources = {
+    possible: CanvasResourceReference[];
+    subjects: CanvasResourceReference[];
+    images: CanvasResourceReference[];
+    videos: CanvasResourceReference[];
+    audios: CanvasResourceReference[];
+};
+
+export function getCanvasAllCategorizedResources(
+    currentNodeId: string,
+    nodes: CanvasNodeData[],
+    connectedNodeIds: Set<string>,
+): CategorizedCanvasResources {
+    const isSubject = (node: CanvasNodeData) => {
+        if (node.metadata?.isSubject) return true;
+        const text = `${node.title || ""} ${node.metadata?.prompt || ""} ${node.metadata?.content || ""}`.toLowerCase();
+        return /主体|人物|角色|肖像|模特|人像|person|character|subject|portrait|actor/.test(text);
+    };
+
+    const getNodePreview = (node: CanvasNodeData): string | undefined => {
+        if (node.type === CanvasNodeType.Image) {
+            return node.metadata?.content || node.metadata?.images?.find((img) => Boolean(img.content))?.content;
+        }
+        if (node.type === CanvasNodeType.Video) {
+            return node.metadata?.content || (node.metadata as any)?.videos?.[0]?.content;
+        }
+        if (node.type === CanvasNodeType.Audio) {
+            return node.metadata?.content;
+        }
+        const res = getNodeDefinition(node.type)?.resource?.(node);
+        return node.metadata?.content || res?.url;
+    };
+
+    const toReference = (node: CanvasNodeData, index: number, kindOverride?: CanvasResourceKind): CanvasResourceReference => {
+        const kind = kindOverride || resourceKind(node) || "image";
+        const label = labelForKind(kind, index);
+        return {
+            id: node.id,
+            nodeId: node.id,
+            kind,
+            label: node.title || label,
+            title: node.title || label,
+            previewUrl: getNodePreview(node),
+            text: resourceText(node),
+            active: true,
+            connected: connectedNodeIds.has(node.id),
+        };
+    };
+
+    const otherNodes = nodes.filter((n) => n.id !== currentNodeId && n.type !== CanvasNodeType.Config && n.type !== CanvasNodeType.Group);
+
+    // 1. 已连线节点优先作为「可能的@内容」
+    const connectedList = otherNodes.filter((n) => connectedNodeIds.has(n.id));
+    const nonConnectedList = otherNodes.filter((n) => !connectedNodeIds.has(n.id));
+
+    const possibleNodes = [...connectedList, ...nonConnectedList.slice(0, 4)];
+    const possible = possibleNodes.map((n, i) => toReference(n, i));
+
+    // 2. 主体：包含主体特征的图片节点
+    const subjectNodes = otherNodes.filter((n) => n.type === CanvasNodeType.Image && isSubject(n));
+    const effectiveSubjectNodes = subjectNodes.length > 0 ? subjectNodes : otherNodes.filter((n) => n.type === CanvasNodeType.Image);
+    const subjects = effectiveSubjectNodes.map((n, i) => toReference(n, i, "image"));
+
+    // 3. 图片
+    const imageNodes = otherNodes.filter((n) => n.type === CanvasNodeType.Image);
+    const images = imageNodes.map((n, i) => toReference(n, i, "image"));
+
+    // 4. 视频
+    const videoNodes = otherNodes.filter((n) => n.type === CanvasNodeType.Video);
+    const videos = videoNodes.map((n, i) => toReference(n, i, "video"));
+
+    // 5. 音频
+    const audioNodes = otherNodes.filter((n) => n.type === CanvasNodeType.Audio);
+    const audios = audioNodes.map((n, i) => toReference(n, i, "audio"));
+
+    return {
+        possible,
+        subjects,
+        images,
+        videos,
+        audios,
+    };
 }
 
 export function buildCanvasResourceReferences(nodes: CanvasNodeData[]) {

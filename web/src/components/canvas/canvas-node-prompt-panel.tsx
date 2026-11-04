@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowUp, LoaderCircle, Maximize2, Minimize2, RefreshCw, Square } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowUp, AtSign, LoaderCircle, Maximize2, Minimize2, RefreshCw, Square } from "lucide-react";
 import { Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -21,7 +21,7 @@ import { CanvasPromptChipInput } from "./canvas-prompt-chip-input";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
 import { CanvasTextSettingsPopover } from "./canvas-text-settings-popover";
 import { CanvasNodeType, type CanvasGenerationIntent, type CanvasGenerationMode, type CanvasNodeData } from "@/types/canvas";
-import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { getCanvasAllCategorizedResources, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
 
 export type CanvasNodeGenerationMode = CanvasGenerationMode;
@@ -37,6 +37,7 @@ type CanvasNodePromptPanelProps = {
     nodes: CanvasNodeData[];
     connectedNodes?: CanvasNodeData[];
     onDisconnectReference?: (fromNodeId: string, toNodeId: string) => void;
+    onConnectReference?: (fromNodeId: string, toNodeId: string) => boolean | Promise<boolean>;
     onStartReferenceSelection?: (nodeId: string) => void;
     onReorderReferences?: (toNodeId: string, orderedSourceNodeIds: string[]) => void;
     onLocateNode?: (nodeId: string) => void;
@@ -56,6 +57,7 @@ export function CanvasNodePromptPanel({
     mentionReferences = [],
     connectedNodes = [],
     onDisconnectReference,
+    onConnectReference,
     onStartReferenceSelection,
     onReorderReferences,
     onLocateNode,
@@ -91,6 +93,12 @@ export function CanvasNodePromptPanel({
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
     const [expanded, setExpanded] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const triggerMentionRef = useRef<(() => void) | null>(null);
+
+    const connectedNodeIds = useMemo(() => new Set(connectedNodes.map((n) => n.id)), [connectedNodes]);
+    const categorizedResources = useMemo(() => {
+        return getCanvasAllCategorizedResources(node.id, nodes, connectedNodeIds);
+    }, [node.id, nodes, connectedNodeIds]);
 
     const connectedResources = useMemo(() => {
         let images = 0;
@@ -270,7 +278,9 @@ export function CanvasNodePromptPanel({
                 nodes={nodes}
                 connectedNodes={connectedNodes}
                 onDisconnect={onDisconnectReference}
-                onStartSelection={onStartReferenceSelection}
+                onStartSelection={() => {
+                    triggerMentionRef.current?.();
+                }}
                 onReorder={onReorderReferences}
                 onLocateNode={onLocateNode}
             />}
@@ -304,11 +314,14 @@ export function CanvasNodePromptPanel({
             <CanvasPromptChipInput
                 value={prompt}
                 references={hasSavedToolResult ? [] : mentionReferences}
+                categorizedResources={categorizedResources}
+                onConnectResource={(sourceNodeId) => (onConnectReference ? onConnectReference(sourceNodeId, node.id) : true)}
+                triggerMentionRef={triggerMentionRef}
                 onChange={updatePrompt}
                 onSubmit={submit}
                 className="thin-scrollbar h-40 w-full cursor-text resize-none rounded-xl px-3 py-2 text-sm leading-5 outline-none"
                 style={{ background: "transparent", color: theme.node.text }}
-                placeholder={promptPlaceholder}
+                placeholder={t("canvas.promptPanel.mentionPlaceholder", "@搜索主体、图片、视频")}
             />
             </div>
 
@@ -316,6 +329,16 @@ export function CanvasNodePromptPanel({
                 <div className="thin-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain [&>*]:shrink-0">
                     <Tooltip title={t("canvas.promptPanel.expandEditor")}>
                         <Button type="text" className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0" style={{ color: theme.node.text }} icon={<Maximize2 className="size-3.5" />} onClick={openExpandedEditor} aria-label={t("canvas.promptPanel.expandEditor")} />
+                    </Tooltip>
+                    <Tooltip title={t("canvas.promptPanel.mentionResource", "召唤/引用画布资源 (@)")}>
+                        <Button
+                            type="text"
+                            className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0"
+                            style={{ color: theme.node.text }}
+                            icon={<AtSign className="size-3.5" />}
+                            onClick={() => triggerMentionRef.current?.()}
+                            aria-label="召唤/引用画布资源"
+                        />
                     </Tooltip>
                     <CanvasPromptLibrary onSelect={updatePrompt} />
                     {mode === "image" ? (
@@ -589,6 +612,8 @@ export function CanvasNodePromptPanel({
                     <CanvasPromptChipInput
                         value={prompt}
                         references={hasSavedToolResult ? [] : mentionReferences}
+                        categorizedResources={categorizedResources}
+                        onConnectResource={(sourceNodeId) => (onConnectReference ? onConnectReference(sourceNodeId, node.id) : true)}
                         onChange={updatePrompt}
                         containerClassName={isFullscreen ? "flex-1 min-h-0 flex flex-col" : ""}
                         className={cn(
@@ -596,7 +621,7 @@ export function CanvasNodePromptPanel({
                             isFullscreen ? "flex-1 min-h-[50vh] h-full" : "h-[52dvh] min-h-80"
                         )}
                         style={{ background: "transparent", borderColor: theme.toolbar.border, color: theme.node.text }}
-                        placeholder={promptPlaceholder}
+                        placeholder={t("canvas.promptPanel.mentionPlaceholder", "@搜索主体、图片、视频")}
                     />
                 </div>
             </Modal>
