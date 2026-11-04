@@ -1805,10 +1805,7 @@ function InfiniteCanvasPage() {
                 return;
             }
 
-            if (
-                (selectedConnectionIdRef.current || (selectedNodeIdsRef.current.size > 1 && !dragRef.current.isDraggingNode)) &&
-                !connectingParamsRef.current
-            ) {
+            if (selectedNodeIdsRef.current.size > 1 && !dragRef.current.isDraggingNode && !connectingParamsRef.current) {
                 setMouseWorld(screenToCanvas(event.clientX, event.clientY));
             }
 
@@ -4628,17 +4625,14 @@ function InfiniteCanvasPage() {
                                         connection={connection}
                                         from={from}
                                         to={to}
+                                        viewport={viewport}
                                         active={selectedConnectionId === connection.id || relatedHighlight.connectionIds.has(connection.id)}
                                         isSelected={selectedConnectionId === connection.id}
                                         invalid={invalidConnectionIds.has(connection.id)}
-                                        mouseWorld={mouseWorld}
                                         onSelect={(event) => {
                                             setSelectedConnectionId(connection.id);
                                             setSelectedNodeIds(new Set());
                                             setContextMenu(null);
-                                            if (event) {
-                                                setMouseWorld(screenToCanvas(event.clientX, event.clientY));
-                                            }
                                         }}
                                         onDisconnect={() => {
                                             deleteConnection(connection.id);

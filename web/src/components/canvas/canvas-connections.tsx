@@ -1,14 +1,13 @@
-import { useMemo } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import { useMemo, useState } from "react";
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Scissors } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
-import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
+import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position, ViewportTransform } from "@/types/canvas";
 import {
     CANVAS_HANDLE_OFFSET,
     findClosestPointOnCubicBezier,
-    getCubicBezierPoint,
     type CubicBezierCurve,
 } from "@/lib/canvas/canvas-node-geometry";
 
@@ -16,10 +15,10 @@ export function ConnectionPath({
     connection,
     from,
     to,
+    viewport,
     active,
     isSelected = false,
     invalid = false,
-    mouseWorld,
     onSelect,
     onDisconnect,
     onContextMenu,
@@ -27,15 +26,17 @@ export function ConnectionPath({
     connection: CanvasConnection;
     from: CanvasNodeData;
     to: CanvasNodeData;
+    viewport?: ViewportTransform;
     active: boolean;
     isSelected?: boolean;
     invalid?: boolean;
-    mouseWorld?: Position;
     onSelect: (event?: ReactMouseEvent) => void;
     onDisconnect?: () => void;
     onContextMenu?: (event: ReactMouseEvent<SVGPathElement>) => void;
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const [hoverPoint, setHoverPoint] = useState<Position | null>(null);
+
     const startX = from.position.x + from.width + CANVAS_HANDLE_OFFSET;
     const startY = from.position.y + from.height / 2;
     const endX = to.position.x - CANVAS_HANDLE_OFFSET;
@@ -55,7 +56,9 @@ export function ConnectionPath({
 
     const pathD = `M ${startX} ${startY} C ${startX + curvature} ${startY}, ${endX - curvature} ${endY}, ${endX} ${endY}`;
 
-    const isGlowActive = isSelected;
+    const safeScale = viewport?.k && viewport.k > 0 ? viewport.k : 1;
+    const isHovered = Boolean(hoverPoint);
+    const isGlowActive = isSelected || isHovered;
     const highlightBlue = "#0ea5e9";
     const strokeColor = invalid
         ? "#ef4444"
@@ -66,27 +69,49 @@ export function ConnectionPath({
             : theme.node.muted;
     const strokeWidth = invalid ? 2.5 : isGlowActive ? 2.5 : active ? 2.2 : 1.8;
 
+    const handlePointerMove = (event: ReactPointerEvent<SVGElement>) => {
+        if (!viewport) return;
+        const worldX = (event.clientX - viewport.x) / safeScale;
+        const worldY = (event.clientY - viewport.y) / safeScale;
+        setHoverPoint({ x: worldX, y: worldY });
+    };
+
+    const handlePointerLeave = () => {
+        setHoverPoint(null);
+    };
+
     const scissorsPos = useMemo(() => {
-        if (!isGlowActive) return null;
-        if (!mouseWorld || (mouseWorld.x === 0 && mouseWorld.y === 0)) {
-            return getCubicBezierPoint(curve, 0.5);
-        }
-        return findClosestPointOnCubicBezier(curve, mouseWorld);
-    }, [isGlowActive, mouseWorld, curve]);
+        if (!hoverPoint) return null;
+        return findClosestPointOnCubicBezier(curve, hoverPoint);
+    }, [hoverPoint, curve]);
+
+    const handleCut = (event: ReactMouseEvent | ReactPointerEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDisconnect?.();
+    };
 
     return (
-        <g>
+        <g data-connection-id={connection.id}>
+            {/* Expanded hover & click detection hit area */}
             <path
                 data-connection-id={connection.id}
                 d={pathD}
                 stroke="transparent"
-                strokeWidth="20"
+                strokeWidth="24"
                 fill="none"
                 style={{ cursor: "pointer", pointerEvents: "stroke" }}
+                onPointerMove={handlePointerMove}
+                onPointerLeave={handlePointerLeave}
+                onPointerDown={(event) => {
+                    if (scissorsPos) {
+                        handleCut(event);
+                    }
+                }}
                 onClick={(event) => {
                     event.stopPropagation();
-                    if (isGlowActive) {
-                        onDisconnect?.();
+                    if (scissorsPos) {
+                        handleCut(event);
                     } else {
                         onSelect(event);
                     }
@@ -97,6 +122,7 @@ export function ConnectionPath({
                     onContextMenu?.(event);
                 }}
             />
+            {/* Visual rendered path */}
             <path
                 d={pathD}
                 stroke={strokeColor}
@@ -116,19 +142,27 @@ export function ConnectionPath({
                 }}
             />
 
-            {isGlowActive && scissorsPos ? (
+            {/* Scissors appears only on hover, with fixed scale regardless of canvas zoom */}
+            {scissorsPos ? (
                 <g
+                    data-connection-id={connection.id}
+                    data-connection-scissors="true"
                     className="cursor-pointer group"
-                    transform={`translate(${scissorsPos.x}, ${scissorsPos.y})`}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        onDisconnect?.();
-                    }}
+                    transform={`translate(${scissorsPos.x}, ${scissorsPos.y}) scale(${1 / safeScale})`}
+                    onPointerDown={handleCut}
+                    onClick={handleCut}
                     style={{ pointerEvents: "all" }}
                     title="点击断开连接"
                 >
-                    <circle r="18" fill="transparent" />
                     <circle
+                        data-connection-id={connection.id}
+                        data-connection-scissors="true"
+                        r="18"
+                        fill="transparent"
+                    />
+                    <circle
+                        data-connection-id={connection.id}
+                        data-connection-scissors="true"
                         r="12"
                         fill={theme.node.panel}
                         stroke="#0ea5e9"
