@@ -29,6 +29,7 @@ export type CategorizedCanvasResources = {
     images: CanvasResourceReference[];
     videos: CanvasResourceReference[];
     audios: CanvasResourceReference[];
+    texts: CanvasResourceReference[];
 };
 
 export function getCanvasAllCategorizedResources(
@@ -43,17 +44,8 @@ export function getCanvasAllCategorizedResources(
     };
 
     const getNodePreview = (node: CanvasNodeData): string | undefined => {
-        if (node.type === CanvasNodeType.Image) {
-            return node.metadata?.content || node.metadata?.images?.find((img) => Boolean(img.content))?.content;
-        }
-        if (node.type === CanvasNodeType.Video) {
-            return node.metadata?.content || (node.metadata as any)?.videos?.[0]?.content;
-        }
-        if (node.type === CanvasNodeType.Audio) {
-            return node.metadata?.content;
-        }
         const res = getNodeDefinition(node.type)?.resource?.(node);
-        return node.metadata?.content || res?.url;
+        return node.metadata?.content || node.metadata?.images?.find((img) => Boolean(img.content))?.content || res?.url;
     };
 
     const toReference = (node: CanvasNodeData, index: number, kindOverride?: CanvasResourceKind): CanvasResourceReference => {
@@ -81,22 +73,25 @@ export function getCanvasAllCategorizedResources(
     const possibleNodes = [...connectedList, ...nonConnectedList.slice(0, 4)];
     const possible = possibleNodes.map((n, i) => toReference(n, i));
 
-    // 2. 主体：包含主体特征的图片节点
-    const subjectNodes = otherNodes.filter((n) => n.type === CanvasNodeType.Image && isSubject(n));
-    const effectiveSubjectNodes = subjectNodes.length > 0 ? subjectNodes : otherNodes.filter((n) => n.type === CanvasNodeType.Image);
-    const subjects = effectiveSubjectNodes.map((n, i) => toReference(n, i, "image"));
+    // 2. 主体：仅收录具有主体/人物特征的图片，不退回全量图片避免重复
+    const subjectNodes = otherNodes.filter((n) => (resourceKind(n) === "image" || n.type === CanvasNodeType.Image) && isSubject(n));
+    const subjects = subjectNodes.map((n, i) => toReference(n, i, "image"));
 
     // 3. 图片
-    const imageNodes = otherNodes.filter((n) => n.type === CanvasNodeType.Image);
+    const imageNodes = otherNodes.filter((n) => resourceKind(n) === "image" || n.type === CanvasNodeType.Image);
     const images = imageNodes.map((n, i) => toReference(n, i, "image"));
 
     // 4. 视频
-    const videoNodes = otherNodes.filter((n) => n.type === CanvasNodeType.Video);
+    const videoNodes = otherNodes.filter((n) => resourceKind(n) === "video" || n.type === CanvasNodeType.Video);
     const videos = videoNodes.map((n, i) => toReference(n, i, "video"));
 
     // 5. 音频
-    const audioNodes = otherNodes.filter((n) => n.type === CanvasNodeType.Audio);
+    const audioNodes = otherNodes.filter((n) => resourceKind(n) === "audio" || n.type === CanvasNodeType.Audio);
     const audios = audioNodes.map((n, i) => toReference(n, i, "audio"));
+
+    // 6. 文本
+    const textNodes = otherNodes.filter((n) => resourceKind(n) === "text" || n.type === CanvasNodeType.Text);
+    const texts = textNodes.map((n, i) => toReference(n, i, "text"));
 
     return {
         possible,
@@ -104,6 +99,7 @@ export function getCanvasAllCategorizedResources(
         images,
         videos,
         audios,
+        texts,
     };
 }
 

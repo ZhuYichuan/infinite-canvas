@@ -76,9 +76,27 @@ export function CanvasPromptChipInput({
     const candidates = useMemo(() => {
         if (!mention) return [];
         const query = mention.query.trim().toLowerCase();
+        if (categorizedResources) {
+            if (query) {
+                const allItems = [
+                    ...categorizedResources.images,
+                    ...categorizedResources.videos,
+                    ...categorizedResources.audios,
+                    ...categorizedResources.texts,
+                    ...categorizedResources.subjects,
+                ];
+                const seen = new Set<string>();
+                return allItems.filter((item) => {
+                    if (seen.has(item.nodeId)) return false;
+                    seen.add(item.nodeId);
+                    return `${item.label} ${item.title} ${item.kind} ${item.text || ""}`.toLowerCase().includes(query);
+                });
+            }
+            return categorizedResources.possible;
+        }
         if (!query) return activeReferences;
         return activeReferences.filter((item) => `${item.label} ${item.title} ${item.kind} ${item.text || ""}`.toLowerCase().includes(query));
-    }, [mention, activeReferences]);
+    }, [mention, categorizedResources, activeReferences]);
 
     // Rebuild the DOM from value when unfocused, or when a focused value is an external change rather than an emitted echo.
     useEffect(() => {
@@ -108,15 +126,16 @@ export function CanvasPromptChipInput({
             const editor = editorRef.current;
             if (!editor) return;
             editor.focus();
-            const text = textBeforeCaret();
-            if (!/@$/.test(text)) {
-                document.execCommand("insertText", false, "@");
-            }
             const selection = window.getSelection();
-            if (selection?.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)) {
-                savedRangeRef.current = selection.getRangeAt(0).cloneRange();
+            if (!selection?.rangeCount || !editor.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+                placeCaretAtEnd(editor);
+            }
+            const activeSel = window.getSelection();
+            if (activeSel?.rangeCount && editor.contains(activeSel.getRangeAt(0).commonAncestorContainer)) {
+                savedRangeRef.current = activeSel.getRangeAt(0).cloneRange();
             }
             setMention({ query: "", rect: caretRect() });
+            setActiveIndex(0);
         };
     }, [triggerMentionRef]);
 
@@ -179,9 +198,6 @@ export function CanvasPromptChipInput({
         const space = document.createTextNode(" ");
         const activeRange = selection?.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)
             ? selection.getRangeAt(0)
-            : range && editor.contains(range.commonAncestorContainer)
-            ? range
-            : null;
             : range && editor.contains(range.commonAncestorContainer)
             ? range
             : null;
@@ -314,6 +330,7 @@ export function CanvasPromptChipInput({
                     query={mention.query}
                     categorized={categorizedResources}
                     theme={theme}
+                    activeIndex={activeIndex}
                     onSelect={insertReference}
                     onClose={closeMention}
                 />

@@ -196,7 +196,7 @@ export function CanvasNodePromptPanel({
         ? t("canvas.promptPanel.depthVideoPrompt")
         : mode === "text" && connectedResources.images > 0
         ? "输入看图指令（留空默认执行生图提示词反推）..."
-        : t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`);
+        : t("canvas.promptPanel.mentionPlaceholder", "@搜索主体、图片、视频");
 
     const submit = (intent: CanvasGenerationIntent = canRepeat ? "repeat" : "new") => {
         const text = prompt.trim();
@@ -321,7 +321,7 @@ export function CanvasNodePromptPanel({
                 onSubmit={submit}
                 className="thin-scrollbar h-40 w-full cursor-text resize-none rounded-xl px-3 py-2 text-sm leading-5 outline-none"
                 style={{ background: "transparent", color: theme.node.text }}
-                placeholder={t("canvas.promptPanel.mentionPlaceholder", "@搜索主体、图片、视频")}
+                placeholder={promptPlaceholder}
             />
             </div>
 
@@ -330,17 +330,6 @@ export function CanvasNodePromptPanel({
                     <Tooltip title={t("canvas.promptPanel.expandEditor")}>
                         <Button type="text" className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0" style={{ color: theme.node.text }} icon={<Maximize2 className="size-3.5" />} onClick={openExpandedEditor} aria-label={t("canvas.promptPanel.expandEditor")} />
                     </Tooltip>
-                    <Tooltip title={t("canvas.promptPanel.mentionResource", "召唤/引用画布资源 (@)")}>
-                        <Button
-                            type="text"
-                            className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0"
-                            style={{ color: theme.node.text }}
-                            icon={<AtSign className="size-3.5" />}
-                            onClick={() => triggerMentionRef.current?.()}
-                            aria-label="召唤/引用画布资源"
-                        />
-                    </Tooltip>
-                    <CanvasPromptLibrary onSelect={updatePrompt} />
                     {mode === "image" ? (
                         <>
                             <ImageModelPicker
@@ -456,6 +445,17 @@ export function CanvasNodePromptPanel({
                             />
                         </>
                     )}
+                    <Tooltip title={t("canvas.promptPanel.mentionResource", "召唤/引用画布资源 (@)")}>
+                        <Button
+                            type="text"
+                            className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0"
+                            style={{ color: theme.node.text }}
+                            icon={<AtSign className="size-3.5" />}
+                            onClick={() => triggerMentionRef.current?.()}
+                            aria-label="召唤/引用画布资源"
+                        />
+                    </Tooltip>
+                    <CanvasPromptLibrary onSelect={updatePrompt} />
                 </div>
                 {isGenerating ? (
                     <Button type="primary" danger className="ml-auto !h-10 shrink-0 !rounded-full !px-3" onClick={() => onStop(node.id)} aria-label={t("canvas.promptPanel.stopGeneration")}>
@@ -621,7 +621,7 @@ export function CanvasNodePromptPanel({
                             isFullscreen ? "flex-1 min-h-[50vh] h-full" : "h-[52dvh] min-h-80"
                         )}
                         style={{ background: "transparent", borderColor: theme.toolbar.border, color: theme.node.text }}
-                        placeholder={t("canvas.promptPanel.mentionPlaceholder", "@搜索主体、图片、视频")}
+                        placeholder={promptPlaceholder}
                     />
                 </div>
             </Modal>

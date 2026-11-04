@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Check, ChevronRight, FileText, Image as ImageIcon, Music2, UserRound, Video } from "lucide-react";
+import { Check, ChevronRight, FileText, Image as ImageIcon, Music2, UserRound, Video } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import type { CanvasResourceReference, CategorizedCanvasResources } from "@/lib/canvas/canvas-resource-references";
@@ -11,26 +11,27 @@ type Props = {
     query: string;
     categorized: CategorizedCanvasResources;
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
+    activeIndex?: number;
     onSelect: (reference: CanvasResourceReference) => void;
     onClose: () => void;
 };
 
-type CategoryKey = "subjects" | "images" | "videos" | "audios";
+type CategoryKey = "subjects" | "images" | "videos" | "audios" | "texts";
 
-export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onSelect, onClose }: Props) {
+export function CanvasResourceMentionMenu({ rect, query, categorized, theme, activeIndex = 0, onSelect, onClose }: Props) {
     const [activeCategory, setActiveCategory] = useState<CategoryKey | null>(null);
-    const [activeIndex, setActiveIndex] = useState(0);
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     const trimmedQuery = query.trim().toLowerCase();
 
-    // 当输入关键词搜索时，进行全量过滤
+    // 当输入关键词搜索时，对所有候选资源进行过滤
     const filteredResults = useMemo(() => {
         if (!trimmedQuery) return null;
         const allItems = [
             ...categorized.images,
             ...categorized.videos,
             ...categorized.audios,
+            ...categorized.texts,
             ...categorized.subjects,
         ];
         const seen = new Set<string>();
@@ -44,12 +45,6 @@ export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onS
             return haystack.includes(trimmedQuery);
         });
     }, [trimmedQuery, categorized]);
-
-    const activeList = filteredResults ?? categorized.possible;
-
-    useEffect(() => {
-        setActiveIndex(0);
-    }, [trimmedQuery, activeCategory]);
 
     // 监听外部点击与 Esc 关闭
     useEffect(() => {
@@ -92,10 +87,11 @@ export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onS
     const subLeft = left + menuWidth + gap + submenuWidth > window.innerWidth ? left - submenuWidth - gap : left + menuWidth + gap;
 
     const categoriesConfig: { key: CategoryKey; label: string; icon: typeof UserRound; count: number }[] = [
-        { key: "subjects", label: "主体", icon: UserRound, count: categorized.subjects.length },
+        ...(categorized.subjects.length > 0 ? [{ key: "subjects" as const, label: "主体", icon: UserRound, count: categorized.subjects.length }] : []),
         { key: "images", label: "图片", icon: ImageIcon, count: categorized.images.length },
         { key: "videos", label: "视频", icon: Video, count: categorized.videos.length },
         { key: "audios", label: "音频", icon: Music2, count: categorized.audios.length },
+        { key: "texts", label: "文本", icon: FileText, count: categorized.texts.length },
     ];
 
     const currentSubmenuItems = activeCategory ? categorized[activeCategory] : [];
@@ -124,7 +120,7 @@ export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onS
                 {/* 搜索状态 */}
                 {trimmedQuery ? (
                     <div>
-                        <div className="px-2 py-1.5 text-[11px] font-medium text-stone-400 dark:text-stone-500">
+                        <div className="px-2 py-1.5 text-[11px] font-medium opacity-60" style={{ color: theme.node.muted }}>
                             可能的@内容
                         </div>
                         {filteredResults && filteredResults.length > 0 ? (
@@ -140,7 +136,7 @@ export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onS
                                 ))}
                             </div>
                         ) : (
-                            <div className="px-3 py-4 text-center text-xs opacity-50">
+                            <div className="px-3 py-4 text-center text-xs opacity-50" style={{ color: theme.node.muted }}>
                                 未在画布上找到匹配的资源
                             </div>
                         )}
@@ -150,7 +146,7 @@ export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onS
                         {/* 1. 可能的@内容 */}
                         {categorized.possible.length > 0 && (
                             <div className="mb-2">
-                                <div className="px-2 py-1 text-[11px] font-medium text-stone-400 dark:text-stone-500">
+                                <div className="px-2 py-1 text-[11px] font-medium opacity-60" style={{ color: theme.node.muted }}>
                                     可能的@内容
                                 </div>
                                 <div className="space-y-0.5">
@@ -169,7 +165,7 @@ export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onS
 
                         {/* 2. 添加参考分类 */}
                         <div>
-                            <div className="px-2 py-1 text-[11px] font-medium text-stone-400 dark:text-stone-500">
+                            <div className="px-2 py-1 text-[11px] font-medium opacity-60" style={{ color: theme.node.muted }}>
                                 添加参考
                             </div>
                             <div className="space-y-0.5">
@@ -199,21 +195,6 @@ export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onS
                                         </button>
                                     );
                                 })}
-
-                                {/* 运镜（分镜）：标注 New 暂未开放 */}
-                                <div
-                                    className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 opacity-40 cursor-not-allowed select-none"
-                                    title="运镜分镜模型工作流建设中，敬请期待"
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <Camera className="size-4 opacity-70" />
-                                        <span className="font-medium">运镜</span>
-                                        <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[9px] font-semibold text-sky-400">
-                                            New
-                                        </span>
-                                    </div>
-                                    <ChevronRight className="size-3.5 opacity-40" />
-                                </div>
                             </div>
                         </div>
                     </>
@@ -233,7 +214,7 @@ export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onS
                         color: theme.node.text,
                     }}
                 >
-                    <div className="mb-1 flex items-center justify-between border-b pb-1.5 px-2 text-[11px] font-semibold text-stone-400" style={{ borderColor: theme.toolbar.border }}>
+                    <div className="mb-1 flex items-center justify-between border-b pb-1.5 px-2 text-[11px] font-semibold opacity-60" style={{ borderColor: theme.toolbar.border, color: theme.node.muted }}>
                         <span>
                             {categoriesConfig.find((c) => c.key === activeCategory)?.label} ({currentSubmenuItems.length})
                         </span>
@@ -251,7 +232,7 @@ export function CanvasResourceMentionMenu({ rect, query, categorized, theme, onS
                             ))}
                         </div>
                     ) : (
-                        <div className="px-2 py-6 text-center text-xs opacity-50">
+                        <div className="px-2 py-6 text-center text-xs opacity-50" style={{ color: theme.node.muted }}>
                             画布中暂无此类资源
                         </div>
                     )}
@@ -307,15 +288,15 @@ function ResourceItemRow({
 
 function ItemThumbnail({ item }: { item: CanvasResourceReference }) {
     if (item.kind === "image" && item.previewUrl) {
-        return <img src={item.previewUrl} alt="" className="size-8 rounded-lg object-cover shrink-0 border border-black/10 dark:border-white/10" />;
+        return <img src={item.previewUrl} alt="" className="size-8 rounded-lg object-cover shrink-0" />;
     }
     if (item.kind === "video" && item.previewUrl) {
         return <video src={item.previewUrl} className="size-8 rounded-lg bg-black object-cover shrink-0" muted preload="metadata" />;
     }
     const Icon = item.kind === "audio" ? Music2 : item.kind === "video" ? Video : item.kind === "image" ? ImageIcon : FileText;
     return (
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10">
-            <Icon className="size-4 opacity-60" />
+        <span className="grid size-8 shrink-0 place-items-center">
+            <Icon className="size-4.5 opacity-65" />
         </span>
     );
 }
