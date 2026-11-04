@@ -61,6 +61,55 @@ export function findContainingGroupId(node: CanvasNodeData, nodes: CanvasNodeDat
 
 export const CANVAS_HANDLE_OFFSET = 12;
 
+export type CubicBezierCurve = [Position, Position, Position, Position];
+
+export function getCubicBezierPoint(curve: CubicBezierCurve, t: number): Position {
+    const [p0, p1, p2, p3] = curve;
+    const oneMinusT = 1 - t;
+    const oneMinusT2 = oneMinusT * oneMinusT;
+    const oneMinusT3 = oneMinusT2 * oneMinusT;
+    const t2 = t * t;
+    const t3 = t2 * t;
+
+    return {
+        x: oneMinusT3 * p0.x + 3 * oneMinusT2 * t * p1.x + 3 * oneMinusT * t2 * p2.x + t3 * p3.x,
+        y: oneMinusT3 * p0.y + 3 * oneMinusT2 * t * p1.y + 3 * oneMinusT * t2 * p2.y + t3 * p3.y,
+    };
+}
+
+export function findClosestPointOnCubicBezier(curve: CubicBezierCurve, point: Position, samples = 36): Position {
+    let minD2 = Infinity;
+    let bestT = 0.5;
+
+    for (let i = 0; i <= samples; i++) {
+        const t = i / samples;
+        const pt = getCubicBezierPoint(curve, t);
+        const d2 = (pt.x - point.x) ** 2 + (pt.y - point.y) ** 2;
+        if (d2 < minD2) {
+            minD2 = d2;
+            bestT = t;
+        }
+    }
+
+    let left = Math.max(0, bestT - 1 / samples);
+    let right = Math.min(1, bestT + 1 / samples);
+    for (let iter = 0; iter < 5; iter++) {
+        const mid1 = left + (right - left) / 3;
+        const mid2 = right - (right - left) / 3;
+        const pt1 = getCubicBezierPoint(curve, mid1);
+        const pt2 = getCubicBezierPoint(curve, mid2);
+        const d1 = (pt1.x - point.x) ** 2 + (pt1.y - point.y) ** 2;
+        const d2 = (pt2.x - point.x) ** 2 + (pt2.y - point.y) ** 2;
+        if (d1 < d2) {
+            right = mid2;
+        } else {
+            left = mid1;
+        }
+    }
+
+    return getCubicBezierPoint(curve, (left + right) / 2);
+}
+
 export function getConnectionTargetAnchor(node: CanvasNodeData, current: ConnectionHandle) {
     return {
         x: current.handleType === "source" ? node.position.x - CANVAS_HANDLE_OFFSET : node.position.x + node.width + CANVAS_HANDLE_OFFSET,

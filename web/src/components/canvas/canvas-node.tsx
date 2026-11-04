@@ -1070,158 +1070,146 @@ function ConnectionHandleDot({
     onClick?: (event: React.MouseEvent) => void;
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const containerRef = useRef<HTMLDivElement>(null);
     const [isHovered, setIsHovered] = useState(false);
-    const [pullOffset, setPullOffset] = useState<{ x: number; y: number } | null>(null);
+    const [stickyOffset, setStickyOffset] = useState<{ x: number; y: number } | null>(null);
     const isDraggingRef = useRef(false);
-    const startPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    const dragStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const safeScale = scale > 0 ? scale : 1;
-    const isVisible = visible || isHovered || Boolean(pullOffset);
+    const isRight = side === "right";
 
+    // 鼠标在触点范围悬浮移动时，触点粘连跟随鼠标移动一段距离
+    const handlePointerMove = (event: React.PointerEvent) => {
+        if (isDraggingRef.current) return;
+        const container = containerRef.current;
+        if (!container) return;
+
+        const rect = container.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const dx = event.clientX - centerX;
+        const dy = event.clientY - centerY;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance > 0) {
+            // 磁吸跟随：最大位移 14px，带阻尼
+            const pull = Math.min(distance, 18) * 0.55;
+            setStickyOffset({
+                x: (dx / distance) * pull,
+                y: (dy / distance) * pull,
+            });
+        }
+    };
+
+    // 鼠标离开且没有发生拖拽时，触点平滑弹回原位
+    const handlePointerLeave = () => {
+        setIsHovered(false);
+        if (!isDraggingRef.current) {
+            setStickyOffset(null);
+        }
+    };
+
+    // 鼠标按下进入拖拽连线流程
     const handlePointerDown = (event: React.PointerEvent) => {
         event.stopPropagation();
         if (event.button !== 0) return;
 
-        startPosRef.current = { x: event.clientX, y: event.clientY };
+        dragStartPosRef.current = { x: event.clientX, y: event.clientY };
         isDraggingRef.current = true;
 
-        const onPointerMove = (moveEvent: PointerEvent) => {
+        const onWindowPointerMove = (moveEvent: PointerEvent) => {
             if (!isDraggingRef.current) return;
-            const dx = (moveEvent.clientX - startPosRef.current.x) / safeScale;
-            const dy = (moveEvent.clientY - startPosRef.current.y) / safeScale;
+            // 屏幕物理像素与容器内 1:1 对齐（已由容器外层 1/safeScale 抵消画布缩放）
+            const dx = moveEvent.clientX - dragStartPosRef.current.x;
+            const dy = moveEvent.clientY - dragStartPosRef.current.y;
             const distance = Math.hypot(dx, dy);
 
             if (distance < 36) {
-                setPullOffset({ x: dx * 0.65, y: dy * 0.65 });
+                // 拖拽拉伸
+                setStickyOffset({ x: dx * 0.65, y: dy * 0.65 });
             } else {
+                // 达到 36px 阈值：触点弹回原位并抽出连线
                 isDraggingRef.current = false;
-                setPullOffset(null);
-                window.removeEventListener("pointermove", onPointerMove);
-                window.removeEventListener("pointerup", onPointerUp);
+                setStickyOffset(null);
+                window.removeEventListener("pointermove", onWindowPointerMove);
+                window.removeEventListener("pointerup", onWindowPointerUp);
                 onMouseDown(moveEvent as unknown as React.MouseEvent);
             }
         };
 
-        const onPointerUp = (upEvent: PointerEvent) => {
+        const onWindowPointerUp = (upEvent: PointerEvent) => {
             if (!isDraggingRef.current) return;
             isDraggingRef.current = false;
-            window.removeEventListener("pointermove", onPointerMove);
-            window.removeEventListener("pointerup", onPointerUp);
+            window.removeEventListener("pointermove", onWindowPointerMove);
+            window.removeEventListener("pointerup", onWindowPointerUp);
 
-            const dx = Math.abs(upEvent.clientX - startPosRef.current.x);
-            const dy = Math.abs(upEvent.clientY - startPosRef.current.y);
-            setPullOffset(null);
+            const dx = Math.abs(upEvent.clientX - dragStartPosRef.current.x);
+            const dy = Math.abs(upEvent.clientY - dragStartPosRef.current.y);
+            setStickyOffset(null);
 
-            if (dx < 5 && dy < 5) {
+            // 未达到 36px 阈值松开时触发点击
+            if (dx < 36 && dy < 36) {
                 onClick?.(upEvent as unknown as React.MouseEvent);
             }
         };
 
-        window.addEventListener("pointermove", onPointerMove);
-        window.addEventListener("pointerup", onPointerUp);
+        window.addEventListener("pointermove", onWindowPointerMove);
+        window.addEventListener("pointerup", onWindowPointerUp);
     };
 
-    if (side === "right") {
-        return (
-            <div
-                data-connection-handle
-                className={`absolute z-30 flex size-12 cursor-crosshair items-center justify-center transition-opacity duration-150 ${
-                    isVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-                }`}
-                style={{
-                    left: "calc(100% + 12px)",
-                    top: "50%",
-                    transform: `translate(-50%, -50%) scale(${1 / safeScale})`,
-                    transformOrigin: "center center",
-                }}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-                onPointerDown={handlePointerDown}
-                title="点击快捷创建 / 拖拽连线"
-                aria-label="连接触点"
-            >
-                <div className="pointer-events-auto absolute -left-4 top-0 h-full w-4" />
-                {pullOffset && Math.hypot(pullOffset.x, pullOffset.y) > 3 ? (
-                    <svg
-                        className="pointer-events-none absolute overflow-visible"
-                        style={{ left: "50%", top: "50%", width: 0, height: 0 }}
-                    >
-                        <line
-                            x1={0}
-                            y1={0}
-                            x2={pullOffset.x}
-                            y2={pullOffset.y}
-                            stroke={theme.node.activeStroke || "#00d2ff"}
-                            strokeWidth={Math.max(1.5, 3.5 - Math.hypot(pullOffset.x, pullOffset.y) * 0.06)}
-                            strokeDasharray="2,2"
-                            opacity={0.8}
-                        />
-                    </svg>
-                ) : null}
-                <div
-                    className={`flex size-6.5 items-center justify-center rounded-full border shadow-sm transition-all duration-150 ${
-                        pullOffset ? "" : "hover:scale-125 hover:shadow-md"
-                    }`}
-                    style={{
-                        background: theme.node.panel,
-                        borderColor: theme.node.activeStroke || theme.node.stroke,
-                        color: theme.node.text,
-                        transform: pullOffset ? `translate(${pullOffset.x}px, ${pullOffset.y}px)` : "translate(0, 0)",
-                        transition: pullOffset ? "none" : "transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-                    }}
-                >
-                    <Plus className="size-3.5 stroke-[2.5]" />
-                </div>
-            </div>
-        );
-    }
+    const isVisible = visible || isHovered || Boolean(stickyOffset);
 
     return (
         <div
+            ref={containerRef}
             data-connection-handle
             className={`absolute z-30 flex size-12 cursor-crosshair items-center justify-center transition-opacity duration-150 ${
                 isVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
             }`}
             style={{
-                left: "-12px",
+                left: isRight ? "calc(100% + 12px)" : "-12px",
                 top: "50%",
                 transform: `translate(-50%, -50%) scale(${1 / safeScale})`,
                 transformOrigin: "center center",
             }}
             onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            onPointerMove={handlePointerMove}
+            onPointerLeave={handlePointerLeave}
             onPointerDown={handlePointerDown}
-            title="拖拽连线"
+            title={isRight ? "点击快捷创建 / 拖拽连线" : "拖拽连线"}
             aria-label="连接触点"
         >
-            <div className="pointer-events-auto absolute -right-4 top-0 h-full w-4" />
-            {pullOffset && Math.hypot(pullOffset.x, pullOffset.y) > 3 ? (
-                <svg
-                    className="pointer-events-none absolute overflow-visible"
-                    style={{ left: "50%", top: "50%", width: 0, height: 0 }}
+            <div className={`pointer-events-auto absolute top-0 h-full w-4 ${isRight ? "-left-4" : "-right-4"}`} />
+            {isRight ? (
+                <div
+                    className={`flex size-6.5 items-center justify-center rounded-full border shadow-sm ${
+                        isHovered || stickyOffset ? "scale-125 shadow-md" : ""
+                    }`}
+                    style={{
+                        background: theme.node.panel,
+                        borderColor: theme.node.activeStroke || theme.node.stroke,
+                        color: theme.node.text,
+                        transform: stickyOffset ? `translate(${stickyOffset.x}px, ${stickyOffset.y}px)` : "translate(0, 0)",
+                        transition: stickyOffset
+                            ? "transform 50ms ease-out"
+                            : "transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 150ms ease",
+                    }}
                 >
-                    <line
-                        x1={0}
-                        y1={0}
-                        x2={pullOffset.x}
-                        y2={pullOffset.y}
-                        stroke={theme.node.muted || "#94a3b8"}
-                        strokeWidth={Math.max(1.5, 3 - Math.hypot(pullOffset.x, pullOffset.y) * 0.05)}
-                        strokeDasharray="2,2"
-                        opacity={0.8}
-                    />
-                </svg>
-            ) : null}
-            <div
-                className={`size-3 rounded-full border-2 transition-all duration-150 ${
-                    pullOffset ? "" : "hover:scale-125"
-                }`}
-                style={{
-                    background: theme.node.panel,
-                    borderColor: theme.node.muted,
-                    transform: pullOffset ? `translate(${pullOffset.x}px, ${pullOffset.y}px)` : "translate(0, 0)",
-                    transition: pullOffset ? "none" : "transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-                }}
-            />
+                    <Plus className="size-3.5 stroke-[2.5]" />
+                </div>
+            ) : (
+                <div
+                    className={`size-3 rounded-full border-2 ${isHovered || stickyOffset ? "scale-125" : ""}`}
+                    style={{
+                        background: theme.node.panel,
+                        borderColor: theme.node.muted,
+                        transform: stickyOffset ? `translate(${stickyOffset.x}px, ${stickyOffset.y}px)` : "translate(0, 0)",
+                        transition: stickyOffset
+                            ? "transform 50ms ease-out"
+                            : "transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 150ms ease",
+                    }}
+                />
+            )}
         </div>
     );
 }

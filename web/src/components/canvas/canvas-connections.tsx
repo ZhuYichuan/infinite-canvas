@@ -1,69 +1,16 @@
 import { useMemo } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { Scissors } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
-import { CANVAS_HANDLE_OFFSET } from "@/lib/canvas/canvas-node-geometry";
-
-function getCubicBezierPoint(
-    p0: Position,
-    p1: Position,
-    p2: Position,
-    p3: Position,
-    t: number,
-): Position {
-    const oneMinusT = 1 - t;
-    const oneMinusT2 = oneMinusT * oneMinusT;
-    const oneMinusT3 = oneMinusT2 * oneMinusT;
-    const t2 = t * t;
-    const t3 = t2 * t;
-
-    return {
-        x: oneMinusT3 * p0.x + 3 * oneMinusT2 * t * p1.x + 3 * oneMinusT * t2 * p2.x + t3 * p3.x,
-        y: oneMinusT3 * p0.y + 3 * oneMinusT2 * t * p1.y + 3 * oneMinusT * t2 * p2.y + t3 * p3.y,
-    };
-}
-
-function findClosestPointOnCubicBezier(
-    p0: Position,
-    p1: Position,
-    p2: Position,
-    p3: Position,
-    point: Position,
-    samples = 36,
-): Position {
-    let minD2 = Infinity;
-    let bestT = 0.5;
-
-    for (let i = 0; i <= samples; i++) {
-        const t = i / samples;
-        const pt = getCubicBezierPoint(p0, p1, p2, p3, t);
-        const d2 = (pt.x - point.x) ** 2 + (pt.y - point.y) ** 2;
-        if (d2 < minD2) {
-            minD2 = d2;
-            bestT = t;
-        }
-    }
-
-    let left = Math.max(0, bestT - 1 / samples);
-    let right = Math.min(1, bestT + 1 / samples);
-    for (let iter = 0; iter < 5; iter++) {
-        const mid1 = left + (right - left) / 3;
-        const mid2 = right - (right - left) / 3;
-        const pt1 = getCubicBezierPoint(p0, p1, p2, p3, mid1);
-        const pt2 = getCubicBezierPoint(p0, p1, p2, p3, mid2);
-        const d1 = (pt1.x - point.x) ** 2 + (pt1.y - point.y) ** 2;
-        const d2 = (pt2.x - point.x) ** 2 + (pt2.y - point.y) ** 2;
-        if (d1 < d2) {
-            right = mid2;
-        } else {
-            left = mid1;
-        }
-    }
-
-    return getCubicBezierPoint(p0, p1, p2, p3, (left + right) / 2);
-}
+import {
+    CANVAS_HANDLE_OFFSET,
+    findClosestPointOnCubicBezier,
+    getCubicBezierPoint,
+    type CubicBezierCurve,
+} from "@/lib/canvas/canvas-node-geometry";
 
 export function ConnectionPath({
     connection,
@@ -96,10 +43,15 @@ export function ConnectionPath({
     const dx = Math.abs(endX - startX);
     const curvature = Math.max(dx * 0.5, 50);
 
-    const p0 = useMemo(() => ({ x: startX, y: startY }), [startX, startY]);
-    const p1 = useMemo(() => ({ x: startX + curvature, y: startY }), [startX, curvature, startY]);
-    const p2 = useMemo(() => ({ x: endX - curvature, y: endY }), [endX, curvature, endY]);
-    const p3 = useMemo(() => ({ x: endX, y: endY }), [endX, endY]);
+    const curve = useMemo<CubicBezierCurve>(
+        () => [
+            { x: startX, y: startY },
+            { x: startX + curvature, y: startY },
+            { x: endX - curvature, y: endY },
+            { x: endX, y: endY },
+        ],
+        [startX, startY, curvature, endX, endY],
+    );
 
     const pathD = `M ${startX} ${startY} C ${startX + curvature} ${startY}, ${endX - curvature} ${endY}, ${endX} ${endY}`;
 
@@ -110,10 +62,10 @@ export function ConnectionPath({
     const scissorsPos = useMemo(() => {
         if (!isGlowActive) return null;
         if (!mouseWorld || (mouseWorld.x === 0 && mouseWorld.y === 0)) {
-            return getCubicBezierPoint(p0, p1, p2, p3, 0.5);
+            return getCubicBezierPoint(curve, 0.5);
         }
-        return findClosestPointOnCubicBezier(p0, p1, p2, p3, mouseWorld);
-    }, [isGlowActive, mouseWorld, p0, p1, p2, p3]);
+        return findClosestPointOnCubicBezier(curve, mouseWorld);
+    }, [isGlowActive, mouseWorld, curve]);
 
     return (
         <g>
@@ -171,22 +123,19 @@ export function ConnectionPath({
                     <circle r="18" fill="transparent" />
                     <circle
                         r="12"
-                        fill="rgba(15, 23, 42, 0.85)"
+                        fill={theme.node.panel}
                         stroke="#00d2ff"
                         strokeWidth="1.2"
-                        className="transition-transform duration-100 group-hover:scale-110"
+                        className="transition-transform duration-100 group-hover:scale-110 shadow-sm"
                         style={{ filter: "drop-shadow(0 0 6px rgba(0, 210, 255, 0.7))" }}
                     />
-                    <g
-                        transform="translate(-7, -7) scale(0.583)"
-                        className="pointer-events-none transition-transform duration-100 group-hover:scale-110"
-                    >
-                        <circle cx="6" cy="6" r="3" fill="none" stroke="#ffffff" strokeWidth="2.5" />
-                        <path d="M8.12 8.12 12 12" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-                        <path d="M20 4 8.12 15.88" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-                        <circle cx="6" cy="18" r="3" fill="none" stroke="#ffffff" strokeWidth="2.5" />
-                        <path d="M14.8 14.8 20 20" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-                    </g>
+                    <Scissors
+                        x={-7}
+                        y={-7}
+                        size={14}
+                        strokeWidth={2.5}
+                        className="pointer-events-none text-white transition-transform duration-100 group-hover:scale-110"
+                    />
                 </g>
             ) : null}
         </g>
