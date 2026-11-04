@@ -1215,6 +1215,7 @@ function InfiniteCanvasPage() {
 
     const deleteConnection = useCallback((connectionId: string) => {
         if (isViewerRef.current) return;
+        connectionsRef.current = connectionsRef.current.filter((conn) => conn.id !== connectionId);
         setConnections((prev) => prev.filter((conn) => conn.id !== connectionId));
         setSelectedConnectionId((current) => (current === connectionId ? null : current));
         setContextMenu((current) => (current?.type === "connection" && current.connectionId === connectionId ? null : current));

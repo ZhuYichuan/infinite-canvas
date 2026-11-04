@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Scissors } from "lucide-react";
 
@@ -36,6 +36,7 @@ export function ConnectionPath({
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [hoverPoint, setHoverPoint] = useState<Position | null>(null);
+    const cutFiredRef = useRef(false);
 
     const startX = from.position.x + from.width + CANVAS_HANDLE_OFFSET;
     const startY = from.position.y + from.height / 2;
@@ -70,6 +71,18 @@ export function ConnectionPath({
     const strokeWidth = invalid ? 2.5 : isGlowActive ? 2.5 : active ? 2.2 : 1.8;
 
     const handlePointerMove = (event: ReactPointerEvent<SVGElement>) => {
+        const svg = event.currentTarget.ownerSVGElement;
+        if (svg && svg.getScreenCTM) {
+            const ctm = svg.getScreenCTM();
+            if (ctm) {
+                const pt = svg.createSVGPoint();
+                pt.x = event.clientX;
+                pt.y = event.clientY;
+                const worldPt = pt.matrixTransform(ctm.inverse());
+                setHoverPoint({ x: worldPt.x, y: worldPt.y });
+                return;
+            }
+        }
         if (!viewport) return;
         const worldX = (event.clientX - viewport.x) / safeScale;
         const worldY = (event.clientY - viewport.y) / safeScale;
@@ -86,9 +99,15 @@ export function ConnectionPath({
     }, [hoverPoint, curve]);
 
     const handleCut = (event: ReactMouseEvent | ReactPointerEvent) => {
+        if (event.button !== 0) return;
         event.preventDefault();
         event.stopPropagation();
+        if (cutFiredRef.current) return;
+        cutFiredRef.current = true;
         onDisconnect?.();
+        setTimeout(() => {
+            cutFiredRef.current = false;
+        }, 300);
     };
 
     return (
@@ -96,26 +115,17 @@ export function ConnectionPath({
             {/* Expanded hover & click detection hit area */}
             <path
                 data-connection-id={connection.id}
+                data-connection-scissors="true"
                 d={pathD}
                 stroke="transparent"
-                strokeWidth="24"
+                strokeWidth={Math.max(32, 32 / safeScale)}
                 fill="none"
                 style={{ cursor: "pointer", pointerEvents: "stroke" }}
+                onPointerEnter={handlePointerMove}
                 onPointerMove={handlePointerMove}
                 onPointerLeave={handlePointerLeave}
-                onPointerDown={(event) => {
-                    if (scissorsPos) {
-                        handleCut(event);
-                    }
-                }}
-                onClick={(event) => {
-                    event.stopPropagation();
-                    if (scissorsPos) {
-                        handleCut(event);
-                    } else {
-                        onSelect(event);
-                    }
-                }}
+                onPointerDown={handleCut}
+                onClick={handleCut}
                 onContextMenu={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -147,35 +157,15 @@ export function ConnectionPath({
                 <g
                     data-connection-id={connection.id}
                     data-connection-scissors="true"
-                    className="cursor-pointer group"
                     transform={`translate(${scissorsPos.x}, ${scissorsPos.y}) scale(${1 / safeScale})`}
-                    onPointerDown={handleCut}
-                    onClick={handleCut}
-                    style={{ pointerEvents: "all" }}
-                    title="点击断开连接"
+                    style={{ pointerEvents: "none" }}
                 >
-                    <circle
-                        data-connection-id={connection.id}
-                        data-connection-scissors="true"
-                        r="18"
-                        fill="transparent"
-                    />
-                    <circle
-                        data-connection-id={connection.id}
-                        data-connection-scissors="true"
-                        r="12"
-                        fill={theme.node.panel}
-                        stroke="#0ea5e9"
-                        strokeWidth="1.2"
-                        className="transition-transform duration-100 group-hover:scale-110 shadow-sm"
-                        style={{ filter: "drop-shadow(0 0 6px rgba(14, 165, 233, 0.7))" }}
-                    />
                     <Scissors
-                        x={-7}
-                        y={-7}
-                        size={14}
-                        strokeWidth={2.5}
-                        className="pointer-events-none text-white transition-transform duration-100 group-hover:scale-110"
+                        x={-9}
+                        y={-9}
+                        size={18}
+                        strokeWidth={2.2}
+                        className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] filter"
                     />
                 </g>
             ) : null}
