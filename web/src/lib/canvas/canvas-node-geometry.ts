@@ -59,9 +59,11 @@ export function findContainingGroupId(node: CanvasNodeData, nodes: CanvasNodeDat
     );
 }
 
+export const CANVAS_HANDLE_OFFSET = 12;
+
 export function getConnectionTargetAnchor(node: CanvasNodeData, current: ConnectionHandle) {
     return {
-        x: current.handleType === "source" ? node.position.x : node.position.x + node.width,
+        x: current.handleType === "source" ? node.position.x - CANVAS_HANDLE_OFFSET : node.position.x + node.width + CANVAS_HANDLE_OFFSET,
         y: node.position.y + node.height / 2,
     };
 }

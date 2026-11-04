@@ -317,6 +317,7 @@ function InfiniteCanvasPage() {
     const nodesRef = useRef(nodes);
     const connectionsRef = useRef(connections);
     const selectedNodeIdsRef = useRef(selectedNodeIds);
+    const selectedConnectionIdRef = useRef(selectedConnectionId);
     const viewportRef = useRef(viewport);
     const focusAnimRef = useRef<number | null>(null);
     const generateNodeRef = useRef<((nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, intent?: CanvasGenerationIntent) => Promise<void>) | null>(null);
@@ -674,11 +675,12 @@ function InfiniteCanvasPage() {
         nodesRef.current = nodes;
         connectionsRef.current = connections;
         selectedNodeIdsRef.current = selectedNodeIds;
+        selectedConnectionIdRef.current = selectedConnectionId;
         viewportRef.current = viewport;
         connectingParamsRef.current = connectingParams;
         connectionTargetNodeIdRef.current = connectionTargetNodeId;
         pendingConnectionCreateRef.current = pendingConnectionCreate;
-    }, [nodes, connections, selectedNodeIds, viewport, connectingParams, connectionTargetNodeId, pendingConnectionCreate]);
+    }, [nodes, connections, selectedNodeIds, selectedConnectionId, viewport, connectingParams, connectionTargetNodeId, pendingConnectionCreate]);
 
     useLayoutEffect(() => {
         selectionBoxRef.current = selectionBox;
@@ -1803,7 +1805,10 @@ function InfiniteCanvasPage() {
                 return;
             }
 
-            if (selectedNodeIdsRef.current.size > 1 && !dragRef.current.isDraggingNode && !connectingParamsRef.current) {
+            if (
+                (selectedConnectionIdRef.current || (selectedNodeIdsRef.current.size > 1 && !dragRef.current.isDraggingNode)) &&
+                !connectingParamsRef.current
+            ) {
                 setMouseWorld(screenToCanvas(event.clientX, event.clientY));
             }
 
@@ -4624,11 +4629,19 @@ function InfiniteCanvasPage() {
                                         from={from}
                                         to={to}
                                         active={selectedConnectionId === connection.id || relatedHighlight.connectionIds.has(connection.id)}
+                                        isSelected={selectedConnectionId === connection.id}
                                         invalid={invalidConnectionIds.has(connection.id)}
-                                        onSelect={() => {
+                                        mouseWorld={mouseWorld}
+                                        onSelect={(event) => {
                                             setSelectedConnectionId(connection.id);
                                             setSelectedNodeIds(new Set());
                                             setContextMenu(null);
+                                            if (event) {
+                                                setMouseWorld(screenToCanvas(event.clientX, event.clientY));
+                                            }
+                                        }}
+                                        onDisconnect={() => {
+                                            deleteConnection(connection.id);
                                         }}
                                         onContextMenu={(event) => {
                                             setSelectedConnectionId(connection.id);
