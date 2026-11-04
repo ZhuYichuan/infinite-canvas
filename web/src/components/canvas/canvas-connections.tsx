@@ -56,8 +56,15 @@ export function ConnectionPath({
     const pathD = `M ${startX} ${startY} C ${startX + curvature} ${startY}, ${endX - curvature} ${endY}, ${endX} ${endY}`;
 
     const isGlowActive = isSelected;
-    const strokeColor = invalid ? "#ef4444" : isGlowActive ? "#00d2ff" : active ? theme.node.activeStroke : theme.node.muted;
-    const strokeWidth = invalid ? 2.5 : isGlowActive ? 3 : active ? 3 : 2;
+    const highlightBlue = "#0ea5e9";
+    const strokeColor = invalid
+        ? "#ef4444"
+        : isGlowActive || active
+          ? highlightBlue
+          : theme.mode === "dark"
+            ? "#3f3f46"
+            : theme.node.muted;
+    const strokeWidth = invalid ? 2.5 : isGlowActive ? 2.5 : active ? 2.2 : 1.8;
 
     const scissorsPos = useMemo(() => {
         if (!isGlowActive) return null;
@@ -95,15 +102,15 @@ export function ConnectionPath({
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
                 strokeDasharray={invalid ? "6,4" : undefined}
-                strokeOpacity={invalid ? 1 : isGlowActive ? 1 : active ? 1 : 0.82}
+                strokeOpacity={invalid ? 1 : isGlowActive ? 1 : active ? 0.95 : 0.45}
                 fill="none"
                 style={{
                     filter: invalid
                         ? "drop-shadow(0 0 6px rgba(239, 68, 68, 0.6))"
                         : isGlowActive
-                          ? "drop-shadow(0 0 6px #00d2ff) drop-shadow(0 0 12px rgba(0, 210, 255, 0.65))"
+                          ? "drop-shadow(0 0 4px rgba(14, 165, 233, 0.85)) drop-shadow(0 0 8px rgba(14, 165, 233, 0.45))"
                           : active
-                            ? `drop-shadow(0 0 8px ${theme.node.activeStroke}66)`
+                            ? "drop-shadow(0 0 4px rgba(14, 165, 233, 0.5))"
                             : undefined,
                     pointerEvents: "none",
                 }}
@@ -124,10 +131,10 @@ export function ConnectionPath({
                     <circle
                         r="12"
                         fill={theme.node.panel}
-                        stroke="#00d2ff"
+                        stroke="#0ea5e9"
                         strokeWidth="1.2"
                         className="transition-transform duration-100 group-hover:scale-110 shadow-sm"
-                        style={{ filter: "drop-shadow(0 0 6px rgba(0, 210, 255, 0.7))" }}
+                        style={{ filter: "drop-shadow(0 0 6px rgba(14, 165, 233, 0.7))" }}
                     />
                     <Scissors
                         x={-7}
@@ -173,7 +180,20 @@ export function ActiveConnectionPath({
                 const distance = Math.abs(snappedEndX - snappedStartX);
                 const pathD = `M ${snappedStartX} ${snappedStartY} C ${snappedStartX + distance * 0.5} ${snappedStartY}, ${snappedEndX - distance * 0.5} ${snappedEndY}, ${snappedEndX} ${snappedEndY}`;
 
-                return <path key={activeNode.id} d={pathD} stroke={theme.node.activeStroke} strokeWidth="2" fill="none" strokeDasharray="5,5" />;
+                return (
+                    <path
+                        key={activeNode.id}
+                        d={pathD}
+                        stroke="#0ea5e9"
+                        strokeWidth="2.2"
+                        fill="none"
+                        strokeDasharray="5,5"
+                        style={{
+                            filter: "drop-shadow(0 0 6px rgba(14, 165, 233, 0.6))",
+                            pointerEvents: "none",
+                        }}
+                    />
+                );
             })}
         </g>
     );
