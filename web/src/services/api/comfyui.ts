@@ -554,6 +554,84 @@ export class ComfyuiError extends Error {
     }
 }
 
+/**
+ * 单个参考素材（图片 / 视频 / 音频）的上传上限，50 MB。
+ *
+ * ComfyUI 的 `--max-upload-size`（aiohttp `client_max_size`）默认只有 100 MB，
+ * 超限时服务端在读取请求体阶段直接返回 413；而这条 413 响应没有经过 CORS 中间件，
+ * 浏览器不允许 JS 读取，`fetch` 只会抛一个无细节的 TypeError，导致前端把
+ * 「素材过大」误报成「服务未启动 / CORS / 网络不通」。因此必须在上传前拦住。
+ * 取 50 MB（服务端默认值的 1/2）留出余量，兼容服务端被调小上限的情况。
+ */
+export const MAX_COMFYUI_ASSET_BYTES = 50 * 1024 * 1024;
+
+export type ComfyuiAssetKind = "image" | "video" | "audio" | "file";
+
+/** Thrown when a reference asset exceeds the per-file upload limit. */
+export class ComfyuiAssetTooLargeError extends ComfyuiError {
+    readonly filename: string;
+    readonly sizeBytes: number;
+    readonly limitBytes: number;
+    readonly kind: ComfyuiAssetKind;
+    readonly rejectedByServer: boolean;
+
+    constructor(params: {
+        filename: string;
+        sizeBytes: number;
+        limitBytes?: number;
+        kind?: ComfyuiAssetKind;
+        rejectedByServer?: boolean;
+    }) {
+        const filename = params.filename || "未命名素材";
+        const limitBytes = params.limitBytes ?? MAX_COMFYUI_ASSET_BYTES;
+        const kind = params.kind ?? comfyuiAssetKindFromFilename(filename);
+        const sizeText = formatComfyuiAssetSize(params.sizeBytes);
+        const limitText = formatComfyuiAssetSize(limitBytes);
+        const label = COMFYUI_ASSET_KIND_LABELS[kind];
+        const subject = `${label}「${filename}」大小 ${sizeText}`;
+        const advice = `${COMFYUI_ASSET_KIND_ADVICE[kind]}；若确需上传大文件，请在 ComfyUI 启动时用 --max-upload-size 调大服务端上限（单位 MB，默认 100）`;
+        super(
+            params.rejectedByServer
+                ? `ComfyUI 拒绝上传${subject}，超过服务端允许的上传大小。${advice}`
+                : `${subject}，超过本应用单文件上限 ${limitText}，已取消上传。${advice}`,
+        );
+        this.name = "ComfyuiAssetTooLargeError";
+        this.filename = filename;
+        this.sizeBytes = params.sizeBytes;
+        this.limitBytes = limitBytes;
+        this.kind = kind;
+        this.rejectedByServer = params.rejectedByServer ?? false;
+    }
+}
+
+const COMFYUI_ASSET_KIND_LABELS: Record<ComfyuiAssetKind, string> = {
+    image: "参考图片",
+    video: "参考视频",
+    audio: "参考音频",
+    file: "参考素材",
+};
+
+const COMFYUI_ASSET_KIND_ADVICE: Record<ComfyuiAssetKind, string> = {
+    image: "请先缩小图片分辨率或转成 JPEG 再上传",
+    video: "请先降低视频的分辨率、码率或时长再上传",
+    audio: "请换用时长或码率更低的音频文件",
+    file: "请换用更小的文件",
+};
+
+function comfyuiAssetKindFromFilename(filename: string): ComfyuiAssetKind {
+    const ext = filename.toLowerCase().split(".").pop() ?? "";
+    if (["mp4", "mov", "webm", "mkv", "avi", "m4v"].includes(ext)) return "video";
+    if (["mp3", "wav", "flac", "m4a", "aac", "ogg", "opus"].includes(ext)) return "audio";
+    if (["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "tif", "tiff"].includes(ext)) return "image";
+    return "file";
+}
+
+function formatComfyuiAssetSize(bytes: number) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return "0 MB";
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 type ComfyuiNodeErrors = Record<string, {
     class_type?: string;
     errors?: { type?: string; message?: string; details?: string; extra_info?: { input_name?: string; input_config?: unknown; received_value?: unknown } }[];
@@ -696,7 +774,7 @@ function describeComfyuiEndpoint(url: string, method = "GET") {
 }
 
 function addComfyuiChannelContext(error: unknown, channelName: string): unknown {
-    if (!(error instanceof ComfyuiNetworkError || error instanceof ComfyuiApiError)) return error;
+    if (!(error instanceof ComfyuiNetworkError || error instanceof ComfyuiApiError || error instanceof ComfyuiAssetTooLargeError)) return error;
     const name = channelName || "未命名渠道";
     if (error.channelName === name) return error;
     // 批量轮询可能把同一异常交给多个订阅，渠道上下文必须各自独立。
@@ -723,6 +801,20 @@ async function comfyuiFetch(url: string, init?: RequestInit, baseUrl = url): Pro
         }
         throw new ComfyuiNetworkError(baseUrl, undefined, error, { url, method: init?.method });
     }
+}
+
+/**
+ * 在不做 base64 解码的前提下估算 data URL 的二进制体积。
+ * 非 base64 或非 data URL 返回 undefined，交由 blob.size 判定。
+ */
+function estimateComfyuiDataUrlBytes(dataUrl: string): number | undefined {
+    if (!dataUrl.startsWith("data:")) return undefined;
+    const commaIndex = dataUrl.indexOf(",");
+    if (commaIndex < 0) return undefined;
+    if (!dataUrl.slice(5, commaIndex).toLowerCase().includes("base64")) return undefined;
+    const payloadLength = dataUrl.length - commaIndex - 1;
+    const padding = dataUrl.endsWith("==") ? 2 : dataUrl.endsWith("=") ? 1 : 0;
+    return Math.max(0, Math.floor((payloadLength * 3) / 4) - padding);
 }
 
 function normalizeBaseUrl(baseUrl: string) {
@@ -2223,8 +2315,17 @@ export async function uploadComfyuiAsset(
     filename = "image.png",
     signal?: AbortSignal,
 ): Promise<string> {
+    // data URL 体积可在解码前估算，避免为了一张超大图先构造上百 MB 的 Blob。
+    const estimatedBytes = estimateComfyuiDataUrlBytes(dataUrl);
+    if (estimatedBytes !== undefined && estimatedBytes > MAX_COMFYUI_ASSET_BYTES) {
+        throw new ComfyuiAssetTooLargeError({ filename, sizeBytes: estimatedBytes });
+    }
+
     const res = await fetch(dataUrl);
     const blob = await res.blob();
+    if (blob.size > MAX_COMFYUI_ASSET_BYTES) {
+        throw new ComfyuiAssetTooLargeError({ filename, sizeBytes: blob.size });
+    }
     const form = new FormData();
     const safeFilename = `${nanoid(8)}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     form.append("image", blob, safeFilename);
@@ -2242,6 +2343,9 @@ export async function uploadComfyuiAsset(
         body: form,
         signal,
     }, baseUrl);
+    if (uploadRes.status === 413) {
+        throw new ComfyuiAssetTooLargeError({ filename, sizeBytes: blob.size, rejectedByServer: true });
+    }
     if (!uploadRes.ok) {
         throw new ComfyuiApiError("ComfyUI 参考资源上传失败", uploadRes.status, request);
     }
