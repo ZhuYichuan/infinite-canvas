@@ -204,14 +204,15 @@ function labelResourceNodes(nodes: CanvasNodeData[], active: boolean) {
         if (!kind) return [];
         const resource = getNodeDefinition(node.type)?.resource?.(node);
         const index = counts[kind]++;
-        const label = labelForKind(kind, index);
+        const fallbackLabel = labelForKind(kind, index);
+        const displayTitle = node.title?.trim() || fallbackLabel;
         return [
             {
                 id: node.id,
                 nodeId: node.id,
                 kind,
-                label,
-                title: node.title || label,
+                label: displayTitle,
+                title: displayTitle,
                 previewUrl: node.metadata?.content || resource?.url,
                 text: resourceText(node),
                 active,

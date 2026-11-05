@@ -58,6 +58,7 @@ import { useAgentBridge } from "@/pages/canvas/hooks/use-agent-bridge";
 import { usePluginHost } from "@/pages/canvas/hooks/use-plugin-host";
 import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNode, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { exportCanvasProjects, safeFileName } from "@/lib/canvas/canvas-export";
+import { generateDuplicateNodeTitle, generateNextNodeTitle } from "@/lib/canvas/canvas-node-naming";
 import { applyNodeConfigPatch, audioMetadata, buildAudioGenerationMetadata, buildImageGenerationMetadata, cloneNodeMetadata, createCanvasNode, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-node-factory";
 import { failCanvasGeneration, settleCanvasGeneration } from "@/lib/canvas/canvas-generation-settlement";
 import {
@@ -781,7 +782,8 @@ function InfiniteCanvasPage() {
     const createConnectedNode = useCallback(
         (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio, pending: PendingConnectionCreate) => {
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
-            const newNode = createCanvasNode(type, pending.position, metadata);
+            const title = generateNextNodeTitle(type, nodesRef.current);
+            const newNode = createCanvasNode(type, pending.position, metadata, title);
             const allNodes = [...nodesRef.current, newNode];
 
             const sourceIds = pending.sourceNodeIds && pending.sourceNodeIds.length > 0 ? pending.sourceNodeIds : [pending.connection.nodeId];
@@ -1016,7 +1018,8 @@ function InfiniteCanvasPage() {
                           count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count),
                       }
                     : undefined;
-            const newNode = createCanvasNode(type, targetPosition, configMetadata);
+            const title = generateNextNodeTitle(type, nodesRef.current);
+            const newNode = createCanvasNode(type, targetPosition, configMetadata, title);
 
             setNodes((prev) => {
                 if (type === CanvasNodeType.Group) {
@@ -1059,7 +1062,8 @@ function InfiniteCanvasPage() {
             const targetIds = new Set(targetNodes.map((n) => n.id));
 
             const bounds = calculateGroupBoundsForNodes(targetNodes);
-            const newGroup = createCanvasNode(CanvasNodeType.Group, { x: 0, y: 0 });
+            const groupTitle = generateNextNodeTitle(CanvasNodeType.Group, nodesRef.current);
+            const newGroup = createCanvasNode(CanvasNodeType.Group, { x: 0, y: 0 }, undefined, groupTitle);
             newGroup.position = { x: bounds.x, y: bounds.y };
             newGroup.width = bounds.width;
             newGroup.height = bounds.height;
@@ -1080,7 +1084,8 @@ function InfiniteCanvasPage() {
         }
 
         const center = getCanvasCenter();
-        const newGroup = createCanvasNode(CanvasNodeType.Group, center);
+        const groupTitle = generateNextNodeTitle(CanvasNodeType.Group, nodesRef.current);
+        const newGroup = createCanvasNode(CanvasNodeType.Group, center, undefined, groupTitle);
 
         setNodes((prev) => {
             let captured = 0;
@@ -1365,23 +1370,26 @@ function InfiniteCanvasPage() {
             const groupNext: CanvasNodeData = {
                 ...source,
                 id,
-                title: source.title.endsWith(" Copy") ? source.title : `${source.title} Copy`,
+                title: generateDuplicateNodeTitle(source, nodesRef.current),
                 position: { x: source.position.x + 36, y: source.position.y + 36 },
                 metadata: clonedMetadata,
             };
 
+            const accumulated = [...nodesRef.current, groupNext];
             const childNextNodes: CanvasNodeData[] = childNodes.map((child, index) => {
                 const childId = `${child.type}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`;
                 idMap.set(child.id, childId);
                 const childMetadata = cloneNodeMetadata(child.metadata, child.type);
                 if (childMetadata) childMetadata.groupId = id;
-                return {
+                const childNext: CanvasNodeData = {
                     ...child,
                     id: childId,
-                    title: child.title.endsWith(" Copy") ? child.title : `${child.title} Copy`,
+                    title: generateDuplicateNodeTitle(child, accumulated),
                     position: { x: child.position.x + 36, y: child.position.y + 36 },
                     metadata: childMetadata,
                 };
+                accumulated.push(childNext);
+                return childNext;
             });
 
             const allGroupNodeIds = new Set([source.id, ...childNodes.map((c) => c.id)]);
@@ -1401,7 +1409,7 @@ function InfiniteCanvasPage() {
         const next: CanvasNodeData = {
             ...source,
             id,
-            title: source.title.endsWith(" Copy") ? source.title : `${source.title} Copy`,
+            title: generateDuplicateNodeTitle(source, nodesRef.current),
             position: { x: source.position.x + 36, y: source.position.y + 36 },
             metadata: clonedMetadata,
         };
@@ -1472,19 +1480,22 @@ function InfiniteCanvasPage() {
         const dx = center.x - (bounds.left + bounds.right) / 2;
         const dy = center.y - (bounds.top + bounds.bottom) / 2;
         const idMap = new Map<string, string>();
+        const accumulated = [...nodesRef.current];
         const nextNodes = clipboard.nodes.map((node, index) => {
             const id = `${node.type}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`;
             idMap.set(node.id, id);
-            return {
+            const newNode: CanvasNodeData = {
                 ...node,
                 id,
-                title: node.title.endsWith(" Copy") ? node.title : `${node.title} Copy`,
+                title: generateDuplicateNodeTitle(node, accumulated),
                 position: {
                     x: node.position.x + dx,
                     y: node.position.y + dy,
                 },
                 metadata: cloneNodeMetadata(node.metadata, node.type),
             };
+            accumulated.push(newNode);
+            return newNode;
         });
 
         const pastedNodes = nextNodes.map((node) => {
@@ -1956,7 +1967,7 @@ function InfiniteCanvasPage() {
         const newNode: CanvasNodeData = {
             id,
             type: CanvasNodeType.Image,
-            title: file.name,
+            title: generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current),
             position: { x: position.x - size.width / 2, y: position.y - size.height / 2 },
             width: size.width,
             height: size.height,
@@ -1978,7 +1989,7 @@ function InfiniteCanvasPage() {
             {
                 id,
                 type: CanvasNodeType.Video,
-                title: file.name,
+                title: generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current),
                 position: { x: position.x - size.width / 2, y: position.y - size.height / 2 },
                 width: size.width,
                 height: size.height,
@@ -1999,7 +2010,7 @@ function InfiniteCanvasPage() {
             {
                 id,
                 type: CanvasNodeType.Audio,
-                title: file.name,
+                title: generateNextNodeTitle(CanvasNodeType.Audio, nodesRef.current),
                 position: { x: position.x - spec.width / 2, y: position.y - spec.height / 2 },
                 width: spec.width,
                 height: spec.height,
@@ -2015,9 +2026,10 @@ function InfiniteCanvasPage() {
             const trimmed = text.trim();
             if (!trimmed) return false;
 
+            const title = generateNextNodeTitle(CanvasNodeType.Text, nodesRef.current);
             const node = {
-                ...createCanvasNode(CanvasNodeType.Text, getCanvasCenter(), { content: trimmed, status: NODE_STATUS_SUCCESS }),
-                title: trimmed.slice(0, 32) || t("canvas.projectPage.clipboardText"),
+                ...createCanvasNode(CanvasNodeType.Text, getCanvasCenter(), { content: trimmed, status: NODE_STATUS_SUCCESS }, title),
+                title,
             };
 
             setNodes((prev) => [...prev, node]);
@@ -2027,7 +2039,7 @@ function InfiniteCanvasPage() {
             setDialogNodeId(node.id);
             return true;
         },
-        [getCanvasCenter, t],
+        [getCanvasCenter],
     );
 
     const pasteSystemClipboard = useCallback(async () => {
@@ -2276,7 +2288,7 @@ function InfiniteCanvasPage() {
         const copy: CanvasNodeData = {
             id,
             type: CanvasNodeType.Image,
-            title: node.title,
+            title: generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current),
             position: { x: node.position.x + node.width * 2 + 96, y: node.position.y + node.height / 2 - size.height / 2 },
             ...size,
             metadata: {
@@ -2328,12 +2340,14 @@ function InfiniteCanvasPage() {
                 onOk: () => {
                     const startX = node.position.x + node.width + 96;
                     const gap = 24;
+                    const accumulated = [...nodesRef.current];
                     const newNodes: CanvasNodeData[] = images.map((img, index) => {
                         const childId = nanoid();
-                        return {
+                        const childTitle = generateNextNodeTitle(CanvasNodeType.Image, accumulated);
+                        const childNode: CanvasNodeData = {
                             id: childId,
                             type: CanvasNodeType.Image,
-                            title: `${node.title || t("assets.kinds.image")} #${index + 1}`,
+                            title: childTitle,
                             position: {
                                 x: startX,
                                 y: node.position.y + index * (node.height + gap),
@@ -2360,6 +2374,8 @@ function InfiniteCanvasPage() {
                                 background: node.metadata?.background,
                             },
                         };
+                        accumulated.push(childNode);
+                        return childNode;
                     });
 
                     setNodes((prev) => [...prev, ...newNodes]);
@@ -2441,7 +2457,7 @@ function InfiniteCanvasPage() {
                 const child: CanvasNodeData = {
                     id,
                     type: CanvasNodeType.Image,
-                    title: t(`canvas.videoFrames.${position}Title`, { name: node.title || t("assets.kinds.video") }),
+                    title: generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current),
                     position: { x, y },
                     ...size,
                     metadata: imageMetadata(image),
@@ -2480,12 +2496,10 @@ function InfiniteCanvasPage() {
                 ) {
                     y += spec.height + 24;
                 }
-                const titleSuffix = t("canvas.videoAudio.audioSuffix");
-                const baseTitle = node.title || t("assets.kinds.video");
                 const child: CanvasNodeData = {
                     id,
                     type: CanvasNodeType.Audio,
-                    title: `${baseTitle} - ${titleSuffix}`,
+                    title: generateNextNodeTitle(CanvasNodeType.Audio, nodesRef.current),
                     position: { x, y },
                     width: spec.width,
                     height: spec.height,
@@ -2536,8 +2550,6 @@ function InfiniteCanvasPage() {
 
             const spec = NODE_DEFAULT_SIZE[CanvasNodeType.Video];
             const childId = nanoid();
-            const baseTitle = node.title || t("assets.kinds.video");
-            const childTitle = `${baseTitle} - ${t("canvas.depthVideo.titleSuffix") || "深度"}`;
             const x = node.position.x + node.width + 96;
             let y = node.position.y;
             while (
@@ -2551,7 +2563,7 @@ function InfiniteCanvasPage() {
             const newVideoNode: CanvasNodeData = {
                 id: childId,
                 type: CanvasNodeType.Video,
-                title: childTitle,
+                title: generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current),
                 position: { x, y },
                 width: node.width || spec.width,
                 height: node.height || spec.height,
@@ -2674,10 +2686,12 @@ function InfiniteCanvasPage() {
             const textSpec = NODE_DEFAULT_SIZE[CanvasNodeType.Text];
             const configSpec = NODE_DEFAULT_SIZE[CanvasNodeType.Config];
             const centerY = node.position.y + node.height / 2;
+            const textTitle = generateNextNodeTitle(CanvasNodeType.Text, nodesRef.current);
             const textNode = {
-                ...createCanvasNode(CanvasNodeType.Text, { x: node.position.x + node.width + gap + textSpec.width / 2, y: centerY }, { content: t("canvas.projectPage.reversePreset"), prompt: t("canvas.projectPage.reversePreset"), status: NODE_STATUS_SUCCESS, fontSize: 14 }),
-                title: t("canvas.projectPage.reverseTitle"),
+                ...createCanvasNode(CanvasNodeType.Text, { x: node.position.x + node.width + gap + textSpec.width / 2, y: centerY }, { content: t("canvas.projectPage.reversePreset"), prompt: t("canvas.projectPage.reversePreset"), status: NODE_STATUS_SUCCESS, fontSize: 14 }, textTitle),
+                title: textTitle,
             };
+            const configTitle = generateNextNodeTitle(CanvasNodeType.Config, [...nodesRef.current, textNode]);
             const configNode = {
                 ...createCanvasNode(
                     CanvasNodeType.Config,
@@ -2688,8 +2702,9 @@ function InfiniteCanvasPage() {
                         count: 1,
                         composerContent: t("canvas.reverseComposer", { imageId: node.id, textId: textNode.id }),
                     },
+                    configTitle,
                 ),
-                title: t("canvas.projectPage.reverseConfigTitle"),
+                title: configTitle,
             };
 
             setNodes((prev) => [...prev, textNode, configNode]);
@@ -2793,13 +2808,12 @@ function InfiniteCanvasPage() {
                 : metadataReferences.map((url, index) => ({ id: `${node.id}-ref-${index}`, name: `ref_${index + 1}.png`, type: "image/png", dataUrl: url, url: url.startsWith("image:") ? undefined : url, storageKey: url.startsWith("image:") ? url : undefined }));
 
             const childId = nanoid();
-            const childTitle = t("canvas.faceRefine.childTitle", { title: node.title || t("canvas.sidePanel.filter.video") });
             const childPos = { x: node.position.x + node.width + 96, y: node.position.y };
 
             const newVideoNode: CanvasNodeData = {
                 id: childId,
                 type: CanvasNodeType.Video,
-                title: childTitle,
+                title: generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current),
                 position: childPos,
                 width: node.width,
                 height: node.height,
@@ -2866,7 +2880,7 @@ function InfiniteCanvasPage() {
         const child: CanvasNodeData = {
             id: childId,
             type: CanvasNodeType.Image,
-            title: "Cropped Image",
+            title: generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current),
             position: { x: node.position.x + node.width + 96, y: node.position.y },
             width,
             height: width * (image.height / image.width),
@@ -2892,24 +2906,26 @@ function InfiniteCanvasPage() {
             const cellHeight = node.height / params.rows;
             const startX = node.position.x + node.width + 96;
             const startY = node.position.y;
-            const childNodes = await Promise.all(
-                pieces.map(async (piece) => {
-                    const image = await uploadImage(piece.dataUrl);
-                    const id = nanoid();
-                    return {
-                        id,
-                        type: CanvasNodeType.Image,
-                        title: t("canvas.projectPage.splitTitle", { name: node.title || t("assets.kinds.image"), row: piece.row + 1, column: piece.column + 1 }),
-                        position: { x: startX + piece.column * (cellWidth + gap), y: startY + piece.row * (cellHeight + gap) },
-                        width: cellWidth,
-                        height: cellHeight,
-                        metadata: {
-                            ...imageMetadata(image),
-                            prompt: node.metadata?.prompt,
-                        },
-                    } satisfies CanvasNodeData;
-                }),
-            );
+            const accumulated = [...nodesRef.current];
+            const childNodes: CanvasNodeData[] = [];
+            for (const piece of pieces) {
+                const image = await uploadImage(piece.dataUrl);
+                const id = nanoid();
+                const childPiece: CanvasNodeData = {
+                    id,
+                    type: CanvasNodeType.Image,
+                    title: generateNextNodeTitle(CanvasNodeType.Image, accumulated),
+                    position: { x: startX + piece.column * (cellWidth + gap), y: startY + piece.row * (cellHeight + gap) },
+                    width: cellWidth,
+                    height: cellHeight,
+                    metadata: {
+                        ...imageMetadata(image),
+                        prompt: node.metadata?.prompt,
+                    },
+                };
+                accumulated.push(childPiece);
+                childNodes.push(childPiece);
+            }
             setNodes((prev) => [...prev, ...childNodes]);
             setConnections((prev) => [...prev, ...childNodes.map((child) => ({ id: nanoid(), fromNodeId: node.id, toNodeId: child.id, kind: "lineage" }))]);
             setSelectedNodeIds(new Set(childNodes.map((child) => child.id)));
@@ -2946,7 +2962,7 @@ function InfiniteCanvasPage() {
                 {
                     id: childId,
                     type: CanvasNodeType.Image,
-                    title: userPrompt.slice(0, 32) || t("canvas.projectPage.maskResult"),
+                    title: generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current),
                     position: { x: node.position.x + node.width + 96, y: node.position.y },
                     width: node.width,
                     height: node.height,
@@ -3000,7 +3016,7 @@ function InfiniteCanvasPage() {
         const child: CanvasNodeData = {
             id: childId,
             type: CanvasNodeType.Image,
-            title: "Upscaled Image",
+            title: generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current),
             position: { x: node.position.x + node.width + 96, y: node.position.y },
             width: size.width,
             height: size.height,
@@ -3058,7 +3074,6 @@ function InfiniteCanvasPage() {
                                 ? {
                                       ...node,
                                       type: CanvasNodeType.Audio,
-                                      title: first.name,
                                       position: { x: node.position.x + node.width / 2 - spec.width / 2, y: node.position.y + node.height / 2 - spec.height / 2 },
                                       width: spec.width,
                                       height: spec.height,
@@ -3078,7 +3093,6 @@ function InfiniteCanvasPage() {
                                 ? {
                                       ...node,
                                       type: CanvasNodeType.Video,
-                                      title: first.name,
                                       position: { x: node.position.x + node.width / 2 - nextSize.width / 2, y: node.position.y + node.height / 2 - nextSize.height / 2 },
                                       width: nextSize.width,
                                       height: nextSize.height,
@@ -3098,7 +3112,6 @@ function InfiniteCanvasPage() {
                                 ? {
                                       ...node,
                                       type: CanvasNodeType.Image,
-                                      title: first.name,
                                       width: s.width,
                                       height: s.height,
                                       metadata: {
@@ -3167,7 +3180,7 @@ function InfiniteCanvasPage() {
             const node: CanvasNodeData = {
                 id,
                 type: CanvasNodeType.Image,
-                title: image.prompt.slice(0, 32) || "Generated Image",
+                title: generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current),
                 position: { x: center.x - config.width / 2, y: center.y - config.height / 2 },
                 width: config.width,
                 height: config.height,
@@ -3185,9 +3198,10 @@ function InfiniteCanvasPage() {
     const insertAssistantText = useCallback(
         (text: string, title?: string, targetPosition?: Position) => {
             const center = targetPosition ?? screenToCanvas((containerRef.current?.getBoundingClientRect().left || 0) + size.width / 2, (containerRef.current?.getBoundingClientRect().top || 0) + size.height / 2);
+            const nodeTitle = title || generateNextNodeTitle(CanvasNodeType.Text, nodesRef.current);
             const node = {
-                ...createCanvasNode(CanvasNodeType.Text, center, { content: text, status: NODE_STATUS_SUCCESS }),
-                title: title || text.slice(0, 32) || "Assistant Text",
+                ...createCanvasNode(CanvasNodeType.Text, center, { content: text, status: NODE_STATUS_SUCCESS }, nodeTitle),
+                title: nodeTitle,
             };
 
             setNodes((prev) => [...prev, node]);
@@ -3212,7 +3226,7 @@ function InfiniteCanvasPage() {
                     {
                         id,
                         type: CanvasNodeType.Video,
-                        title: payload.title,
+                        title: generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current),
                         position: { x: center.x - nextSize.width / 2, y: center.y - nextSize.height / 2 },
                         width: nextSize.width,
                         height: nextSize.height,
@@ -3232,7 +3246,7 @@ function InfiniteCanvasPage() {
                     {
                         id,
                         type: CanvasNodeType.Audio,
-                        title: payload.title,
+                        title: generateNextNodeTitle(CanvasNodeType.Audio, nodesRef.current),
                         position: { x: center.x - spec.width / 2, y: center.y - spec.height / 2 },
                         width: spec.width,
                         height: spec.height,
@@ -3432,7 +3446,7 @@ function InfiniteCanvasPage() {
                     const rootNode: CanvasNodeData = {
                         id: rootId,
                         type: CanvasNodeType.Image,
-                        title: isRepeat && sourceNode?.title ? sourceNode.title : (effectivePrompt.slice(0, 32) || "Generated Image"),
+                        title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyImageNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current)),
                         position: {
                             x: isEmptyImageNode ? parentPosition.x : parentPosition.x + (sourceNode?.width || parentConfig.width) + 96,
                             y: isEmptyImageNode ? parentPosition.y : isRepeat ? parentPosition.y : parentPosition.y + parentConfig.height / 2 - imageConfig.height / 2,
@@ -3480,7 +3494,6 @@ function InfiniteCanvasPage() {
                                             position: rootNode.position,
                                             width: rootNode.width,
                                             height: rootNode.height,
-                                            title: rootNode.title,
                                             metadata: { ...node.metadata, ...rootNode.metadata, prompt, effectivePrompt, composerContent: undefined, errorDetails: undefined },
                                         }
                                       : isImageNode
@@ -3491,7 +3504,6 @@ function InfiniteCanvasPage() {
                                         : {
                                               ...node,
                                               type: CanvasNodeType.Text,
-                                              title: prompt.slice(0, 32) || "Prompt",
                                               width: parentConfig.width,
                                               height: parentConfig.height,
                                               metadata: { ...node.metadata, content: prompt, prompt, composerContent: undefined, status: NODE_STATUS_SUCCESS, fontSize: 14, errorDetails: undefined },
@@ -3642,7 +3654,7 @@ function InfiniteCanvasPage() {
                     const videoNode: CanvasNodeData = {
                         id: videoId,
                         type: CanvasNodeType.Video,
-                        title: isRepeat && sourceNode?.title ? sourceNode.title : (effectivePrompt.slice(0, 32) || "Generated Video"),
+                        title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyVideoNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current)),
                         position: isEmptyVideoNode ? sourceNode.position : { x: parent.x + (sourceNode?.width || spec.width) + 96, y: parent.y },
                         width: isEmptyVideoNode ? sourceNode.width : (isRepeat && sourceNode?.width ? sourceNode.width : spec.width),
                         height: isEmptyVideoNode ? sourceNode.height : (isRepeat && sourceNode?.height ? sourceNode.height : spec.height),
@@ -3682,7 +3694,7 @@ function InfiniteCanvasPage() {
                     pendingChildIds = [videoId];
                     setNodes((prev) =>
                         isEmptyVideoNode
-                            ? prev.map((node) => (node.id === nodeId ? { ...node, ...videoNode, metadata: { ...node.metadata, ...videoNode.metadata, prompt, effectivePrompt, composerContent: undefined } } : node))
+                            ? prev.map((node) => (node.id === nodeId ? { ...node, ...videoNode, title: node.title, metadata: { ...node.metadata, ...videoNode.metadata, prompt, effectivePrompt, composerContent: undefined } } : node))
                             : [...prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: node.type === CanvasNodeType.Config ? NODE_STATUS_LOADING : NODE_STATUS_SUCCESS, errorDetails: undefined } } : node)), videoNode],
                     );
                     if (!isEmptyVideoNode) {
@@ -3760,7 +3772,7 @@ function InfiniteCanvasPage() {
                     const audioNode: CanvasNodeData = {
                         id: audioId,
                         type: CanvasNodeType.Audio,
-                        title: isRepeat && sourceNode?.title ? sourceNode.title : (effectivePrompt.slice(0, 32) || "Generated Audio"),
+                        title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyAudioNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Audio, nodesRef.current)),
                         position: isEmptyAudioNode ? sourceNode.position : { x: parent.x + (sourceNode?.width || spec.width) + 96, y: parent.y + ((sourceNode?.height || spec.height) - spec.height) / 2 },
                         width: isEmptyAudioNode ? sourceNode.width : (isRepeat && sourceNode?.width ? sourceNode.width : spec.width),
                         height: isEmptyAudioNode ? sourceNode.height : (isRepeat && sourceNode?.height ? sourceNode.height : spec.height),
@@ -3790,7 +3802,7 @@ function InfiniteCanvasPage() {
                     pendingChildIds = [audioId];
                     setNodes((prev) =>
                         isEmptyAudioNode
-                            ? prev.map((node) => (node.id === nodeId ? { ...node, ...audioNode, metadata: { ...node.metadata, ...audioNode.metadata, prompt, effectivePrompt, composerContent: undefined } } : node))
+                            ? prev.map((node) => (node.id === nodeId ? { ...node, ...audioNode, title: node.title, metadata: { ...node.metadata, ...audioNode.metadata, prompt, effectivePrompt, composerContent: undefined } } : node))
                             : [...prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: node.type === CanvasNodeType.Config ? NODE_STATUS_LOADING : NODE_STATUS_SUCCESS, errorDetails: undefined } } : node)), audioNode],
                     );
                     if (!isEmptyAudioNode) {
@@ -3859,7 +3871,7 @@ function InfiniteCanvasPage() {
                 const rootNode: CanvasNodeData = {
                     id: rootId,
                     type: CanvasNodeType.Text,
-                    title: isRepeat && sourceNode?.title ? sourceNode.title : (effectivePrompt.slice(0, 32) || "Generated Text"),
+                    title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyTextNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Text, nodesRef.current)),
                     position: isEmptyTextNode ? sourceNode.position : { x: parentPosition.x + (sourceNode?.width || parentConfig.width) + 96, y: isRepeat ? parentPosition.y : parentPosition.y + parentConfig.height / 2 - textConfig.height / 2 },
                     width: isEmptyTextNode ? sourceNode.width : (isRepeat && sourceNode?.width ? sourceNode.width : textConfig.width),
                     height: isEmptyTextNode ? sourceNode.height : (isRepeat && sourceNode?.height ? sourceNode.height : textConfig.height),
@@ -3900,7 +3912,7 @@ function InfiniteCanvasPage() {
                 pendingChildIds = [rootId];
                 setNodes((prev) =>
                     isEmptyTextNode
-                        ? prev.map((node) => (node.id === nodeId ? { ...node, ...rootNode, metadata: { ...node.metadata, ...rootNode.metadata, prompt, effectivePrompt, composerContent: undefined } } : node))
+                        ? prev.map((node) => (node.id === nodeId ? { ...node, ...rootNode, title: node.title, metadata: { ...node.metadata, ...rootNode.metadata, prompt, effectivePrompt, composerContent: undefined } } : node))
                         : [
                               ...prev.map((node) =>
                                   node.id === nodeId
@@ -4379,6 +4391,7 @@ function InfiniteCanvasPage() {
             const sourceNode = nodesRef.current.find((item) => item.id === node.id);
             if (!sourceNode) return;
             const nodeSize = getNodeSpec(CanvasNodeType.Config);
+            const configTitle = generateNextNodeTitle(CanvasNodeType.Config, nodesRef.current);
             const configNode = createCanvasNode(
                 CanvasNodeType.Config,
                 {
@@ -4391,6 +4404,7 @@ function InfiniteCanvasPage() {
                     size: effectiveConfig.size,
                     count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count),
                 },
+                configTitle,
             );
             const connection = { id: nanoid(), fromNodeId: sourceNode.id, toNodeId: configNode.id, kind: "input" as const };
             const nextNodes = nodesRef.current.map((item) => (item.id === sourceNode.id ? { ...item, metadata: { ...item.metadata, content: prompt, prompt, status: NODE_STATUS_SUCCESS } } : item)).concat(configNode);
