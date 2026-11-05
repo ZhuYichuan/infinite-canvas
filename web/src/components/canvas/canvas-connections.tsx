@@ -98,7 +98,7 @@ export function ConnectionPath({
         return findClosestPointOnCubicBezier(curve, hoverPoint);
     }, [hoverPoint, curve]);
 
-    const handleCut = (event: ReactMouseEvent | ReactPointerEvent) => {
+    const handleCut = (event: ReactMouseEvent) => {
         if (event.button !== 0) return;
         event.preventDefault();
         event.stopPropagation();
@@ -108,6 +108,24 @@ export function ConnectionPath({
         setTimeout(() => {
             cutFiredRef.current = false;
         }, 300);
+    };
+
+    const handleClick = (event: ReactMouseEvent<SVGPathElement>) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        // 双击兜底：快速双击时 event.detail === 2 直接剪断
+        if (event.detail === 2) {
+            handleCut(event);
+            return;
+        }
+        if (event.detail === 1) {
+            onSelect?.(event);
+        }
+    };
+
+    const handleDoubleClick = (event: ReactMouseEvent<SVGPathElement>) => {
+        handleCut(event);
     };
 
     return (
@@ -124,14 +142,21 @@ export function ConnectionPath({
                 onPointerEnter={handlePointerMove}
                 onPointerMove={handlePointerMove}
                 onPointerLeave={handlePointerLeave}
-                onPointerDown={handleCut}
-                onClick={handleCut}
+                onPointerDown={(event) => {
+                    if (event.button === 0) {
+                        event.stopPropagation();
+                    }
+                }}
+                onClick={handleClick}
+                onDoubleClick={handleDoubleClick}
                 onContextMenu={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
                     onContextMenu?.(event);
                 }}
-            />
+            >
+                <title>双击断开连线</title>
+            </path>
             {/* Visual rendered path */}
             <path
                 d={pathD}
