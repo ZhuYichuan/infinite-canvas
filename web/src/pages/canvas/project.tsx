@@ -1974,6 +1974,7 @@ function InfiniteCanvasPage() {
             metadata: imageMetadata(image),
         };
 
+        nodesRef.current = [...nodesRef.current, newNode];
         setNodes((prev) => [...prev, newNode]);
         setSelectedNodeIds(new Set([id]));
         setSelectedConnectionId(null);
@@ -1984,18 +1985,17 @@ function InfiniteCanvasPage() {
         const video = await uploadMediaFile(file, "video");
         const size = fitNodeSize(video.width || 1280, video.height || 720, VIDEO_NODE_MAX_WIDTH, VIDEO_NODE_MAX_HEIGHT);
         const id = `video-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        setNodes((prev) => [
-            ...prev,
-            {
-                id,
-                type: CanvasNodeType.Video,
-                title: generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current),
-                position: { x: position.x - size.width / 2, y: position.y - size.height / 2 },
-                width: size.width,
-                height: size.height,
-                metadata: videoMetadata(video),
-            },
-        ]);
+        const newNode: CanvasNodeData = {
+            id,
+            type: CanvasNodeType.Video,
+            title: generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current),
+            position: { x: position.x - size.width / 2, y: position.y - size.height / 2 },
+            width: size.width,
+            height: size.height,
+            metadata: videoMetadata(video),
+        };
+        nodesRef.current = [...nodesRef.current, newNode];
+        setNodes((prev) => [...prev, newNode]);
         setSelectedNodeIds(new Set([id]));
         setSelectedConnectionId(null);
         setDialogNodeId(id);
@@ -2005,18 +2005,17 @@ function InfiniteCanvasPage() {
         const audio = await uploadMediaFile(file, "audio");
         const spec = NODE_DEFAULT_SIZE[CanvasNodeType.Audio];
         const id = `audio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        setNodes((prev) => [
-            ...prev,
-            {
-                id,
-                type: CanvasNodeType.Audio,
-                title: generateNextNodeTitle(CanvasNodeType.Audio, nodesRef.current),
-                position: { x: position.x - spec.width / 2, y: position.y - spec.height / 2 },
-                width: spec.width,
-                height: spec.height,
-                metadata: audioMetadata(audio),
-            },
-        ]);
+        const newNode: CanvasNodeData = {
+            id,
+            type: CanvasNodeType.Audio,
+            title: generateNextNodeTitle(CanvasNodeType.Audio, nodesRef.current),
+            position: { x: position.x - spec.width / 2, y: position.y - spec.height / 2 },
+            width: spec.width,
+            height: spec.height,
+            metadata: audioMetadata(audio),
+        };
+        nodesRef.current = [...nodesRef.current, newNode];
+        setNodes((prev) => [...prev, newNode]);
         setSelectedNodeIds(new Set([id]));
         setSelectedConnectionId(null);
     }, []);
@@ -2027,11 +2026,9 @@ function InfiniteCanvasPage() {
             if (!trimmed) return false;
 
             const title = generateNextNodeTitle(CanvasNodeType.Text, nodesRef.current);
-            const node = {
-                ...createCanvasNode(CanvasNodeType.Text, getCanvasCenter(), { content: trimmed, status: NODE_STATUS_SUCCESS }, title),
-                title,
-            };
+            const node = createCanvasNode(CanvasNodeType.Text, getCanvasCenter(), { content: trimmed, status: NODE_STATUS_SUCCESS }, title);
 
+            nodesRef.current = [...nodesRef.current, node];
             setNodes((prev) => [...prev, node]);
             setSelectedNodeIds(new Set([node.id]));
             setSelectedConnectionId(null);
@@ -2687,25 +2684,19 @@ function InfiniteCanvasPage() {
             const configSpec = NODE_DEFAULT_SIZE[CanvasNodeType.Config];
             const centerY = node.position.y + node.height / 2;
             const textTitle = generateNextNodeTitle(CanvasNodeType.Text, nodesRef.current);
-            const textNode = {
-                ...createCanvasNode(CanvasNodeType.Text, { x: node.position.x + node.width + gap + textSpec.width / 2, y: centerY }, { content: t("canvas.projectPage.reversePreset"), prompt: t("canvas.projectPage.reversePreset"), status: NODE_STATUS_SUCCESS, fontSize: 14 }, textTitle),
-                title: textTitle,
-            };
+            const textNode = createCanvasNode(CanvasNodeType.Text, { x: node.position.x + node.width + gap + textSpec.width / 2, y: centerY }, { content: t("canvas.projectPage.reversePreset"), prompt: t("canvas.projectPage.reversePreset"), status: NODE_STATUS_SUCCESS, fontSize: 14 }, textTitle);
             const configTitle = generateNextNodeTitle(CanvasNodeType.Config, [...nodesRef.current, textNode]);
-            const configNode = {
-                ...createCanvasNode(
-                    CanvasNodeType.Config,
-                    { x: textNode.position.x + textNode.width + gap + configSpec.width / 2, y: centerY },
-                    {
-                        generationMode: "text",
-                        model: effectiveConfig.textModel || effectiveConfig.model || defaultConfig.textModel,
-                        count: 1,
-                        composerContent: t("canvas.reverseComposer", { imageId: node.id, textId: textNode.id }),
-                    },
-                    configTitle,
-                ),
-                title: configTitle,
-            };
+            const configNode = createCanvasNode(
+                CanvasNodeType.Config,
+                { x: textNode.position.x + textNode.width + gap + configSpec.width / 2, y: centerY },
+                {
+                    generationMode: "text",
+                    model: effectiveConfig.textModel || effectiveConfig.model || defaultConfig.textModel,
+                    count: 1,
+                    composerContent: t("canvas.reverseComposer", { imageId: node.id, textId: textNode.id }),
+                },
+                configTitle,
+            );
 
             setNodes((prev) => [...prev, textNode, configNode]);
             setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: configNode.id, kind: "input" }, { id: nanoid(), fromNodeId: textNode.id, toNodeId: configNode.id, kind: "input" }]);
@@ -3141,11 +3132,11 @@ function InfiniteCanvasPage() {
                     const offsetPos = { x: basePosition.x + (i + 1) * STAGGER, y: basePosition.y + (i + 1) * STAGGER };
                     const f = rest[i];
                     if (isAudioFile(f)) {
-                        void createAudioFileNode(f, offsetPos);
+                        await createAudioFileNode(f, offsetPos);
                     } else if (f.type.startsWith("video/")) {
-                        void createVideoFileNode(f, offsetPos);
+                        await createVideoFileNode(f, offsetPos);
                     } else {
-                        void createImageFileNode(f, offsetPos);
+                        await createImageFileNode(f, offsetPos);
                     }
                 }
             } else {
@@ -3154,11 +3145,11 @@ function InfiniteCanvasPage() {
                     const offsetPos = { x: basePosition.x + i * STAGGER, y: basePosition.y + i * STAGGER };
                     const f = files[i];
                     if (isAudioFile(f)) {
-                        void createAudioFileNode(f, offsetPos);
+                        await createAudioFileNode(f, offsetPos);
                     } else if (f.type.startsWith("video/")) {
-                        void createVideoFileNode(f, offsetPos);
+                        await createVideoFileNode(f, offsetPos);
                     } else {
-                        void createImageFileNode(f, offsetPos);
+                        await createImageFileNode(f, offsetPos);
                     }
                 }
             }
@@ -3199,11 +3190,9 @@ function InfiniteCanvasPage() {
         (text: string, title?: string, targetPosition?: Position) => {
             const center = targetPosition ?? screenToCanvas((containerRef.current?.getBoundingClientRect().left || 0) + size.width / 2, (containerRef.current?.getBoundingClientRect().top || 0) + size.height / 2);
             const nodeTitle = title || generateNextNodeTitle(CanvasNodeType.Text, nodesRef.current);
-            const node = {
-                ...createCanvasNode(CanvasNodeType.Text, center, { content: text, status: NODE_STATUS_SUCCESS }, nodeTitle),
-                title: nodeTitle,
-            };
+            const node = createCanvasNode(CanvasNodeType.Text, center, { content: text, status: NODE_STATUS_SUCCESS }, nodeTitle);
 
+            nodesRef.current = [...nodesRef.current, node];
             setNodes((prev) => [...prev, node]);
             setSelectedNodeIds(new Set([node.id]));
             setSelectedConnectionId(null);
@@ -3214,7 +3203,7 @@ function InfiniteCanvasPage() {
     const handleAssetInsert = useCallback(
         async (payload: InsertAssetPayload, targetPosition?: Position) => {
             if (payload.kind === "text") {
-                insertAssistantText(payload.content, payload.title, targetPosition);
+                insertAssistantText(payload.content, undefined, targetPosition);
             } else if (payload.kind === "video") {
                 const resolvedUrl = payload.storageKey ? await resolveMediaUrl(payload.storageKey, payload.url) : payload.url;
                 const spec = NODE_DEFAULT_SIZE[CanvasNodeType.Video];
@@ -3273,7 +3262,7 @@ function InfiniteCanvasPage() {
     );
 
     const handleDrop = useCallback(
-        (event: ReactDragEvent<HTMLDivElement>) => {
+        async (event: ReactDragEvent<HTMLDivElement>) => {
             event.preventDefault();
             const assetJson = event.dataTransfer.getData("application/infinite-canvas-asset");
             if (assetJson) {
@@ -3290,7 +3279,7 @@ function InfiniteCanvasPage() {
                                   ? { kind: "text", content: raw.data.content, title: raw.title }
                                   : (raw as InsertAssetPayload);
                     const dropPos = screenToCanvas(event.clientX, event.clientY);
-                    void handleAssetInsert(payload, dropPos);
+                    await handleAssetInsert(payload, dropPos);
                     return;
                 } catch (e) {
                     console.error("Failed to parse dropped asset:", e);
@@ -3308,11 +3297,11 @@ function InfiniteCanvasPage() {
                 const pos = { x: basePos.x + i * STAGGER, y: basePos.y + i * STAGGER };
                 const f = files[i];
                 if (isAudioFile(f)) {
-                    void createAudioFileNode(f, pos);
+                    await createAudioFileNode(f, pos);
                 } else if (f.type.startsWith("video/")) {
-                    void createVideoFileNode(f, pos);
+                    await createVideoFileNode(f, pos);
                 } else {
-                    void createImageFileNode(f, pos);
+                    await createImageFileNode(f, pos);
                 }
             }
         },
