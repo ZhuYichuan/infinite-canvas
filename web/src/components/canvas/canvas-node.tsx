@@ -1070,7 +1070,7 @@ function ConnectionHandleDot({
     onClick?: (event: React.MouseEvent) => void;
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const containerRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLDivElement>(null);
     const [isHovered, setIsHovered] = useState(false);
     const [stickyOffset, setStickyOffset] = useState<{ x: number; y: number } | null>(null);
     const isDraggingRef = useRef(false);
@@ -1082,10 +1082,10 @@ function ConnectionHandleDot({
     // 鼠标在触点感应范围悬浮移动时，触点磁吸粘连跟随鼠标移动（仅向外侧延伸，禁止向节点内部移动）
     const handlePointerMove = (event: React.PointerEvent) => {
         if (isDraggingRef.current) return;
-        const container = containerRef.current;
-        if (!container) return;
+        const button = buttonRef.current;
+        if (!button) return;
 
-        const rect = container.getBoundingClientRect();
+        const rect = button.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         const dx = event.clientX - centerX;
@@ -1175,21 +1175,20 @@ function ConnectionHandleDot({
     };
 
     const isVisible = visible || isHovered || Boolean(stickyOffset);
-    const containerSize = isRight ? "size-20" : "size-14";
-    const bridgeClass = isRight ? "w-8 -left-8" : "w-6 -right-6";
+    const containerClass = isRight ? "w-12 h-14 justify-start" : "w-10 h-14 justify-end";
 
     return (
         <div
-            ref={containerRef}
             data-connection-handle
-            className={`absolute z-30 flex ${containerSize} cursor-crosshair items-center justify-center transition-opacity duration-150 ${
+            className={`absolute z-30 flex ${containerClass} cursor-crosshair items-center transition-opacity duration-150 ${
                 isVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
             }`}
             style={{
-                left: isRight ? "calc(100% + 12px)" : "-12px",
+                left: isRight ? "100%" : undefined,
+                right: !isRight ? "100%" : undefined,
                 top: "50%",
-                transform: `translate(-50%, -50%) scale(${1 / safeScale})`,
-                transformOrigin: "center center",
+                transform: `translateY(-50%) scale(${1 / safeScale})`,
+                transformOrigin: isRight ? "left center" : "right center",
             }}
             onMouseEnter={() => setIsHovered(true)}
             onPointerMove={handlePointerMove}
@@ -1198,9 +1197,9 @@ function ConnectionHandleDot({
             title={isRight ? "点击快捷创建 / 拖拽连线" : "拖拽连线"}
             aria-label="连接触点"
         >
-            <div className={`pointer-events-auto absolute top-0 h-full ${bridgeClass}`} />
             {isRight ? (
                 <div
+                    ref={buttonRef}
                     className={`flex size-6.5 items-center justify-center rounded-full border shadow-sm ${
                         isHovered || stickyOffset ? "scale-125 shadow-md" : ""
                     }`}
@@ -1208,6 +1207,7 @@ function ConnectionHandleDot({
                         background: theme.node.panel,
                         borderColor: theme.node.activeStroke || theme.node.stroke,
                         color: theme.node.text,
+                        transformOrigin: "left center",
                         transform: stickyOffset ? `translate(${stickyOffset.x}px, ${stickyOffset.y}px)` : "translate(0, 0)",
                         transition: stickyOffset
                             ? "transform 40ms ease-out"
@@ -1218,10 +1218,12 @@ function ConnectionHandleDot({
                 </div>
             ) : (
                 <div
-                    className={`size-3 rounded-full border-2 ${isHovered || stickyOffset ? "scale-125" : ""}`}
+                    ref={buttonRef}
+                    className={`size-3 rounded-full border-2 mr-1.5 ${isHovered || stickyOffset ? "scale-125" : ""}`}
                     style={{
                         background: theme.node.panel,
                         borderColor: theme.node.muted,
+                        transformOrigin: "right center",
                         transform: stickyOffset ? `translate(${stickyOffset.x}px, ${stickyOffset.y}px)` : "translate(0, 0)",
                         transition: stickyOffset
                             ? "transform 40ms ease-out"
