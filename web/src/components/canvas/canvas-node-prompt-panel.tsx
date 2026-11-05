@@ -315,6 +315,7 @@ export function CanvasNodePromptPanel({
                 value={prompt}
                 references={hasSavedToolResult ? [] : mentionReferences}
                 categorizedResources={categorizedResources}
+                showMotionPresets={mode === "video"}
                 onConnectResource={(sourceNodeId) => (onConnectReference ? onConnectReference(sourceNodeId, node.id) : true)}
                 triggerMentionRef={triggerMentionRef}
                 onChange={updatePrompt}
@@ -613,6 +614,7 @@ export function CanvasNodePromptPanel({
                         value={prompt}
                         references={hasSavedToolResult ? [] : mentionReferences}
                         categorizedResources={categorizedResources}
+                        showMotionPresets={mode === "video"}
                         onConnectResource={(sourceNodeId) => (onConnectReference ? onConnectReference(sourceNodeId, node.id) : true)}
                         onChange={updatePrompt}
                         containerClassName={isFullscreen ? "flex-1 min-h-0 flex flex-col" : ""}

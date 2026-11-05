@@ -5,6 +5,7 @@ import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 import { CanvasNodeType, type CanvasConnection, type CanvasGenerationReferenceSnapshot, type CanvasNodeData } from "@/types/canvas";
 import { getGenerationResourceNodes, getGroupResourceNodes } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
+import { compileMotionTokens } from "@/lib/canvas/canvas-motion-presets";
 
 export type NodeGenerationContext = {
     prompt: string;
@@ -91,7 +92,7 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
     }
 
     nextPrompt += cleanPrompt.slice(lastIndex);
-    const resolvedPrompt = nextPrompt.trim();
+    const resolvedPrompt = compileMotionTokens(nextPrompt.trim());
 
     const textResources = resourceInputs.filter((input) => input.type === "text" && Boolean(input.text));
     const unconsumedTexts = textResources
@@ -167,7 +168,7 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], nodes: Ca
 
     if (!hasToken) {
         return {
-            prompt: prompt.trim(),
+            prompt: compileMotionTokens(prompt.trim()),
             generationReferences: [],
             referenceImages: [],
             referenceVideos: [],
@@ -180,7 +181,7 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], nodes: Ca
     }
 
     return {
-        prompt: nextPrompt.trim(),
+        prompt: compileMotionTokens(nextPrompt.trim()),
         generationReferences: snapshotGenerationInputs([...snapshotInputs.values()]),
         referenceImages,
         referenceVideos,

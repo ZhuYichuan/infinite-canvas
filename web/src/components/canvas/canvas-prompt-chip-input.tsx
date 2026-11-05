@@ -11,6 +11,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { isImeComposing, isPlainEnterKey } from "@/lib/keyboard-event";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasResourceReference, CategorizedCanvasResources } from "@/lib/canvas/canvas-resource-references";
+import { getMotionPreset, type CanvasMotionPreset } from "@/lib/canvas/canvas-motion-presets";
 import { CanvasResourceMentionMenu } from "./canvas-resource-mention-menu";
 
 type Props = {
@@ -25,6 +26,7 @@ type Props = {
     allowClear?: boolean;
     onClear?: () => void;
     categorizedResources?: CategorizedCanvasResources;
+    showMotionPresets?: boolean;
     onConnectResource?: (sourceNodeId: string) => boolean | Promise<boolean>;
     triggerMentionRef?: React.MutableRefObject<(() => void) | null>;
 };
@@ -36,7 +38,8 @@ type MentionState = {
 
 type Token =
     | { type: "text"; value: string }
-    | { type: "reference"; nodeId: string };
+    | { type: "reference"; nodeId: string }
+    | { type: "motion"; motionId: string };
 
 // Prompt-panel contentEditable input: @ references embed thumbnail chips instead of plain label text.
 // Display labels stay localized, while the persisted value uses stable `@[node:<nodeId>]` tokens, so
@@ -54,6 +57,7 @@ export function CanvasPromptChipInput({
     allowClear = true,
     onClear,
     categorizedResources,
+    showMotionPresets = true,
     onConnectResource,
     triggerMentionRef,
 }: Props) {
@@ -110,6 +114,12 @@ export function CanvasPromptChipInput({
         tokens.forEach((token) => {
             if (token.type === "text") {
                 editor.append(document.createTextNode(token.value));
+                return;
+            }
+            if (token.type === "motion") {
+                const motion = getMotionPreset(token.motionId);
+                if (motion) editor.append(createMotionChip(motion, theme));
+                else editor.append(document.createTextNode(`@[motion:${token.motionId}]`));
                 return;
             }
             const reference = referenceByNodeId.get(token.nodeId);
@@ -195,6 +205,44 @@ export function CanvasPromptChipInput({
 
         removeActiveMention(range);
         const chip = createReferenceChip(reference, theme, setImagePreview);
+        const space = document.createTextNode(" ");
+        const activeRange = selection?.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)
+            ? selection.getRangeAt(0)
+            : range && editor.contains(range.commonAncestorContainer)
+            ? range
+            : null;
+
+        if (activeRange) {
+            activeRange.insertNode(space);
+            activeRange.insertNode(chip);
+            activeRange.setStartAfter(space);
+            activeRange.collapse(true);
+            selection?.removeAllRanges();
+            selection?.addRange(activeRange);
+        } else {
+            editor.append(chip, space);
+            placeCaretAtEnd(editor);
+        }
+        closeMention();
+        emit(serializeEditor(editor));
+        editor.focus();
+    };
+
+    const insertMotionPreset = (motion: CanvasMotionPreset) => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const selection = window.getSelection();
+        let range: Range | null = null;
+        if (selection?.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+            range = selection.getRangeAt(0);
+        } else if (savedRangeRef.current && editor.contains(savedRangeRef.current.commonAncestorContainer)) {
+            range = savedRangeRef.current;
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+        }
+
+        removeActiveMention(range);
+        const chip = createMotionChip(motion, theme);
         const space = document.createTextNode(" ");
         const activeRange = selection?.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)
             ? selection.getRangeAt(0)
@@ -331,7 +379,9 @@ export function CanvasPromptChipInput({
                     categorized={categorizedResources}
                     theme={theme}
                     activeIndex={activeIndex}
+                    showMotionPresets={showMotionPresets}
                     onSelect={insertReference}
+                    onSelectMotion={insertMotionPreset}
                     onClose={closeMention}
                 />
             ) : mention && candidates.length ? (
@@ -452,6 +502,31 @@ function createReferenceChip(reference: CanvasResourceReference, theme: (typeof 
     return wrapper;
 }
 
+function createMotionChip(motion: CanvasMotionPreset, theme: (typeof canvasThemes)[keyof typeof canvasThemes]) {
+    const wrapper = document.createElement("span");
+    wrapper.contentEditable = "false";
+    wrapper.dataset.motionId = motion.id;
+    wrapper.className = "mx-px inline-flex h-6 max-w-44 select-none items-center gap-1.5 overflow-hidden rounded-md border px-2 text-xs leading-none align-middle";
+    Object.assign(wrapper.style, {
+        background: theme.toolbar.panel,
+        borderColor: theme.toolbar.border,
+        color: theme.node.text,
+    } as CSSProperties);
+    wrapper.title = `${motion.name}：${motion.prompt}`;
+
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "shrink-0 opacity-70 text-sky-400";
+    iconSpan.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>`;
+
+    const textSpan = document.createElement("span");
+    textSpan.className = "truncate font-medium";
+    textSpan.textContent = motion.name;
+
+    wrapper.appendChild(iconSpan);
+    wrapper.appendChild(textSpan);
+    return wrapper;
+}
+
 function serializeEditor(editor: HTMLElement) {
     return serializeNodes(editor.childNodes).replace(/﻿/g, "");
 }
@@ -462,7 +537,9 @@ function serializeNodes(nodes: NodeListOf<ChildNode>) {
         if (node.nodeType === Node.TEXT_NODE) result += node.textContent || "";
         if (!(node instanceof HTMLElement)) return;
         const refNodeId = node.dataset.refNodeId;
+        const motionId = node.dataset.motionId;
         if (refNodeId) result += `@[node:${refNodeId}]`;
+        else if (motionId) result += `@[motion:${motionId}]`;
         else if (node.tagName === "BR") result += "\n";
         else result += serializeNodes(node.childNodes);
     });
@@ -522,7 +599,7 @@ function adjacentReferenceNode(range: Range, key: string) {
 function findReferenceSibling(node: Node, previous: boolean, includeSelf = false): HTMLElement | null {
     let current: Node | null = includeSelf ? node : previous ? node.previousSibling : node.nextSibling;
     while (current && current.nodeType === Node.TEXT_NODE && !(current.textContent || "").trim()) current = previous ? current.previousSibling : current.nextSibling;
-    return current instanceof HTMLElement && current.dataset.refNodeId ? current : null;
+    return current instanceof HTMLElement && (Boolean(current.dataset.refNodeId) || Boolean(current.dataset.motionId)) ? current : null;
 }
 
 function textBeforeCaret() {
@@ -561,14 +638,18 @@ function placeCaretAtEnd(element: HTMLElement) {
     selection?.addRange(range);
 }
 
-// Split value into text fragments and stable `@[node:<nodeId>]` reference tokens.
+// Split value into text fragments and stable `@[node:<nodeId>]` or `@[motion:<motionId>]` reference tokens.
 function parseTokens(value: string): Token[] {
     const tokens: Token[] = [];
     let lastIndex = 0;
-    for (const match of value.matchAll(/@\[node:([^\]]+)\]/g)) {
+    for (const match of value.matchAll(/@\[(node|motion):([^\]]+)\]/g)) {
         if (match.index === undefined) continue;
         if (match.index > lastIndex) tokens.push({ type: "text", value: value.slice(lastIndex, match.index) });
-        tokens.push({ type: "reference", nodeId: match[1] });
+        if (match[1] === "motion") {
+            tokens.push({ type: "motion", motionId: match[2] });
+        } else {
+            tokens.push({ type: "reference", nodeId: match[2] });
+        }
         lastIndex = match.index + match[0].length;
     }
     if (lastIndex < value.length) tokens.push({ type: "text", value: value.slice(lastIndex) });
