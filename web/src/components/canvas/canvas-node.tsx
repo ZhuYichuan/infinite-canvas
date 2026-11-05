@@ -1079,7 +1079,7 @@ function ConnectionHandleDot({
     const isRight = side === "right";
     const dragThreshold = isRight ? 46 : 38;
 
-    // 鼠标在触点感应范围悬浮移动时，触点磁吸粘连跟随鼠标移动
+    // 鼠标在触点感应范围悬浮移动时，触点磁吸粘连跟随鼠标移动（仅向外侧延伸，禁止向节点内部移动）
     const handlePointerMove = (event: React.PointerEvent) => {
         if (isDraggingRef.current) return;
         const container = containerRef.current;
@@ -1090,10 +1090,18 @@ function ConnectionHandleDot({
         const centerY = rect.top + rect.height / 2;
         const dx = event.clientX - centerX;
         const dy = event.clientY - centerY;
+
+        // 向节点内部移动时立即解除粘连并回弹原位（右触点禁止向左内移，左触点禁止向右内移）
+        const isInward = isRight ? dx <= 0 : dx >= 0;
+        if (isInward) {
+            setStickyOffset(null);
+            return;
+        }
+
         const distance = Math.hypot(dx, dy);
 
         if (distance > 0) {
-            // 放大粘连感应范围与跟随位移（加号最大跟随提升至 28px，感受更明显的粘连）
+            // 仅向节点外侧粘连跟随
             const maxFollow = isRight ? 28 : 18;
             const pull = Math.min(distance * 0.7, maxFollow);
             setStickyOffset({
@@ -1123,6 +1131,14 @@ function ConnectionHandleDot({
             if (!isDraggingRef.current) return;
             const dx = moveEvent.clientX - dragStartPosRef.current.x;
             const dy = moveEvent.clientY - dragStartPosRef.current.y;
+
+            // 拖拽时若向节点内部移动，也禁止向内拉伸，保持在原位
+            const isInward = isRight ? dx <= 0 : dx >= 0;
+            if (isInward) {
+                setStickyOffset(null);
+                return;
+            }
+
             const distance = Math.hypot(dx, dy);
 
             if (distance < dragThreshold) {
