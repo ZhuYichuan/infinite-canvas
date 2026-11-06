@@ -160,7 +160,8 @@ describe("CanvasPromptChipInput mention bugs", () => {
             editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
         });
 
-        expect(onChange).toHaveBeenCalledWith(expect.stringContaining("@[motion:"));
+        // Motion preset is inserted directly as pure plain text prompt!
+        expect(onChange).toHaveBeenCalledWith(expect.stringContaining("摄影机"));
     });
 
     it("Bug 3: inserting mention between two chips when @ is in an isolated text node", async () => {
@@ -252,8 +253,9 @@ describe("CanvasPromptChipInput mention bugs", () => {
             editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
         });
 
+        // The prompt text of "一镜到底" is inserted directly as editable plain text at caret
         expect(onChange).toHaveBeenLastCalledWith(
-            expect.stringMatching(/^Scene 1:\s*@\[motion:(oner|one-take)\]\s*Scene 2$/)
+            expect.stringMatching(/^Scene 1:\s*全段无切镜，摄影机.*Scene 2$/)
         );
     });
 

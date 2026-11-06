@@ -120,8 +120,7 @@ export function CanvasPromptChipInput({
             }
             if (token.type === "motion") {
                 const motion = getMotionPreset(token.motionId);
-                if (motion) editor.append(createMotionChip(motion, theme));
-                else editor.append(document.createTextNode(`@[motion:${token.motionId}]`));
+                editor.append(document.createTextNode(motion ? motion.prompt + " " : `@[motion:${token.motionId}]`));
                 return;
             }
             const reference = referenceByNodeId.get(token.nodeId);
@@ -196,9 +195,9 @@ export function CanvasPromptChipInput({
         savedRangeRef.current = null;
     };
 
-    const insertChipNode = (chip: HTMLElement) => {
+    const prepareActiveRange = () => {
         const editor = editorRef.current;
-        if (!editor) return;
+        if (!editor) return null;
 
         editor.focus();
 
@@ -214,25 +213,16 @@ export function CanvasPromptChipInput({
 
         removeActiveMention(range);
 
-        const activeRange = selection?.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)
+        return selection?.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)
             ? selection.getRangeAt(0)
             : range && editor.contains(range.commonAncestorContainer)
             ? range
             : null;
+    };
 
-        const space = document.createTextNode(" ");
-
-        if (activeRange) {
-            activeRange.insertNode(space);
-            activeRange.insertNode(chip);
-            activeRange.setStartAfter(space);
-            activeRange.collapse(true);
-            selection?.removeAllRanges();
-            selection?.addRange(activeRange);
-        } else {
-            editor.append(chip, space);
-            placeCaretAtEnd(editor);
-        }
+    const finishInsertion = (activeRange: Range | null) => {
+        const editor = editorRef.current;
+        if (!editor) return;
 
         closeMention();
         emit(serializeEditor(editor));
@@ -242,6 +232,8 @@ export function CanvasPromptChipInput({
             activeSel.removeAllRanges();
             activeSel.addRange(activeRange);
         }
+        const marker = activeRange?.startContainer instanceof Element ? activeRange.startContainer : activeRange?.startContainer.parentElement;
+        marker?.scrollIntoView?.({ block: "nearest" });
     };
 
     const insertReference = (reference: CanvasResourceReference) => {
@@ -252,11 +244,43 @@ export function CanvasPromptChipInput({
                 return;
             }
         }
-        insertChipNode(createReferenceChip(reference, theme, setImagePreview));
+        const editor = editorRef.current;
+        if (!editor) return;
+
+        const activeRange = prepareActiveRange();
+        const chip = createReferenceChip(reference, theme, setImagePreview);
+        const space = document.createTextNode(" ");
+
+        if (activeRange) {
+            activeRange.insertNode(space);
+            activeRange.insertNode(chip);
+            activeRange.setStartAfter(space);
+            activeRange.collapse(true);
+        } else {
+            editor.append(chip, space);
+            placeCaretAtEnd(editor);
+        }
+
+        finishInsertion(activeRange);
     };
 
     const insertMotionPreset = (motion: CanvasMotionPreset) => {
-        insertChipNode(createMotionChip(motion, theme));
+        const editor = editorRef.current;
+        if (!editor) return;
+
+        const activeRange = prepareActiveRange();
+        const textNode = document.createTextNode(motion.prompt + " ");
+
+        if (activeRange) {
+            activeRange.insertNode(textNode);
+            activeRange.setStartAfter(textNode);
+            activeRange.collapse(true);
+        } else {
+            editor.append(textNode);
+            placeCaretAtEnd(editor);
+        }
+
+        finishInsertion(activeRange);
     };
 
     const handleClear = () => {
@@ -503,31 +527,6 @@ function createReferenceChip(reference: CanvasResourceReference, theme: (typeof 
         text.textContent = reference.kind === "text" ? reference.text || reference.title : reference.label;
         wrapper.appendChild(text);
     }
-    return wrapper;
-}
-
-function createMotionChip(motion: CanvasMotionPreset, theme: (typeof canvasThemes)[keyof typeof canvasThemes]) {
-    const wrapper = document.createElement("span");
-    wrapper.contentEditable = "false";
-    wrapper.dataset.motionId = motion.id;
-    wrapper.className = "mx-px inline-flex h-6 max-w-44 select-none items-center gap-1.5 overflow-hidden rounded-md border px-2 text-xs leading-none align-middle";
-    Object.assign(wrapper.style, {
-        background: theme.toolbar.panel,
-        borderColor: theme.toolbar.border,
-        color: theme.node.text,
-    } as CSSProperties);
-    wrapper.title = `${motion.name}：${motion.prompt}`;
-
-    const iconSpan = document.createElement("span");
-    iconSpan.className = "shrink-0 opacity-70 text-sky-400";
-    iconSpan.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>`;
-
-    const textSpan = document.createElement("span");
-    textSpan.className = "truncate font-medium";
-    textSpan.textContent = motion.name;
-
-    wrapper.appendChild(iconSpan);
-    wrapper.appendChild(textSpan);
     return wrapper;
 }
 
