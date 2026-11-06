@@ -1,11 +1,66 @@
 import { nanoid } from "nanoid";
 import { getNodeSpec, NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
-import type { AiConfig } from "@/stores/use-config-store";
+import { getDefaultWorkflow, type AiConfig } from "@/stores/use-config-store";
+import { getModelProfile, resolveModelIdFromWorkflowId } from "@/services/api/models";
 import type { UploadedImage } from "@/services/image-storage";
 import type { UploadedFile } from "@/services/file-storage";
 import type { ReferenceImage } from "@/types/image";
 import { CanvasNodeType, type CanvasImageGenerationType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeMetadata, type CanvasNodeText, type CanvasNodeTypeId, type Position } from "@/types/canvas";
+
+export function createDefaultNodeMetadata(type: CanvasNodeTypeId, config: AiConfig): CanvasNodeMetadata | undefined {
+    const activeChannel = (config.channelId ? config.channels?.find((c) => c.id === config.channelId) : undefined) || config.channels?.[0];
+    if (!activeChannel) return undefined;
+
+    if (type === CanvasNodeType.Image) {
+        const wf = getDefaultWorkflow(activeChannel, "t2i");
+        const modelId = (wf ? resolveModelIdFromWorkflowId(wf.id) || getModelProfile(wf.id)?.id : undefined) || "image-qwen-2.1";
+        return {
+            channelId: activeChannel.id,
+            ...(wf ? { workflowId: wf.id } : {}),
+            modelId,
+        };
+    }
+    if (type === CanvasNodeType.Video) {
+        const wf = getDefaultWorkflow(activeChannel, "omniVideo");
+        const modelId = (wf ? resolveModelIdFromWorkflowId(wf.id) || getModelProfile(wf.id)?.id : undefined) || "omni-video-minimax-h3-fp8-4step-pdmd";
+        return {
+            channelId: activeChannel.id,
+            ...(wf ? { workflowId: wf.id } : {}),
+            modelId,
+            videoMode: wf?.category === "frameVideo" ? "frame" : "omni",
+            seconds: config.videoSeconds || "5",
+            size: config.size || "1280x736",
+        };
+    }
+    if (type === CanvasNodeType.Text) {
+        const wf = getDefaultWorkflow(activeChannel, "text");
+        const modelId = (wf ? resolveModelIdFromWorkflowId(wf.id) || getModelProfile(wf.id)?.id : undefined) || "text-qwen-35";
+        return {
+            channelId: activeChannel.id,
+            ...(wf ? { workflowId: wf.id } : {}),
+            modelId,
+            fontSize: 14,
+        };
+    }
+    if (type === CanvasNodeType.Audio) {
+        const wf = getDefaultWorkflow(activeChannel, "audio");
+        const modelId = (wf ? resolveModelIdFromWorkflowId(wf.id) || getModelProfile(wf.id)?.id : undefined) || "audio-minimax-music-3";
+        return {
+            channelId: activeChannel.id,
+            ...(wf ? { workflowId: wf.id } : {}),
+            modelId,
+        };
+    }
+    if (type === CanvasNodeType.Config) {
+        return {
+            model: config.imageModel || config.model,
+            size: config.size,
+            count: Number(config.canvasImageCount || config.count) || 1,
+        };
+    }
+    return undefined;
+}
 
 export function createCanvasNode(type: CanvasNodeTypeId, position: Position, metadata?: CanvasNodeMetadata, title?: string): CanvasNodeData {
     const spec = getNodeSpec(type);

@@ -100,6 +100,13 @@ export function getModelProfile(modelIdOrCategory?: string): WorkflowModelProfil
     const directMatch = BUILTIN_WORKFLOW_MODELS.find((m) => m.id === clean);
     if (directMatch) return directMatch;
 
+    // 1.1 从工作流 ID 派生模型 ID
+    const workflowDerivedId = resolveModelIdFromWorkflowId(clean);
+    if (workflowDerivedId) {
+        const matched = BUILTIN_WORKFLOW_MODELS.find((m) => m.id === workflowDerivedId);
+        if (matched) return matched;
+    }
+
     // 2. 匹配历史别名
     if (clean === "video_minimax_h3_omni") return videoMinimaxH3OmniFp8PdmdProfile;
     if (clean === "video_minimax_h3_frame") return videoMinimaxH3FrameFp8PdmdProfile;
@@ -219,6 +226,38 @@ export function resolveVideoModelIdForMode(
 
     const candidate = `${nextMode}-video-minimax-h3-${family[1]}${family[2] ?? ""}`;
     return BUILTIN_WORKFLOW_MODELS.some((m) => m.id === candidate) ? candidate : fallback;
+}
+
+/**
+ * 从渠道工作流 ID（如 `builtin-t2i-qwen-image-21`、`builtin-omni-video-minimax-h3-int8-6step-pika`）
+ * 反解出对应的模型 Profile ID；无法识别时返回 undefined。
+ */
+export function resolveModelIdFromWorkflowId(workflowId: string | undefined): string | undefined {
+    if (!workflowId) return undefined;
+    const videoMatch = VIDEO_MODEL_ID_SEARCH_PATTERN.exec(workflowId)?.[0];
+    if (videoMatch && BUILTIN_WORKFLOW_MODELS.some((m) => m.id === videoMatch)) {
+        return videoMatch;
+    }
+    const lower = workflowId.toLowerCase();
+    if (lower.includes("qwen-image-21") || lower.includes("qwen-image-2.1") || lower.includes("qwen-2.1") || lower.includes("qwen2.1")) {
+        return "image-qwen-2.1";
+    }
+    if (lower.includes("z-image-turbo") || lower.includes("z-turbo") || lower.includes("z-image")) {
+        return "image-z-turbo";
+    }
+    if (lower.includes("flux2-dev") || lower.includes("flux2") || lower.includes("flux")) {
+        return "image-flux2-dev";
+    }
+    if (lower.includes("inpaint-qwen-image") || lower.includes("qwen-inpaint")) {
+        return "image-qwen-inpaint";
+    }
+    if (lower.includes("text-qwen3-5") || lower.includes("qwen3.5") || lower.includes("qwen3-5") || lower.includes("qwen-35")) {
+        return "text-qwen-35";
+    }
+    if (lower.includes("audio-minimax-music-3") || lower.includes("music-3") || lower.includes("minimax-music")) {
+        return "audio-minimax-music-3";
+    }
+    return undefined;
 }
 
 /**

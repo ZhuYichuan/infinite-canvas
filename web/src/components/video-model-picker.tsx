@@ -10,7 +10,7 @@ import {
 } from "@/services/api/models";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
-import { useEffectiveConfig } from "@/stores/use-config-store";
+import { getDefaultWorkflow, useEffectiveConfig } from "@/stores/use-config-store";
 
 export type VideoModelPickerProps = {
     channelId?: string;
@@ -49,8 +49,17 @@ export function VideoModelPicker({
     }, [channels, channelId]);
 
     const activeProfile = useMemo(() => {
-        return getModelProfile(modelId) || BUILTIN_VIDEO_WORKFLOW_MODELS[0];
-    }, [modelId]);
+        if (modelId) {
+            const profile = getModelProfile(modelId);
+            if (profile) return profile;
+        }
+        const defaultWf = activeChannel ? getDefaultWorkflow(activeChannel, "omniVideo") : undefined;
+        if (defaultWf) {
+            const profile = getModelProfile(defaultWf.id);
+            if (profile) return profile;
+        }
+        return BUILTIN_VIDEO_WORKFLOW_MODELS[0];
+    }, [modelId, activeChannel]);
 
     // 级联递进选项：第一级为 API 提供商 (算力主机)，hover 展开第二级为模型
     const options = useMemo(() => {

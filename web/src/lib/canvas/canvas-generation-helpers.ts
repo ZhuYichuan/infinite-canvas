@@ -1,4 +1,5 @@
 import { defaultConfig, findWorkflow, resolveModelForCapability, type AiConfig } from "@/stores/use-config-store";
+import { resolveModelIdFromWorkflowId } from "@/services/api/models";
 import i18n from "@/i18n";
 import { TaskExecutionError } from "@/services/api/task";
 import { imageToDataUrl, resolveImageUrl, uploadImage } from "@/services/image-storage";
@@ -149,7 +150,9 @@ export function getInputSummary(inputs: NodeGenerationInput[]) {
 
 export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasNodeGenerationMode): AiConfig {
     const videoTool = mode === "video" && getVideoToolCategory(config, node);
-    const rawModel = videoTool ? undefined : node?.metadata?.modelId || node?.metadata?.model;
+    const rawModel = videoTool
+        ? undefined
+        : node?.metadata?.modelId || (node?.metadata?.workflowId ? resolveModelIdFromWorkflowId(node.metadata.workflowId) : undefined) || node?.metadata?.model;
     const channelId = node?.metadata?.channelId || config.channelId;
     const workflowId = node?.metadata?.workflowId || config.workflowId;
     const model = videoTool ? workflowId! : resolveModelForCapability(config, rawModel, mode);

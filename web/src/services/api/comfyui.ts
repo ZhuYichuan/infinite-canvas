@@ -3670,10 +3670,12 @@ export async function requestComfyuiAudio(req: ComfyuiAudioRequest): Promise<Com
     const modelProfile = getModelProfile(rawModel || "audio-minimax-music-3");
 
     let workflowItem = req.workflowId ? findWorkflow(req.config, channel.id, req.workflowId, "audio") : undefined;
+    if (!workflowItem) {
+        workflowItem = getDefaultWorkflow(channel, "audio");
+    }
     if (!workflowItem && modelProfile) {
         workflowItem = getWorkflowForModelProfile(modelProfile.id);
     }
-    if (!workflowItem) workflowItem = getDefaultWorkflow(channel, "audio");
     if (!workflowItem && channel.comfyuiAudioWorkflow) {
         workflowItem = {
             id: `${channel.id}-audio-workflow`,

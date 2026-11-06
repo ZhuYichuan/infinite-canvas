@@ -11,7 +11,7 @@ import {
 } from "@/services/api/models";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
-import { useEffectiveConfig } from "@/stores/use-config-store";
+import { getDefaultWorkflow, useEffectiveConfig } from "@/stores/use-config-store";
 
 export type ImageModelPickerProps = {
     channelId?: string;
@@ -64,8 +64,17 @@ export function ImageModelPicker({
     }, [channels, channelId]);
 
     const activeProfile = useMemo(() => {
-        return getModelProfile(modelId) || imageQwen21Profile;
-    }, [modelId]);
+        if (modelId) {
+            const profile = getModelProfile(modelId);
+            if (profile) return profile;
+        }
+        const defaultWf = activeChannel ? getDefaultWorkflow(activeChannel, "t2i") : undefined;
+        if (defaultWf) {
+            const profile = getModelProfile(defaultWf.id);
+            if (profile) return profile;
+        }
+        return imageQwen21Profile;
+    }, [modelId, activeChannel]);
 
     // 级联递进选项：第一级为 API 提供商 (算力主机)，hover 展开第二级为模型
     const options = useMemo(() => {
