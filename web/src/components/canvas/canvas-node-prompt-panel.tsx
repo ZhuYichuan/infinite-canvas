@@ -462,6 +462,10 @@ export function CanvasNodePromptPanel({
                             className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0"
                             style={{ color: theme.node.text }}
                             icon={<AtSign className="size-3.5" />}
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }}
                             onClick={() => triggerMentionRef.current?.()}
                             aria-label="召唤/引用画布资源"
                         />
