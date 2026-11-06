@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { CanvasNodeType } from "@/types/canvas";
+import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import { createDefaultNodeMetadata } from "@/lib/canvas/canvas-node-factory";
-import { resolveModelIdFromWorkflowId, getModelProfile } from "@/services/api/models";
+import { buildGenerationConfig } from "@/lib/canvas/canvas-generation-helpers";
+import { resolveModelIdFromWorkflowId, getModelProfile, validateModelExecution } from "@/services/api/models";
 import { defaultConfig, getDefaultWorkflow, useConfigStore } from "@/stores/use-config-store";
 
 describe("Channel default workflow binding on node creation", () => {
@@ -63,5 +64,52 @@ describe("Channel default workflow binding on node creation", () => {
         const audioMetadata = createDefaultNodeMetadata(CanvasNodeType.Audio, store.config);
         expect(audioMetadata?.workflowId).toContain("audio");
         expect(audioMetadata?.modelId).toBe("audio-minimax-music-3");
+    });
+
+    it("ensures newly created video node defaults to a valid video size and does not throw on submission when global config.size is 2048x1152", () => {
+        const store = useConfigStore.getState();
+        const configWithImageSize = { ...store.config, size: "2048x1152" };
+        const videoMetadata = createDefaultNodeMetadata(CanvasNodeType.Video, configWithImageSize);
+
+        // 1. A video node should never inherit an incompatible image resolution like 2048x1152
+        expect(videoMetadata?.size).toBe("1280x736");
+
+        // 2. buildGenerationConfig on newly created video node produces a valid size
+        const mockNewNode: CanvasNodeData = {
+            id: "video-new",
+            type: CanvasNodeType.Video,
+            title: "video-01",
+            position: { x: 0, y: 0 },
+            width: 480,
+            height: 270,
+            metadata: videoMetadata,
+        };
+        const generationConfig = buildGenerationConfig(configWithImageSize, mockNewNode, "video");
+        expect(generationConfig.size).toBe("1280x736");
+
+        // 3. MiniMax H3 全能 (INT8 6步 Pika) profile validates successfully without throwing
+        const pikaProfile = getModelProfile("omni-video-minimax-h3-int8-6step-pika")!;
+        expect(() => {
+            validateModelExecution(pikaProfile, { size: generationConfig.size });
+        }).not.toThrow();
+
+        // 4. Even if an existing legacy node had size: "2048x1152" in metadata, buildGenerationConfig sanitizes it
+        const mockLegacyNode: CanvasNodeData = {
+            id: "video-legacy",
+            type: CanvasNodeType.Video,
+            title: "video-02",
+            position: { x: 0, y: 0 },
+            width: 480,
+            height: 270,
+            metadata: {
+                modelId: "omni-video-minimax-h3-int8-6step-pika",
+                size: "2048x1152",
+            },
+        };
+        const sanitizedConfig = buildGenerationConfig(configWithImageSize, mockLegacyNode, "video");
+        expect(sanitizedConfig.size).toBe("1280x736");
+        expect(() => {
+            validateModelExecution(pikaProfile, { size: sanitizedConfig.size });
+        }).not.toThrow();
     });
 });

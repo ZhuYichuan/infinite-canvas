@@ -3,6 +3,7 @@ import { getNodeSpec, NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
 import { getDefaultWorkflow, type AiConfig } from "@/stores/use-config-store";
 import { getModelProfile, resolveModelIdFromWorkflowId } from "@/services/api/models";
+import { normalizeVideoSizeValue } from "@/components/video-settings-panel";
 import type { UploadedImage } from "@/services/image-storage";
 import type { UploadedFile } from "@/services/file-storage";
 import type { ReferenceImage } from "@/types/image";
@@ -24,13 +25,14 @@ export function createDefaultNodeMetadata(type: CanvasNodeTypeId, config: AiConf
     if (type === CanvasNodeType.Video) {
         const wf = getDefaultWorkflow(activeChannel, "omniVideo");
         const modelId = (wf ? resolveModelIdFromWorkflowId(wf.id) || getModelProfile(wf.id)?.id : undefined) || "omni-video-minimax-h3-fp8-4step-pdmd";
+        const profile = getModelProfile(modelId);
         return {
             channelId: activeChannel.id,
             ...(wf ? { workflowId: wf.id } : {}),
             modelId,
             videoMode: wf?.category === "frameVideo" ? "frame" : "omni",
             seconds: config.videoSeconds || "5",
-            size: config.size || "1280x736",
+            size: normalizeVideoSizeValue(config.size, profile),
         };
     }
     if (type === CanvasNodeType.Text) {

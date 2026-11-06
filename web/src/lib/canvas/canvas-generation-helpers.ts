@@ -1,5 +1,6 @@
 import { defaultConfig, findWorkflow, resolveModelForCapability, type AiConfig } from "@/stores/use-config-store";
-import { resolveModelIdFromWorkflowId } from "@/services/api/models";
+import { getModelProfile, resolveModelIdFromWorkflowId } from "@/services/api/models";
+import { normalizeVideoSizeValue } from "@/components/video-settings-panel";
 import i18n from "@/i18n";
 import { TaskExecutionError } from "@/services/api/task";
 import { imageToDataUrl, resolveImageUrl, uploadImage } from "@/services/image-storage";
@@ -172,6 +173,10 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         videoMode = config.videoMode || defaultConfig.videoMode || "omni";
     }
 
+    const rawSize = node?.metadata?.size || config.size || defaultConfig.size;
+    const modelProfile = mode === "video" && !videoTool ? getModelProfile(model) : undefined;
+    const size = mode === "video" && !videoTool ? normalizeVideoSizeValue(rawSize, modelProfile) : rawSize;
+
     return {
         ...config,
         channelId,
@@ -183,7 +188,7 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         audioModel: mode === "audio" ? model : config.audioModel,
         reasoningEffort: node?.metadata?.reasoningEffort || config.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node?.metadata?.quality || config.quality || defaultConfig.quality,
-        size: node?.metadata?.size || config.size || defaultConfig.size,
+        size,
         background: node?.metadata?.background ?? config.background ?? defaultConfig.background,
         videoSeconds: node?.metadata?.seconds || config.videoSeconds || defaultConfig.videoSeconds,
         audioSeconds: node?.metadata?.seconds || config.audioSeconds || defaultConfig.audioSeconds || "60",
