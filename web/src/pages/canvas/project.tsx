@@ -19,7 +19,7 @@ import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { cropDataUrl, splitDataUrl, upscaleDataUrl } from "@/lib/canvas/canvas-image-data";
-import { fitNodeSize, nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
+import { CANVAS_NODE_MAX_BOUND, fitNodeSize, isAspectRatioClose, nodeSizeFromRatio, resolveSkeletonDimensions } from "@/lib/canvas/canvas-node-size";
 import { captureVideoFrame, type VideoFramePosition } from "@/lib/canvas/canvas-video-frame";
 import { extractAudioFromVideo } from "@/lib/canvas/canvas-video-audio";
 import { App, Button, Modal } from "antd";
@@ -3425,16 +3425,38 @@ function InfiniteCanvasPage() {
                     const rootId = isEmptyImageNode ? nodeId : nanoid();
                     const imageIds = Array.from({ length: count }, () => nanoid());
                     pendingChildIds = [rootId];
+                    const targetNode = isEmptyImageNode ? sourceNode : undefined;
+                    const targetSize = generationConfig.size || sourceNode?.metadata?.size;
+                    const firstRef = referenceImages[0];
+                    const rootDimensions = isRepeat && sourceNode
+                        ? { width: sourceNode.width, height: sourceNode.height }
+                        : resolveSkeletonDimensions({
+                              targetSize,
+                              referenceWidth: firstRef?.width,
+                              referenceHeight: firstRef?.height,
+                              userWidth: targetNode?.width,
+                              userHeight: targetNode?.height,
+                              freeResize: targetNode?.metadata?.freeResize,
+                              baseMaxBound: imageConfig.width,
+                          });
+                    const rootPosition = isEmptyImageNode && sourceNode
+                        ? {
+                              x: sourceNode.position.x + sourceNode.width / 2 - rootDimensions.width / 2,
+                              y: sourceNode.position.y + sourceNode.height / 2 - rootDimensions.height / 2,
+                          }
+                        : isRepeat && sourceNode
+                          ? sourceNode.position
+                          : {
+                                x: parentPosition.x + (sourceNode?.width || parentConfig.width) + 96,
+                                y: parentPosition.y + (sourceNode?.height || parentConfig.height) / 2 - rootDimensions.height / 2,
+                            };
                     const rootNode: CanvasNodeData = {
                         id: rootId,
                         type: CanvasNodeType.Image,
                         title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyImageNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current)),
-                        position: {
-                            x: isEmptyImageNode ? parentPosition.x : parentPosition.x + (sourceNode?.width || parentConfig.width) + 96,
-                            y: isEmptyImageNode ? parentPosition.y : isRepeat ? parentPosition.y : parentPosition.y + parentConfig.height / 2 - imageConfig.height / 2,
-                        },
-                        width: isEmptyImageNode ? sourceNode?.width || imageConfig.width : (isRepeat && sourceNode?.width ? sourceNode.width : imageConfig.width),
-                        height: isEmptyImageNode ? sourceNode?.height || imageConfig.height : (isRepeat && sourceNode?.height ? sourceNode.height : imageConfig.height),
+                        position: rootPosition,
+                        width: rootDimensions.width,
+                        height: rootDimensions.height,
                         metadata: {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata, sourceNode.type) : {}),
                             prompt,
@@ -3629,17 +3651,41 @@ function InfiniteCanvasPage() {
                 }
 
                 if (mode === "video") {
-                    const spec = nodeSizeFromRatio(generationConfig.size, NODE_DEFAULT_SIZE[CanvasNodeType.Video].width, NODE_DEFAULT_SIZE[CanvasNodeType.Video].height) || NODE_DEFAULT_SIZE[CanvasNodeType.Video];
                     const isEmptyVideoNode = sourceNode?.type === CanvasNodeType.Video && !sourceNode.metadata?.content;
                     const videoId = isEmptyVideoNode ? nodeId : nanoid();
                     const parent = sourceNode?.position || { x: 0, y: 0 };
+                    const targetVideoNode = isEmptyVideoNode ? sourceNode : undefined;
+                    const videoConfig = NODE_DEFAULT_SIZE[CanvasNodeType.Video];
+                    const firstRef = generationContext.referenceImages[0];
+                    const videoDimensions = isRepeat && sourceNode
+                        ? { width: sourceNode.width, height: sourceNode.height }
+                        : resolveSkeletonDimensions({
+                              targetSize: generationConfig.size || sourceNode?.metadata?.size,
+                              referenceWidth: firstRef?.width,
+                              referenceHeight: firstRef?.height,
+                              userWidth: targetVideoNode?.width,
+                              userHeight: targetVideoNode?.height,
+                              freeResize: targetVideoNode?.metadata?.freeResize,
+                              baseMaxBound: videoConfig.width,
+                          });
+                    const videoPosition = isEmptyVideoNode && sourceNode
+                        ? {
+                              x: sourceNode.position.x + sourceNode.width / 2 - videoDimensions.width / 2,
+                              y: sourceNode.position.y + sourceNode.height / 2 - videoDimensions.height / 2,
+                          }
+                        : isRepeat && sourceNode
+                          ? sourceNode.position
+                          : {
+                                x: parent.x + (sourceNode?.width || videoDimensions.width) + 96,
+                                y: parent.y + (sourceNode?.height || videoDimensions.height) / 2 - videoDimensions.height / 2,
+                            };
                     const videoNode: CanvasNodeData = {
                         id: videoId,
                         type: CanvasNodeType.Video,
                         title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyVideoNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current)),
-                        position: isEmptyVideoNode ? sourceNode.position : { x: parent.x + (sourceNode?.width || spec.width) + 96, y: parent.y },
-                        width: isEmptyVideoNode ? sourceNode.width : (isRepeat && sourceNode?.width ? sourceNode.width : spec.width),
-                        height: isEmptyVideoNode ? sourceNode.height : (isRepeat && sourceNode?.height ? sourceNode.height : spec.height),
+                        position: videoPosition,
+                        width: videoDimensions.width,
+                        height: videoDimensions.height,
                         metadata: {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata, sourceNode.type) : {}),
                             prompt,

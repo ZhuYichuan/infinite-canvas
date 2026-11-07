@@ -144,3 +144,36 @@ describe("isAspectRatioClose", () => {
         expect(isAspectRatioClose(0, 0, 100, 100)).toBe(false);
     });
 });
+
+describe("Task Submission & Skeleton Pre-fitting Lifecycle", () => {
+    it("computes correct skeleton dimensions for derived image node from config with 16:9 targetSize", () => {
+        const configNodeSize = "16:9";
+        const skeleton = resolveSkeletonDimensions({
+            targetSize: configNodeSize,
+            baseMaxBound: CANVAS_NODE_MAX_BOUND,
+        });
+        expect(skeleton).toEqual({ width: 420, height: 236 });
+    });
+
+    it("freezes dimensions and position for repeat generation on existing node", () => {
+        const existingNode = {
+            id: "node-repeat",
+            width: 420,
+            height: 236,
+            position: { x: 120, y: 240 },
+        };
+        const isRepeat = true;
+        const dimensions = isRepeat ? { width: existingNode.width, height: existingNode.height } : resolveSkeletonDimensions({ targetSize: "1:1" });
+        const position = isRepeat ? existingNode.position : { x: 0, y: 0 };
+        expect(dimensions).toEqual({ width: 420, height: 236 });
+        expect(position).toEqual({ x: 120, y: 240 });
+    });
+
+    it("computes vertical 9:16 video skeleton correctly", () => {
+        const skeleton = resolveSkeletonDimensions({
+            targetSize: "9:16",
+            baseMaxBound: 420,
+        });
+        expect(skeleton).toEqual({ width: 236, height: 420 });
+    });
+});

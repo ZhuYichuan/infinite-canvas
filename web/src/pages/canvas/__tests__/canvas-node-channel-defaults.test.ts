@@ -72,7 +72,7 @@ describe("Channel default workflow binding on node creation", () => {
         const videoMetadata = createDefaultNodeMetadata(CanvasNodeType.Video, configWithImageSize);
 
         // 1. A video node should never inherit an incompatible image resolution like 2048x1152
-        expect(videoMetadata?.size).toBe("1280x736");
+        expect(videoMetadata?.size).toBe("1344x768");
 
         // 2. buildGenerationConfig on newly created video node produces a valid size
         const mockNewNode: CanvasNodeData = {
@@ -85,7 +85,7 @@ describe("Channel default workflow binding on node creation", () => {
             metadata: videoMetadata,
         };
         const generationConfig = buildGenerationConfig(configWithImageSize, mockNewNode, "video");
-        expect(generationConfig.size).toBe("1280x736");
+        expect(generationConfig.size).toBe("1344x768");
 
         // 3. MiniMax H3 全能 (INT8 6步 Pika) profile validates successfully without throwing
         const pikaProfile = getModelProfile("omni-video-minimax-h3-int8-6step-pika")!;
@@ -107,7 +107,7 @@ describe("Channel default workflow binding on node creation", () => {
             },
         };
         const sanitizedConfig = buildGenerationConfig(configWithImageSize, mockLegacyNode, "video");
-        expect(sanitizedConfig.size).toBe("1280x736");
+        expect(sanitizedConfig.size).toBe("1344x768");
         expect(() => {
             validateModelExecution(pikaProfile, { size: sanitizedConfig.size });
         }).not.toThrow();
