@@ -183,13 +183,36 @@ export default function WorkflowsPage() {
         return findWorkflowStepNode(currentJson);
     }, [currentJson]);
 
-    // 修改采样步数
+    // 采样步数本地输入状态（支持顺畅退格清空与重输缓冲）
+    const [stepInputVal, setStepInputVal] = useState<number | null>(null);
+
+    useEffect(() => {
+        setStepInputVal(stepNode?.currentValue ?? null);
+    }, [stepNode?.currentValue]);
+
+    // 修改采样步数（键盘输入）
     const handleStepChange = (nextValue: number | null) => {
+        setStepInputVal(nextValue);
         if (!stepNode || nextValue === null || isNaN(nextValue) || nextValue < 1) return;
-        const intVal = Math.max(1, Math.round(nextValue));
+        const intVal = Math.round(nextValue);
         const nextJson = updateWorkflowNodeInput(currentJson, stepNode.nodeId, stepNode.inputKey, intVal);
         setCurrentJson(nextJson);
         setIsDirty(true);
+    };
+
+    // 采样步数失焦或回车时做合法正整数兜底提交
+    const handleStepCommit = () => {
+        if (!stepNode) return;
+        const targetVal =
+            stepInputVal !== null && !isNaN(stepInputVal) && stepInputVal >= 1
+                ? Math.round(stepInputVal)
+                : Math.max(1, Math.round(stepNode.currentValue || 1));
+        setStepInputVal(targetVal);
+        if (targetVal !== stepNode.currentValue) {
+            const nextJson = updateWorkflowNodeInput(currentJson, stepNode.nodeId, stepNode.inputKey, targetVal);
+            setCurrentJson(nextJson);
+            setIsDirty(true);
+        }
     };
 
     // 独立缓存各分类模型（例如 diffusion_models, clip / text_encoders）
@@ -542,8 +565,10 @@ export default function WorkflowsPage() {
                                                 precision={0}
                                                 step={1}
                                                 min={1}
-                                                value={stepNode.currentValue}
+                                                value={stepInputVal}
                                                 onChange={handleStepChange}
+                                                onBlur={handleStepCommit}
+                                                onPressEnter={handleStepCommit}
                                                 placeholder={t("workflowsPage.stepPlaceholder")}
                                             />
                                             <span className="text-xs text-stone-400">
