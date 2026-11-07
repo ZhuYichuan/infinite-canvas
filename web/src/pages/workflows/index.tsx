@@ -185,8 +185,8 @@ export default function WorkflowsPage() {
 
     // 修改采样步数
     const handleStepChange = (nextValue: number | null) => {
-        if (!stepNode || nextValue === null || isNaN(nextValue)) return;
-        const intVal = Math.round(nextValue);
+        if (!stepNode || nextValue === null || isNaN(nextValue) || nextValue < 1) return;
+        const intVal = Math.max(1, Math.round(nextValue));
         const nextJson = updateWorkflowNodeInput(currentJson, stepNode.nodeId, stepNode.inputKey, intVal);
         setCurrentJson(nextJson);
         setIsDirty(true);
@@ -541,6 +541,7 @@ export default function WorkflowsPage() {
                                                 className="w-48"
                                                 precision={0}
                                                 step={1}
+                                                min={1}
                                                 value={stepNode.currentValue}
                                                 onChange={handleStepChange}
                                                 placeholder={t("workflowsPage.stepPlaceholder")}

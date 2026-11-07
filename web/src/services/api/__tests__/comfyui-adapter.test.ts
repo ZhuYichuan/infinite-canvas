@@ -477,7 +477,31 @@ describe("WorkflowIngestionAdapter (Candidate 1 Seam)", () => {
         expect(wf["6"]?._meta?.title?.toLowerCase()).toBe("output_video");
     });
 
-    // 12. 异常输入校验 (Fail-loud)
+    // 12. 识别 step 保留槽位
+    it("recognizes step slot in ingested workflow", () => {
+        const wfWithStep = {
+            "1": {
+                class_type: "PrimitiveStringMultiline",
+                inputs: { value: "prompt text" },
+                _meta: { title: "prompt" },
+            },
+            "2": {
+                class_type: "PrimitiveInt",
+                inputs: { value: 6 },
+                _meta: { title: "step" },
+            },
+            "3": {
+                class_type: "SaveImage",
+                inputs: { filename_prefix: "out" },
+                _meta: { title: "output_image" },
+            },
+        };
+        const result = ingestWorkflow(wfWithStep, { categoryHint: "t2i" });
+        expect(result.ok).toBe(true);
+        expect(result.detectedSlots?.some((s) => s.slot === "step")).toBe(true);
+    });
+
+    // 13. 异常输入校验 (Fail-loud)
     it("fails loud on invalid or empty JSON", () => {
         expect(ingestWorkflow("not a json").ok).toBe(false);
         expect(ingestWorkflow(null).ok).toBe(false);

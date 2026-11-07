@@ -3901,14 +3901,17 @@ export function findWorkflowStepNode(workflow: ComfyuiWorkflowJson): WorkflowSte
             if (!("value" in inputs) && "steps" in inputs) {
                 inputKey = "steps";
             }
+            if (!(inputKey in inputs)) continue;
             const rawVal = inputs[inputKey];
-            const numVal = typeof rawVal === "number" ? rawVal : Number(rawVal) || 0;
+            if (Array.isArray(rawVal)) continue;
+            const numVal = typeof rawVal === "number" ? rawVal : Number(rawVal);
+            if (isNaN(numVal) || numVal < 1) continue;
             return {
                 nodeId,
                 title: "step",
                 classType: node.class_type,
                 inputKey,
-                currentValue: Math.round(numVal),
+                currentValue: Math.max(1, Math.round(numVal)),
             };
         }
     }

@@ -190,7 +190,6 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         quality: node?.metadata?.quality || config.quality || defaultConfig.quality,
         size,
         background: node?.metadata?.background ?? config.background ?? defaultConfig.background,
-        step: node?.metadata?.step !== undefined ? node.metadata.step : config.step,
         videoSeconds: node?.metadata?.seconds || config.videoSeconds || defaultConfig.videoSeconds,
         audioSeconds: node?.metadata?.seconds || config.audioSeconds || defaultConfig.audioSeconds || "60",
         videoMode,

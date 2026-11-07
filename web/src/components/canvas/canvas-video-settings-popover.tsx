@@ -18,18 +18,15 @@ import {
 
 export type CanvasVideoSettingsPopoverProps = {
     modelId?: string;
-    workflowId?: string;
     size?: string;
     duration?: number | string;
     videoMode?: "omni" | "frame";
-    step?: number;
     onParamChange?: (patch: {
         modelId?: string;
         videoMode?: "omni" | "frame";
         size?: string;
         seconds?: string;
         duration?: number;
-        step?: number;
     }) => void;
     config?: AiConfig;
     onConfigChange?: (key: keyof AiConfig, value: string) => void;
@@ -40,11 +37,9 @@ export type CanvasVideoSettingsPopoverProps = {
 
 export function CanvasVideoSettingsPopover({
     modelId,
-    workflowId,
     size,
     duration,
     videoMode,
-    step,
     onParamChange,
     config,
     onConfigChange,
@@ -111,11 +106,9 @@ export function CanvasVideoSettingsPopover({
             placement={placement}
             theme={theme}
             modelId={effectiveModelId}
-            workflowId={workflowId}
             size={currentSize}
             duration={currentDuration}
             videoMode={currentMode}
-            step={step}
             onParamChange={onParamChange}
             config={config}
             onConfigChange={onConfigChange}
@@ -127,7 +120,7 @@ export function CanvasVideoSettingsPopover({
             <span ref={buttonRef} className="inline-flex min-w-0" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                 <Button size="small" type="text" className={buttonClassName || "!h-8 !max-w-[230px] !justify-start !rounded-full !px-2.5"} style={{ background: theme.node.fill, color: theme.node.text }} icon={<Settings2 className="size-3.5" />} onClick={() => updateOpen(!open)}>
                     <span className="truncate">
-                        {currentMode === "frame" ? "首尾帧" : "全能参考"} · {videoSizeLabel(currentSize, profile)} · {videoSecondsLabel(currentDuration, profile)}{step !== undefined ? ` · ${step}步` : ""}
+                        {currentMode === "frame" ? "首尾帧" : "全能参考"} · {videoSizeLabel(currentSize, profile)} · {videoSecondsLabel(currentDuration, profile)}
                     </span>
                 </Button>
             </span>
@@ -142,11 +135,9 @@ function VideoSettingsPortal({
     placement,
     theme,
     modelId,
-    workflowId,
     size,
     duration,
     videoMode,
-    step,
     onParamChange,
     config,
     onConfigChange,
@@ -156,11 +147,9 @@ function VideoSettingsPortal({
     placement: CanvasVideoSettingsPopoverProps["placement"];
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
     modelId?: string;
-    workflowId?: string;
     size?: string;
     duration?: number | string;
     videoMode?: "omni" | "frame";
-    step?: number;
     onParamChange?: CanvasVideoSettingsPopoverProps["onParamChange"];
     config?: AiConfig;
     onConfigChange?: (key: keyof AiConfig, value: string) => void;
@@ -203,11 +192,9 @@ function VideoSettingsPortal({
         >
             <VideoSettingsPanel
                 modelId={modelId}
-                workflowId={workflowId}
                 size={size}
                 duration={duration}
                 videoMode={videoMode}
-                step={step}
                 onParamChange={onParamChange}
                 config={config}
                 onConfigChange={onConfigChange as any}

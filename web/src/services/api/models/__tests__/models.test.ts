@@ -667,15 +667,29 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
         expect(nodeInfo?.inputKey).toBe("value");
         expect(nodeInfo?.currentValue).toBe(4);
 
-        // 2. Strict rejection: "steps", "Step", "4步" must return null
+        // 2. Strict rejection: "steps", "Step", "4步" or linked array inputs must return null
         const wfNonStrict = {
             "1": { inputs: { value: 4 }, class_type: "PrimitiveInt", _meta: { title: "steps" } },
             "2": { inputs: { value: 4 }, class_type: "PrimitiveInt", _meta: { title: "Step" } },
             "3": { inputs: { value: 4 }, class_type: "PrimitiveInt", _meta: { title: "4步" } },
+            "4": { inputs: { steps: ["143", 0] }, class_type: "BasicScheduler", _meta: { title: "step" } },
         };
         expect(findWorkflowStepNode(wfNonStrict as any)).toBeNull();
 
-        // 3. updateWorkflowNodeInput updates step integer without mutating original
+        // 3. Directly labeled scheduler with numeric steps literal
+        const wfDirectScheduler = {
+            "20": {
+                inputs: { steps: 20 },
+                class_type: "BasicScheduler",
+                _meta: { title: "step" },
+            },
+        };
+        const schedulerStepInfo = findWorkflowStepNode(wfDirectScheduler as any);
+        expect(schedulerStepInfo).not.toBeNull();
+        expect(schedulerStepInfo?.inputKey).toBe("steps");
+        expect(schedulerStepInfo?.currentValue).toBe(20);
+
+        // 4. updateWorkflowNodeInput updates step integer without mutating original
         const updated = updateWorkflowNodeInput(wfValid as any, "10", "value", 8);
         expect((updated["10"] as any).inputs.value).toBe(8);
         expect((wfValid["10"] as any).inputs.value).toBe(4);

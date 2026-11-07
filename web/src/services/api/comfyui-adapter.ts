@@ -35,7 +35,7 @@ type NodeRecord = {
 };
 
 const RESERVED_SLOT_REGEX =
-    /^(prompt|seed|width|height|duration|first_frame|last_frame|ref_mask|mask|ref_mask_\d+|ref_image(_\d+)?|ref_video(_\d+)?|ref_audio(_\d+)?|output_image|output_video|output_text|output_audio|caption|lyrics)$/i;
+    /^(prompt|seed|step|width|height|duration|first_frame|last_frame|ref_mask|mask|ref_mask_\d+|ref_image(_\d+)?|ref_video(_\d+)?|ref_audio(_\d+)?|output_image|output_video|output_text|output_audio|caption|lyrics)$/i;
 
 function isStandardSlot(title?: string): boolean {
     if (!title) return false;
