@@ -8,6 +8,7 @@ description: 当前项目后续值得处理的事项
 本文档用来记录当前项目后续比较值得处理的事项。
 
 - 本地 Agent 接入后续：按[本地 Agent 接入规划](/zh-CN/docs/progress/local-agent-integration-plan)把 Claude Code CLI Adapter 升级为 Claude Agent SDK Adapter，并完善工具队列体验。
+- 画布节点尺寸生命周期与无抖动占位：按[画布节点全模态尺寸生命周期规范](/zh-CN/docs/development/canvas-node-size-lifecycle-spec)实施 420 基准外框升级、提交提前按比例占位、用户自定义尺寸优先继承与结算外框锁死机制，彻底消除生成前后尺寸突变与布局跳跃。
 - Agent Skill 后续：补充网络检索安装、Skill 资源文件管理和可控的本地记忆沉淀。
 - 生成进度当前由前端按节点数加权估算（ComfyUI 本地 8188 不提供整体百分比）。等自建 ComfyUI 升到 v0.6.0+ 后改用 `/api/jobs/{id}/cancel` 按 id 精准取消，消除现有「查队列 + /interrupt」之间的竞态窗口。
 - 若本地 ComfyUI 将来在 8188 暴露 Comfy API v2 的 `/api/v2/jobs/{id}`（带 `value` / `nodes_done` / `step` 的 Progress），可换用服务端算好的整体百分比，替代前端估算。

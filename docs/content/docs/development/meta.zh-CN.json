@@ -5,6 +5,7 @@
   "pages": [
     "local-development",
     "canvas-node-system",
+    "canvas-node-size-lifecycle-spec",
     "comfyui-workflow-standard",
     "workflow-model-host-decoupling-spec",
     "model-constraint-engine-spec",
