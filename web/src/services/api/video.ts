@@ -25,6 +25,7 @@ export type VideoRequestOptions = {
     channelId?: string;
     workflowId?: string;
     seed?: number;
+    step?: number;
     jobId?: string;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
 };
@@ -63,6 +64,7 @@ export async function requestVideoGeneration(config: AiConfig, prompt: string, r
         channelId: options?.channelId || config.channelId,
         workflowId: options?.workflowId || config.workflowId,
         seed: options?.seed,
+        step: options?.step,
         signal: options?.signal,
         jobId: options?.jobId,
         onProgress: options?.onProgress,
@@ -82,6 +84,7 @@ export async function createVideoGenerationTask(config: AiConfig, prompt: string
         channelId: options?.channelId || config.channelId,
         workflowId: options?.workflowId || config.workflowId,
         seed: options?.seed,
+        step: options?.step,
         signal: options?.signal,
     });
     return { id: jobId, provider: "comfyui", model: rawModel || "ComfyUI Video" };

@@ -2103,6 +2103,7 @@ export interface ComfyuiImageRequest {
     prompt: string;
     size?: string;
     seed?: number;
+    step?: number;
     jobId?: string;
     references?: ReferenceImage[];
     channelId?: string;
@@ -2244,6 +2245,7 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
                       width: size.width,
                       height: size.height,
                       seed,
+                      step: req.step ?? req.config.step,
                       assetIds: refImages,
                   })
                 : applyBindings(workflow.json, { prompt: req.prompt, width: size.width, height: size.height, seed, refImages });
@@ -2415,6 +2417,7 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
                 ? dispatchComfyuiModelWorkflow(modelProfile, inpaintWorkflow.json, {
                       prompt: req.prompt,
                       seed,
+                      step: req.step ?? req.config.step,
                       assetIds: [refAssetId],
                       maskAssetId,
                   })
@@ -3344,6 +3347,7 @@ export interface ComfyuiVideoRequest {
     channelId?: string;
     workflowId?: string;
     seed?: number;
+    step?: number;
     signal?: AbortSignal;
     jobId?: string;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
@@ -3536,6 +3540,7 @@ export async function submitComfyuiVideoJob(req: ComfyuiVideoRequest): Promise<{
                   height,
                   duration,
                   seed,
+                  step: req.step ?? req.config.step,
                   firstFrameAssetId,
                   lastFrameAssetId,
                   assetIds,
@@ -3866,6 +3871,48 @@ export function findWorkflowSelectNodes(workflow: ComfyuiWorkflowJson): Workflow
     }
 
     return results;
+}
+
+export type WorkflowStepNodeInfo = {
+    nodeId: string;
+    title: string;
+    classType?: string;
+    inputKey: string;
+    currentValue: number;
+};
+
+/**
+ * 扫描工作流 JSON 中标注为 _meta.title === "step" 的采样步数节点
+ * 严格按照 _meta.title === "step" 精确匹配
+ */
+export function findWorkflowStepNode(workflow: ComfyuiWorkflowJson): WorkflowStepNodeInfo | null {
+    if (!workflow || typeof workflow !== "object") return null;
+    const nodes = Object.entries(workflow);
+    for (const [nodeId, rawNode] of nodes) {
+        if (!rawNode || typeof rawNode !== "object") continue;
+        const node = rawNode as {
+            class_type?: string;
+            inputs?: Record<string, unknown>;
+            _meta?: { title?: unknown };
+        };
+        if (node._meta?.title === "step") {
+            const inputs = node.inputs || {};
+            let inputKey = "value";
+            if (!("value" in inputs) && "steps" in inputs) {
+                inputKey = "steps";
+            }
+            const rawVal = inputs[inputKey];
+            const numVal = typeof rawVal === "number" ? rawVal : Number(rawVal) || 0;
+            return {
+                nodeId,
+                title: "step",
+                classType: node.class_type,
+                inputKey,
+                currentValue: Math.round(numVal),
+            };
+        }
+    }
+    return null;
 }
 
 /**

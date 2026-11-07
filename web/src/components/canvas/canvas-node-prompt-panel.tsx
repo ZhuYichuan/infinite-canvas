@@ -385,9 +385,11 @@ export function CanvasNodePromptPanel({
                             />
                             <CanvasVideoSettingsPopover
                                 modelId={node.metadata?.modelId || (node.metadata?.workflowId ? resolveModelIdFromWorkflowId(node.metadata.workflowId) : undefined) || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
+                                workflowId={node.metadata?.workflowId}
                                 size={node.metadata?.size || config.size}
                                 duration={node.metadata?.seconds || config.videoSeconds}
                                 videoMode={(node.metadata?.videoMode as "omni" | "frame") || (config.videoMode as "omni" | "frame")}
+                                step={node.metadata?.step}
                                 onParamChange={(patch) => {
                                     onConfigChange(node.id, patch);
                                 }}
@@ -690,6 +692,7 @@ function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: Can
 }
 
 function videoConfigPatch(key: keyof AiConfig, value: string, config?: AiConfig, currentModelId?: string) {
+    if (key === "step") return { step: Number(value) };
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };

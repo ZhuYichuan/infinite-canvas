@@ -15,6 +15,7 @@ type RequestOptions = {
     jobId?: string;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
     seed?: number;
+    step?: number;
     maxLength?: number;
     thinking?: boolean;
 };
@@ -34,6 +35,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                     channelId: config.channelId,
                     workflowId: config.workflowId,
                     seed: options?.seed !== undefined ? (options.seed + index) % 9007199254740991 : undefined,
+                    step: options?.step,
                     signal: options?.signal,
                     jobId: options?.jobId,
                     onProgress: options?.onProgress,
@@ -51,6 +53,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
             channelId: config.channelId,
             workflowId: config.workflowId,
             seed: options?.seed,
+            step: options?.step,
             signal: options?.signal,
             jobId: options?.jobId,
             onProgress: options?.onProgress,
@@ -70,6 +73,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
             channelId: config.channelId,
             workflowId: config.workflowId,
             seed: options?.seed,
+            step: options?.step,
             signal: options?.signal,
             jobId: options?.jobId,
             onProgress: options?.onProgress,
@@ -86,6 +90,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
             channelId: config.channelId,
             workflowId: config.workflowId,
             seed: options?.seed,
+            step: options?.step,
             signal: options?.signal,
             jobId: options?.jobId,
             onProgress: options?.onProgress,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTextBindings } from "../../comfyui";
+import { applyTextBindings, findWorkflowStepNode, updateWorkflowNodeInput } from "../../comfyui";
 import {
     BUILTIN_IMAGE_WORKFLOW_MODELS,
     BUILTIN_VIDEO_WORKFLOW_MODELS,
@@ -644,5 +644,69 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
         });
         expect((boundFallback["1"] as any).inputs.value).toContain("反推一段适合用于 AI 生图的提示词");
         expect((boundFallback["12"] as any).inputs.image).toBe("uploaded_photo.png");
+    });
+
+    it("scans strictly matching _meta.title === 'step' slot with findWorkflowStepNode", () => {
+        // 1. Strict match _meta.title === "step"
+        const wfValid = {
+            "10": {
+                inputs: { value: 4 },
+                class_type: "PrimitiveInt",
+                _meta: { title: "step" },
+            },
+            "20": {
+                inputs: { value: 0 },
+                class_type: "PrimitiveInt",
+                _meta: { title: "seed" },
+            },
+        };
+        const nodeInfo = findWorkflowStepNode(wfValid as any);
+        expect(nodeInfo).not.toBeNull();
+        expect(nodeInfo?.nodeId).toBe("10");
+        expect(nodeInfo?.title).toBe("step");
+        expect(nodeInfo?.inputKey).toBe("value");
+        expect(nodeInfo?.currentValue).toBe(4);
+
+        // 2. Strict rejection: "steps", "Step", "4步" must return null
+        const wfNonStrict = {
+            "1": { inputs: { value: 4 }, class_type: "PrimitiveInt", _meta: { title: "steps" } },
+            "2": { inputs: { value: 4 }, class_type: "PrimitiveInt", _meta: { title: "Step" } },
+            "3": { inputs: { value: 4 }, class_type: "PrimitiveInt", _meta: { title: "4步" } },
+        };
+        expect(findWorkflowStepNode(wfNonStrict as any)).toBeNull();
+
+        // 3. updateWorkflowNodeInput updates step integer without mutating original
+        const updated = updateWorkflowNodeInput(wfValid as any, "10", "value", 8);
+        expect((updated["10"] as any).inputs.value).toBe(8);
+        expect((wfValid["10"] as any).inputs.value).toBe(4);
+    });
+
+    it("injects step parameter into node with _meta.title === 'step' during dispatch", () => {
+        const wf = {
+            "5": {
+                inputs: { value: 4 },
+                class_type: "PrimitiveInt",
+                _meta: { title: "step" },
+            },
+            "6": {
+                inputs: { value: "test prompt" },
+                class_type: "PrimitiveStringMultiline",
+                _meta: { title: "prompt" },
+            },
+        };
+
+        const dispatched = dispatchComfyuiModelWorkflow(videoMinimaxH3OmniProfile, wf as any, {
+            prompt: "a majestic mountain",
+            step: 12,
+        });
+
+        expect((dispatched["5"] as any).inputs.value).toBe(12);
+
+        // Fractional step is rounded to nearest integer
+        const dispatchedFraction = dispatchComfyuiModelWorkflow(videoMinimaxH3OmniProfile, wf as any, {
+            prompt: "a majestic mountain",
+            step: 7.6 as any,
+        });
+        expect((dispatchedFraction["5"] as any).inputs.value).toBe(8);
     });
 });

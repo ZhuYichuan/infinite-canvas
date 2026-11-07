@@ -343,6 +343,8 @@ export interface DispatchedWorkflowParams {
     height?: number;
     duration?: number;
     seed?: number;
+    step?: number;
+    steps?: number;
     assetIds?: string[];
     videoAssetIds?: string[];
     audioAssetIds?: string[];
@@ -430,6 +432,18 @@ export function dispatchComfyuiModelWorkflow(
             if ("seed" in node.inputs) node.inputs.seed = params.seed;
             else if ("noise_seed" in node.inputs) node.inputs.noise_seed = params.seed;
             else if ("value" in node.inputs) node.inputs.value = params.seed;
+        }
+
+        // 采样步数插槽绑定 (严格匹配 _meta.title === "step")
+        if (node._meta?.title === "step" && (params.step !== undefined || params.steps !== undefined)) {
+            const raw = params.step !== undefined ? params.step : params.steps;
+            if (typeof raw === "number" || (typeof raw === "string" && String(raw).trim() !== "")) {
+                const stepVal = Math.round(Number(raw));
+                if (!isNaN(stepVal)) {
+                    if ("value" in node.inputs) node.inputs.value = stepVal;
+                    else if ("steps" in node.inputs) node.inputs.steps = stepVal;
+                }
+            }
         }
 
         // 首尾帧插槽绑定

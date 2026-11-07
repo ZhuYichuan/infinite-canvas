@@ -1,4 +1,4 @@
-import { Slider } from "antd";
+import { InputNumber, Slider } from "antd";
 import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,6 +11,8 @@ import {
     type WorkflowModelProfile,
     videoMinimaxH3OmniProfile,
 } from "@/services/api/models";
+import { findWorkflowStepNode } from "@/services/api/comfyui";
+import { getWorkflowForModelProfile } from "@/services/api/comfyui-default-workflows";
 
 export type MiniMaxVideoTier = {
     landscapeW: number;
@@ -43,18 +45,21 @@ export const videoSizeOptions = MINIMAX_VIDEO_SIZE_TIERS.flatMap((tier) => [
 
 export type VideoSettingsPanelProps = {
     modelId?: string;
+    workflowId?: string;
     size?: string;
     duration?: number | string;
     videoMode?: "omni" | "frame";
+    step?: number;
     onParamChange?: (patch: {
         modelId?: string;
         videoMode?: "omni" | "frame";
         size?: string;
         seconds?: string;
         duration?: number;
+        step?: number;
     }) => void;
     config?: AiConfig;
-    onConfigChange?: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoMode", value: string) => void;
+    onConfigChange?: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoMode" | "step", value: string) => void;
     theme: CanvasTheme;
     showTitle?: boolean;
     className?: string;
@@ -62,9 +67,11 @@ export type VideoSettingsPanelProps = {
 
 export function VideoSettingsPanel({
     modelId,
+    workflowId,
     size,
     duration,
     videoMode,
+    step,
     onParamChange,
     config,
     onConfigChange,
@@ -77,6 +84,13 @@ export function VideoSettingsPanel({
     // 动态解析绑定的工作流模型 Profile
     const effectiveModelId = modelId || (videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : videoMode === "omni" ? "omni-video-minimax-h3-fp8-4step-pdmd" : undefined) || config?.videoModel || config?.model;
     const profile = getModelProfile(effectiveModelId) || videoMinimaxH3OmniProfile;
+
+    // 检查对应工作流中是否存在严格匹配 _meta.title === "step" 的采样步数槽位
+    const targetWorkflow =
+        (workflowId ? config?.channels?.flatMap((c) => c.workflows || []).find((w) => w.id === workflowId) : undefined)
+        || getWorkflowForModelProfile(profile.id);
+    const stepNodeInfo = targetWorkflow?.json ? findWorkflowStepNode(targetWorkflow.json) : null;
+    const effectiveStep = step !== undefined ? step : (config?.step !== undefined ? config.step : stepNodeInfo?.currentValue);
 
     const currentMode: "omni" | "frame" = videoMode || (profile.category === "frameVideo" ? "frame" : (config?.videoMode === "frame" ? "frame" : "omni"));
 
@@ -125,6 +139,13 @@ export function VideoSettingsPanel({
     const handleDurationChange = (val: number) => {
         onParamChange?.({ seconds: String(val), duration: val });
         onConfigChange?.("videoSeconds", String(val));
+    };
+
+    const handleStepChange = (val: number | null) => {
+        if (val === null || isNaN(val)) return;
+        const intVal = Math.round(val);
+        onParamChange?.({ step: intVal });
+        onConfigChange?.("step", String(intVal));
     };
 
     return (
@@ -266,6 +287,26 @@ export function VideoSettingsPanel({
                         />
                     </div>
                 </SettingGroup>
+
+                {/* 4. 采样步数 (仅在检测到当前工作流包含 _meta.title === "step" 槽位时呈现) */}
+                {stepNodeInfo && (
+                    <SettingGroup title={`采样步数: ${effectiveStep ?? stepNodeInfo.currentValue} 步`} color={theme.node.muted}>
+                        <div className="flex items-center justify-between gap-3">
+                            <InputNumber
+                                size="small"
+                                className="w-32"
+                                precision={0}
+                                step={1}
+                                value={effectiveStep ?? stepNodeInfo.currentValue}
+                                onChange={handleStepChange}
+                                placeholder="采样步数"
+                            />
+                            <span className="text-[11px] opacity-55">
+                                出厂基准: {stepNodeInfo.currentValue} 步
+                            </span>
+                        </div>
+                    </SettingGroup>
+                )}
             </div>
         </ImageSettingsTheme>
     );

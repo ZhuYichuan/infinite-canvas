@@ -142,6 +142,7 @@ export type AiConfig = {
     background: string;
     count: string;
     canvasImageCount: string;
+    step?: number;
     toolbar?: ToolbarConfig;
 };
 

@@ -101,6 +101,7 @@ export type CanvasNodeMetadata = {
     size?: string;
     quality?: string;
     seed?: number;
+    step?: number;
     background?: string;
     count?: number;
     textCount?: number;

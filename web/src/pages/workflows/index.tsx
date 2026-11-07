@@ -13,11 +13,12 @@ import {
     RefreshCw,
     RotateCcw,
     Save,
+    Sliders,
     Sparkles,
     Star,
     Workflow as WorkflowIcon,
 } from "lucide-react";
-import { App, Button, Empty, Input, Segmented, Select, Tag, Tooltip } from "antd";
+import { App, Button, Empty, Input, InputNumber, Segmented, Select, Tag, Tooltip } from "antd";
 
 import { ComfyFlowGraph } from "@/components/workflow-graph/comfy-flow-graph";
 
@@ -33,6 +34,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import {
     fetchComfyuiModels,
     findWorkflowSelectNodes,
+    findWorkflowStepNode,
     updateWorkflowNodeInput,
     type ComfyuiModelItem,
     type ComfyuiWorkflowJson,
@@ -175,6 +177,20 @@ export default function WorkflowsPage() {
     const selectNodes = useMemo(() => {
         return findWorkflowSelectNodes(currentJson);
     }, [currentJson]);
+
+    // 提取当前正在编辑工作流中的采样步数节点（严格 _meta.title === "step"）
+    const stepNode = useMemo(() => {
+        return findWorkflowStepNode(currentJson);
+    }, [currentJson]);
+
+    // 修改采样步数
+    const handleStepChange = (nextValue: number | null) => {
+        if (!stepNode || nextValue === null || isNaN(nextValue)) return;
+        const intVal = Math.round(nextValue);
+        const nextJson = updateWorkflowNodeInput(currentJson, stepNode.nodeId, stepNode.inputKey, intVal);
+        setCurrentJson(nextJson);
+        setIsDirty(true);
+    };
 
     // 独立缓存各分类模型（例如 diffusion_models, clip / text_encoders）
     const [modelsMap, setModelsMap] = useState<
@@ -496,6 +512,47 @@ export default function WorkflowsPage() {
 
                         {/* 主内容区域 */}
                         <div className="thin-scrollbar flex-1 overflow-y-auto p-6 space-y-6">
+                            {/* 采样步数 (step 槽位) 可视化配置卡片 (严格按 _meta.title === "step" 槽位驱动) */}
+                            {stepNode && (
+                                <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs dark:border-stone-800 dark:bg-stone-900/50">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Sliders className="size-4 text-purple-500" />
+                                            <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                                                {t("workflowsPage.stepConfigTitle")}
+                                            </span>
+                                        </div>
+                                        <Tag color="purple" className="text-xs font-mono">
+                                            Node #{stepNode.nodeId} · {stepNode.classType || "PrimitiveInt"}
+                                        </Tag>
+                                    </div>
+
+                                    <div className="rounded-xl border border-stone-200/80 bg-stone-50/50 p-4 dark:border-stone-800 dark:bg-stone-800/40">
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <span className="text-xs font-medium text-stone-700 dark:text-stone-300">
+                                                {t("workflowsPage.stepLabel")}
+                                            </span>
+                                            <span className="text-[11px] text-stone-400">
+                                                槽位属性：<code>_meta.title = &quot;step&quot;</code>（参数字段 <code>{stepNode.inputKey}</code>）
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <InputNumber
+                                                className="w-48"
+                                                precision={0}
+                                                step={1}
+                                                value={stepNode.currentValue}
+                                                onChange={handleStepChange}
+                                                placeholder={t("workflowsPage.stepPlaceholder")}
+                                            />
+                                            <span className="text-xs text-stone-400">
+                                                {t("workflowsPage.stepConfigDesc")}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* 大模型可视化选择核心卡片（严格分别调用独立接口） */}
                             <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs dark:border-stone-800 dark:bg-stone-900/50">
                                 <div className="mb-4 flex items-center justify-between">

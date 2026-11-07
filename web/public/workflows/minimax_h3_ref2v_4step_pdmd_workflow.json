@@ -1142,7 +1142,7 @@
           ]
         }
       ],
-      "title": "4步",
+      "title": "step",
       "properties": {
         "Node name for S&R": "PrimitiveInt",
         "cnr_id": "comfy-core",

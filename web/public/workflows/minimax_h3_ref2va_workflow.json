@@ -1154,7 +1154,7 @@
           ]
         }
       ],
-      "title": "4步",
+      "title": "step",
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.30.0",
