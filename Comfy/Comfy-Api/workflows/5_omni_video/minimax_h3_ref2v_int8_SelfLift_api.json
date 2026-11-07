@@ -1,0 +1,579 @@
+{
+  "1": {
+    "inputs": {
+      "filename_prefix": "video/MiniMax_H3",
+      "format": "auto",
+      "format.codec": "auto",
+      "codec": "auto",
+      "video": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "output_video"
+    }
+  },
+  "5": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "6": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": [
+        "189",
+        0
+      ],
+      "vae": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE解码（音频）"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "189",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "9": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "K采样器选择"
+    }
+  },
+  "10": {
+    "inputs": {
+      "scheduler": "simple",
+      "steps": [
+        "74",
+        0
+      ],
+      "denoise": 1,
+      "model": [
+        "201",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "基本调度器"
+    }
+  },
+  "13": {
+    "inputs": {
+      "unet_name": "Minimax-h3_Singularity_ref2va_v1.3_int8.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "14": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "16": {
+    "inputs": {
+      "fps": 24,
+      "bit_depth": 8,
+      "color_space": "sRGB",
+      "codec": "auto",
+      "images": [
+        "8",
+        0
+      ],
+      "audio": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "创建视频"
+    }
+  },
+  "17": {
+    "inputs": {
+      "prompt": [
+        "18",
+        0
+      ],
+      "width": [
+        "120",
+        0
+      ],
+      "height": [
+        "121",
+        0
+      ],
+      "length": [
+        "126",
+        1
+      ],
+      "ref_image_size": "match",
+      "clip": [
+        "14",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "audio_vae": [
+        "6",
+        0
+      ],
+      "ref_images.ref_image_0": [
+        "21",
+        0
+      ],
+      "ref_images.ref_image_1": [
+        "68",
+        0
+      ],
+      "ref_images.ref_image_2": [
+        "69",
+        0
+      ],
+      "ref_images.ref_image_3": [
+        "93",
+        0
+      ],
+      "ref_images.ref_image_4": [
+        "94",
+        0
+      ],
+      "ref_images.ref_image_5": [
+        "92",
+        0
+      ],
+      "ref_images.ref_image_6": [
+        "98",
+        0
+      ],
+      "ref_videos.ref_video_0": [
+        "100",
+        0
+      ],
+      "ref_videos.ref_video_1": [
+        "103",
+        0
+      ],
+      "ref_videos.ref_video_2": [
+        "106",
+        0
+      ],
+      "ref_audios.ref_audio_0": [
+        "108",
+        0
+      ],
+      "ref_audios.ref_audio_1": [
+        "110",
+        0
+      ],
+      "ref_audios.ref_audio_2": [
+        "112",
+        0
+      ],
+      "ref_images.ref_image_7": [
+        "96",
+        0
+      ],
+      "ref_images.ref_image_8": [
+        "97",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3ReferenceToVideo",
+    "_meta": {
+      "title": "MiniMax H3 参考转视频"
+    }
+  },
+  "18": {
+    "inputs": {
+      "value": "subject_definitions:\n<Subject 1> is the young woman with long, straight black hair, oval face, and slender build depicted in <Picture 1> and the four-panel design sheet <Picture 2>. She is shown wearing a floral, V-neck, short-sleeved wrap dress with a ruffled hem, white lace-trimmed ankle socks, and strappy beige sandals. Her physical features, including her hair style and facial structure, are defined across the views in <Picture 2>.\n\nsummary:\n[reference generation] <Subject 1> dances on a clean, sunlit street in Shanghai.\n\nretention_analysis:\n<Subject 1>: fully_preserved - the character's long black hair, slender facial features, and the floral wrap dress from <Picture 1> are maintained as she performs dance movements.\n\ndetailed_description:\nThe target video is in a realistic style. [Shot 1] The shot begins with a medium-long shot of <Subject 1> standing on a quiet, clean-swept Shanghai street, with historic colonial-style buildings and leafy trees visible in the soft-focus background. <Subject 1> has long, straight black hair cascading down her shoulders and wears her floral, V-neck, short-sleeved wrap dress with a ruffled hem. She begins to dance, her movements fluid and light, starting with a graceful sweep of her arms that highlights the floral pattern of her dress. As she pivots, the skirt of her wrap dress sways, revealing her white lace-trimmed ankle socks and beige strappy sandals. The camera slowly arcs around her, keeping her centered as she smiles warmly, her expression relaxed and joyful. The afternoon sunlight filters through the street-side trees, casting dappled, soft shadows on the pavement. She executes a small, playful turn, her hair shifting naturally with the motion. The scene is calm, with only the distant, muffled sound of city life, creating a sense of intimacy and grace as she continues her rhythmic, gentle dance, maintaining her composed posture and the elegant silhouette established in <Picture 1>. The shot ends with her striking a final, soft pose, facing the camera with a bright, genuine smile as the camera holds steady on her and the surrounding architectural details.\n\noverall_soundscape:\nThe soundscape features the subtle, ambient city sounds of a quiet Shanghai street, including the soft rustle of leaves and distant, faint traffic, providing a realistic background to the dance.\n\nnon_diegetic_music:\nA light, upbeat acoustic guitar melody plays softly, maintaining a gentle and clean tempo that complements the graceful dance movements."
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "prompt"
+    }
+  },
+  "21": {
+    "inputs": {
+      "image": "-st9KQ9__ref_1.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_01"
+    }
+  },
+  "68": {
+    "inputs": {
+      "image": "人物站姿.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_02"
+    }
+  },
+  "69": {
+    "inputs": {
+      "image": "Qwen_image_2.1_00107.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_03"
+    }
+  },
+  "74": {
+    "inputs": {
+      "value": 6
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "step"
+    }
+  },
+  "92": {
+    "inputs": {
+      "image": "33.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_06"
+    }
+  },
+  "93": {
+    "inputs": {
+      "image": "3.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_04"
+    }
+  },
+  "94": {
+    "inputs": {
+      "image": "7.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_05"
+    }
+  },
+  "96": {
+    "inputs": {
+      "image": "7.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_08"
+    }
+  },
+  "97": {
+    "inputs": {
+      "image": "ChatGPT Image 2026年7月31日 15_56_44.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_09"
+    }
+  },
+  "98": {
+    "inputs": {
+      "image": "7.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "ref_image_07"
+    }
+  },
+  "99": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_01"
+    }
+  },
+  "100": {
+    "inputs": {
+      "video": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "102": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_02"
+    }
+  },
+  "103": {
+    "inputs": {
+      "video": [
+        "102",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "105": {
+    "inputs": {
+      "file": "18541c91887458b15a28bbd7ede22c3e.mp4",
+      "video-preview": ""
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "ref_video_03"
+    }
+  },
+  "106": {
+    "inputs": {
+      "video": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "GetVideoComponents",
+    "_meta": {
+      "title": "获取视频元素"
+    }
+  },
+  "108": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_01"
+    }
+  },
+  "110": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_02"
+    }
+  },
+  "112": {
+    "inputs": {
+      "audio": "18541c91887458b15a28bbd7ede22c3e.mp4"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "ref_audio_03"
+    }
+  },
+  "120": {
+    "inputs": {
+      "Number": "1088"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "121": {
+    "inputs": {
+      "Number": "1920"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "125": {
+    "inputs": {
+      "value": 874613846107062
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "seed"
+    }
+  },
+  "126": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "127",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "数学表达式"
+    }
+  },
+  "127": {
+    "inputs": {
+      "value": 5
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "duration"
+    }
+  },
+  "189": {
+    "inputs": {
+      "seed": [
+        "125",
+        0
+      ],
+      "cfg": 1,
+      "transition_step": 4,
+      "lowres_scale": 0.5,
+      "rho": 0,
+      "w_min": 1,
+      "w_max": 1,
+      "upscaler_model": "minimax_h3_latent_upscaler_3d_conv_v1_fp32.pth",
+      "highres_tiling": false,
+      "upscaler_unload": true,
+      "model": [
+        "201",
+        0
+      ],
+      "positive": [
+        "17",
+        0
+      ],
+      "negative": [
+        "192",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "latent_image": [
+        "17",
+        1
+      ],
+      "sampler": [
+        "9",
+        0
+      ],
+      "sigmas": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "SelfLiftH3Sampler",
+    "_meta": {
+      "title": "SelfLift Progressive Sampler (MiniMax H3)"
+    }
+  },
+  "192": {
+    "inputs": {
+      "conditioning": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "条件零化"
+    }
+  },
+  "201": {
+    "inputs": {
+      "reuse_threshold": 0.2,
+      "start_percent": 0.15,
+      "end_percent": 0.95,
+      "verbose": true,
+      "model": [
+        "204",
+        0
+      ]
+    },
+    "class_type": "EasyCache",
+    "_meta": {
+      "title": "EasyCache"
+    }
+  },
+  "203": {
+    "inputs": {
+      "lora_name": "pika_h3_flex_ref2va_v1_bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "lora1"
+    }
+  },
+  "204": {
+    "inputs": {
+      "lora_name": "H3-Licon-VBVR-I2V.safetensors",
+      "strength_model": 1,
+      "model": [
+        "203",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "lora2"
+    }
+  }
+}

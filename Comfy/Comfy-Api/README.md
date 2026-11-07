@@ -14,8 +14,8 @@
 | **2** | **图生图 (I2I)** | [图生图工作流](./workflows/2_i2i/) | `Flux2.Dev`<br/>`Qwen-Image-2.1` | `diffusion_models/flux2_dev_fp8mixed.safetensors`<br/>`diffusion_models/qwen_image_2.1_bf16.safetensors`<br/>`loras/Flux2TurboComfyv2.safetensors`<br/>`clip/qwen3vl_8b_bf16.safetensors` | 8~16 步 (Flux2)<br/>25 步 (Qwen2.1) | 12G ~ 24G | Flow Matching 顶级质感 / 原生支持最多 10 张参考图联合垫图与角色风格强迁移 |
 | **3** | **局部编辑 (Inpaint)** | [局部编辑工作流](./workflows/3_inpaint/) | `Qwen-Image Inpaint` | `diffusion_models/qwen_image_fp8_e4m3fn.safetensors`<br/>`loras/Qwen-Image-Lightning-4steps-V1.0.safetensors`<br/>`text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors`<br/>`vae/qwen_image_vae.safetensors` | 4 步 | 8G ~ 12G | Qwen2.5-VL 视觉理解、4 步 Lightning 极速重绘、LayerStyle 平滑边缘无缝融入 |
 | **4** | **文本生成 / 反推 (Text)** | [文本生成工作流](./workflows/4_text/) | `Qwen3.5 4B` | `diffusion_models/qwen3.5_4b_bf16.safetensors` | 自回归 | 4G ~ 6G | 轻量端侧 4B 语言模型、支持提示词自动扩写与图像反推提示词、数据纯本地离线保密 |
-| **5** | **全能参考视频 (Omni Video)** | [全能参考视频工作流](./workflows/5_omni_video/) | `MiniMax H3 ref2va` | **INT8版**: `diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors`（全量未剪枝，约 34 GB）<br/>**FP8版**: `diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_ref2va_bf16.safetensors`<br/>**LoRA**: `loras/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors`<br/>`loras/pika_h3_flex_ref2va_v1_bf16.safetensors`<br/>`loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>**Text**: `text_encoders/qwen3vl_32b_minimax_h3...safetensors`<br/>**VAE**: `minimax_h3_video_vae_fp16`, `minimax_h3_audio_vae_fp32` | 4步 (PDMD INT8/FP8)<br/>6步 (Pika INT8)<br/>20步 (FP8)<br/>8步 (Turbo)<br/>20步 (BF16高精) | 16G ~ 24G+ | 首创多模态参考（最多 9 图 + 3 视频 + 3 音频）、原生音画潜空间联合生成、支持 EasyCache 去噪缓存与 4 步 PDMD 极速出片、INT8 旋转量化版用于无 FP8 硬件加速环境、Pika Flex 6 步蒸馏换取更高质感 |
-| **6** | **首尾帧视频 (Frame Video)** | [首尾帧视频工作流](./workflows/6_frame_video/) | `MiniMax H3 fl2va` | **INT8版**: `diffusion_models/minimax_h3_fl2va_int8_convrot.safetensors`（全量未剪枝，约 34 GB）<br/>**FP8版**: `diffusion_models/minimax_h3_fl2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_fl2va_bf16.safetensors`<br/>**LoRA**: `loras/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors`<br/>`loras/pika_h3_flex_fl2va_v1_bf16.safetensors`<br/>`loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>辅助模型同全能视频 | 4步 (PDMD INT8/FP8)<br/>6步 (Pika INT8)<br/>20步 (FP8)<br/>8步 (Turbo)<br/>20步 (BF16高精) | 16G ~ 24G+ | 精准锚定起始帧与结束帧、运镜与动作平滑插值过渡、支持 4 步 PDMD 极速首尾帧插值、音画同步生成、INT8 旋转量化版用于无 FP8 硬件加速环境、Pika Flex 6 步蒸馏换取更平滑过渡 |
+| **5** | **全能参考视频 (Omni Video)** | [全能参考视频工作流](./workflows/5_omni_video/) | `MiniMax H3 ref2va` | **INT8版**: `diffusion_models/Minimax-h3_Singularity_ref2va_v1.3_int8.safetensors` (SelfLift)<br/>`diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors` (Convrot, 约 34 GB)<br/>**FP8版**: `diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_ref2va_bf16.safetensors`<br/>**上采样器**: `latent_upscaler/minimax_h3_latent_upscaler_3d_conv_v1_fp32.pth`<br/>**LoRA**: `loras/pika_h3_flex_ref2va_v1_bf16.safetensors`<br/>`loras/H3-Licon-VBVR-I2V.safetensors`<br/>`loras/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors`<br/>`loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>**Text**: `text_encoders/qwen3vl_32b_minimax_h3...safetensors`<br/>**VAE**: `minimax_h3_video_vae_fp16`, `minimax_h3_audio_vae_fp32` | 4步 (PDMD INT8/FP8)<br/>6步 (SelfLift INT8)<br/>6步 (Pika INT8)<br/>20步 (FP8)<br/>8步 (Turbo)<br/>20步 (BF16高精) | 16G ~ 24G+ | 首创多模态参考（最多 9 图 + 3 视频 + 3 音频）、原生音画潜空间联合生成、支持 EasyCache 去噪缓存与 4 步 PDMD 极速出片、SelfLift 渐进式超分采样打破高分辨率显存瓶颈、INT8 旋转量化版用于无 FP8 硬件加速环境、Pika Flex 6 步蒸馏换取更高质感 |
+| **6** | **首尾帧视频 (Frame Video)** | [首尾帧视频工作流](./workflows/6_frame_video/) | `MiniMax H3 fl2va` | **INT8版**: `diffusion_models/Minimax-h3_Singularity_ref2va_v1.3_int8.safetensors` (SelfLift)<br/>`diffusion_models/minimax_h3_fl2va_int8_convrot.safetensors` (Convrot, 约 34 GB)<br/>**FP8版**: `diffusion_models/minimax_h3_fl2va_pruned_fp8_scaled.safetensors`<br/>**BF16版**: `diffusion_models/minimax_h3_fl2va_bf16.safetensors`<br/>**上采样器**: `latent_upscaler/minimax_h3_latent_upscaler_3d_conv_v1_fp32.pth`<br/>**LoRA**: `loras/pika_h3_flex_fl2va_v1_bf16.safetensors`<br/>`loras/H3-Licon-VBVR-I2V.safetensors`<br/>`loras/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors`<br/>`loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1...safetensors`<br/>辅助模型同全能视频 | 4步 (PDMD INT8/FP8)<br/>6步 (SelfLift INT8)<br/>6步 (Pika INT8)<br/>20步 (FP8)<br/>8步 (Turbo)<br/>20步 (BF16高精) | 16G ~ 24G+ | 精准锚定起始帧与结束帧、运镜与动作平滑插值过渡、支持 4 步 PDMD 极速首尾帧插值、SelfLift 渐进超分低显存高清过渡、音画同步生成、INT8 旋转量化版用于无 FP8 硬件加速环境、Pika Flex 6 步蒸馏换取更平滑过渡 |
 | **7** | **视频深度估计 (Depth Video)** | [深度估计工作流](./workflows/7_depth_video/) | `Video Depth Anything Small` | `~/.cache/huggingface/hub/models--depth-anything--Video-Depth-Anything-Small/` | 单目时序前向推理 | 3G (Fast) ~ 12G (Full) | 「复制走位与运镜，不复制演员与画风」：时序连续深度视频提取、32帧滑动窗口平滑对齐、居中裁切防黑边、供 H3 或 ControlNet 强结构参考 |
 | **8** | **音乐与音频 (Audio / Music)** | [音频生成工作流](./workflows/10_audio/) | `MiniMax Music 03` | `diffusion_models/minimax_music3_dit_fp16.safetensors`<br/>`text_encoders/minimax_music3_text_encoder_pruned_int8_convrot.safetensors`<br/>`vae/minimax_music3_dav.safetensors` | 30 步 | 8G ~ 16G+ | 扩散音乐模型、双文本驱动（风格三段式 + 结构歌词）、支持最长 5 分钟完整歌曲与纯伴奏 |
 | **9** | **视频人脸精修 (Face Refine)** | [人脸精修工作流](./workflows/11_h3_face_refine/) | `MiniMax H3 ref2va`<br/>+ Turbo LoRA | `diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors`<br/>`loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors`<br/>`ultralytics/segm/person_yolov8m-seg.pt` | 8 步 (Turbo) | 16G ~ 24G+ | 针对生成视频远景小脸与微表情崩坏，基于 YOLO 时序追踪裁剪、按帧像素尺寸自适应去噪与原生口型音频锁无缝修复 |
@@ -50,6 +50,8 @@ Comfy/Comfy-Api/
     │   └── qwen3_5_text_workflow.json
     ├── 5_omni_video/                       # 5. 全能参考视频工作流 (Omni-modal Video)
     │   ├── README.md
+    │   ├── minimax_h3_ref2v_int8_SelfLift_api.json           # INT8 渐进式超分 6 步 (SelfLiftH3Sampler + 双 LoRA)
+    │   ├── minimax_h3_ref2v_int8_SelfLift_workflow.json      # 同上 UI 工作流
     │   ├── minimax_h3_ref2v_int8_convrot_4step_pdmd_api.json # INT8 旋转量化 4 步极速 (无 FP8 硬件加速, 带 EasyCache)
     │   ├── minimax_h3_ref2v_int8_convrot_4step_pdmd_workflow.json # INT8 量化 4 步极速 UI 工作流
     │   ├── minimax_h3_ref2v_int8_convrot_6step_pika_api.json     # INT8 旋转量化 + Pika Flex 6 步蒸馏
@@ -62,6 +64,8 @@ Comfy/Comfy-Api/
     │   └── minimax_h3_ref2va_workflow.json            # UI 工作流
     ├── 6_frame_video/                      # 6. 首尾帧视频工作流 (First-Last Frame Video)
     │   ├── README.md
+    │   ├── minimax_H3_i2v&t2v_int8_SelfLift_api.json         # INT8 渐进式超分 6 步 (SelfLiftH3Sampler + 双 LoRA)
+    │   ├── minimax_H3_i2v&t2v_int8_SelfLift_workflow.json    # 同上 UI 工作流
     │   ├── minimax_h3_fl2va_int8_convrot_4step_pdmd_api.json # INT8 旋转量化 4 步极速 (无 FP8 硬件加速)
     │   ├── minimax_h3_fl2va_int8_convrot_4step_pdmd_workflow.json # INT8 量化 4 步极速 UI 工作流
     │   ├── minimax_h3_fl2va_int8_convrot_6step_pika_api.json     # INT8 旋转量化 + Pika Flex 6 步蒸馏
@@ -104,9 +108,10 @@ Comfy/Comfy-Api/
 ### 专用与进阶扩展插件
 | 序号 | 插件名称 | GitHub 仓库 | 依赖工作流 | 作用说明 |
 | :---: | :--- | :--- | :--- | :--- |
-| 6 | **ComfyUI-ReShot** | `https://github.com/maosika-ai/ComfyUI-ReShot` | 视频深度估计 | 单目视频深度时序估计、运镜走位提取 (`ReShotDepthVideo`) |
-| 7 | **ComfyUI-MiniMaxH3-Myang** | `https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang` | 视频人脸追踪精修 | 人脸智能追踪裁剪、潜空间注入、原生口型音频锁与按帧去噪缝合 |
-| 8 | **ComfyUI-VideoHelperSuite** | `https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite` | 视频人脸追踪精修 | 视频流加载与音画组合封装输出节点 (`LoadVideo`, `VHS_VideoCombine`) |
+| 6 | **comfyui-SelfLift** | `https://github.com/facok/comfyui-SelfLift` | 全能视频 / 首尾帧视频 | 渐进式超分去噪采样器 (`SelfLiftH3Sampler`)，低分辨率启动后跃升精修 |
+| 7 | **ComfyUI-ReShot** | `https://github.com/maosika-ai/ComfyUI-ReShot` | 视频深度估计 | 单目视频深度时序估计、运镜走位提取 (`ReShotDepthVideo`) |
+| 8 | **ComfyUI-MiniMaxH3-Myang** | `https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang` | 视频人脸追踪精修 | 人脸智能追踪裁剪、潜空间注入、原生口型音频锁与按帧去噪缝合 |
+| 9 | **ComfyUI-VideoHelperSuite** | `https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite` | 视频人脸追踪精修 | 视频流加载与音画组合封装输出节点 (`LoadVideo`, `VHS_VideoCombine`) |
 
 ### 一键克隆命令（在 ComfyUI `custom_nodes/` 目录执行）
 
@@ -120,6 +125,7 @@ git clone https://github.com/whmc76/ComfyUI-UniversalToolkit.git
 git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
 
 # 进阶与专用套件（按需）
+git clone https://github.com/facok/comfyui-SelfLift.git
 git clone https://github.com/maosika-ai/ComfyUI-ReShot.git
 python -m pip install -r ComfyUI-ReShot/requirements.txt
 git clone https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang.git

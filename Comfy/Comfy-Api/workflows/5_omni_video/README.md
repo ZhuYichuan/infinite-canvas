@@ -6,13 +6,14 @@
 
 | 规格类型 | API 工作流（画布直连） | 适用环境与特点 |
 | :--- | :--- | :--- |
+| **INT8 6步 SelfLift (渐进超分版)** | [minimax_h3_ref2v_int8_SelfLift_api.json](./minimax_h3_ref2v_int8_SelfLift_api.json) | INT8 Singularity 底模 + **SelfLift 渐进式超分采样**（`SelfLiftH3Sampler` 结合 `minimax_h3_latent_upscaler_3d_conv_v1_fp32.pth`，前期低分辨率快速构建结构，跃升后全分辨率精修）+ **双 LoRA 协同**（Pika Flex + `H3-Licon-VBVR-I2V`）+ EasyCache，6 步采样（由 `step` 节点控制），显著减轻高分辨率显存瓶颈 |
 | **INT8 6步 Pika (质感版)** | [minimax_h3_ref2v_int8_convrot_6step_pika_api.json](./minimax_h3_ref2v_int8_convrot_6step_pika_api.json) | INT8 旋转量化底模 + **Pika Flex 蒸馏 LoRA**（`pika_h3_flex_ref2va_v1_bf16`，约 1.96 GB），采样 6 步（由节点 `step` 控制），同样接入 EasyCache；相对 4 步 PDMD 换取更充分的细节与光影演变 |
 | **INT8 4步 PDMD (无 FP8 硬件版)** | [minimax_h3_ref2v_int8_convrot_4step_pdmd_api.json](./minimax_h3_ref2v_int8_convrot_4step_pdmd_api.json) | INT8 旋转量化底模（`int8_convrot`，全量未剪枝，约 34 GB）替换 FP8 裁剪底模，同样挂载 PDMD 4步蒸馏 LoRA + EasyCache，采样参数与 FP8 4步 PDMD 完全一致，用于未启用 FP8 硬件加速的运行环境 |
 | **FP8 4步 PDMD (极致极速版)** | [minimax_h3_ref2v_4step_pdmd_api.json](./minimax_h3_ref2v_4step_pdmd_api.json) | 挂载 PDMD 4步蒸馏 LoRA + EasyCache 特征缓存加速，4 步极速出片，显存占用低，推理耗时极短 |
 | **FP8 20步 (默认推荐)** | [minimax_h3_ref2va_fp8_20step_api.json](./minimax_h3_ref2va_fp8_20step_api.json) | 显存优化版，适合 RTX 3090/4090 或 16G~24G 单卡消费级与常规云端 |
 | **BF16 8步 Turbo (极速版)** | [minimax_h3_ref2va_bf16_8step_turbo_api.json](./minimax_h3_ref2va_bf16_8step_turbo_api.json) | 挂载 Turbo LoRA 加速，8 步极速出片，适合 24G+ / A100 / H100 专业显卡 |
 | **BF16 20步 (全量高精度)** | [minimax_h3_ref2va_bf16_20step_api.json](./minimax_h3_ref2va_bf16_20step_api.json) | 完整精度的 20 步标准采样，画质上限最高 |
-| **UI 可视化工作流** | [minimax_h3_ref2v_4step_pdmd_workflow.json](./minimax_h3_ref2v_4step_pdmd_workflow.json)<br/>[minimax_h3_ref2v_int8_convrot_4step_pdmd_workflow.json](./minimax_h3_ref2v_int8_convrot_4step_pdmd_workflow.json)<br/>[minimax_h3_ref2va_workflow.json](./minimax_h3_ref2va_workflow.json) | ComfyUI 拖拽查看与调试用的完整节点图（含 4 步 PDMD、INT8 4 步 PDMD 与标准版）。<br/>⚠️ `minimax_h3_ref2v_int8_convrot_6step_pika_workflow.json` 目前是 API 格式的副本（无 `nodes`/`links`，无法直接拖入 ComfyUI），需在 ComfyUI 中重新导出 UI 图后替换 |
+| **UI 可视化工作流** | [minimax_h3_ref2v_int8_SelfLift_workflow.json](./minimax_h3_ref2v_int8_SelfLift_workflow.json)<br/>[minimax_h3_ref2v_4step_pdmd_workflow.json](./minimax_h3_ref2v_4step_pdmd_workflow.json)<br/>[minimax_h3_ref2v_int8_convrot_4step_pdmd_workflow.json](./minimax_h3_ref2v_int8_convrot_4step_pdmd_workflow.json)<br/>[minimax_h3_ref2va_workflow.json](./minimax_h3_ref2va_workflow.json) | ComfyUI 拖拽查看与调试用的完整节点图（含 SelfLift、4 步 PDMD、INT8 4 步 PDMD 与标准版）。<br/>⚠️ `minimax_h3_ref2v_int8_convrot_6step_pika_workflow.json` 目前是 API 格式的副本（无 `nodes`/`links`，无法直接拖入 ComfyUI），需在 ComfyUI 中重新导出 UI 图后替换 |
 
 ---
 
@@ -25,7 +26,8 @@
 ### 必要权重文件（存放在 ComfyUI `models/` 目录）
 
 #### 1. 核心扩散模型 (`models/diffusion_models/`)
-- **INT8 规格 (无 FP8 硬件加速)**: `models/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors`（全量未剪枝，约 34 GB）
+- **INT8 Singularity 规格 (用于 SelfLift)**: `models/diffusion_models/Minimax-h3_Singularity_ref2va_v1.3_int8.safetensors`
+- **INT8 Convrot 规格 (无 FP8 硬件加速)**: `models/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors`（全量未剪枝，约 34 GB）
 - **FP8 规格**: `models/diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors`
 - **BF16 规格**: `models/diffusion_models/minimax_h3_ref2va_bf16.safetensors`
 
@@ -37,16 +39,21 @@
 - **视频 VAE**: `models/vae/minimax_h3_video_vae_fp16.safetensors`
 - **音频 VAE**: `models/vae/minimax_h3_audio_vae_fp32.safetensors`
 
-#### 4. 加速 LoRA (`models/loras/`)
-- **4 步 PDMD 规格**: `models/loras/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors`
+#### 4. 潜空间上采样模型 (`models/latent_upscaler/` 或 `models/upscale_models/`)
+- **SelfLift 潜空间 3D 上采样器**: `minimax_h3_latent_upscaler_3d_conv_v1_fp32.pth`
+
+#### 5. 加速与微调 LoRA (`models/loras/`)
+- **SelfLift 辅助 LoRA**: `models/loras/H3-Licon-VBVR-I2V.safetensors`
 - **6 步 Pika 规格**: `models/loras/pika_h3_flex_ref2va_v1_bf16.safetensors`（约 1.96 GB）
+- **4 步 PDMD 规格**: `models/loras/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors`
 - **8 步 Turbo 规格**: `models/loras/minimax_h3_ref2v_lightx2v_turbo_4step_v0.1_resized_avg_rank_20_bf16.safetensors`
 
 ### 依赖扩展插件
 
-1. **ComfyUI-KJNodes**：`https://github.com/kijai/ComfyUI-KJNodes`（用于音视频组件多模态解包 `GetVideoComponents`）
-2. **ComfyLiterals**：`https://github.com/M1kep/ComfyLiterals`（提供尺寸与步数字面量参数 `PrimitiveInt`, `PrimitiveFloat`）
-3. **EasyCache**：ComfyUI 原生核心内置特征缓存机制（用于 4 步 PDMD 工作流中的去噪缓存加速，无需额外安装第三方插件）
+1. **comfyui-SelfLift**：`https://github.com/facok/comfyui-SelfLift`（提供 `SelfLiftH3Sampler` 渐进式多模态采样器节点）
+2. **ComfyUI-KJNodes**：`https://github.com/kijai/ComfyUI-KJNodes`（用于音视频组件多模态解包 `GetVideoComponents`）
+3. **ComfyLiterals**：`https://github.com/M1kep/ComfyLiterals`（提供尺寸与步数字面量参数 `PrimitiveInt`, `PrimitiveFloat`）
+4. **EasyCache**：ComfyUI 原生核心内置特征缓存机制（用于去噪缓存加速，无需额外安装第三方插件）
 
 ---
 
@@ -57,10 +64,10 @@
 2. **原生声画同步联合生成**：
    - 区别于传统“先生成无声视频再后配音”，MiniMax H3 扩散过程同时生成音画潜空间，音效与画面动作具有精准的原生节奏同步。
 3. **严格硬件锁死分辨率矩阵**：
-   - 遵循规范，视频尺寸严禁手动输入数字，严格锁定在 0.2M~0.98M 的 9 档硬件对齐预设中（16:9 与 9:16 对称对调，上限 0.98 MP）。
+   - 遵循规范，视频尺寸严禁手动输入数字，严格锁定在 0.4M~2.0M 的 12 档硬件对齐预设中（16:9 与 9:16 对称对调，默认中位数档位 0.98 MP `1344x768` / `768x1344`）。
 4. **多档规格自由切换**：
-   - 支持「INT8 6步 Pika（质感）」、「INT8 4步 PDMD（无 FP8 硬件加速）」、「FP8 4步 PDMD（极致极速）」、「FP8 20步（标准显存优化）」、「BF16 8步 Turbo（性能加速）」与「BF16 20步（全量高精）」工作流，兼顾个人电脑单卡极速体验、专业服务器算力最大化与极致画质输出。
+   - 支持「INT8 6步 SelfLift（渐进超分版）」、「INT8 6步 Pika（质感）」、「INT8 4步 PDMD（无 FP8 硬件加速）」、「FP8 4步 PDMD（极致极速）」、「FP8 20步（标准显存优化）」、「BF16 8步 Turbo（性能加速）」与「BF16 20步（全量高精）」工作流，兼顾个人电脑单卡极速体验、专业服务器算力最大化与极致画质输出。
 5. **步数由工作流内节点控制**：
-   - 采样步数不写死在调度器上，由 `BasicScheduler.steps` 引用的 `PrimitiveInt` 节点提供，改步数无需重连图。各规格的节点标题不同：4 步 PDMD 为 `4步`（值 4），6 步 Pika 为 `step`（值 6）。
-6. **蒸馏 LoRA 可替换**：
-   - 同一套底模与参考插槽结构，仅替换 LoRA 即可在「PDMD 4 步」与「Pika Flex 6 步」两种蒸馏策略间切换。
+   - 采样步数不写死在调度器上，由 `BasicScheduler.steps` 引用的 `PrimitiveInt` 节点提供，改步数无需重连图。4 步 PDMD 为 `4步`（值 4），6 步 Pika 与 6 步 SelfLift 为 `step`（值 6）。
+6. **双 LoRA 与渐进式采样协同**：
+   - SelfLift 工作流将 Pika Flex 蒸馏 LoRA 与 `H3-Licon-VBVR-I2V` 串接注入，在降低显存压力的同时维持高分辨率画面稳定性和声画质感。
