@@ -24,6 +24,7 @@ import {
     videoMinimaxH3OmniFp8Profile,
     videoMinimaxH3OmniProfile,
     MINIMAX_H3_SIZES,
+    getDslMiddleSize,
     IMAGE_RESOLUTION_PRESETS,
     getImageDimensions,
     parseImageSizeTierAndRatio,
@@ -60,6 +61,8 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
         expect(profile?.capabilityConfig.references.maxVideos).toBe(3);
         expect(profile?.capabilityConfig.references.maxAudios).toBe(3);
         expect(profile?.capabilityConfig.size?.values).toEqual(MINIMAX_H3_SIZES);
+        expect(profile?.capabilityConfig.size?.values.length).toBe(28);
+        expect(profile?.capabilityConfig.size?.default).toBe("1280x736");
         expect(profile?.capabilityConfig.duration?.tags).toEqual([5, 10, 15]);
     });
 
@@ -125,6 +128,21 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
         expect(framePika.capabilityConfig).toEqual(framePdmd.capabilityConfig);
         expect(framePika.slotMapping).toEqual(framePdmd.slotMapping);
         expect(framePika.supportedTools).toEqual(framePdmd.supportedTools);
+    });
+
+    it("computes dynamic middle size via getDslMiddleSize for both 16:9 and 9:16", () => {
+        // Standard 14 tiers (28 entries) defaults to 0.9 MP tier (index 7: 1280x736)
+        expect(getDslMiddleSize(MINIMAX_H3_SIZES, "16:9")).toBe("1280x736");
+        expect(getDslMiddleSize(MINIMAX_H3_SIZES, "9:16")).toBe("736x1280");
+
+        // Custom odd tiers (e.g. 3 tiers: 608x352, 960x544, 1280x736 -> middle is 960x544)
+        const oddTiers = ["608x352", "352x608", "960x544", "544x960", "1280x736", "736x1280"];
+        expect(getDslMiddleSize(oddTiers, "16:9")).toBe("960x544");
+        expect(getDslMiddleSize(oddTiers, "9:16")).toBe("544x960");
+
+        // Empty array fallback
+        expect(getDslMiddleSize([], "16:9")).toBe("1280x736");
+        expect(getDslMiddleSize(undefined, "9:16")).toBe("736x1280");
     });
 
     it("resolves sibling models across omni/frame mode switches without dropping the INT8 family", () => {
@@ -371,18 +389,26 @@ describe("validateModelExecution (Fail-loud validation)", () => {
         ).toThrow("最多支持 3 个参考音频");
     });
 
-    it("rejects sizes outside the 9 hardware-aligned tiers", () => {
+    it("rejects sizes outside the 14 hardware-aligned tiers", () => {
         expect(() =>
             validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "1000x500" })
         ).toThrow("不支持尺寸 1000x500");
 
-        // Valid size should not throw
+        // Valid sizes in 14 tiers should not throw
         expect(() =>
             validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "1280x736" })
         ).not.toThrow();
 
         expect(() =>
             validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "736x1280" })
+        ).not.toThrow();
+
+        // 2.0 MP tier
+        expect(() =>
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "1920x1088" })
+        ).not.toThrow();
+        expect(() =>
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "1088x1920" })
         ).not.toThrow();
     });
 

@@ -1,5 +1,5 @@
 import type { WorkflowModelProfile } from "./types";
-import { MINIMAX_H3_SIZES } from "./video-minimax-h3-omni";
+import { MINIMAX_H3_SIZES, getDslMiddleSize } from "./video-minimax-h3-omni";
 
 /**
  * 通用首尾帧插值槽位映射契约（first_frame + last_frame 两图插值）
@@ -41,7 +41,7 @@ export const videoMinimaxH3FrameFp8PdmdProfile: WorkflowModelProfile = {
         size: {
             parameter: "size",
             values: MINIMAX_H3_SIZES,
-            default: "1280x736",
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
             allowCustom: false,
         },
         duration: {
@@ -87,7 +87,7 @@ export const videoMinimaxH3FrameFp8Profile: WorkflowModelProfile = {
         size: {
             parameter: "size",
             values: MINIMAX_H3_SIZES,
-            default: "1280x736",
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
             allowCustom: false,
         },
         duration: {
@@ -134,7 +134,7 @@ export const videoMinimaxH3FrameInt8PdmdProfile: WorkflowModelProfile = {
         size: {
             parameter: "size",
             values: MINIMAX_H3_SIZES,
-            default: "1280x736",
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
             allowCustom: false,
         },
         duration: {
@@ -180,7 +180,7 @@ export const videoMinimaxH3FrameInt8PikaProfile: WorkflowModelProfile = {
         size: {
             parameter: "size",
             values: MINIMAX_H3_SIZES,
-            default: "1280x736",
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
             allowCustom: false,
         },
         duration: {

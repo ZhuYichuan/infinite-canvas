@@ -11,6 +11,7 @@
     "text-workflow-model-dsl-spec",
     "audio-workflow-model-dsl-spec",
     "task-lifecycle-driver-spec",
+    "video-workflow-dsl-resolution-spec",
     "multimodal-video-workflow-spec",
     "canvas-data-structure",
     "local-codex-canvas"

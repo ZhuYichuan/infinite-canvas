@@ -1,7 +1,7 @@
 import type { WorkflowModelProfile } from "./types";
 
 /**
- * MiniMax H3 官方支持的 32 整数倍尺寸对齐档位（上限严格锁死在 0.98 MP）
+ * MiniMax H3 官方支持的 32 整数倍尺寸对齐档位（覆盖 0.2 MP ~ 2.0 MP 共 14 档）
  */
 export const MINIMAX_H3_SIZES: string[] = [
     "608x352", "352x608",     // 0.2 MP
@@ -11,9 +11,42 @@ export const MINIMAX_H3_SIZES: string[] = [
     "1056x608", "608x1056",   // 0.6 MP
     "1152x640", "640x1152",   // 0.7 MP
     "1216x672", "672x1216",   // 0.8 MP
-    "1280x736", "736x1280",   // 0.9 MP
+    "1280x736", "736x1280",   // 0.9 MP (中位数基准)
     "1344x768", "768x1344",   // 0.98 MP
+    "1376x768", "768x1376",   // 1.0 MP
+    "1504x832", "832x1504",   // 1.2 MP
+    "1664x928", "928x1664",   // 1.5 MP
+    "1824x1024", "1024x1824", // 1.8 MP
+    "1920x1088", "1088x1920", // 2.0 MP
 ];
+
+/**
+ * 依据分辨率列表动态提取排序后的档位，并获取其中间默认尺寸
+ * 采用 Math.floor(tiers.length / 2) 向上取中（如 14 档选第 8 档索引 7，奇数 7 档选第 4 档索引 3）
+ */
+export function getDslMiddleSize(values?: string[], aspect: "16:9" | "9:16" = "16:9"): string {
+    const rawValues = values && values.length > 0 ? values : MINIMAX_H3_SIZES;
+    const tierMap = new Map<string, { landscapeW: number; landscapeH: number }>();
+    for (const val of rawValues) {
+        const match = val.match(/^(\d+)\s*[x×]\s*(\d+)$/i);
+        if (!match) continue;
+        const w = Number(match[1]);
+        const h = Number(match[2]);
+        const landscapeW = Math.max(w, h);
+        const landscapeH = Math.min(w, h);
+        const key = `${landscapeW}x${landscapeH}`;
+        if (!tierMap.has(key)) {
+            tierMap.set(key, { landscapeW, landscapeH });
+        }
+    }
+    const tiers = Array.from(tierMap.values()).sort((a, b) => (a.landscapeW * a.landscapeH) - (b.landscapeW * b.landscapeH));
+    if (tiers.length === 0) {
+        return aspect === "16:9" ? "1280x736" : "736x1280";
+    }
+    const midIndex = Math.floor(tiers.length / 2);
+    const midTier = tiers[midIndex];
+    return aspect === "16:9" ? `${midTier.landscapeW}x${midTier.landscapeH}` : `${midTier.landscapeH}x${midTier.landscapeW}`;
+}
 
 /**
  * 通用全模态参考槽位映射契约（01..09 图，01..03 视频，01..03 音频）
@@ -55,7 +88,7 @@ export const videoMinimaxH3OmniFp8PdmdProfile: WorkflowModelProfile = {
         size: {
             parameter: "size",
             values: MINIMAX_H3_SIZES,
-            default: "1280x736",
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
             allowCustom: false,
         },
         duration: {
@@ -100,7 +133,7 @@ export const videoMinimaxH3OmniFp8Profile: WorkflowModelProfile = {
         size: {
             parameter: "size",
             values: MINIMAX_H3_SIZES,
-            default: "1280x736",
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
             allowCustom: false,
         },
         duration: {
@@ -146,7 +179,7 @@ export const videoMinimaxH3OmniInt8PdmdProfile: WorkflowModelProfile = {
         size: {
             parameter: "size",
             values: MINIMAX_H3_SIZES,
-            default: "1280x736",
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
             allowCustom: false,
         },
         duration: {
@@ -191,7 +224,7 @@ export const videoMinimaxH3OmniInt8PikaProfile: WorkflowModelProfile = {
         size: {
             parameter: "size",
             values: MINIMAX_H3_SIZES,
-            default: "1280x736",
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
             allowCustom: false,
         },
         duration: {
