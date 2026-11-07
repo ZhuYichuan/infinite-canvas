@@ -177,3 +177,58 @@ describe("Task Submission & Skeleton Pre-fitting Lifecycle", () => {
         expect(skeleton).toEqual({ width: 236, height: 420 });
     });
 });
+
+describe("Settlement Frame Lock & Child Node Sizing", () => {
+    it("locks frame dimensions and position when image aspect ratio matches within tolerance (0-pixel jitter)", () => {
+        const skeletonNode = {
+            width: 420,
+            height: 236,
+            position: { x: 200, y: 300 },
+        };
+        const generatedImage = { width: 1280, height: 720 }; // 16:9
+
+        const shouldLockFrame = isAspectRatioClose(
+            skeletonNode.width,
+            skeletonNode.height,
+            generatedImage.width,
+            generatedImage.height,
+        );
+        expect(shouldLockFrame).toBe(true);
+
+        const settledSize = shouldLockFrame
+            ? { width: skeletonNode.width, height: skeletonNode.height }
+            : fitNodeSize(generatedImage.width, generatedImage.height, 420, 420);
+        const settledPosition = shouldLockFrame
+            ? skeletonNode.position
+            : { x: 0, y: 0 };
+
+        expect(settledSize).toEqual({ width: 420, height: 236 });
+        expect(settledPosition).toEqual({ x: 200, y: 300 });
+    });
+
+    it("locks frame dimensions when freeResize is enabled regardless of aspect ratio", () => {
+        const freeResizeNode = {
+            width: 500,
+            height: 300,
+            metadata: { freeResize: true },
+        };
+        const generatedImage = { width: 1024, height: 1024 }; // 1:1 square
+
+        const shouldLockFrame = Boolean(
+            freeResizeNode.metadata.freeResize ||
+            isAspectRatioClose(freeResizeNode.width, freeResizeNode.height, generatedImage.width, generatedImage.height)
+        );
+        expect(shouldLockFrame).toBe(true);
+    });
+
+    it("scales upscale and crop child nodes aligned with parent node edge instead of arbitrary 640", () => {
+        const parentNode = { width: 420, height: 420 };
+        const upscaledImage = { width: 2048, height: 2048 };
+
+        const parentEdge = Math.max(parentNode.width, parentNode.height, CANVAS_NODE_MAX_BOUND);
+        expect(parentEdge).toBe(420);
+
+        const childSize = fitNodeSize(upscaledImage.width, upscaledImage.height, parentEdge, parentEdge);
+        expect(childSize).toEqual({ width: 420, height: 420 });
+    });
+});

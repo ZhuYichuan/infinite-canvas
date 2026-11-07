@@ -2247,12 +2247,18 @@ function InfiniteCanvasPage() {
                 }
                 const image = node.metadata?.images?.find((item) => item.id === itemId);
                 if (!image?.content) return node;
-                const edge = Math.max(node.width, node.height);
-                const size = node.metadata?.freeResize ? { width: node.width, height: node.height } : fitNodeSize(image.naturalWidth, image.naturalHeight, edge, edge);
+                const shouldLockFrame = Boolean(
+                    node.metadata?.freeResize ||
+                    isAspectRatioClose(node.width, node.height, image.naturalWidth, image.naturalHeight)
+                );
+                const edge = Math.max(node.width, node.height, CANVAS_NODE_MAX_BOUND);
+                const size = shouldLockFrame ? { width: node.width, height: node.height } : fitNodeSize(image.naturalWidth, image.naturalHeight, edge, edge);
                 return {
                     ...node,
-                    position: { x: node.position.x + node.width / 2 - size.width / 2, y: node.position.y + node.height / 2 - size.height / 2 },
-                    ...size,
+                    ...(shouldLockFrame ? {} : {
+                        position: { x: node.position.x + node.width / 2 - size.width / 2, y: node.position.y + node.height / 2 - size.height / 2 },
+                        ...size,
+                    }),
                     metadata: {
                         ...node.metadata,
                         content: image.content,
@@ -2859,15 +2865,16 @@ function InfiniteCanvasPage() {
         if (!node.metadata?.content) return;
         const cropped = await cropDataUrl(node.metadata.content, crop);
         const image = await uploadImage(cropped);
-        const width = Math.min(node.width, Math.max(220, image.width));
+        const parentEdge = Math.max(node.width, node.height, CANVAS_NODE_MAX_BOUND);
+        const size = fitNodeSize(image.width, image.height, parentEdge, parentEdge);
         const childId = nanoid();
         const child: CanvasNodeData = {
             id: childId,
             type: CanvasNodeType.Image,
             title: generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current),
             position: { x: node.position.x + node.width + 96, y: node.position.y },
-            width,
-            height: width * (image.height / image.width),
+            width: size.width,
+            height: size.height,
             metadata: {
                 ...imageMetadata(image),
                 prompt: node.metadata?.prompt,
@@ -2995,7 +3002,8 @@ function InfiniteCanvasPage() {
         setUpscaleNodeId(null);
         const upscaled = await upscaleDataUrl(node.metadata.content, params);
         const image = await uploadImage(upscaled);
-        const size = fitNodeSize(image.width, image.height);
+        const parentEdge = Math.max(node.width, node.height, CANVAS_NODE_MAX_BOUND);
+        const size = fitNodeSize(image.width, image.height, parentEdge, parentEdge);
         const childId = nanoid();
         const child: CanvasNodeData = {
             id: childId,
@@ -3552,7 +3560,6 @@ function InfiniteCanvasPage() {
                                           onProgress: handleBatchProgress,
                                       }).then((items) => items[0]);
                                 const uploaded = await uploadImage(image.dataUrl);
-                                const imageSize = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
                                 const item: CanvasNodeImage = {
                                     id: imageId,
                                     status: NODE_STATUS_SUCCESS,
@@ -3570,10 +3577,21 @@ function InfiniteCanvasPage() {
                                         const images = node.metadata?.images?.map((image) => (image.id === imageId ? item : image)) || [];
                                         const hasActivePrimary = Boolean(node.metadata?.primaryImageId && images.some((image) => image.id === node.metadata?.primaryImageId && Boolean(image.content)));
                                         if (hasActivePrimary) return { ...node, metadata: { ...node.metadata, images } };
+                                        const shouldLockFrame = Boolean(
+                                            node.metadata?.freeResize ||
+                                            isAspectRatioClose(node.width, node.height, uploaded.width, uploaded.height)
+                                        );
+                                        const maxEdge = Math.max(node.width, node.height, CANVAS_NODE_MAX_BOUND);
+                                        const imageSize = shouldLockFrame
+                                            ? { width: node.width, height: node.height }
+                                             : fitNodeSize(uploaded.width, uploaded.height, maxEdge, maxEdge);
                                         const center = { x: node.position.x + node.width / 2, y: node.position.y + node.height / 2 };
+                                        const position = shouldLockFrame
+                                            ? node.position
+                                            : { x: center.x - imageSize.width / 2, y: center.y - imageSize.height / 2 };
                                         return {
                                             ...node,
-                                            position: { x: center.x - imageSize.width / 2, y: center.y - imageSize.height / 2 },
+                                            position,
                                             ...imageSize,
                                             metadata: {
                                                 ...node.metadata,
@@ -3754,7 +3772,14 @@ function InfiniteCanvasPage() {
                                 },
                             }),
                         );
-                        const videoSize = fitNodeSize(video.width || spec.width, video.height || spec.height, VIDEO_NODE_MAX_WIDTH, VIDEO_NODE_MAX_HEIGHT);
+                        const shouldLockVideoFrame = Boolean(
+                            sourceNode?.metadata?.freeResize ||
+                            (sourceNode && isAspectRatioClose(sourceNode.width, sourceNode.height, video.width || sourceNode.width, video.height || sourceNode.height))
+                        );
+                        const maxVideoEdge = Math.max(sourceNode?.width || VIDEO_NODE_MAX_WIDTH, sourceNode?.height || VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH);
+                        const videoSize = shouldLockVideoFrame && sourceNode
+                            ? { width: sourceNode.width, height: sourceNode.height }
+                            : fitNodeSize(video.width || spec.width, video.height || spec.height, maxVideoEdge, maxVideoEdge);
                         setNodes((prev) =>
                             prev.map((node) =>
                                 node.id === videoId
@@ -3762,7 +3787,9 @@ function InfiniteCanvasPage() {
                                           ...node,
                                           width: videoSize.width,
                                           height: videoSize.height,
-                                          position: { x: node.position.x + node.width / 2 - videoSize.width / 2, y: node.position.y + node.height / 2 - videoSize.height / 2 },
+                                          position: shouldLockVideoFrame
+                                              ? node.position
+                                              : { x: node.position.x + node.width / 2 - videoSize.width / 2, y: node.position.y + node.height / 2 - videoSize.height / 2 },
                                           metadata: {
                                               ...node.metadata,
                                               ...videoMetadata(video),
@@ -4349,12 +4376,18 @@ function InfiniteCanvasPage() {
                         prev.map((item) => {
                             if (item.id !== node.id) return item;
                             const makePrimary = !imageId || !item.metadata?.content;
-                            const edge = imageId ? Math.max(item.width, item.height) : 0;
-                            const imageSize = imageId && item.metadata?.freeResize ? { width: item.width, height: item.height } : imageId ? fitNodeSize(uploadedImage.width, uploadedImage.height, edge, edge) : fitNodeSize(uploadedImage.width, uploadedImage.height, imageConfig.width, imageConfig.height);
+                            const shouldLockFrame = Boolean(
+                                item.metadata?.freeResize ||
+                                isAspectRatioClose(item.width, item.height, uploadedImage.width, uploadedImage.height)
+                            );
+                            const edge = Math.max(item.width, item.height, CANVAS_NODE_MAX_BOUND);
+                            const imageSize = shouldLockFrame
+                                ? { width: item.width, height: item.height }
+                                : fitNodeSize(uploadedImage.width, uploadedImage.height, edge, edge);
                             return {
                                 ...item,
                                 type: CanvasNodeType.Image,
-                                ...(makePrimary ? { width: imageSize.width, height: imageSize.height, ...(imageId ? { position: { x: item.position.x + item.width / 2 - imageSize.width / 2, y: item.position.y + item.height / 2 - imageSize.height / 2 } } : {}) } : {}),
+                                ...(makePrimary ? { width: imageSize.width, height: imageSize.height, ...(shouldLockFrame ? {} : { position: { x: item.position.x + item.width / 2 - imageSize.width / 2, y: item.position.y + item.height / 2 - imageSize.height / 2 } }) } : {}),
                                 metadata: {
                                     ...item.metadata,
                                     ...(makePrimary ? imageMetadata(uploadedImage) : { status: NODE_STATUS_SUCCESS }),
