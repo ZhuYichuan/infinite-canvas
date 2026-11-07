@@ -61,8 +61,8 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
         expect(profile?.capabilityConfig.references.maxVideos).toBe(3);
         expect(profile?.capabilityConfig.references.maxAudios).toBe(3);
         expect(profile?.capabilityConfig.size?.values).toEqual(MINIMAX_H3_SIZES);
-        expect(profile?.capabilityConfig.size?.values.length).toBe(28);
-        expect(profile?.capabilityConfig.size?.default).toBe("1280x736");
+        expect(profile?.capabilityConfig.size?.values.length).toBe(24);
+        expect(profile?.capabilityConfig.size?.default).toBe("1344x768");
         expect(profile?.capabilityConfig.duration?.tags).toEqual([5, 10, 15]);
     });
 
@@ -131,18 +131,19 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
     });
 
     it("computes dynamic middle size via getDslMiddleSize for both 16:9 and 9:16", () => {
-        // Standard 14 tiers (28 entries) defaults to 0.9 MP tier (index 7: 1280x736)
-        expect(getDslMiddleSize(MINIMAX_H3_SIZES, "16:9")).toBe("1280x736");
-        expect(getDslMiddleSize(MINIMAX_H3_SIZES, "9:16")).toBe("736x1280");
+        // Standard 12 tiers (24 entries) defaults to 0.98 MP tier (index 6: 1344x768)
+        expect(getDslMiddleSize(MINIMAX_H3_SIZES, "16:9")).toBe("1344x768");
+        expect(getDslMiddleSize(MINIMAX_H3_SIZES, "9:16")).toBe("768x1344");
 
-        // Custom odd tiers (e.g. 3 tiers: 608x352, 960x544, 1280x736 -> middle is 960x544)
-        const oddTiers = ["608x352", "352x608", "960x544", "544x960", "1280x736", "736x1280"];
-        expect(getDslMiddleSize(oddTiers, "16:9")).toBe("960x544");
-        expect(getDslMiddleSize(oddTiers, "9:16")).toBe("544x960");
+        // Custom odd tiers (e.g. 3 tiers: 864x480, 1152x640, 1504x832 -> middle is 1152x640)
+        const oddTiers = ["864x480", "480x864", "1152x640", "640x1152", "1504x832", "832x1504"];
+        expect(getDslMiddleSize(oddTiers, "16:9")).toBe("1152x640");
+        expect(getDslMiddleSize(oddTiers, "9:16")).toBe("640x1152");
 
         // Empty array fallback
-        expect(getDslMiddleSize([], "16:9")).toBe("1280x736");
-        expect(getDslMiddleSize(undefined, "9:16")).toBe("736x1280");
+        expect(getDslMiddleSize([], "16:9")).toBe("1344x768");
+        expect(getDslMiddleSize(undefined, "9:16")).toBe("768x1344");
+        expect(getDslMiddleSize(["invalid"], "16:9")).toBe("1344x768");
     });
 
     it("resolves sibling models across omni/frame mode switches without dropping the INT8 family", () => {
@@ -389,12 +390,20 @@ describe("validateModelExecution (Fail-loud validation)", () => {
         ).toThrow("最多支持 3 个参考音频");
     });
 
-    it("rejects sizes outside the 14 hardware-aligned tiers", () => {
+    it("rejects sizes outside the 12 hardware-aligned tiers", () => {
         expect(() =>
             validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "1000x500" })
         ).toThrow("不支持尺寸 1000x500");
 
-        // Valid sizes in 14 tiers should not throw
+        // Removed 0.2 and 0.3 tiers are rejected
+        expect(() =>
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "608x352" })
+        ).toThrow("不支持尺寸 608x352");
+        expect(() =>
+            validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "736x416" })
+        ).toThrow("不支持尺寸 736x416");
+
+        // Valid sizes in 12 tiers should not throw
         expect(() =>
             validateModelExecution(videoMinimaxH3OmniFp8PdmdProfile, { size: "1280x736" })
         ).not.toThrow();

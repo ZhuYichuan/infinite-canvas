@@ -15,8 +15,8 @@ import {
 describe("Video Settings Panel DSL & Sizing Helpers", () => {
     it("extractVideoSizeTiers dynamically parses discrete dimension pairs into sorted landscape tiers", () => {
         const tiers = extractVideoSizeTiers(videoMinimaxH3OmniProfile.capabilityConfig.size?.values);
-        expect(tiers).toHaveLength(14);
-        expect(tiers[0]).toEqual({ landscapeW: 608, landscapeH: 352 });
+        expect(tiers).toHaveLength(12);
+        expect(tiers[0]).toEqual({ landscapeW: 864, landscapeH: 480 });
         expect(tiers[tiers.length - 1]).toEqual({ landscapeW: 1920, landscapeH: 1088 });
     });
 
@@ -51,10 +51,13 @@ describe("Video Settings Panel DSL & Sizing Helpers", () => {
         // Valid 2.0 MP tier
         expect(normalizeVideoSizeValue("1920x1088", videoMinimaxH3OmniProfile)).toBe("1920x1088");
         expect(normalizeVideoSizeValue("1088x1920", videoMinimaxH3FrameProfile)).toBe("1088x1920");
-        // Disallowed custom size falls back to profile default
-        expect(normalizeVideoSizeValue("1920x1080", videoMinimaxH3OmniProfile)).toBe("1280x736");
+        // Disallowed custom size falls back to profile default (middle tier index 6: 1344x768)
+        expect(normalizeVideoSizeValue("1920x1080", videoMinimaxH3OmniProfile)).toBe("1344x768");
+        // Removed 0.2 and 0.3 tiers fall back to profile default
+        expect(normalizeVideoSizeValue("608x352", videoMinimaxH3OmniProfile)).toBe("1344x768");
+        expect(normalizeVideoSizeValue("736x416", videoMinimaxH3OmniProfile)).toBe("1344x768");
         // Empty size falls back to profile dynamic middle default
-        expect(normalizeVideoSizeValue("", videoMinimaxH3FrameProfile)).toBe("1280x736");
+        expect(normalizeVideoSizeValue("", videoMinimaxH3FrameProfile)).toBe("1344x768");
 
         // Custom profile with odd number of tiers (e.g. 3 tiers -> middle is 864x480)
         const customProfile = {

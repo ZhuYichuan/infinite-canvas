@@ -19,11 +19,9 @@ export type MiniMaxVideoTier = {
 };
 
 /**
- * MiniMax H3 官方支持的 32 整数倍尺寸档位（14 档预设，0.2 MP ~ 2.0 MP）
+ * MiniMax H3 官方支持的 32 整数倍尺寸档位（12 档预设，0.4 MP ~ 2.0 MP）
  */
 export const MINIMAX_VIDEO_SIZE_TIERS: MiniMaxVideoTier[] = [
-    { landscapeW: 608, landscapeH: 352 },
-    { landscapeW: 736, landscapeH: 416 },
     { landscapeW: 864, landscapeH: 480 },
     { landscapeW: 960, landscapeH: 544 },
     { landscapeW: 1056, landscapeH: 608 },
@@ -320,7 +318,7 @@ export function normalizeVideoSizeValue(value?: string, profile?: WorkflowModelP
     const allowed = profile?.capabilityConfig.size?.values;
     const defaultVal =
         profile?.capabilityConfig.size?.default ||
-        (allowed ? getDslMiddleSize(allowed, "16:9") : "1280x736");
+        (allowed ? getDslMiddleSize(allowed, "16:9") : "1344x768");
     if (!value) return defaultVal;
     if (allowed && allowed.length > 0) {
         const clean = value.toLowerCase().replace(/\s+/g, "");

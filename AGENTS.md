@@ -80,7 +80,7 @@
 - 严格校验与防呆（Fail-loud）：工作流上传或执行时，若缺少保留槽位、存在重复标题或输入不兼容，必须即时显式报错并指导修正，严禁静默丢弃参考资源或静默失败。
 - 全能参考视频生成（MiniMax H3）需求规格、尺寸硬件锁死与多模态 FIFO 路由参见：`docs/content/docs/development/multimodal-video-workflow-spec.zh-CN.mdx`。
 - 多模态参考资源连线支持最多 9 图 + 3 视频 + 3 音频；未连满的插槽及其级联桥接节点（如 `GetVideoComponents`）必须在提交前自动抹除；连线超出上限时必须 Fail-loud 报错拦截。
-- 视频生成尺寸严禁开放手动数字输入，必须严格收敛为 16:9 与 9:16 对称对调，锁定在 0.2M~2.0M 的 14 档硬件对齐预设中，视频节点默认自动选取 DSL 数组的中间分辨率（0.9 MP）。
+- 视频生成尺寸严禁开放手动数字输入，必须严格收敛为 16:9 与 9:16 对称对调，锁定在 0.4M~2.0M 的 12 档硬件对齐预设中，视频节点默认自动选取 DSL 数组的中间分辨率。
 - 运行本项目工作流所必须安装的 5 大 ComfyUI 核心插件（克隆至 ComfyUI 的 `custom_nodes/` 目录）：
   1. `https://github.com/zhiwendesign/Comfyui-kktools`（文本生成/反推）
   2. `https://github.com/kijai/ComfyUI-KJNodes`（全能参考视频及组件处理）

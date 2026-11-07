@@ -1,18 +1,16 @@
 import type { WorkflowModelProfile } from "./types";
 
 /**
- * MiniMax H3 官方支持的 32 整数倍尺寸对齐档位（覆盖 0.2 MP ~ 2.0 MP 共 14 档）
+ * MiniMax H3 官方支持的 32 整数倍尺寸对齐档位（覆盖 0.4 MP ~ 2.0 MP 共 12 档）
  */
 export const MINIMAX_H3_SIZES: string[] = [
-    "608x352", "352x608",     // 0.2 MP
-    "736x416", "416x736",     // 0.3 MP
     "864x480", "480x864",     // 0.4 MP
     "960x544", "544x960",     // 0.5 MP
     "1056x608", "608x1056",   // 0.6 MP
     "1152x640", "640x1152",   // 0.7 MP
     "1216x672", "672x1216",   // 0.8 MP
-    "1280x736", "736x1280",   // 0.9 MP (中位数基准)
-    "1344x768", "768x1344",   // 0.98 MP
+    "1280x736", "736x1280",   // 0.9 MP
+    "1344x768", "768x1344",   // 0.98 MP (中位数基准)
     "1376x768", "768x1376",   // 1.0 MP
     "1504x832", "832x1504",   // 1.2 MP
     "1664x928", "928x1664",   // 1.5 MP
@@ -22,7 +20,7 @@ export const MINIMAX_H3_SIZES: string[] = [
 
 /**
  * 依据分辨率列表动态提取排序后的档位，并获取其中间默认尺寸
- * 采用 Math.floor(tiers.length / 2) 向上取中（如 14 档选第 8 档索引 7，奇数 7 档选第 4 档索引 3）
+ * 采用 Math.floor(tiers.length / 2) 向上取中（如 12 档选第 7 档索引 6，奇数 7 档选第 4 档索引 3）
  */
 export function getDslMiddleSize(values?: string[], aspect: "16:9" | "9:16" = "16:9"): string {
     const rawValues = values && values.length > 0 ? values : MINIMAX_H3_SIZES;
@@ -41,7 +39,7 @@ export function getDslMiddleSize(values?: string[], aspect: "16:9" | "9:16" = "1
     }
     const tiers = Array.from(tierMap.values()).sort((a, b) => (a.landscapeW * a.landscapeH) - (b.landscapeW * b.landscapeH));
     if (tiers.length === 0) {
-        return aspect === "16:9" ? "1280x736" : "736x1280";
+        return aspect === "16:9" ? "1344x768" : "768x1344";
     }
     const midIndex = Math.floor(tiers.length / 2);
     const midTier = tiers[midIndex];
