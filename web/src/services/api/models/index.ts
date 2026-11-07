@@ -9,6 +9,7 @@ import {
     videoMinimaxH3OmniFp8Profile,
     videoMinimaxH3OmniInt8PdmdProfile,
     videoMinimaxH3OmniInt8PikaProfile,
+    videoMinimaxH3OmniInt8SelfLiftProfile,
     videoMinimaxH3OmniProfile,
     MINIMAX_H3_SIZES,
 } from "./video-minimax-h3-omni";
@@ -17,6 +18,7 @@ import {
     videoMinimaxH3FrameFp8Profile,
     videoMinimaxH3FrameInt8PdmdProfile,
     videoMinimaxH3FrameInt8PikaProfile,
+    videoMinimaxH3FrameInt8SelfLiftProfile,
     videoMinimaxH3FrameProfile,
 } from "./video-minimax-h3-frame";
 import {
@@ -48,7 +50,7 @@ export * from "./audio-models";
 export * from "./constraint-engine";
 
 /**
- * 系统内置视频工作流模型清单（4 款 FP8 + 4 款 INT8 量化模型）
+ * 系统内置视频工作流模型清单（4 款 FP8 + 6 款 INT8 量化模型）
  * 顺序敏感：FP8 4步 PDMD 必须首位，作为视频节点的默认回退模型
  */
 export const BUILTIN_VIDEO_WORKFLOW_MODELS: WorkflowModelProfile[] = [
@@ -60,6 +62,8 @@ export const BUILTIN_VIDEO_WORKFLOW_MODELS: WorkflowModelProfile[] = [
     videoMinimaxH3FrameInt8PdmdProfile,
     videoMinimaxH3OmniInt8PikaProfile,
     videoMinimaxH3FrameInt8PikaProfile,
+    videoMinimaxH3OmniInt8SelfLiftProfile,
+    videoMinimaxH3FrameInt8SelfLiftProfile,
 ];
 
 /**
@@ -204,9 +208,9 @@ export function listModelsByCapability(capability: ModelCapabilityType): Workflo
 /**
  * 视频模型家族标识（量化规格 + 蒸馏档位），用于在「全能参考 / 首尾帧」之间切换时
  * 保留当前模型家族，避免静默回退到 FP8 默认模型。
- * 形如 `omni-video-minimax-h3-{fp8|int8}[-4step-pdmd|-6step-pika]`。
+ * 形如 `omni-video-minimax-h3-{fp8|int8}[-4step-pdmd|-6step-pika|-6step-selflift]`。
  */
-const VIDEO_MODEL_VARIANT_SUFFIXES = ["-4step-pdmd", "-6step-pika"] as const;
+const VIDEO_MODEL_VARIANT_SUFFIXES = ["-4step-pdmd", "-6step-pika", "-6step-selflift"] as const;
 const VIDEO_MODEL_SUFFIX_PATTERN = `(?:${VIDEO_MODEL_VARIANT_SUFFIXES.join("|")})`;
 const VIDEO_MODEL_ID_PATTERN = new RegExp(`^(?:omni|frame)-video-minimax-h3-(fp8|int8)(${VIDEO_MODEL_SUFFIX_PATTERN})?$`);
 const VIDEO_MODEL_ID_SEARCH_PATTERN = new RegExp(`(?:omni|frame)-video-minimax-h3-(?:fp8|int8)${VIDEO_MODEL_SUFFIX_PATTERN}?`);

@@ -4,8 +4,10 @@ import {
     getWorkflowForModelProfile,
     DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PDMD_WORKFLOW,
     DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PIKA_WORKFLOW,
+    DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW,
     DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_PDMD_WORKFLOW,
     DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_PIKA_WORKFLOW,
+    DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW,
 } from "../comfyui-default-workflows";
 import { dispatchComfyuiModelWorkflow, getModelProfile } from "../models";
 
@@ -202,5 +204,109 @@ describe("MiniMax H3 INT8 6步 Pika built-in workflows", () => {
         expect(
             findNode(DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PIKA_WORKFLOW.json, (n) => n.class_type === "EasyCache"),
         ).toBeUndefined();
+    });
+});
+
+describe("MiniMax H3 INT8 6步 SelfLift built-in workflows", () => {
+    it("routes both SelfLift 6-step profiles to their dedicated workflows", () => {
+        expect(getWorkflowForModelProfile("omni-video-minimax-h3-int8-6step-selflift")).toBe(
+            DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW,
+        );
+        expect(getWorkflowForModelProfile("frame-video-minimax-h3-int8-6step-selflift")).toBe(
+            DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW,
+        );
+        // 确保不会与 Pika 或 PDMD 互相回退混淆
+        expect(getWorkflowForModelProfile("omni-video-minimax-h3-int8-6step-selflift")).not.toBe(
+            DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_PIKA_WORKFLOW,
+        );
+        expect(getWorkflowForModelProfile("frame-video-minimax-h3-int8-6step-selflift")).not.toBe(
+            DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PIKA_WORKFLOW,
+        );
+    });
+
+    it("loads Singularity INT8 base, SelfLift sampler, dual LoRAs and step=6", () => {
+        const cases = [
+            {
+                workflow: DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW.json,
+                lora1: "pika_h3_flex_ref2va_v1_bf16.safetensors",
+            },
+            {
+                workflow: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW.json,
+                lora1: "pika_h3_flex_fl2va_v1_bf16.safetensors",
+            },
+        ];
+
+        for (const { workflow, lora1 } of cases) {
+            // UNet
+            const unetLoader = findNode(workflow, (n) => n.class_type === "UNETLoader");
+            expect(unetLoader?.inputs?.unet_name).toBe("Minimax-h3_Singularity_ref2va_v1.3_int8.safetensors");
+
+            // SelfLiftH3Sampler
+            const sampler = findNode(workflow, (n) => n.class_type === "SelfLiftH3Sampler");
+            expect(sampler).toBeDefined();
+            expect(sampler?.inputs?.upscaler_model).toBe("minimax_h3_latent_upscaler_3d_conv_v1_fp32.pth");
+
+            // Dual LoRAs
+            const loras = nodesOf(workflow).filter((n) => n.class_type === "LoraLoaderModelOnly");
+            expect(loras.length).toBe(2);
+            expect(loras.some((l) => l.inputs?.lora_name === lora1)).toBe(true);
+            expect(loras.some((l) => l.inputs?.lora_name === "H3-Licon-VBVR-I2V.safetensors")).toBe(true);
+
+            // step = 6
+            const stepNode = nodesOf(workflow).find((n) => n._meta?.title === "step");
+            expect(stepNode?.class_type).toBe("PrimitiveInt");
+            expect(stepNode?.inputs?.value).toBe(6);
+
+            // EasyCache
+            expect(findNode(workflow, (n) => n.class_type === "EasyCache")).toBeDefined();
+        }
+    });
+
+    it("correctly injects and prunes slots on SelfLift workflows via dispatchComfyuiModelWorkflow", () => {
+        // 1. Omni dispatch
+        const omniProfile = getModelProfile("omni-video-minimax-h3-int8-6step-selflift")!;
+        const dispatchedOmni = dispatchComfyuiModelWorkflow(
+            omniProfile,
+            DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW.json,
+            {
+                prompt: "SelfLift 全能生成测试",
+                width: 960,
+                height: 544,
+                duration: 5,
+                seed: 9999,
+                step: 8,
+                assetIds: ["ref_1.png"],
+            },
+        );
+
+        const stepNode = nodesOf(dispatchedOmni).find((n) => n._meta?.title === "step");
+        expect(stepNode?.inputs?.value).toBe(8);
+
+        const promptNode = nodesOf(dispatchedOmni).find((n) => n._meta?.title === "prompt");
+        expect(promptNode?.inputs?.value).toBe("SelfLift 全能生成测试");
+
+        // 仅保留 ref_image_01，其余被修剪
+        const keptImages = nodesOf(dispatchedOmni).filter(
+            (n) => n.class_type === "LoadImage" && /^ref_image_01$/.test(String(n._meta?.title ?? "")),
+        );
+        expect(keptImages.length).toBe(1);
+        expect(keptImages[0].inputs?.image).toBe("ref_1.png");
+
+        // 2. Frame dispatch
+        const frameProfile = getModelProfile("frame-video-minimax-h3-int8-6step-selflift")!;
+        const dispatchedFrame = dispatchComfyuiModelWorkflow(
+            frameProfile,
+            DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW.json,
+            {
+                prompt: "SelfLift 首尾帧测试",
+                firstFrameAssetId: "start.png",
+                lastFrameAssetId: "end.png",
+            },
+        );
+
+        const first = nodesOf(dispatchedFrame).find((n) => n._meta?.title === "first_frame");
+        const last = nodesOf(dispatchedFrame).find((n) => n._meta?.title === "last_frame");
+        expect(first?.inputs?.image).toBe("start.png");
+        expect(last?.inputs?.image).toBe("end.png");
     });
 });

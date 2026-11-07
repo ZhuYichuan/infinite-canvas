@@ -9,10 +9,12 @@ import omniVideoFp8Json from "@/assets/workflows/video_minimax_h3_omni_fp8_20ste
 import omniVideoFp84StepPdmdJson from "@/assets/workflows/video_minimax_h3_omni_fp8_4step_pdmd_api.json";
 import omniVideoInt8PdmdJson from "@/assets/workflows/video_minimax_h3_omni_int8_4step_pdmd_api.json";
 import omniVideoInt8PikaJson from "@/assets/workflows/video_minimax_h3_omni_int8_6step_pika_api.json";
+import omniVideoInt8SelfLiftJson from "@/assets/workflows/video_minimax_h3_omni_int8_6step_selflift_api.json";
 import frameVideoFp8Json from "@/assets/workflows/video_minimax_h3_frame_fp8_20step_api.json";
 import frameVideoFp84StepPdmdJson from "@/assets/workflows/video_minimax_h3_frame_fp8_4step_pdmd_api.json";
 import frameVideoInt8PdmdJson from "@/assets/workflows/video_minimax_h3_frame_int8_4step_pdmd_api.json";
 import frameVideoInt8PikaJson from "@/assets/workflows/video_minimax_h3_frame_int8_6step_pika_api.json";
+import frameVideoInt8SelfLiftJson from "@/assets/workflows/video_minimax_h3_frame_int8_6step_selflift_api.json";
 import qwenImage21Json from "@/assets/workflows/qwen_image_21_api.json";
 import audioMinimaxMusic3Json from "@/assets/workflows/audio_minimax_music_3_api.json";
 import videoH3FaceRefineJson from "@/assets/workflows/video_h3_face_refine_api.json";
@@ -95,6 +97,13 @@ export const DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_PIKA_WORKFLOW: ComfyuiWorkflow =
     isBuiltin: true,
 };
 
+export const DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW: ComfyuiWorkflow = {
+    name: "MiniMax H3 全能视频 (INT8 6步 SelfLift)",
+    json: omniVideoInt8SelfLiftJson as Record<string, unknown>,
+    createdAt: 0,
+    isBuiltin: true,
+};
+
 export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_20STEP_WORKFLOW: ComfyuiWorkflow = {
     name: "MiniMax H3 首尾帧 (FP8 20步)",
     json: frameVideoFp8Json as Record<string, unknown>,
@@ -125,6 +134,13 @@ export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PIKA_WORKFLOW: ComfyuiWork
     isBuiltin: true,
 };
 
+export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW: ComfyuiWorkflow = {
+    name: "MiniMax H3 首尾帧视频 (INT8 6步 SelfLift)",
+    json: frameVideoInt8SelfLiftJson as Record<string, unknown>,
+    createdAt: 0,
+    isBuiltin: true,
+};
+
 export const DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW: ComfyuiWorkflow = {
     name: "MiniMax Music 03 音乐生成",
     json: audioMinimaxMusic3Json as Record<string, unknown>,
@@ -141,10 +157,12 @@ export const DEFAULT_COMFYUI_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_WORK
 export const DEFAULT_COMFYUI_VIDEO_PDMD_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_PDMD_WORKFLOW;
 export const DEFAULT_COMFYUI_VIDEO_INT8_PDMD_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_PDMD_WORKFLOW;
 export const DEFAULT_COMFYUI_VIDEO_INT8_PIKA_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_PIKA_WORKFLOW;
+export const DEFAULT_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW;
 export const DEFAULT_COMFYUI_FRAME_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW;
 export const DEFAULT_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW;
 export const DEFAULT_COMFYUI_FRAME_VIDEO_INT8_PDMD_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PDMD_WORKFLOW;
 export const DEFAULT_COMFYUI_FRAME_VIDEO_INT8_PIKA_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PIKA_WORKFLOW;
+export const DEFAULT_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW;
 export const DEFAULT_COMFYUI_AUDIO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW;
 export const DEFAULT_COMFYUI_FACE_REFINE_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FACE_REFINE_WORKFLOW;
 
@@ -163,6 +181,8 @@ export function getWorkflowForModelProfile(modelId?: string): ComfyuiWorkflow | 
             return DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_PDMD_WORKFLOW;
         case "omni-video-minimax-h3-int8-6step-pika":
             return DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_PIKA_WORKFLOW;
+        case "omni-video-minimax-h3-int8-6step-selflift":
+            return DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW;
         case "frame-video-minimax-h3-fp8-4step-pdmd":
         case "video_minimax_h3_frame":
             return DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW;
@@ -172,6 +192,8 @@ export function getWorkflowForModelProfile(modelId?: string): ComfyuiWorkflow | 
             return DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PDMD_WORKFLOW;
         case "frame-video-minimax-h3-int8-6step-pika":
             return DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PIKA_WORKFLOW;
+        case "frame-video-minimax-h3-int8-6step-selflift":
+            return DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW;
         case "image-qwen-2.1":
             return DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW;
         case "image-z-turbo":
@@ -387,6 +409,26 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             isBuiltin: true,
             isDefault: false,
             description: "MiniMax H3 首尾帧插值视频 (INT8 旋转量化底模 + Pika Flex 6步蒸馏 LoRA)",
+        },
+        {
+            id: `${prefix}-omni-video-minimax-h3-int8-6step-selflift`,
+            name: "MiniMax H3 全能 (INT8 6步 SelfLift)",
+            category: "omniVideo",
+            json: DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: false,
+            description: "MiniMax H3 全能参考视频 (INT8 Singularity 底模 + SelfLift 渐进超分采样 + 双 LoRA + EasyCache)",
+        },
+        {
+            id: `${prefix}-frame-video-minimax-h3-int8-6step-selflift`,
+            name: "MiniMax H3 首尾帧 (INT8 6步 SelfLift)",
+            category: "frameVideo",
+            json: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW.json,
+            createdAt: 0,
+            isBuiltin: true,
+            isDefault: false,
+            description: "MiniMax H3 首尾帧插值视频 (INT8 Singularity 底模 + SelfLift 渐进超分采样 + 双 LoRA + EasyCache)",
         },
         {
             id: `${prefix}-audio-minimax-music-3`,

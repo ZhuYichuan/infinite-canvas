@@ -30,9 +30,9 @@ import {
     parseImageSizeTierAndRatio,
 } from "../index";
 
-describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
-    it("registers 4 FP8 + 4 INT8 models and excludes BF16", () => {
-        expect(BUILTIN_VIDEO_WORKFLOW_MODELS.length).toBe(8);
+describe("Workflow Model Profiles (MiniMax H3 10 Video Models)", () => {
+    it("registers 4 FP8 + 6 INT8 models and excludes BF16", () => {
+        expect(BUILTIN_VIDEO_WORKFLOW_MODELS.length).toBe(10);
         expect(BUILTIN_VIDEO_WORKFLOW_MODELS.map((m) => m.id)).toEqual([
             "omni-video-minimax-h3-fp8-4step-pdmd",
             "omni-video-minimax-h3-fp8",
@@ -42,6 +42,8 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
             "frame-video-minimax-h3-int8-4step-pdmd",
             "omni-video-minimax-h3-int8-6step-pika",
             "frame-video-minimax-h3-int8-6step-pika",
+            "omni-video-minimax-h3-int8-6step-selflift",
+            "frame-video-minimax-h3-int8-6step-selflift",
         ]);
 
         // BF16 models should be completely purged
@@ -130,6 +132,22 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
         expect(framePika.supportedTools).toEqual(framePdmd.supportedTools);
     });
 
+    it("registers SelfLift 6-step models sharing the INT8 capability contract", () => {
+        const omniSelfLift = getModelProfile("omni-video-minimax-h3-int8-6step-selflift")!;
+        expect(omniSelfLift).toBeDefined();
+        expect(omniSelfLift.category).toBe("omniVideo");
+        expect(omniSelfLift.steps).toBe(6);
+        expect(omniSelfLift.capabilityConfig.references.maxImages).toBe(9);
+        expect(omniSelfLift.capabilityConfig.size?.values).toEqual(MINIMAX_H3_SIZES);
+
+        const frameSelfLift = getModelProfile("frame-video-minimax-h3-int8-6step-selflift")!;
+        expect(frameSelfLift).toBeDefined();
+        expect(frameSelfLift.category).toBe("frameVideo");
+        expect(frameSelfLift.steps).toBe(6);
+        expect(frameSelfLift.capabilityConfig.references.maxImages).toBe(2);
+        expect(frameSelfLift.capabilityConfig.size?.values).toEqual(MINIMAX_H3_SIZES);
+    });
+
     it("computes dynamic middle size via getDslMiddleSize for both 16:9 and 9:16", () => {
         // Standard 12 tiers (24 entries) defaults to 0.98 MP tier (index 6: 1344x768)
         expect(getDslMiddleSize(MINIMAX_H3_SIZES, "16:9")).toBe("1344x768");
@@ -166,6 +184,13 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
             .toBe("omni-video-minimax-h3-int8-6step-pika");
     });
 
+    it("keeps the SelfLift 6-step family across omni/frame mode switches", () => {
+        expect(resolveVideoModelIdForMode("omni-video-minimax-h3-int8-6step-selflift", "frame"))
+            .toBe("frame-video-minimax-h3-int8-6step-selflift");
+        expect(resolveVideoModelIdForMode("frame-video-minimax-h3-int8-6step-selflift", "omni"))
+            .toBe("omni-video-minimax-h3-int8-6step-selflift");
+    });
+
     it("resolves video model id from channel workflow id", () => {
         expect(resolveVideoModelIdFromWorkflowId("builtin-omni-video-minimax-h3-int8-4step-pdmd"))
             .toBe("omni-video-minimax-h3-int8-4step-pdmd");
@@ -175,6 +200,10 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
             .toBe("omni-video-minimax-h3-int8-6step-pika");
         expect(resolveVideoModelIdFromWorkflowId("builtin-frame-video-minimax-h3-int8-6step-pika"))
             .toBe("frame-video-minimax-h3-int8-6step-pika");
+        expect(resolveVideoModelIdFromWorkflowId("builtin-omni-video-minimax-h3-int8-6step-selflift"))
+            .toBe("omni-video-minimax-h3-int8-6step-selflift");
+        expect(resolveVideoModelIdFromWorkflowId("builtin-frame-video-minimax-h3-int8-6step-selflift"))
+            .toBe("frame-video-minimax-h3-int8-6step-selflift");
         expect(resolveVideoModelIdFromWorkflowId("builtin-t2i-qwen-image-21")).toBeUndefined();
         expect(resolveVideoModelIdFromWorkflowId(undefined)).toBeUndefined();
     });
@@ -204,7 +233,7 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
 
     it("lists models by capability", () => {
         const videoModels = listModelsByCapability("video");
-        expect(videoModels.length).toBe(8);
+        expect(videoModels.length).toBe(10);
         expect(videoModels.map((m) => m.id)).toEqual([
             "omni-video-minimax-h3-fp8-4step-pdmd",
             "omni-video-minimax-h3-fp8",
@@ -214,6 +243,8 @@ describe("Workflow Model Profiles (MiniMax H3 8 Video Models)", () => {
             "frame-video-minimax-h3-int8-4step-pdmd",
             "omni-video-minimax-h3-int8-6step-pika",
             "frame-video-minimax-h3-int8-6step-pika",
+            "omni-video-minimax-h3-int8-6step-selflift",
+            "frame-video-minimax-h3-int8-6step-selflift",
         ]);
 
         const imageModels = listModelsByCapability("image");

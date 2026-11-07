@@ -201,6 +201,53 @@ export const videoMinimaxH3FrameInt8PikaProfile: WorkflowModelProfile = {
 };
 
 /**
+ * MiniMax H3 首尾帧插值视频 (INT8 6步 SelfLift 渐进超分版)
+ * Singularity INT8 底模 + SelfLift 渐进超分采样器 + Pika Flex / H3-Licon 双 LoRA + EasyCache，
+ * 6 步采样（由 step 节点控制），支持 0~2 张参考图，低显存输出高清关键帧过渡
+ */
+export const videoMinimaxH3FrameInt8SelfLiftProfile: WorkflowModelProfile = {
+    id: "frame-video-minimax-h3-int8-6step-selflift",
+    name: "MiniMax H3 首尾帧 (INT8 6步 SelfLift)",
+    capability: "video",
+    protocol: "comfyui",
+    category: "frameVideo",
+    steps: 6,
+    capabilityConfig: {
+        version: 1,
+        references: {
+            promptMaxChars: 20000,
+            minImages: 0,
+            maxImages: 2,
+            maskSupported: false,
+            minVideos: 0,
+            maxVideos: 0,
+            minAudios: 0,
+            maxAudios: 0,
+        },
+        size: {
+            parameter: "size",
+            values: MINIMAX_H3_SIZES,
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
+            allowCustom: false,
+        },
+        duration: {
+            selection: "range",
+            min: 1,
+            max: 15,
+            step: 1,
+            tags: [5, 10, 15],
+            default: 5,
+        },
+    },
+    slotMapping: FRAME_SLOT_MAPPING,
+    description: "MiniMax H3 首尾帧插值视频 (INT8 Singularity 底模 + SelfLift 渐进超分采样 + 双 LoRA + EasyCache)，支持 0~2 张参考图，兼顾速度与画质。",
+    supportedTools: {
+        faceRefine: true,
+        depthVideo: true,
+    },
+};
+
+/**
  * 历史别名兼容
  */
 export const videoMinimaxH3FrameProfile = videoMinimaxH3FrameFp8PdmdProfile;

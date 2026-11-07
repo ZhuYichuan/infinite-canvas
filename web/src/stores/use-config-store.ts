@@ -193,6 +193,8 @@ export const DEFAULT_SUPPORTED_VIDEO_MODEL_IDS: string[] = [
     "frame-video-minimax-h3-int8-4step-pdmd",
     "omni-video-minimax-h3-int8-6step-pika",
     "frame-video-minimax-h3-int8-6step-pika",
+    "omni-video-minimax-h3-int8-6step-selflift",
+    "frame-video-minimax-h3-int8-6step-selflift",
 ];
 
 /**

@@ -243,6 +243,52 @@ export const videoMinimaxH3OmniInt8PikaProfile: WorkflowModelProfile = {
 };
 
 /**
+ * MiniMax H3 全能参考视频 (INT8 6步 SelfLift 渐进超分版)
+ * Singularity INT8 底模 + SelfLift 渐进超分采样器 + Pika Flex / H3-Licon 双 LoRA + EasyCache，
+ * 6 步采样（由 step 节点控制），显著减轻高分辨率显存瓶颈
+ */
+export const videoMinimaxH3OmniInt8SelfLiftProfile: WorkflowModelProfile = {
+    id: "omni-video-minimax-h3-int8-6step-selflift",
+    name: "MiniMax H3 全能 (INT8 6步 SelfLift)",
+    capability: "video",
+    protocol: "comfyui",
+    category: "omniVideo",
+    steps: 6,
+    capabilityConfig: {
+        version: 1,
+        references: {
+            promptMaxChars: 20000,
+            minImages: 0,
+            maxImages: 9,
+            maskSupported: false,
+            minVideos: 0,
+            maxVideos: 3,
+            maxAudios: 3,
+        },
+        size: {
+            parameter: "size",
+            values: MINIMAX_H3_SIZES,
+            default: getDslMiddleSize(MINIMAX_H3_SIZES, "16:9"),
+            allowCustom: false,
+        },
+        duration: {
+            selection: "range",
+            min: 1,
+            max: 15,
+            step: 1,
+            tags: [5, 10, 15],
+            default: 5,
+        },
+    },
+    slotMapping: OMNI_SLOT_MAPPING,
+    description: "MiniMax H3 全能参考视频 (INT8 Singularity 底模 + SelfLift 渐进超分采样 + 双 LoRA + EasyCache)，低显存开销与高清晰度兼顾。",
+    supportedTools: {
+        faceRefine: true,
+        depthVideo: true,
+    },
+};
+
+/**
  * 历史别名兼容
  */
 export const videoMinimaxH3OmniProfile = videoMinimaxH3OmniFp8PdmdProfile;

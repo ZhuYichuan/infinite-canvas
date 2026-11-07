@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- MiniMax H3 全能与首尾帧 INT8 6步 SelfLift 渐进式超分工作流：
+  - 模型注册与候选呈现：在视频节点的模型下拉选择器及渠道内置工作流列表中，确认可见「MiniMax H3 全能 (INT8 6步 SelfLift)」与「MiniMax H3 首尾帧 (INT8 6步 SelfLift)」；
+  - 模式无缝切换与规格保留：选中「MiniMax H3 全能 (INT8 6步 SelfLift)」时，切换至首尾帧模式，确认自动切换至「MiniMax H3 首尾帧 (INT8 6步 SelfLift)」，不会静默回退至 FP8；反向切换亦然；
+  - 参数与槽位派发：提交生成时，确认正确加载 `Minimax-h3_Singularity_ref2va_v1.3_int8.safetensors` 底模、`SelfLiftH3Sampler` 采样器与双 LoRA，全能参考与首尾帧插槽按需绑定并级联修剪未分配槽位；
+  - 步数与后台可视化：在工作流管理后台中确认 SelfLift 工作流的 `step` 节点（默认 6 步）正确被探测展示，支持自定义保存与导出。
+
 - MiniMax H3 视频工作流 12 档分辨率与动态中间分辨率决策：
   - 12 档分辨率卡片呈现：在画布上创建或选中视频节点，打开参数配置面板，确认「生成尺寸规格」呈现完整的 12 档硬件对齐尺寸卡片（0.4 MP 至 2.0 MP，从 `864 × 480` 到 `1920 × 1088`，0.2 MP 与 0.3 MP 档位已彻底移除）；
   - 动态中位数默认值：新建一个空白视频节点，确认其默认尺寸自动选中当前绑定的工作流 DSL 的中间档位（12 档下自动选取第 7 档 0.98 MP `1344 × 768`）；
