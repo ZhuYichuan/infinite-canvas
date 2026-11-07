@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { getNodeSpec, NODE_DEFAULT_SIZE } from "@/constant/canvas";
-import { nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
+import { CANVAS_NODE_MAX_BOUND, nodeSizeFromRatio, resolveSkeletonDimensions } from "@/lib/canvas/canvas-node-size";
 import { getDefaultWorkflow, type AiConfig } from "@/stores/use-config-store";
 import { getModelProfile, resolveModelIdFromWorkflowId } from "@/services/api/models";
 import { normalizeVideoSizeValue } from "@/components/video-settings-panel";
@@ -20,6 +20,7 @@ export function createDefaultNodeMetadata(type: CanvasNodeTypeId, config: AiConf
             channelId: activeChannel.id,
             ...(wf ? { workflowId: wf.id } : {}),
             modelId,
+            ...(config.size ? { size: config.size } : {}),
         };
     }
     if (type === CanvasNodeType.Video) {
@@ -67,17 +68,25 @@ export function createDefaultNodeMetadata(type: CanvasNodeTypeId, config: AiConf
 export function createCanvasNode(type: CanvasNodeTypeId, position: Position, metadata?: CanvasNodeMetadata, title?: string): CanvasNodeData {
     const spec = getNodeSpec(type);
     const id = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const dimensions = type === CanvasNodeType.Image || type === CanvasNodeType.Video
+        ? resolveSkeletonDimensions({
+              targetSize: metadata?.size,
+              referenceWidth: metadata?.naturalWidth,
+              referenceHeight: metadata?.naturalHeight,
+              baseMaxBound: spec.width,
+          })
+        : { width: spec.width, height: spec.height };
 
     return {
         id,
         type,
         title: title || spec.title,
         position: {
-            x: position.x - spec.width / 2,
-            y: position.y - spec.height / 2,
+            x: position.x - dimensions.width / 2,
+            y: position.y - dimensions.height / 2,
         },
-        width: spec.width,
-        height: spec.height,
+        width: dimensions.width,
+        height: dimensions.height,
         metadata: { ...spec.metadata, ...metadata },
     };
 }
@@ -129,9 +138,21 @@ export function buildAudioGenerationMetadata(config: AiConfig, seed?: number): C
 export function applyNodeConfigPatch(node: CanvasNodeData, patch: Partial<CanvasNodeData["metadata"]>) {
     const safePatch = patch || {};
     const next = { ...node, metadata: { ...node.metadata, ...safePatch } };
-    const spec = node.type === CanvasNodeType.Video ? NODE_DEFAULT_SIZE[CanvasNodeType.Video] : NODE_DEFAULT_SIZE[CanvasNodeType.Image];
-    const size = typeof safePatch.size === "string" && !node.metadata?.content ? nodeSizeFromRatio(safePatch.size, spec.width, spec.height) : null;
-    return size && (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video) ? { ...next, ...size, position: { x: node.position.x + node.width / 2 - size.width / 2, y: node.position.y + node.height / 2 - size.height / 2 } } : next;
+    const maxEdge = Math.max(node.width, node.height);
+    const baseBound = Math.max(maxEdge, CANVAS_NODE_MAX_BOUND);
+    const size = typeof safePatch.size === "string" && !node.metadata?.content
+        ? nodeSizeFromRatio(safePatch.size, baseBound, baseBound)
+        : null;
+    return size && (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video)
+        ? {
+              ...next,
+              ...size,
+              position: {
+                  x: node.position.x + node.width / 2 - size.width / 2,
+                  y: node.position.y + node.height / 2 - size.height / 2,
+              },
+          }
+        : next;
 }
 
 export function cloneNodeMetadata(metadata?: CanvasNodeMetadata, nodeType?: CanvasNodeTypeId): CanvasNodeMetadata | undefined {

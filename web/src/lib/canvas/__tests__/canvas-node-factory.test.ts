@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyNodeConfigPatch, cloneNodeMetadata } from "@/lib/canvas/canvas-node-factory";
+import { applyNodeConfigPatch, cloneNodeMetadata, createCanvasNode, createDefaultNodeMetadata } from "@/lib/canvas/canvas-node-factory";
 import { CanvasNodeType } from "@/types/canvas";
 import type { CanvasNodeMetadata } from "@/types/canvas";
 
@@ -138,5 +138,68 @@ describe("applyNodeConfigPatch", () => {
         // workflowId 必须被真正清除，否则执行侧会优先采用它并跳过 modelId 对应的内置工作流
         expect(next.metadata?.workflowId).toBeUndefined();
         expect(Object.prototype.hasOwnProperty.call(next.metadata, "workflowId")).toBe(true);
+    });
+
+    it("resizes node around geometric center anchor when aspect ratio changes", () => {
+        const node = {
+            id: "img-1",
+            type: CanvasNodeType.Image,
+            title: "img",
+            position: { x: 100, y: 100 },
+            width: 420,
+            height: 420,
+            metadata: { size: "1:1" },
+        } as unknown as Parameters<typeof applyNodeConfigPatch>[0];
+
+        // Old center: x: 100 + 420/2 = 310, y: 100 + 420/2 = 310
+        const patched = applyNodeConfigPatch(node, { size: "16:9" });
+        expect(patched.width).toBe(420);
+        expect(patched.height).toBe(236);
+        // New center must remain (310, 310) -> x: 310 - 420/2 = 100, y: 310 - 236/2 = 192
+        expect(patched.position.x).toBe(100);
+        expect(patched.position.y).toBe(192);
+        expect(patched.position.x + patched.width / 2).toBe(310);
+        expect(patched.position.y + patched.height / 2).toBe(310);
+    });
+
+    it("preserves user manually enlarged dimensions when switching ratio", () => {
+        const enlarged = {
+            id: "img-2",
+            type: CanvasNodeType.Image,
+            title: "img",
+            position: { x: 0, y: 0 },
+            width: 600,
+            height: 600,
+            metadata: { size: "1:1" },
+        } as unknown as Parameters<typeof applyNodeConfigPatch>[0];
+
+        const patched = applyNodeConfigPatch(enlarged, { size: "16:9" });
+        expect(patched.width).toBe(600);
+        expect(patched.height).toBe(338);
+        expect(patched.position.x + patched.width / 2).toBe(300);
+        expect(patched.position.y + patched.height / 2).toBe(300);
+    });
+});
+
+describe("createCanvasNode with pre-fitted dimensions", () => {
+    it("spawns image node with preferred 16:9 aspect ratio directly centered at target position", () => {
+        const center = { x: 500, y: 500 };
+        const node = createCanvasNode(CanvasNodeType.Image, center, { size: "16:9" });
+
+        expect(node.width).toBe(420);
+        expect(node.height).toBe(236);
+        // Center of the node must be exactly (500, 500)
+        expect(node.position.x + node.width / 2).toBe(500);
+        expect(node.position.y + node.height / 2).toBe(500);
+    });
+
+    it("spawns image node with default 1:1 square centered at target position", () => {
+        const center = { x: 500, y: 500 };
+        const node = createCanvasNode(CanvasNodeType.Image, center);
+
+        expect(node.width).toBe(420);
+        expect(node.height).toBe(420);
+        expect(node.position.x + node.width / 2).toBe(500);
+        expect(node.position.y + node.height / 2).toBe(500);
     });
 });
