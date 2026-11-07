@@ -10,6 +10,7 @@ import {
     resolveVideoModelIdForMode,
     type WorkflowModelProfile,
     videoMinimaxH3OmniProfile,
+    getDslMiddleSize,
 } from "@/services/api/models";
 
 export type MiniMaxVideoTier = {
@@ -18,7 +19,7 @@ export type MiniMaxVideoTier = {
 };
 
 /**
- * MiniMax H3 官方支持的 32 整数倍尺寸档位
+ * MiniMax H3 官方支持的 32 整数倍尺寸档位（14 档预设，0.2 MP ~ 2.0 MP）
  */
 export const MINIMAX_VIDEO_SIZE_TIERS: MiniMaxVideoTier[] = [
     { landscapeW: 608, landscapeH: 352 },
@@ -30,6 +31,11 @@ export const MINIMAX_VIDEO_SIZE_TIERS: MiniMaxVideoTier[] = [
     { landscapeW: 1216, landscapeH: 672 },
     { landscapeW: 1280, landscapeH: 736 },
     { landscapeW: 1344, landscapeH: 768 },
+    { landscapeW: 1376, landscapeH: 768 },
+    { landscapeW: 1504, landscapeH: 832 },
+    { landscapeW: 1664, landscapeH: 928 },
+    { landscapeW: 1824, landscapeH: 1024 },
+    { landscapeW: 1920, landscapeH: 1088 },
 ];
 
 export const quickSecondOptions = [5, 10, 15];
@@ -312,7 +318,9 @@ export function videoSecondsLabel(value?: string | number, profile?: WorkflowMod
 
 export function normalizeVideoSizeValue(value?: string, profile?: WorkflowModelProfile) {
     const allowed = profile?.capabilityConfig.size?.values;
-    const defaultVal = profile?.capabilityConfig.size?.default || "1280x736";
+    const defaultVal =
+        profile?.capabilityConfig.size?.default ||
+        (allowed ? getDslMiddleSize(allowed, "16:9") : "1280x736");
     if (!value) return defaultVal;
     if (allowed && allowed.length > 0) {
         const clean = value.toLowerCase().replace(/\s+/g, "");
@@ -331,18 +339,19 @@ export function parseVideoSize(
     sizeStr?: string,
     tiers: MiniMaxVideoTier[] = MINIMAX_VIDEO_SIZE_TIERS,
 ): { width: number; height: number; aspect: "16:9" | "9:16"; tier: MiniMaxVideoTier } {
+    const availableTiers = tiers.length > 0 ? tiers : MINIMAX_VIDEO_SIZE_TIERS;
+    const fallbackTier = availableTiers[Math.floor(availableTiers.length / 2)] || availableTiers[0] || MINIMAX_VIDEO_SIZE_TIERS[0];
     const raw = (sizeStr || "").trim().toLowerCase();
     const match = raw.match(/^(\d+)\s*[x×]\s*(\d+)$/);
-    const w = Number(match?.[1]) || 1280;
-    const h = Number(match?.[2]) || 736;
+    const w = Number(match?.[1]) || fallbackTier.landscapeW;
+    const h = Number(match?.[2]) || fallbackTier.landscapeH;
 
     const isLandscape = w >= h;
     const aspect: "16:9" | "9:16" = isLandscape ? "16:9" : "9:16";
     const longSide = Math.max(w, h);
     const shortSide = Math.min(w, h);
 
-    const availableTiers = tiers.length > 0 ? tiers : MINIMAX_VIDEO_SIZE_TIERS;
-    let matchedTier = availableTiers[0] || MINIMAX_VIDEO_SIZE_TIERS[0];
+    let matchedTier = fallbackTier;
     let minDiff = Infinity;
     for (const t of availableTiers) {
         const diff = Math.abs(t.landscapeW - longSide) + Math.abs(t.landscapeH - shortSide);

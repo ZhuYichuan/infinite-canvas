@@ -15,9 +15,9 @@ import {
 describe("Video Settings Panel DSL & Sizing Helpers", () => {
     it("extractVideoSizeTiers dynamically parses discrete dimension pairs into sorted landscape tiers", () => {
         const tiers = extractVideoSizeTiers(videoMinimaxH3OmniProfile.capabilityConfig.size?.values);
-        expect(tiers).toHaveLength(9);
+        expect(tiers).toHaveLength(14);
         expect(tiers[0]).toEqual({ landscapeW: 608, landscapeH: 352 });
-        expect(tiers[tiers.length - 1]).toEqual({ landscapeW: 1344, landscapeH: 768 });
+        expect(tiers[tiers.length - 1]).toEqual({ landscapeW: 1920, landscapeH: 1088 });
     });
 
     it("extractVideoSizeTiers falls back to default tiers when no values provided", () => {
@@ -48,10 +48,28 @@ describe("Video Settings Panel DSL & Sizing Helpers", () => {
         expect(normalizeVideoSizeValue("1280x736", videoMinimaxH3OmniProfile)).toBe("1280x736");
         // Valid 9:16 size from profile
         expect(normalizeVideoSizeValue("736x1280", videoMinimaxH3FrameProfile)).toBe("736x1280");
+        // Valid 2.0 MP tier
+        expect(normalizeVideoSizeValue("1920x1088", videoMinimaxH3OmniProfile)).toBe("1920x1088");
+        expect(normalizeVideoSizeValue("1088x1920", videoMinimaxH3FrameProfile)).toBe("1088x1920");
         // Disallowed custom size falls back to profile default
         expect(normalizeVideoSizeValue("1920x1080", videoMinimaxH3OmniProfile)).toBe("1280x736");
-        // Empty size falls back to profile default
+        // Empty size falls back to profile dynamic middle default
         expect(normalizeVideoSizeValue("", videoMinimaxH3FrameProfile)).toBe("1280x736");
+
+        // Custom profile with odd number of tiers (e.g. 3 tiers -> middle is 864x480)
+        const customProfile = {
+            ...videoMinimaxH3OmniProfile,
+            capabilityConfig: {
+                ...videoMinimaxH3OmniProfile.capabilityConfig,
+                size: {
+                    parameter: "size" as const,
+                    values: ["608x352", "352x608", "864x480", "480x864", "1344x768", "768x1344"],
+                    default: "864x480",
+                    allowCustom: false,
+                },
+            },
+        };
+        expect(normalizeVideoSizeValue("invalid", customProfile)).toBe("864x480");
     });
 
     it("videoSizeLabel produces human-readable label with aspect ratio", () => {
