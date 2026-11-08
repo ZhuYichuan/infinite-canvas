@@ -244,6 +244,13 @@ describe("Settlement Frame Lock & Child Node Sizing", () => {
         expect(shouldLockFrame).toBe(true);
     });
 
+    it("resolves video skeleton to 16:9 (420x236) default ratio when no targetSize is provided", () => {
+        const skeleton = resolveSkeletonDimensions({
+            defaultRatio: "16:9",
+        });
+        expect(skeleton).toEqual({ width: 420, height: 236 });
+    });
+
     it("scales upscale and crop child nodes aligned with parent node edge instead of arbitrary 640", () => {
         const parentNode = { width: 420, height: 420 };
         const upscaledImage = { width: 2048, height: 2048 };

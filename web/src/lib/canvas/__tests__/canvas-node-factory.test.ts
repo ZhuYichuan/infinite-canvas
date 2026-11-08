@@ -193,6 +193,16 @@ describe("createCanvasNode with pre-fitted dimensions", () => {
         expect(node.position.y + node.height / 2).toBe(500);
     });
 
+    it("spawns video node with default 16:9 aspect ratio (420x236) centered at target position", () => {
+        const center = { x: 500, y: 500 };
+        const node = createCanvasNode(CanvasNodeType.Video, center);
+
+        expect(node.width).toBe(420);
+        expect(node.height).toBe(236);
+        expect(node.position.x + node.width / 2).toBe(500);
+        expect(node.position.y + node.height / 2).toBe(500);
+    });
+
     it("spawns image node with default 1:1 square centered at target position", () => {
         const center = { x: 500, y: 500 };
         const node = createCanvasNode(CanvasNodeType.Image, center);
