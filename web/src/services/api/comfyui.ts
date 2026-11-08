@@ -952,6 +952,12 @@ export function adaptWorkflowModelPaths(
 
 export const COMFYUI_CORE_PLUGINS = [
     {
+        name: "ComfyUI-H3-FaceRefine",
+        url: "https://github.com/Carasibana/ComfyUI-H3-FaceRefine",
+        keywords: ["h3facerefine", "facerefine", "h3 load video + face select", "h3 face track + crop"],
+        desc: "MiniMax H3 视频人脸追踪精修套件",
+    },
+    {
         name: "ComfyUI-MiniMaxH3-Myang",
         url: "https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang",
         keywords: ["h3facetrackcrop", "h3injectvideolatent", "minimaxh3nativeaudiolock", "h3perframedenoise", "h3facestitch"],

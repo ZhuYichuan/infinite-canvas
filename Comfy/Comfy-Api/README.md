@@ -110,8 +110,9 @@ Comfy/Comfy-Api/
 | :---: | :--- | :--- | :--- | :--- |
 | 6 | **comfyui-SelfLift** | `https://github.com/facok/comfyui-SelfLift` | 全能视频 / 首尾帧视频 | 渐进式超分去噪采样器 (`SelfLiftH3Sampler`)，低分辨率启动后跃升精修 |
 | 7 | **ComfyUI-ReShot** | `https://github.com/maosika-ai/ComfyUI-ReShot` | 视频深度估计 | 单目视频深度时序估计、运镜走位提取 (`ReShotDepthVideo`) |
-| 8 | **ComfyUI-MiniMaxH3-Myang** | `https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang` | 视频人脸追踪精修 | 人脸智能追踪裁剪、潜空间注入、原生口型音频锁与按帧去噪缝合 |
-| 9 | **ComfyUI-VideoHelperSuite** | `https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite` | 视频人脸追踪精修 | 视频流加载与音画组合封装输出节点 (`LoadVideo`, `VHS_VideoCombine`) |
+| 8 | **ComfyUI-H3-FaceRefine** | `https://github.com/Carasibana/ComfyUI-H3-FaceRefine` | 视频人脸追踪精修 | MiniMax H3 视频人脸追踪、小脸智能裁剪与闭环精修套件 (`H3 Face Refine`) |
+| 9 | **ComfyUI-MiniMaxH3-Myang** | `https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang` | 视频人脸追踪精修 | 人脸智能追踪裁剪、潜空间注入、原生口型音频锁与按帧去噪缝合 |
+| 10 | **ComfyUI-VideoHelperSuite** | `https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite` | 视频人脸追踪精修 | 视频流加载与音画组合封装输出节点 (`LoadVideo`, `VHS_VideoCombine`) |
 
 ### 一键克隆命令（在 ComfyUI `custom_nodes/` 目录执行）
 
@@ -128,6 +129,7 @@ git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
 git clone https://github.com/facok/comfyui-SelfLift.git
 git clone https://github.com/maosika-ai/ComfyUI-ReShot.git
 python -m pip install -r ComfyUI-ReShot/requirements.txt
+git clone https://github.com/Carasibana/ComfyUI-H3-FaceRefine.git
 git clone https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang.git
 git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
 ```

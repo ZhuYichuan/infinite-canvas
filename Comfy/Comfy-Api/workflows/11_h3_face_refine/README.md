@@ -62,16 +62,18 @@
 
 运行本工作流需要在 ComfyUI 的 `custom_nodes/` 目录下安装以下核心扩展：
 
-1. **ComfyUI-MiniMaxH3-Myang**（提供人脸追踪裁剪、潜空间注入、音频口型锁、逐帧动态去噪与人脸无缝缝合节点）：
+1. **ComfyUI-H3-FaceRefine**（提供人脸追踪、小脸智能裁剪与闭环精修套件）：
+   - 仓库地址: `https://github.com/Carasibana/ComfyUI-H3-FaceRefine`
+2. **ComfyUI-MiniMaxH3-Myang**（提供人脸追踪裁剪、潜空间注入、音频口型锁、逐帧动态去噪与人脸无缝缝合节点）：
    - 仓库地址: `https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang`
    - 核心节点: `H3FaceTrackCrop`、`H3InjectVideoLatent`、`MiniMaxH3NativeAudioLock`、`H3PerFrameDenoise`、`H3FaceStitch`
-2. **ComfyUI-KJNodes**（提供音视频组件多模态解包）：
+3. **ComfyUI-KJNodes**（提供音视频组件多模态解包）：
    - 仓库地址: `https://github.com/kijai/ComfyUI-KJNodes`
    - 核心节点: `GetVideoComponents`
-3. **ComfyUI-VideoHelperSuite (VHS)**（提供视频加载与音画封装输出）：
+4. **ComfyUI-VideoHelperSuite (VHS)**（提供视频加载与音画封装输出）：
    - 仓库地址: `https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite`
    - 核心节点: `LoadVideo`、`VHS_VideoCombine`
-4. **ComfyLiterals**（提供基础字面量与多行文本输入）：
+5. **ComfyLiterals**（提供基础字面量与多行文本输入）：
    - 仓库地址: `https://github.com/M1kep/ComfyLiterals`
    - 核心节点: `PrimitiveStringMultiline`
 

@@ -72,6 +72,7 @@ describe("translateComfyuiValidationError (Missing Plugin Friendly Translation)"
     it("maintains the core ComfyUI plugins catalog", () => {
         expect(COMFYUI_CORE_PLUGINS.length).toBeGreaterThanOrEqual(5);
         const names = COMFYUI_CORE_PLUGINS.map((p) => p.name);
+        expect(names).toContain("ComfyUI-H3-FaceRefine");
         expect(names).toContain("ComfyUI-MiniMaxH3-Myang");
         expect(names).toContain("ComfyUI-VideoHelperSuite");
         expect(names).toContain("ComfyUI-KJNodes");

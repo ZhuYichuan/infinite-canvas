@@ -7,6 +7,11 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- ComfyUI User Guide Face Refine Plugin (`ComfyUI-H3-FaceRefine`):
+  - Navigate to `/guide` (User Guide & Workflow Downloads) and inspect the "Face Refine" workflow card; confirm that `ComfyUI-H3-FaceRefine` is listed in the dependencies with working external link;
+  - Inspect the "Advanced Extension Plugins" section; confirm `ComfyUI-H3-FaceRefine` is displayed with individual and batch clone commands;
+  - Verify that clicking "Copy Advanced Plugins Command" and the all-in-one ZIP bundle README include `git clone https://github.com/Carasibana/ComfyUI-H3-FaceRefine.git`.
+
 - 画布节点全模态尺寸生命周期与无抖动占位：
   - 新建图片节点：在全局配置分别选择 1:1、16:9、9:16，从工具栏或快捷键新建空白图片节点，验证卡片初始落子即为对应比例（1:1 为 420×420，16:9 为 420×236，9:16 为 236×420），且严格以点击位置为几何中心展开。
   - 参数面板切换比例：在节点底部设置面板中主动切换尺寸比例（如从 1:1 改选为 16:9），验证卡片以几何中心（Center Anchor）平滑变形，提示词输入面板和悬浮工具栏始终贴附在底部，无跳跃、无漂移。

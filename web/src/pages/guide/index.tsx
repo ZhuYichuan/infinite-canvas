@@ -77,6 +77,13 @@ export const CORE_PLUGINS = [
 // 人脸追踪精修与深度估计等进阶/专用扩展插件
 export const ADVANCED_PLUGINS = [
     {
+        name: "ComfyUI-H3-FaceRefine",
+        repo: "Carasibana/ComfyUI-H3-FaceRefine",
+        url: "https://github.com/Carasibana/ComfyUI-H3-FaceRefine",
+        desc: "MiniMax H3 视频人脸追踪、小脸智能裁剪与闭环精修套件 (H3 Face Refine)",
+        usedBy: "视频人脸追踪精修工作流",
+    },
+    {
         name: "ComfyUI-MiniMaxH3-Myang",
         repo: "civilcoco/ComfyUI-MiniMaxH3-Myang",
         url: "https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang",
@@ -110,6 +117,7 @@ export const CLONE_CORE_PLUGINS_CMD = [
 
 export const CLONE_ADVANCED_PLUGINS_CMD = [
     "cd custom_nodes",
+    "git clone https://github.com/Carasibana/ComfyUI-H3-FaceRefine.git",
     "git clone https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang.git",
     "git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git",
     "git clone https://github.com/maosika-ai/ComfyUI-ReShot.git",
@@ -570,6 +578,7 @@ const WORKFLOWS: WorkflowItem[] = [
                 apiFileName: "H3_Face_Refine_Auto_Select_Api.json",
                 apiDownloadUrl: "/workflows/H3_Face_Refine_Auto_Select_Api.json",
                 plugins: [
+                    { name: "ComfyUI-H3-FaceRefine", url: "https://github.com/Carasibana/ComfyUI-H3-FaceRefine" },
                     { name: "ComfyUI-MiniMaxH3-Myang", url: "https://github.com/civilcoco/ComfyUI-MiniMaxH3-Myang" },
                     { name: "ComfyUI-VideoHelperSuite", url: "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite" },
                     { name: "ComfyUI-KJNodes", url: "https://github.com/kijai/ComfyUI-KJNodes" },
@@ -584,7 +593,7 @@ const WORKFLOWS: WorkflowItem[] = [
                     { category: "人体分割检测器", folder: "models/ultralytics/segm/", files: ["person_yolov8m-seg.pt"] },
                     { category: "人脸回退检测器", folder: "models/ultralytics/bbox/", files: ["face_yolov8m.pt"] },
                 ],
-                tips: "⚠️ 依赖 ComfyUI-MiniMaxH3-Myang 与 VHS 扩展插件；YOLO 权重需放入 models/ultralytics/ 目录；系统已内置 Windows 与 Linux 跨平台路径自适应转换。",
+                tips: "⚠️ 依赖 ComfyUI-H3-FaceRefine / ComfyUI-MiniMaxH3-Myang 与 VHS 扩展插件；YOLO 权重需放入 models/ultralytics/ 目录；系统已内置 Windows 与 Linux 跨平台路径自适应转换。",
             },
         ],
     },
@@ -1214,7 +1223,7 @@ export default function GuidePage() {
                             </Button>
                         </div>
 
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             {ADVANCED_PLUGINS.map((plugin) => (
                                 <div
                                     key={plugin.name}
