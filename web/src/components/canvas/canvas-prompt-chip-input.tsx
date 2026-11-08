@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { Image, Popconfirm } from "antd";
@@ -185,7 +185,7 @@ export function CanvasPromptChipInput({
         setActiveIndex(0);
     };
 
-    const closeMention = () => {
+    const closeMention = useCallback(() => {
         if (blurTimerRef.current) {
             window.clearTimeout(blurTimerRef.current);
             blurTimerRef.current = null;
@@ -193,7 +193,7 @@ export function CanvasPromptChipInput({
         setMention(null);
         setActiveIndex(0);
         savedRangeRef.current = null;
-    };
+    }, []);
 
     const prepareActiveRange = () => {
         const editor = editorRef.current;

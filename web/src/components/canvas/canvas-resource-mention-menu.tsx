@@ -3,6 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 import { createPortal } from "react-dom";
 import { Camera, Check, ChevronRight, FileText, Image as ImageIcon, Music2, UserRound, Video } from "lucide-react";
 
+import { useDeferredOutsideClick } from "./use-deferred-outside-click";
 import { canvasThemes } from "@/lib/canvas-theme";
 import type { CanvasResourceReference, CategorizedCanvasResources } from "@/lib/canvas/canvas-resource-references";
 import { MOTION_PRESETS, type CanvasMotionPreset } from "@/lib/canvas/canvas-motion-presets";
@@ -292,32 +293,11 @@ export const CanvasResourceMentionMenu = forwardRef<MentionMenuHandle, Props>(fu
         },
     }));
 
-    // 监听外部点击与 Esc 关闭
-    useEffect(() => {
-        let closeTimer: ReturnType<typeof setTimeout> | null = null;
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                event.preventDefault();
-                event.stopPropagation();
-                onClose();
-            }
-        };
-        const handlePointerDown = (event: PointerEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                if (closeTimer) clearTimeout(closeTimer);
-                closeTimer = setTimeout(() => {
-                    onClose();
-                }, 0);
-            }
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        window.addEventListener("pointerdown", handlePointerDown, true);
-        return () => {
-            if (closeTimer) clearTimeout(closeTimer);
-            window.removeEventListener("keydown", handleKeyDown);
-            window.removeEventListener("pointerdown", handlePointerDown, true);
-        };
-    }, [onClose]);
+    useDeferredOutsideClick({
+        open: true,
+        onClose,
+        ignoreRefs: [containerRef],
+    });
 
     const stopPropagation = (event: ReactPointerEvent | ReactMouseEvent) => {
         event.stopPropagation();

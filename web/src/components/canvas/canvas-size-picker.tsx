@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Select } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { useDeferredOutsideClick } from "./use-deferred-outside-click";
 import { cn } from "@/lib/utils";
 
 const sizeOptions = ["auto", "1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16"];
@@ -25,23 +26,11 @@ export function CanvasSizePicker({ value, className, onChange }: CanvasSizePicke
         setOpen(false);
     };
 
-    useEffect(() => {
-        if (!open) return;
-        let closeTimer: ReturnType<typeof setTimeout> | null = null;
-        const close = (event: PointerEvent) => {
-            const target = event.target instanceof Element ? event.target : null;
-            if (target && (rootRef.current?.contains(target) || target.closest(".ant-select-dropdown"))) return;
-            if (closeTimer) clearTimeout(closeTimer);
-            closeTimer = setTimeout(() => {
-                setOpen(false);
-            }, 0);
-        };
-        window.addEventListener("pointerdown", close, true);
-        return () => {
-            if (closeTimer) clearTimeout(closeTimer);
-            window.removeEventListener("pointerdown", close, true);
-        };
-    }, [open]);
+    useDeferredOutsideClick({
+        open,
+        onClose: () => setOpen(false),
+        ignoreRefs: [rootRef],
+    });
 
     return (
         <div ref={rootRef} className={className}>

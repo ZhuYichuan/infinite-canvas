@@ -74,6 +74,7 @@ export function createCanvasNode(type: CanvasNodeTypeId, position: Position, met
               referenceWidth: metadata?.naturalWidth,
               referenceHeight: metadata?.naturalHeight,
               baseMaxBound: spec.width,
+              defaultRatio: type === CanvasNodeType.Video ? "16:9" : "1:1",
           })
         : { width: spec.width, height: spec.height };
 

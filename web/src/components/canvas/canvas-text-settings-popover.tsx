@@ -4,6 +4,7 @@ import { Settings2 } from "lucide-react";
 import { Button, InputNumber } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { useDeferredOutsideClick } from "./use-deferred-outside-click";
 import { TextSettingsPanel } from "@/components/text-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -41,7 +42,8 @@ export function CanvasTextSettingsPopover({
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const buttonRef = useRef<HTMLSpanElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
-    const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const onOpenChangeRef = useRef(onOpenChange);
+    onOpenChangeRef.current = onOpenChange;
     const [open, setOpen] = useState(false);
     const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
 
@@ -54,47 +56,16 @@ export function CanvasTextSettingsPopover({
 
     const updateOpen = (nextOpen: boolean) => {
         setOpen(nextOpen);
-        onOpenChange?.(nextOpen);
+        onOpenChangeRef.current?.(nextOpen);
     };
 
-    useEffect(() => {
-        if (!open) return;
-        const syncPosition = () => setButtonRect(buttonRef.current?.getBoundingClientRect() || null);
-        const closeOnOutsidePointer = (event: PointerEvent) => {
-            const target = event.target;
-            if (!(target instanceof Node)) return;
-            if (
-                buttonRef.current?.contains(target) ||
-                panelRef.current?.contains(target) ||
-                (target instanceof Element && Boolean(target.closest(".ant-tooltip, .ant-popover, .ant-dropdown, .ant-select-dropdown, .ant-picker-dropdown")))
-            ) return;
-            if (document.activeElement instanceof HTMLElement && panelRef.current?.contains(document.activeElement)) {
-                document.activeElement.blur();
-            }
-            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-            closeTimerRef.current = setTimeout(() => {
-                updateOpen(false);
-            }, 0);
-        };
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                updateOpen(false);
-            }
-        };
-
-        syncPosition();
-        window.addEventListener("resize", syncPosition);
-        window.addEventListener("scroll", syncPosition, true);
-        window.addEventListener("pointerdown", closeOnOutsidePointer, true);
-        window.addEventListener("keydown", handleKeyDown);
-        return () => {
-            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-            window.removeEventListener("resize", syncPosition);
-            window.removeEventListener("scroll", syncPosition, true);
-            window.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [open]);
+    useDeferredOutsideClick({
+        open,
+        onClose: () => updateOpen(false),
+        ignoreRefs: [buttonRef, panelRef],
+        blurElementRef: panelRef,
+        onSyncPosition: () => setButtonRect(buttonRef.current?.getBoundingClientRect() || null),
+    });
 
     if (!hasConfig) return null;
 

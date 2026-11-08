@@ -28,6 +28,7 @@ export type SkeletonDimensionOptions = {
     userHeight?: number | null;
     freeResize?: boolean | null;
     baseMaxBound?: number;
+    defaultRatio?: string | null;
 };
 
 export function resolveSkeletonDimensions(options: SkeletonDimensionOptions = {}): { width: number; height: number } {
@@ -65,7 +66,12 @@ export function resolveSkeletonDimensions(options: SkeletonDimensionOptions = {}
         return { width: Math.round(options.userWidth), height: Math.round(options.userHeight) };
     }
 
-    // 6. 默认回退为对称正方形基准
+    // 6. 默认回退（若配置了 defaultRatio 则按该比例，否则回退为对称正方形基准）
+    if (options.defaultRatio) {
+        const fromDefault = nodeSizeFromRatio(options.defaultRatio, baseBound, baseBound);
+        if (fromDefault) return fromDefault;
+    }
+
     return { width: baseBound, height: baseBound };
 }
 

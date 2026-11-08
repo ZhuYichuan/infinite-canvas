@@ -782,12 +782,35 @@ function InfiniteCanvasPage() {
 
     const createConnectedNode = useCallback(
         (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio, pending: PendingConnectionCreate) => {
-            const metadata = createDefaultNodeMetadata(type, effectiveConfig);
+            const baseMetadata = createDefaultNodeMetadata(type, effectiveConfig) || {};
+            const sourceIds = pending.sourceNodeIds && pending.sourceNodeIds.length > 0 ? pending.sourceNodeIds : [pending.connection.nodeId];
+            const primarySource = sourceIds.map((id) => nodesRef.current.find((n) => n.id === id)).find((n): n is CanvasNodeData => Boolean(n));
+            const sourceMetadata = primarySource?.metadata;
+
+            const inheritedSize = sourceMetadata?.size;
+            const inheritedRefWidth = primarySource?.type === CanvasNodeType.Image ? (sourceMetadata?.naturalWidth || primarySource.width) : undefined;
+            const inheritedRefHeight = primarySource?.type === CanvasNodeType.Image ? (sourceMetadata?.naturalHeight || primarySource.height) : undefined;
+
+            const metadata: CanvasNodeMetadata = {
+                ...baseMetadata,
+                ...(inheritedSize ? { size: inheritedSize } : {}),
+                ...(inheritedRefWidth ? { naturalWidth: inheritedRefWidth, naturalHeight: inheritedRefHeight } : {}),
+                ...(primarySource?.type === CanvasNodeType.Config ? {
+                    ...(sourceMetadata?.channelId ? { channelId: sourceMetadata.channelId } : {}),
+                    ...(sourceMetadata?.workflowId ? { workflowId: sourceMetadata.workflowId } : {}),
+                    ...(sourceMetadata?.modelId ? { modelId: sourceMetadata.modelId } : {}),
+                    ...(sourceMetadata?.model ? { model: sourceMetadata.model } : {}),
+                } : {}),
+            };
+
             const title = generateNextNodeTitle(type, nodesRef.current);
             const newNode = createCanvasNode(type, pending.position, metadata, title);
+            if (type === CanvasNodeType.Image && !newNode.metadata?.content) {
+                delete newNode.metadata?.naturalWidth;
+                delete newNode.metadata?.naturalHeight;
+            }
             const allNodes = [...nodesRef.current, newNode];
 
-            const sourceIds = pending.sourceNodeIds && pending.sourceNodeIds.length > 0 ? pending.sourceNodeIds : [pending.connection.nodeId];
             const newConnections: CanvasConnection[] = [];
             let currentConnections = connectionsRef.current;
 
@@ -3437,10 +3460,13 @@ function InfiniteCanvasPage() {
                     const targetNode = isEmptyImageNode ? sourceNode : undefined;
                     const targetSize = generationConfig.size || sourceNode?.metadata?.size;
                     const firstRef = referenceImages[0];
+                    const refNode = firstRef ? nodesRef.current.find((n) => n.id === firstRef.id) : undefined;
+                    const referenceWidth = firstRef?.width || refNode?.metadata?.naturalWidth || refNode?.width;
+                    const referenceHeight = firstRef?.height || refNode?.metadata?.naturalHeight || refNode?.height;
                     const rootDimensions = resolveSkeletonDimensions({
                         targetSize,
-                        referenceWidth: firstRef?.width,
-                        referenceHeight: firstRef?.height,
+                        referenceWidth,
+                        referenceHeight,
                         userWidth: targetNode?.width,
                         userHeight: targetNode?.height,
                         freeResize: targetNode?.metadata?.freeResize,
@@ -3670,15 +3696,19 @@ function InfiniteCanvasPage() {
                     const targetVideoNode = isEmptyVideoNode ? sourceNode : undefined;
                     const videoConfig = NODE_DEFAULT_SIZE[CanvasNodeType.Video];
                     const firstRef = generationContext.referenceImages[0];
+                    const refNode = firstRef ? nodesRef.current.find((n) => n.id === firstRef.id) : undefined;
+                    const referenceWidth = firstRef?.width || refNode?.metadata?.naturalWidth || refNode?.width;
+                    const referenceHeight = firstRef?.height || refNode?.metadata?.naturalHeight || refNode?.height;
                     const videoTargetSize = generationConfig.size || sourceNode?.metadata?.size;
                     const videoDimensions = resolveSkeletonDimensions({
                         targetSize: videoTargetSize,
-                        referenceWidth: firstRef?.width,
-                        referenceHeight: firstRef?.height,
+                        referenceWidth,
+                        referenceHeight,
                         userWidth: targetVideoNode?.width,
                         userHeight: targetVideoNode?.height,
                         freeResize: targetVideoNode?.metadata?.freeResize,
                         baseMaxBound: videoConfig.width,
+                        defaultRatio: "16:9",
                     });
                     const videoPosition = isEmptyVideoNode && sourceNode
                         ? {
@@ -3764,45 +3794,44 @@ function InfiniteCanvasPage() {
                                 },
                             }),
                         );
-                        const shouldLockVideoFrame = Boolean(
-                            sourceNode?.metadata?.freeResize ||
-                            (sourceNode && isAspectRatioClose(sourceNode.width, sourceNode.height, video.width || sourceNode.width, video.height || sourceNode.height))
-                        );
-                        const maxVideoEdge = Math.max(sourceNode?.width || VIDEO_NODE_MAX_WIDTH, sourceNode?.height || VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH);
-                        const videoSize = shouldLockVideoFrame && sourceNode
-                            ? { width: sourceNode.width, height: sourceNode.height }
-                            : fitNodeSize(video.width || spec.width, video.height || spec.height, maxVideoEdge, maxVideoEdge);
                         setNodes((prev) =>
-                            prev.map((node) =>
-                                node.id === videoId
-                                    ? {
-                                          ...node,
-                                          width: videoSize.width,
-                                          height: videoSize.height,
-                                          position: shouldLockVideoFrame
-                                              ? node.position
-                                              : { x: node.position.x + node.width / 2 - videoSize.width / 2, y: node.position.y + node.height / 2 - videoSize.height / 2 },
-                                          metadata: {
-                                              ...node.metadata,
-                                              ...videoMetadata(video),
-                                              prompt,
-                                              effectivePrompt,
-                                              composerContent: undefined,
-                                              model: videoTool ? undefined : generationConfig.model,
-                                              modelId: videoTool ? undefined : sourceNode?.metadata?.modelId || generationConfig.model,
-                                              supportedTools: videoTool ? sourceNode?.metadata?.supportedTools : getModelProfile(sourceNode?.metadata?.modelId || generationConfig.model)?.supportedTools,
-                                              size: generationConfig.size,
-                                              seconds: generationConfig.videoSeconds,
-                                              videoMode: generationConfig.videoMode,
-                                              vquality: generationConfig.vquality,
-                                              generateAudio: generationConfig.videoGenerateAudio,
-                                              watermark: generationConfig.videoWatermark,
-                                              references: generationReferenceUrls(generationContext),
-                                              seed: nextSeed,
-                                          },
-                                      }
-                                    : node,
-                            ),
+                            prev.map((node) => {
+                                if (node.id !== videoId) return node;
+                                const shouldLockVideoFrame = Boolean(
+                                    node.metadata?.freeResize ||
+                                    isAspectRatioClose(node.width, node.height, video.width || node.width, video.height || node.height)
+                                );
+                                const edge = Math.max(node.width, node.height, CANVAS_NODE_MAX_BOUND);
+                                const videoSize = shouldLockVideoFrame
+                                    ? { width: node.width, height: node.height }
+                                    : fitNodeSize(video.width || node.width, video.height || node.height, edge, edge);
+                                return {
+                                    ...node,
+                                    width: videoSize.width,
+                                    height: videoSize.height,
+                                    position: shouldLockVideoFrame
+                                        ? node.position
+                                        : { x: node.position.x + node.width / 2 - videoSize.width / 2, y: node.position.y + node.height / 2 - videoSize.height / 2 },
+                                    metadata: {
+                                        ...node.metadata,
+                                        ...videoMetadata(video),
+                                        prompt,
+                                        effectivePrompt,
+                                        composerContent: undefined,
+                                        model: videoTool ? undefined : generationConfig.model,
+                                        modelId: videoTool ? undefined : sourceNode?.metadata?.modelId || generationConfig.model,
+                                        supportedTools: videoTool ? sourceNode?.metadata?.supportedTools : getModelProfile(sourceNode?.metadata?.modelId || generationConfig.model)?.supportedTools,
+                                        size: generationConfig.size,
+                                        seconds: generationConfig.videoSeconds,
+                                        videoMode: generationConfig.videoMode,
+                                        vquality: generationConfig.vquality,
+                                        generateAudio: generationConfig.videoGenerateAudio,
+                                        watermark: generationConfig.videoWatermark,
+                                        references: generationReferenceUrls(generationContext),
+                                        seed: nextSeed,
+                                    },
+                                };
+                            }),
                         );
                         setNodes((prev) => settleCanvasGeneration(prev, { nodeId: videoId, sourceNodeId: nodeId }));
                     } finally {
