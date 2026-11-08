@@ -5,6 +5,7 @@ import {
     buildGeneratedNodeConnections,
     buildGenerationConfig,
     buildPastedNodeConnections,
+    calculateBranchNodePosition,
     countInterruptedTasks,
     duplicateIncomingConnections,
     findRetrySourceNode,
@@ -610,6 +611,64 @@ describe("resetInterruptedGeneration with jobId persistence", () => {
         expect(reset.metadata?.images?.[0].jobId).toBe("job-456");
     });
 });
+
+describe("calculateBranchNodePosition", () => {
+    it("places branch node to the right with vertical center alignment", () => {
+        const sourceNode: CanvasNodeData = {
+            id: "source-1",
+            type: CanvasNodeType.Image,
+            title: "图片 1",
+            position: { x: 100, y: 100 },
+            width: 420,
+            height: 420,
+        };
+        const childSize = { width: 420, height: 236 };
+        const position = calculateBranchNodePosition(sourceNode, childSize, [sourceNode]);
+
+        expect(position).toEqual({
+            x: 100 + 420 + 96,
+            y: 100 + 420 / 2 - 236 / 2, // 192
+        });
+    });
+
+    it("shifts vertically downwards when target right slot collides with an existing node", () => {
+        const sourceNode: CanvasNodeData = {
+            id: "source-1",
+            type: CanvasNodeType.Image,
+            title: "图片 1",
+            position: { x: 100, y: 100 },
+            width: 420,
+            height: 420,
+        };
+        const childSize = { width: 420, height: 236 };
+        const existingBlockingNode: CanvasNodeData = {
+            id: "child-1",
+            type: CanvasNodeType.Image,
+            title: "图片 2",
+            position: { x: 616, y: 192 },
+            width: 420,
+            height: 236,
+        };
+
+        const position = calculateBranchNodePosition(
+            sourceNode,
+            childSize,
+            [sourceNode, existingBlockingNode],
+        );
+
+        // First attempt collides with existingBlockingNode (y: 192).
+        // It should shift by childSize.height (236) + gapY (24) = 452
+        expect(position).toEqual({
+            x: 616,
+            y: 192 + 236 + 24,
+        });
+    });
+
+    it("returns (0, 0) safely when sourceNode is missing", () => {
+        expect(calculateBranchNodePosition(null, { width: 420, height: 420 })).toEqual({ x: 0, y: 0 });
+    });
+});
+
 
 
 

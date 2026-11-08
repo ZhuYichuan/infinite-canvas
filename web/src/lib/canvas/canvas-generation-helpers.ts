@@ -11,7 +11,7 @@ import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-p
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
 import type { ReferenceImage } from "@/types/image";
 import { nanoid } from "nanoid";
-import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasGenerationIntent, type CanvasGenerationReferenceSnapshot, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
+import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasGenerationIntent, type CanvasGenerationReferenceSnapshot, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
 
 export function getVideoToolCategory(config: AiConfig, node?: CanvasNodeData) {
     const workflowId = node?.metadata?.workflowId || config.workflowId;
@@ -608,4 +608,48 @@ export function updateNodeGenerationProgress(
             },
         };
     });
+}
+
+export type BranchNodePositionOptions = {
+    gapX?: number;
+    gapY?: number;
+};
+
+/**
+ * 计算从父节点衍生/派生的新卡片放置位置：
+ * 1. 默认沿水平向右放置在父节点右侧 (x = parent.x + parent.width + gapX, 默认 gapX = 96)；
+ * 2. 垂直方向与父节点中心对齐 (y = parent.y + parent.height / 2 - child.height / 2)；
+ * 3. 若目标区域已存在其他画布节点，则自动向下平移 (y += child.height + gapY, 默认 gapY = 24) 寻找空位，避免重叠。
+ */
+export function calculateBranchNodePosition(
+    sourceNode: CanvasNodeData | null | undefined,
+    childSize: { width: number; height: number },
+    existingNodes: CanvasNodeData[] = [],
+    options: BranchNodePositionOptions = {},
+): Position {
+    const gapX = options.gapX ?? 96;
+    const gapY = options.gapY ?? 24;
+
+    if (!sourceNode) {
+        return { x: 0, y: 0 };
+    }
+
+    const startX = sourceNode.position.x + sourceNode.width + gapX;
+    let targetY = sourceNode.position.y + sourceNode.height / 2 - childSize.height / 2;
+
+    const sourceId = sourceNode.id;
+    while (
+        existingNodes.some(
+            (item) =>
+                item.id !== sourceId &&
+                item.position.x < startX + childSize.width &&
+                item.position.x + item.width > startX &&
+                item.position.y < targetY + childSize.height &&
+                item.position.y + item.height > targetY,
+        )
+    ) {
+        targetY += childSize.height + gapY;
+    }
+
+    return { x: startX, y: targetY };
 }

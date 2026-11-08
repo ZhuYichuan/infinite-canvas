@@ -82,6 +82,7 @@ import {
     buildGeneratedNodeConnections,
     buildGenerationConfig,
     buildPastedNodeConnections,
+    calculateBranchNodePosition,
     duplicateIncomingConnections,
     generateNextSeed,
     generationReferenceUrls,
@@ -3436,32 +3437,25 @@ function InfiniteCanvasPage() {
                     const targetNode = isEmptyImageNode ? sourceNode : undefined;
                     const targetSize = generationConfig.size || sourceNode?.metadata?.size;
                     const firstRef = referenceImages[0];
-                    const rootDimensions = isRepeat && sourceNode
-                        ? { width: sourceNode.width, height: sourceNode.height }
-                        : resolveSkeletonDimensions({
-                              targetSize,
-                              referenceWidth: firstRef?.width,
-                              referenceHeight: firstRef?.height,
-                              userWidth: targetNode?.width,
-                              userHeight: targetNode?.height,
-                              freeResize: targetNode?.metadata?.freeResize,
-                              baseMaxBound: imageConfig.width,
-                          });
+                    const rootDimensions = resolveSkeletonDimensions({
+                        targetSize,
+                        referenceWidth: firstRef?.width,
+                        referenceHeight: firstRef?.height,
+                        userWidth: targetNode?.width,
+                        userHeight: targetNode?.height,
+                        freeResize: targetNode?.metadata?.freeResize,
+                        baseMaxBound: imageConfig.width,
+                    });
                     const rootPosition = isEmptyImageNode && sourceNode
                         ? {
                               x: sourceNode.position.x + sourceNode.width / 2 - rootDimensions.width / 2,
                               y: sourceNode.position.y + sourceNode.height / 2 - rootDimensions.height / 2,
                           }
-                        : isRepeat && sourceNode
-                          ? sourceNode.position
-                          : {
-                                x: parentPosition.x + (sourceNode?.width || parentConfig.width) + 96,
-                                y: parentPosition.y + (sourceNode?.height || parentConfig.height) / 2 - rootDimensions.height / 2,
-                            };
+                        : calculateBranchNodePosition(sourceNode, rootDimensions, nodesRef.current);
                     const rootNode: CanvasNodeData = {
                         id: rootId,
                         type: CanvasNodeType.Image,
-                        title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyImageNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current)),
+                        title: isEmptyImageNode && sourceNode?.title ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Image, nodesRef.current),
                         position: rootPosition,
                         width: rootDimensions.width,
                         height: rootDimensions.height,
@@ -3469,6 +3463,7 @@ function InfiniteCanvasPage() {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata, sourceNode.type) : {}),
                             prompt,
                             effectivePrompt,
+                            size: targetSize,
                             composerContent: undefined,
                             channelId: sourceNode?.metadata?.channelId,
                             workflowId: sourceNode?.metadata?.workflowId,
@@ -3529,9 +3524,9 @@ function InfiniteCanvasPage() {
                         connectionsRef.current = [...connectionsRef.current, ...nextConnections];
                         setConnections((prev) => [...prev, ...nextConnections]);
                     }
-                    setSelectedNodeIds(new Set([nodeId]));
+                    setSelectedNodeIds(new Set([rootId]));
                     setSelectedConnectionId(null);
-                    setDialogNodeId(nodeId);
+                    setDialogNodeId(rootId);
 
                     const controller = isRepeat
                         ? startGenerationRequest(rootId, nodeId, rootId, runController)
@@ -3675,32 +3670,26 @@ function InfiniteCanvasPage() {
                     const targetVideoNode = isEmptyVideoNode ? sourceNode : undefined;
                     const videoConfig = NODE_DEFAULT_SIZE[CanvasNodeType.Video];
                     const firstRef = generationContext.referenceImages[0];
-                    const videoDimensions = isRepeat && sourceNode
-                        ? { width: sourceNode.width, height: sourceNode.height }
-                        : resolveSkeletonDimensions({
-                              targetSize: generationConfig.size || sourceNode?.metadata?.size,
-                              referenceWidth: firstRef?.width,
-                              referenceHeight: firstRef?.height,
-                              userWidth: targetVideoNode?.width,
-                              userHeight: targetVideoNode?.height,
-                              freeResize: targetVideoNode?.metadata?.freeResize,
-                              baseMaxBound: videoConfig.width,
-                          });
+                    const videoTargetSize = generationConfig.size || sourceNode?.metadata?.size;
+                    const videoDimensions = resolveSkeletonDimensions({
+                        targetSize: videoTargetSize,
+                        referenceWidth: firstRef?.width,
+                        referenceHeight: firstRef?.height,
+                        userWidth: targetVideoNode?.width,
+                        userHeight: targetVideoNode?.height,
+                        freeResize: targetVideoNode?.metadata?.freeResize,
+                        baseMaxBound: videoConfig.width,
+                    });
                     const videoPosition = isEmptyVideoNode && sourceNode
                         ? {
                               x: sourceNode.position.x + sourceNode.width / 2 - videoDimensions.width / 2,
                               y: sourceNode.position.y + sourceNode.height / 2 - videoDimensions.height / 2,
                           }
-                        : isRepeat && sourceNode
-                          ? sourceNode.position
-                          : {
-                                x: parent.x + (sourceNode?.width || videoDimensions.width) + 96,
-                                y: parent.y + (sourceNode?.height || videoDimensions.height) / 2 - videoDimensions.height / 2,
-                            };
+                        : calculateBranchNodePosition(sourceNode, videoDimensions, nodesRef.current);
                     const videoNode: CanvasNodeData = {
                         id: videoId,
                         type: CanvasNodeType.Video,
-                        title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyVideoNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current)),
+                        title: isEmptyVideoNode && sourceNode?.title ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Video, nodesRef.current),
                         position: videoPosition,
                         width: videoDimensions.width,
                         height: videoDimensions.height,
@@ -3715,7 +3704,7 @@ function InfiniteCanvasPage() {
                             model: videoTool ? undefined : generationConfig.model,
                             modelId: videoTool ? undefined : sourceNode?.metadata?.modelId,
                             supportedTools: videoTool ? sourceNode?.metadata?.supportedTools : undefined,
-                            size: generationConfig.size,
+                            size: videoTargetSize,
                             seconds: generationConfig.videoSeconds,
                             videoMode: generationConfig.videoMode,
                             vquality: generationConfig.vquality,
@@ -3748,6 +3737,9 @@ function InfiniteCanvasPage() {
                         connectionsRef.current = [...connectionsRef.current, ...nextConnections];
                         setConnections((prev) => [...prev, ...nextConnections]);
                     }
+                    setSelectedNodeIds(new Set([videoId]));
+                    setSelectedConnectionId(null);
+                    setDialogNodeId(videoId);
                     const controller = isRepeat
                         ? startGenerationRequest(videoId, nodeId, videoId, runController)
                         : isEmptyVideoNode
@@ -3827,10 +3819,10 @@ function InfiniteCanvasPage() {
                     const audioNode: CanvasNodeData = {
                         id: audioId,
                         type: CanvasNodeType.Audio,
-                        title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyAudioNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Audio, nodesRef.current)),
-                        position: isEmptyAudioNode ? sourceNode.position : { x: parent.x + (sourceNode?.width || spec.width) + 96, y: parent.y + ((sourceNode?.height || spec.height) - spec.height) / 2 },
-                        width: isEmptyAudioNode ? sourceNode.width : (isRepeat && sourceNode?.width ? sourceNode.width : spec.width),
-                        height: isEmptyAudioNode ? sourceNode.height : (isRepeat && sourceNode?.height ? sourceNode.height : spec.height),
+                        title: isEmptyAudioNode && sourceNode?.title ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Audio, nodesRef.current),
+                        position: isEmptyAudioNode && sourceNode ? sourceNode.position : calculateBranchNodePosition(sourceNode, spec, nodesRef.current),
+                        width: isEmptyAudioNode && sourceNode ? sourceNode.width : spec.width,
+                        height: isEmptyAudioNode && sourceNode ? sourceNode.height : spec.height,
                         metadata: {
                             ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata, sourceNode.type) : {}),
                             prompt,
@@ -3865,6 +3857,9 @@ function InfiniteCanvasPage() {
                         connectionsRef.current = [...connectionsRef.current, ...nextConnections];
                         setConnections((prev) => [...prev, ...nextConnections]);
                     }
+                    setSelectedNodeIds(new Set([audioId]));
+                    setSelectedConnectionId(null);
+                    setDialogNodeId(audioId);
                     const controller = isRepeat
                         ? startGenerationRequest(audioId, nodeId, audioId, runController)
                         : isEmptyAudioNode
@@ -3926,10 +3921,10 @@ function InfiniteCanvasPage() {
                 const rootNode: CanvasNodeData = {
                     id: rootId,
                     type: CanvasNodeType.Text,
-                    title: isRepeat && sourceNode?.title ? sourceNode.title : (isEmptyTextNode ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Text, nodesRef.current)),
-                    position: isEmptyTextNode ? sourceNode.position : { x: parentPosition.x + (sourceNode?.width || parentConfig.width) + 96, y: isRepeat ? parentPosition.y : parentPosition.y + parentConfig.height / 2 - textConfig.height / 2 },
-                    width: isEmptyTextNode ? sourceNode.width : (isRepeat && sourceNode?.width ? sourceNode.width : textConfig.width),
-                    height: isEmptyTextNode ? sourceNode.height : (isRepeat && sourceNode?.height ? sourceNode.height : textConfig.height),
+                    title: isEmptyTextNode && sourceNode?.title ? sourceNode.title : generateNextNodeTitle(CanvasNodeType.Text, nodesRef.current),
+                    position: isEmptyTextNode && sourceNode ? sourceNode.position : calculateBranchNodePosition(sourceNode, textConfig, nodesRef.current),
+                    width: isEmptyTextNode && sourceNode ? sourceNode.width : textConfig.width,
+                    height: isEmptyTextNode && sourceNode ? sourceNode.height : textConfig.height,
                     metadata: {
                         ...(isRepeat && sourceNode?.metadata ? cloneNodeMetadata(sourceNode.metadata, sourceNode.type) : {}),
                         prompt,
@@ -3984,9 +3979,9 @@ function InfiniteCanvasPage() {
                     connectionsRef.current = [...connectionsRef.current, ...nextConnections];
                     setConnections((prev) => [...prev, ...nextConnections]);
                 }
-                setSelectedNodeIds(new Set([nodeId]));
+                setSelectedNodeIds(new Set([rootId]));
                 setSelectedConnectionId(null);
-                setDialogNodeId(nodeId);
+                setDialogNodeId(rootId);
 
                 const controller = isRepeat
                     ? startGenerationRequest(rootId, nodeId, rootId, runController)

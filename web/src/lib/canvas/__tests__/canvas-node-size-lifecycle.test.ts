@@ -7,7 +7,8 @@ import {
     resolveSkeletonDimensions,
 } from "@/lib/canvas/canvas-node-size";
 import { NODE_DEFAULT_SIZE, NODE_SPECS } from "@/constant/canvas";
-import { CanvasNodeType } from "@/types/canvas";
+import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
+import { calculateBranchNodePosition } from "@/lib/canvas/canvas-generation-helpers";
 
 describe("CANVAS_NODE_MAX_BOUND & Baseline Spec", () => {
     it("defines 420 as the unified symmetric baseline bound", () => {
@@ -155,18 +156,40 @@ describe("Task Submission & Skeleton Pre-fitting Lifecycle", () => {
         expect(skeleton).toEqual({ width: 420, height: 236 });
     });
 
-    it("freezes dimensions and position for repeat generation on existing node", () => {
-        const existingNode = {
-            id: "node-repeat",
+    it("branches a new node to the right with new configuration dimensions when regenerating from an existing node with content", () => {
+        const existingNode: CanvasNodeData = {
+            id: "node-existing",
+            type: CanvasNodeType.Image,
+            title: "图片 1",
             width: 420,
-            height: 236,
-            position: { x: 120, y: 240 },
+            height: 420, // originally 1:1
+            position: { x: 100, y: 100 },
+            metadata: {
+                status: "success",
+                content: "https://example.com/original.png",
+                size: "1:1",
+            },
         };
-        const isRepeat = true;
-        const dimensions = isRepeat ? { width: existingNode.width, height: existingNode.height } : resolveSkeletonDimensions({ targetSize: "1:1" });
-        const position = isRepeat ? existingNode.position : { x: 0, y: 0 };
-        expect(dimensions).toEqual({ width: 420, height: 236 });
-        expect(position).toEqual({ x: 120, y: 240 });
+        // User changed size configuration to 16:9 and clicked generate (repeat/branch)
+        const newTargetSize = "16:9";
+        const newDimensions = resolveSkeletonDimensions({
+            targetSize: newTargetSize,
+            baseMaxBound: CANVAS_NODE_MAX_BOUND,
+        });
+        const newPosition = calculateBranchNodePosition(existingNode, newDimensions, [existingNode]);
+
+        // Existing parent node remains completely unchanged
+        expect(existingNode.width).toBe(420);
+        expect(existingNode.height).toBe(420);
+        expect(existingNode.position).toEqual({ x: 100, y: 100 });
+
+        // New node adopts the 16:9 420px baseline skeleton dimensions
+        expect(newDimensions).toEqual({ width: 420, height: 236 });
+        // New node is placed to the right with vertical centering
+        expect(newPosition).toEqual({
+            x: 100 + 420 + 96,
+            y: 100 + 420 / 2 - 236 / 2,
+        });
     });
 
     it("computes vertical 9:16 video skeleton correctly", () => {
