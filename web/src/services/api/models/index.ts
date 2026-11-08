@@ -133,6 +133,8 @@ export function getModelProfile(modelIdOrCategory?: string): WorkflowModelProfil
     // 4. 图片模型别名匹配
     if (
         lower === "image-qwen-2.1" ||
+        lower === "qwen-image-2.1" ||
+        lower === "qwen-image2.1" ||
         lower === "qwen-2.1" ||
         lower === "qwen2.1" ||
         lower === "qwen" ||
@@ -243,7 +245,13 @@ export function resolveModelIdFromWorkflowId(workflowId: string | undefined): st
         return videoMatch;
     }
     const lower = workflowId.toLowerCase();
-    if (lower.includes("qwen-image-21") || lower.includes("qwen-image-2.1") || lower.includes("qwen-2.1") || lower.includes("qwen2.1")) {
+    if (
+        lower.includes("qwen-image-21") ||
+        lower.includes("qwen-image-2.1") ||
+        lower.includes("qwen-image2.1") ||
+        lower.includes("qwen-2.1") ||
+        lower.includes("qwen2.1")
+    ) {
         return "image-qwen-2.1";
     }
     if (lower.includes("z-image-turbo") || lower.includes("z-turbo") || lower.includes("z-image")) {
@@ -590,6 +598,7 @@ export function dispatchComfyuiModelWorkflow(
     }
 
     // Pass 4: 动态切换潜空间路由开关（例如文生图与图生图/多图参考切换的 ComfySwitchNode）
+    const hasCustomSize = params.width !== undefined && params.height !== undefined;
     for (const node of Object.values(cloned)) {
         if (typeof node !== "object" || node === null) continue;
         if (node.class_type === "ComfySwitchNode" && node.inputs) {
@@ -605,9 +614,9 @@ export function dispatchComfyuiModelWorkflow(
                 const falseIsEmptyLatent = Boolean(falseTargetNode?.class_type?.includes("EmptyLatent"));
 
                 if (trueIsEmptyLatent && !falseIsEmptyLatent) {
-                    node.inputs.switch = assignedImageCount === 0;
+                    node.inputs.switch = hasCustomSize || assignedImageCount === 0;
                 } else if (falseIsEmptyLatent && !trueIsEmptyLatent) {
-                    node.inputs.switch = assignedImageCount > 0;
+                    node.inputs.switch = !hasCustomSize && assignedImageCount > 0;
                 }
             }
         }

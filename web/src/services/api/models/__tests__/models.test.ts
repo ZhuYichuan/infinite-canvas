@@ -298,6 +298,9 @@ describe("Workflow Model Profiles (Image Workflow Models)", () => {
     it("resolves image profiles by legacy aliases", () => {
         expect(getModelProfile("t2i")?.id).toBe("image-qwen-2.1");
         expect(getModelProfile("qwen-2.1")?.id).toBe("image-qwen-2.1");
+        expect(getModelProfile("qwen-image2.1")?.id).toBe("image-qwen-2.1");
+        expect(getModelProfile("qwen-image-2.1")?.id).toBe("image-qwen-2.1");
+        expect(getModelProfile("Qwen-Image-2.1")?.id).toBe("image-qwen-2.1");
         expect(getModelProfile("turbo")?.id).toBe("image-z-turbo");
         expect(getModelProfile("z-turbo")?.id).toBe("image-z-turbo");
         expect(getModelProfile("i2i")?.id).toBe("image-flux2-dev");
@@ -603,7 +606,16 @@ describe("dispatchComfyuiModelWorkflow (Cascade Pruning & Parameter Injection)",
         expect((dispatched["20"] as any).inputs["images.image_1"]).toEqual(["11", 0]);
         expect((dispatched["20"] as any).inputs["images.image_2"]).toBeUndefined();
         expect((dispatched["20"] as any).inputs["images.image_3"]).toBeUndefined();
-        expect((dispatched["31"] as any).inputs.switch).toBe(false);
+        // 显式指定宽高（如 4K 9:16 = 1536x2688 或 768x1024）时，保持 switch = true 走 EmptyLatentImage 遵循目标画幅尺寸
+        expect((dispatched["31"] as any).inputs.switch).toBe(true);
+
+        // 未显式指定宽高且有参考图时，切到 switch = false 走参考图 Latent
+        const dispatchedNoSize = dispatchComfyuiModelWorkflow(imageQwen21Profile, rawWorkflow, {
+            prompt: "赛博朋克雨夜街道",
+            seed: 888,
+            assetIds: ["new_ref1.png"],
+        });
+        expect((dispatchedNoSize["31"] as any).inputs.switch).toBe(false);
 
         // 当无参考图时，自动回退纯文生图 (switch = true 走 EmptyLatentImage)
         const t2iDispatched = dispatchComfyuiModelWorkflow(imageQwen21Profile, rawWorkflow, {

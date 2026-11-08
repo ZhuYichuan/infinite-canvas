@@ -93,8 +93,15 @@ export function parseImageSizeTierAndRatio(sizeStr?: string): { tier: ImageResol
         return { tier, ratio: null, width, height };
     }
 
-    // 2. 比例与档位匹配，如 "16:9-2k", "1:1"
-    const ratioMatch = raw.match(/^(\d+:\d+)(?:[-_](1k|2k|4k))?$/i);
+    // 2. 比例与档位匹配，如 "16:9-2k", "1:1", "4k, 9:16", "9:16 (4k)"
+    const tierFirstMatch = raw.match(/^(1k|2k|4k)[\s,_\-:]+(\d+:\d+)$/i);
+    if (tierFirstMatch) {
+        const tier = tierFirstMatch[1].toLowerCase() as ImageResolutionTier;
+        const ratio = tierFirstMatch[2] as ImageAspectRatio;
+        const dim = getImageDimensions(ratio, tier);
+        return { tier, ratio: IMAGE_STANDARD_ASPECT_RATIOS.includes(ratio) ? ratio : null, width: dim.width, height: dim.height };
+    }
+    const ratioMatch = raw.match(/^(\d+:\d+)(?:[\s,_\-\(]+(1k|2k|4k)\)?)?$/i);
     if (ratioMatch) {
         const ratio = ratioMatch[1] as ImageAspectRatio;
         const tier = (ratioMatch[2]?.toLowerCase() || "1k") as ImageResolutionTier;

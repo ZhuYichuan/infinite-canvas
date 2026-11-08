@@ -48,6 +48,9 @@ describe("parseSize", () => {
         expect(parseSize("1:1-4k")).toEqual({ width: 2048, height: 2048 });
         expect(parseSize("16:9-4k")).toEqual({ width: 2688, height: 1536 });
         expect(parseSize("9:16-4k")).toEqual({ width: 1536, height: 2688 });
+        expect(parseSize("4k, 9:16")).toEqual({ width: 1536, height: 2688 });
+        expect(parseSize("4k 9:16")).toEqual({ width: 1536, height: 2688 });
+        expect(parseSize("9:16 (4k)")).toEqual({ width: 1536, height: 2688 });
     });
 
     it("rounds explicit pixel sizes to even and rejects oversized input", () => {

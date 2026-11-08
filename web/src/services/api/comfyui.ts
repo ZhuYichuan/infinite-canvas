@@ -40,7 +40,8 @@ const DEFAULT_SIZE: ComfyuiSize = { width: 512, height: 512 };
 const MAX_PIXEL = 8192;
 
 const PIXEL_SIZE_PATTERN = /^(\d+)\s*[x×]\s*(\d+)$/;
-const RATIO_PATTERN = /^(\d+)\s*:\s*(\d+)(?:\s*[-_]\s*(1k|2k|4k))?$/i;
+const TIER_FIRST_PATTERN = /^(1k|2k|4k)[\s,_\-:]+(\d+)\s*:\s*(\d+)$/i;
+const RATIO_FIRST_PATTERN = /^(\d+)\s*:\s*(\d+)(?:[\s,_\-\(]+(1k|2k|4k)\)?)?$/i;
 
 function roundToEven(value: number) {
     return Math.max(2, Math.round(value / 2) * 2);
@@ -49,7 +50,7 @@ function roundToEven(value: number) {
 /**
  * Parse an image size setting into pixel dimensions.
  * Accepts "auto"/empty (falls back to 512x512 1K), pixel sizes ("512x512", "1024x1024"),
- * and standard aspect ratios ("1:1", "16:9", "16:9-2k", "9:16-4k" matching 64px-aligned presets).
+ * and standard aspect ratios ("1:1", "16:9", "16:9-2k", "9:16-4k", "4k, 9:16" matching 64px-aligned presets).
  * Anything else throws.
  */
 export function parseSize(size?: string): ComfyuiSize {
@@ -65,12 +66,17 @@ export function parseSize(size?: string): ComfyuiSize {
         if (width > MAX_PIXEL || height > MAX_PIXEL) throw new Error(`Invalid image size: ${value}`);
         return { width, height };
     }
-    const ratioMatch = RATIO_PATTERN.exec(value);
-    if (ratioMatch) {
-        const a = Number(ratioMatch[1]);
-        const b = Number(ratioMatch[2]);
+    const tierFirstMatch = TIER_FIRST_PATTERN.exec(value);
+    const ratioFirstMatch = RATIO_FIRST_PATTERN.exec(value);
+    const matchedRatio = tierFirstMatch
+        ? { a: Number(tierFirstMatch[2]), b: Number(tierFirstMatch[3]), tier: tierFirstMatch[1].toLowerCase() as ImageResolutionTier }
+        : ratioFirstMatch
+        ? { a: Number(ratioFirstMatch[1]), b: Number(ratioFirstMatch[2]), tier: (ratioFirstMatch[3]?.toLowerCase() || "1k") as ImageResolutionTier }
+        : null;
+
+    if (matchedRatio) {
+        const { a, b, tier } = matchedRatio;
         if (a <= 0 || b <= 0) throw new Error(`Invalid image size: ${value}`);
-        const tier = (ratioMatch[3]?.toLowerCase() || "1k") as ImageResolutionTier;
         const ratioKey = `${a}:${b}` as ImageAspectRatio;
         const preset = IMAGE_RESOLUTION_PRESETS[tier]?.[ratioKey];
         if (preset) {
@@ -2242,19 +2248,20 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
                 if (references.length > referenceSlots.length) throw new ComfyuiError(i18n.t("comfyui.imageReferenceLimit", { count: referenceSlots.length }));
             }
 
+            const isAutoOrEmptySize = !req.size || req.size.toLowerCase() === "auto";
             const size = parseSize(req.size);
             if (seed === undefined) seed = generateRandomSeed();
             const refImages = await Promise.all(references.map((image, index) => uploadComfyuiAsset(baseUrl, token, image.dataUrl, image.name || `ref_image_${index + 1}.png`, req.signal)));
             const boundWorkflow = modelProfile
                 ? dispatchComfyuiModelWorkflow(modelProfile, workflow.json, {
                       prompt: req.prompt,
-                      width: size.width,
-                      height: size.height,
+                      width: isAutoOrEmptySize ? undefined : size.width,
+                      height: isAutoOrEmptySize ? undefined : size.height,
                       seed,
                       step: req.step ?? req.config.step,
                       assetIds: refImages,
                   })
-                : applyBindings(workflow.json, { prompt: req.prompt, width: size.width, height: size.height, seed, refImages });
+                : applyBindings(workflow.json, { prompt: req.prompt, width: isAutoOrEmptySize ? undefined : size.width, height: isAutoOrEmptySize ? undefined : size.height, seed, refImages });
             jobId = await submitJob(boundWorkflow, baseUrl, token);
             req.onProgress?.("submitted", { jobId });
         }
