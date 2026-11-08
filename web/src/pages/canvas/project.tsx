@@ -4898,7 +4898,7 @@ function InfiniteCanvasPage() {
                 <CanvasNodeInspectorOverlay
                     node={!isViewer && !isNodeDragging && !isNodeResizing && !selectionBox && inspectorNode && inspectorNode.type !== CanvasNodeType.Group && !getNodeDefinition(inspectorNode.type)?.hidePanel ? inspectorNode : null}
                     viewport={viewport}
-                    toolbarNode={visibleToolbarNode}
+                    toolbarNode={toolbarNode}
                     canvasSize={size}
                     renderPanel={renderNodePanel}
                 />

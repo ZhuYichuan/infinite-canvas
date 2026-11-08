@@ -294,6 +294,7 @@ export const CanvasResourceMentionMenu = forwardRef<MentionMenuHandle, Props>(fu
 
     // 监听外部点击与 Esc 关闭
     useEffect(() => {
+        let closeTimer: ReturnType<typeof setTimeout> | null = null;
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 event.preventDefault();
@@ -303,12 +304,16 @@ export const CanvasResourceMentionMenu = forwardRef<MentionMenuHandle, Props>(fu
         };
         const handlePointerDown = (event: PointerEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                onClose();
+                if (closeTimer) clearTimeout(closeTimer);
+                closeTimer = setTimeout(() => {
+                    onClose();
+                }, 0);
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         window.addEventListener("pointerdown", handlePointerDown, true);
         return () => {
+            if (closeTimer) clearTimeout(closeTimer);
             window.removeEventListener("keydown", handleKeyDown);
             window.removeEventListener("pointerdown", handlePointerDown, true);
         };

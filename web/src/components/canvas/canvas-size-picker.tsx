@@ -27,13 +27,20 @@ export function CanvasSizePicker({ value, className, onChange }: CanvasSizePicke
 
     useEffect(() => {
         if (!open) return;
+        let closeTimer: ReturnType<typeof setTimeout> | null = null;
         const close = (event: PointerEvent) => {
             const target = event.target instanceof Element ? event.target : null;
             if (target && (rootRef.current?.contains(target) || target.closest(".ant-select-dropdown"))) return;
-            setOpen(false);
+            if (closeTimer) clearTimeout(closeTimer);
+            closeTimer = setTimeout(() => {
+                setOpen(false);
+            }, 0);
         };
         window.addEventListener("pointerdown", close, true);
-        return () => window.removeEventListener("pointerdown", close, true);
+        return () => {
+            if (closeTimer) clearTimeout(closeTimer);
+            window.removeEventListener("pointerdown", close, true);
+        };
     }, [open]);
 
     return (

@@ -23,6 +23,7 @@ export function CanvasAudioSettingsPopover({ config, modelId, onConfigChange, on
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const buttonRef = useRef<HTMLSpanElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
+    const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [open, setOpen] = useState(false);
     const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
 
@@ -45,7 +46,10 @@ export function CanvasAudioSettingsPopover({ config, modelId, onConfigChange, on
             if (document.activeElement instanceof HTMLElement && panelRef.current?.contains(document.activeElement)) {
                 document.activeElement.blur();
             }
-            updateOpen(false);
+            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+            closeTimerRef.current = setTimeout(() => {
+                updateOpen(false);
+            }, 0);
         };
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
@@ -59,6 +63,7 @@ export function CanvasAudioSettingsPopover({ config, modelId, onConfigChange, on
         window.addEventListener("pointerdown", closeOnOutsidePointer, true);
         window.addEventListener("keydown", handleKeyDown);
         return () => {
+            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
             window.removeEventListener("resize", syncPosition);
             window.removeEventListener("scroll", syncPosition, true);
             window.removeEventListener("pointerdown", closeOnOutsidePointer, true);
