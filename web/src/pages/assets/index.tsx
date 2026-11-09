@@ -7,8 +7,9 @@ import { useTranslation } from "react-i18next";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { formatBytes, readFileAsDataUrl } from "@/lib/image-utils";
 import { uploadImage } from "@/services/image-storage";
+import { uploadMediaFile } from "@/services/file-storage";
 import { cn } from "@/lib/utils";
-import { useAssetStore, type Asset, type AssetKind, type ImageAsset } from "@/stores/use-asset-store";
+import { useAssetStore, type Asset, type AssetKind, type AudioAsset, type ImageAsset, type VideoAsset } from "@/stores/use-asset-store";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
 
 type AssetFormValues = {
@@ -22,6 +23,8 @@ type AssetFormValues = {
 };
 
 type ImageDraft = ImageAsset["data"] | null;
+type AudioDraft = AudioAsset["data"] | null;
+type VideoDraft = VideoAsset["data"] | null;
 
 const kindOptions = ["all", "text", "image", "video", "audio"] as const;
 
@@ -32,6 +35,8 @@ export default function AssetsPage() {
     const [form] = Form.useForm<AssetFormValues>();
     const coverInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    const audioInputRef = useRef<HTMLInputElement>(null);
+    const videoInputRef = useRef<HTMLInputElement>(null);
     const assetInputRef = useRef<HTMLInputElement>(null);
     const assets = useAssetStore((state) => state.assets);
     const addAsset = useAssetStore((state) => state.addAsset);
@@ -47,6 +52,8 @@ export default function AssetsPage() {
     const [deletingAsset, setDeletingAsset] = useState<Asset | null>(null);
     const [formKind, setFormKind] = useState<AssetKind>("text");
     const [imageDraft, setImageDraft] = useState<ImageDraft>(null);
+    const [audioDraft, setAudioDraft] = useState<AudioDraft>(null);
+    const [videoDraft, setVideoDraft] = useState<VideoDraft>(null);
     const coverUrl = Form.useWatch("coverUrl", form) || "";
     const title = Form.useWatch("title", form) || "";
     const tags = Form.useWatch("tags", form) || [];
@@ -75,6 +82,8 @@ export default function AssetsPage() {
     const openCreate = () => {
         setEditingAsset(null);
         setImageDraft(null);
+        setAudioDraft(null);
+        setVideoDraft(null);
         setFormKind("text");
         form.setFieldsValue({ kind: "text", title: "", coverUrl: "", tags: [], source: t("assets.manual"), note: "", content: "" });
         setIsAssetOpen(true);
@@ -84,6 +93,8 @@ export default function AssetsPage() {
         setEditingAsset(asset);
         setFormKind(asset.kind);
         setImageDraft(asset.kind === "image" ? asset.data : null);
+        setAudioDraft(asset.kind === "audio" ? asset.data : null);
+        setVideoDraft(asset.kind === "video" ? asset.data : null);
         form.setFieldsValue({
             kind: asset.kind,
             title: asset.title,
@@ -110,12 +121,26 @@ export default function AssetsPage() {
         if (values.kind === "text") {
             const asset = { ...base, kind: "text" as const, data: { content: (values.content || "").trim() } };
             editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset);
-        } else {
+        } else if (values.kind === "image") {
             if (!imageDraft) {
                 message.error(t("assets.selectImage"));
                 return;
             }
             const asset = { ...base, kind: "image" as const, data: imageDraft };
+            editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset);
+        } else if (values.kind === "audio") {
+            if (!audioDraft) {
+                message.error(t("assets.selectAudio"));
+                return;
+            }
+            const asset = { ...base, kind: "audio" as const, data: audioDraft };
+            editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset);
+        } else if (values.kind === "video") {
+            if (!videoDraft) {
+                message.error(t("assets.selectVideo"));
+                return;
+            }
+            const asset = { ...base, kind: "video" as const, data: videoDraft };
             editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset);
         }
 
@@ -135,6 +160,22 @@ export default function AssetsPage() {
         const draft = { dataUrl: image.url, storageKey: image.storageKey, width: image.width, height: image.height, bytes: image.bytes, mimeType: image.mimeType };
         setImageDraft(draft);
         if (!form.getFieldValue("coverUrl")) form.setFieldValue("coverUrl", draft.dataUrl);
+        if (!form.getFieldValue("title")) form.setFieldValue("title", file.name);
+    };
+
+    const readAudioFile = async (file?: File) => {
+        if (!file || !file.type.startsWith("audio/")) return;
+        const media = await uploadMediaFile(file, "audio");
+        const draft = { url: media.url, storageKey: media.storageKey, bytes: media.bytes, mimeType: media.mimeType || "audio/mpeg", durationMs: media.durationMs };
+        setAudioDraft(draft);
+        if (!form.getFieldValue("title")) form.setFieldValue("title", file.name);
+    };
+
+    const readVideoFile = async (file?: File) => {
+        if (!file || !file.type.startsWith("video/")) return;
+        const media = await uploadMediaFile(file, "video");
+        const draft = { url: media.url, storageKey: media.storageKey, width: media.width || 0, height: media.height || 0, bytes: media.bytes, mimeType: media.mimeType };
+        setVideoDraft(draft);
         if (!form.getFieldValue("title")) form.setFieldValue("title", file.name);
     };
 
@@ -289,9 +330,12 @@ export default function AssetsPage() {
                     <Form form={form} layout="vertical" requiredMark={false} initialValues={{ kind: "text", tags: [] }}>
                         <Form.Item name="kind" label={t("assets.type")}>
                             <Select
+                                disabled={Boolean(editingAsset)}
                                 options={[
                                     { label: t("assets.kinds.text"), value: "text" },
                                     { label: t("assets.kinds.image"), value: "image" },
+                                    { label: t("assets.kinds.audio"), value: "audio" },
+                                    { label: t("assets.kinds.video"), value: "video" },
                                 ]}
                                 onChange={(value) => setFormKind(value)}
                             />
@@ -322,7 +366,7 @@ export default function AssetsPage() {
                             <Form.Item name="content" label={t("assets.fields.textContent")} rules={[{ required: true, message: t("assets.fields.textRequired") }]}>
                                 <Input.TextArea rows={8} placeholder={t("assets.fields.textPlaceholder")} />
                             </Form.Item>
-                        ) : (
+                        ) : formKind === "image" ? (
                             <Form.Item label={t("assets.fields.imageContent")} required>
                                 <div className="rounded-lg border border-dashed border-stone-300 p-4 dark:border-stone-700">
                                     <Button icon={<Upload className="size-4" />} onClick={() => imageInputRef.current?.click()}>
@@ -339,6 +383,46 @@ export default function AssetsPage() {
                                     )}
                                 </div>
                             </Form.Item>
+                        ) : formKind === "audio" ? (
+                            <Form.Item label={t("assets.fields.audioContent")} required>
+                                <div className="rounded-lg border border-dashed border-stone-300 p-4 dark:border-stone-700">
+                                    <Button icon={<Upload className="size-4" />} onClick={() => audioInputRef.current?.click()}>
+                                        {t("assets.selectAudioFile")}
+                                    </Button>
+                                    {audioDraft ? (
+                                        <div className="mt-3 space-y-2">
+                                            <audio src={audioDraft.url} controls className="w-full" />
+                                            <Typography.Text type="secondary" className="block text-xs">
+                                                {formatBytes(audioDraft.bytes)} · {audioDraft.mimeType}{audioDraft.durationMs ? ` · ${Math.round(audioDraft.durationMs / 1000)}s` : ""}
+                                            </Typography.Text>
+                                        </div>
+                                    ) : (
+                                        <Typography.Text type="secondary" className="ml-3 text-xs">
+                                            {t("assets.noAudioSelected")}
+                                        </Typography.Text>
+                                    )}
+                                </div>
+                            </Form.Item>
+                        ) : (
+                            <Form.Item label={t("assets.fields.videoContent")} required>
+                                <div className="rounded-lg border border-dashed border-stone-300 p-4 dark:border-stone-700">
+                                    <Button icon={<Upload className="size-4" />} onClick={() => videoInputRef.current?.click()}>
+                                        {t("assets.selectVideoFile")}
+                                    </Button>
+                                    {videoDraft ? (
+                                        <div className="mt-3 space-y-2">
+                                            <video src={videoDraft.url} controls className="aspect-video w-full max-h-48 rounded bg-black" />
+                                            <Typography.Text type="secondary" className="block text-xs">
+                                                {videoDraft.width}x{videoDraft.height} · {formatBytes(videoDraft.bytes)} · {videoDraft.mimeType}
+                                            </Typography.Text>
+                                        </div>
+                                    ) : (
+                                        <Typography.Text type="secondary" className="ml-3 text-xs">
+                                            {t("assets.noVideoSelected")}
+                                        </Typography.Text>
+                                    )}
+                                </div>
+                            </Form.Item>
                         )}
                     </Form>
                     <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-950">
@@ -346,6 +430,15 @@ export default function AssetsPage() {
                         <div className="mt-3 overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
                             {coverUrl || imageDraft?.dataUrl ? (
                                 <img src={coverUrl || imageDraft?.dataUrl} alt="" className="aspect-[4/3] w-full object-cover" />
+                            ) : formKind === "audio" ? (
+                                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 bg-stone-100 p-5 text-stone-500 dark:bg-stone-900 dark:text-stone-400">
+                                    <Music2 className="size-10 text-purple-500" />
+                                    {audioDraft ? (
+                                        <span className="text-xs">{formatBytes(audioDraft.bytes)}{audioDraft.durationMs ? ` · ${Math.round(audioDraft.durationMs / 1000)}s` : ""}</span>
+                                    ) : null}
+                                </div>
+                            ) : formKind === "video" && videoDraft ? (
+                                <video src={`${videoDraft.url}#t=0.1`} className="aspect-[4/3] w-full object-cover bg-black" muted />
                             ) : (
                                 <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-5 text-center text-sm text-stone-500 dark:bg-stone-900">{content || t("assets.noCover")}</div>
                             )}
@@ -388,9 +481,29 @@ export default function AssetsPage() {
                         event.target.value = "";
                     }}
                 />
+                <input
+                    ref={audioInputRef}
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(event) => {
+                        void readAudioFile(event.target.files?.[0]);
+                        event.target.value = "";
+                    }}
+                />
+                <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(event) => {
+                        void readVideoFile(event.target.files?.[0]);
+                        event.target.value = "";
+                    }}
+                />
             </Modal>
 
-            <AssetDrawer asset={previewAsset} onClose={() => setPreviewAsset(null)} onCopy={copyAssetText} onDownload={downloadImage} />
+            <AssetDrawer asset={previewAsset} onClose={() => setPreviewAsset(null)} onCopy={copyAssetText} onDownload={downloadImage} onEdit={(asset) => { setPreviewAsset(null); openEdit(asset); }} />
 
             <input ref={assetInputRef} type="file" accept="application/zip,.zip" className="hidden" onChange={(event) => void importAssetZip(event.target.files?.[0])} />
 
@@ -453,11 +566,9 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
                 <Button size="small" onClick={onOpen}>
                     {t("common.view")}
                 </Button>
-                {asset.kind !== "video" && asset.kind !== "audio" ? (
-                    <Button size="small" icon={<PencilLine className="size-3.5" />} onClick={onEdit}>
-                        {t("common.edit")}
-                    </Button>
-                ) : null}
+                <Button size="small" icon={<PencilLine className="size-3.5" />} onClick={onEdit}>
+                    {t("common.edit")}
+                </Button>
                 {asset.kind === "text" ? (
                     <Button size="small" icon={<Copy className="size-3.5" />} onClick={() => void onCopy(asset)}>
                         {t("common.copy")}
@@ -476,7 +587,7 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
     );
 }
 
-function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | null; onClose: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void }) {
+function AssetDrawer({ asset, onClose, onCopy, onDownload, onEdit }: { asset: Asset | null; onClose: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void; onEdit: (asset: Asset) => void }) {
     const { t } = useTranslation();
     const cover = asset ? asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "") : "";
     return (
@@ -532,6 +643,9 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
                         </div>
                     ) : null}
                     <Space>
+                        <Button icon={<PencilLine className="size-4" />} onClick={() => onEdit(asset)}>
+                            {t("common.edit")}
+                        </Button>
                         {asset.kind === "text" ? (
                             <Button type="primary" icon={<Copy className="size-4" />} onClick={() => onCopy(asset)}>
                                 {t("assets.copyText")}
