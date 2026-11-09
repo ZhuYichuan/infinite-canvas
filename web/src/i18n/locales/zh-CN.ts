@@ -27,6 +27,7 @@ export default {
         "view": "查看",
         "download": "下载",
         "upload": "上传",
+        "close": "关闭",
         "requestCanceled": "请求已取消",
         "durationMinutes": "{{minutes}}分{{seconds}}秒",
         "durationSeconds": "{{seconds}}秒",

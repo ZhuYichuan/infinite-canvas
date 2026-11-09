@@ -27,6 +27,7 @@ export default {
         "view": "View",
         "download": "Download",
         "upload": "Upload",
+        "close": "Close",
         "requestCanceled": "Request canceled",
         "durationMinutes": "{{minutes}}m {{seconds}}s",
         "durationSeconds": "{{seconds}}s",
