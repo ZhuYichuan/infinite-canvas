@@ -294,6 +294,7 @@ export default {
         "noVideoSelected": "No video selected",
         "preview": "Preview",
         "noCover": "No cover",
+        "characterCount": "{{count}} chars",
         "untitled": "Untitled asset",
         "noTags": "No tags",
         "untagged": "Untagged",

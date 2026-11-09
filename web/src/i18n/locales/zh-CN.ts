@@ -294,6 +294,7 @@ export default {
         "noVideoSelected": "未选择视频",
         "preview": "预览",
         "noCover": "暂无封面",
+        "characterCount": "{{count}} 字",
         "untitled": "未命名资产",
         "noTags": "无标签",
         "untagged": "未打标签",

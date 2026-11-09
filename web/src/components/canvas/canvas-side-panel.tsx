@@ -668,8 +668,14 @@ function AssetCard({ asset, theme, onPreview, onInsert, onRemove }: { asset: Ass
 }
 
 function AssetCover({ asset }: { asset: Asset }) {
+    const [imgError, setImgError] = useState(false);
     if (asset.kind === "text") {
-        return <div className="size-full overflow-hidden whitespace-pre-wrap break-words p-2 text-[10px] leading-snug opacity-75 select-none">{asset.data.content}</div>;
+        return (
+            <div className="flex size-full flex-col items-center justify-center gap-1 p-2 text-center text-stone-500 dark:text-stone-400">
+                <FileText className="size-6 text-blue-500/80 dark:text-blue-400/80" />
+                <span className="text-[10px] opacity-60">{asset.data.content?.length || 0} 字</span>
+            </div>
+        );
     }
     if (asset.kind === "video") {
         if (asset.coverUrl) return <img src={asset.coverUrl} alt="" className="size-full object-cover transition duration-300 group-hover:scale-[1.04]" />;
@@ -685,7 +691,15 @@ function AssetCover({ asset }: { asset: Asset }) {
             </div>
         );
     }
-    return <img src={asset.coverUrl || asset.data.dataUrl} alt="" className="size-full object-cover transition duration-300 group-hover:scale-[1.04]" />;
+    const coverSrc = asset.data.dataUrl || asset.coverUrl;
+    if (coverSrc && !imgError) {
+        return <img src={coverSrc} alt="" className="size-full object-cover transition duration-300 group-hover:scale-[1.04]" onError={() => setImgError(true)} />;
+    }
+    return (
+        <div className="flex size-full flex-col items-center justify-center gap-1 p-2 text-center text-stone-500 dark:text-stone-400">
+            <ImageIcon className="size-6 text-emerald-500/80 dark:text-emerald-400/80" />
+        </div>
+    );
 }
 
 function UserAssetPreviewModal({

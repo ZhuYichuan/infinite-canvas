@@ -1,4 +1,4 @@
-import { Copy, Download, Music2, PencilLine, Search, Trash2, Upload } from "lucide-react";
+import { Copy, Download, FileText, Image as ImageIcon, Music2, PencilLine, Search, Trash2, Upload, Video } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Card, Drawer, Empty, Form, Image, Input, Modal, Pagination, Select, Space, Tag, Typography } from "antd";
 import { saveAs } from "file-saver";
@@ -343,14 +343,16 @@ export default function AssetsPage() {
                         <Form.Item name="title" label={t("assets.fields.title")} rules={[{ required: true, message: t("assets.fields.titleRequired") }]}>
                             <Input size="large" placeholder={t("assets.fields.titlePlaceholder")} />
                         </Form.Item>
-                        <Form.Item name="coverUrl" label={t("assets.fields.coverUrl")}>
-                            <Space.Compact className="w-full">
-                                <Input placeholder={t("assets.fields.coverPlaceholder")} />
-                                <Button icon={<Upload className="size-3.5" />} onClick={() => coverInputRef.current?.click()}>
-                                    {t("common.upload")}
-                                </Button>
-                            </Space.Compact>
-                        </Form.Item>
+                        {formKind !== "text" && formKind !== "audio" ? (
+                            <Form.Item name="coverUrl" label={t("assets.fields.coverUrl")}>
+                                <Space.Compact className="w-full">
+                                    <Input placeholder={t("assets.fields.coverPlaceholder")} />
+                                    <Button icon={<Upload className="size-3.5" />} onClick={() => coverInputRef.current?.click()}>
+                                        {t("common.upload")}
+                                    </Button>
+                                </Space.Compact>
+                            </Form.Item>
+                        ) : null}
                         <Form.Item name="tags" label={t("assets.fields.tags")}>
                             <Select mode="tags" tokenSeparators={[",", "，"]} placeholder={t("assets.fields.tagsPlaceholder")} />
                         </Form.Item>
@@ -439,8 +441,13 @@ export default function AssetsPage() {
                                 </div>
                             ) : formKind === "video" && videoDraft ? (
                                 <video src={`${videoDraft.url}#t=0.1`} className="aspect-[4/3] w-full object-cover bg-black" muted />
+                            ) : formKind === "text" ? (
+                                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 bg-stone-100 p-5 text-stone-500 dark:bg-stone-900 dark:text-stone-400">
+                                    <FileText className="size-10 text-blue-500" />
+                                    <span className="text-xs opacity-75">{t("assets.characterCount", { count: content?.length || 0 })}</span>
+                                </div>
                             ) : (
-                                <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-5 text-center text-sm text-stone-500 dark:bg-stone-900">{content || t("assets.noCover")}</div>
+                                <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-5 text-center text-sm text-stone-500 dark:bg-stone-900">{t("assets.noCover")}</div>
                             )}
                             <div className="p-4">
                                 <Typography.Text strong ellipsis className="block">
@@ -514,29 +521,83 @@ export default function AssetsPage() {
     );
 }
 
+function AssetCardCover({ asset, onOpen }: { asset: Asset; onOpen: () => void }) {
+    const { t } = useTranslation();
+    const [imgError, setImgError] = useState(false);
+
+    if (asset.kind === "text") {
+        return (
+            <button type="button" className="block w-full text-left" onClick={onOpen}>
+                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 bg-stone-100 p-5 text-stone-500 dark:bg-stone-900 dark:text-stone-400">
+                    <FileText className="size-10 text-blue-500" />
+                    <span className="text-xs opacity-75">{t("assets.characterCount", { count: asset.data.content?.length || 0 })}</span>
+                </div>
+            </button>
+        );
+    }
+
+    if (asset.kind === "audio") {
+        return (
+            <button type="button" className="block w-full text-left" onClick={onOpen}>
+                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 bg-stone-100 p-5 text-stone-500 dark:bg-stone-900 dark:text-stone-400">
+                    <Music2 className="size-10 text-purple-500" />
+                    <span className="text-xs">{formatBytes(asset.data.bytes)}{asset.data.durationMs ? ` · ${Math.round(asset.data.durationMs / 1000)}s` : ""}</span>
+                </div>
+            </button>
+        );
+    }
+
+    if (asset.kind === "video") {
+        return (
+            <button type="button" className="block w-full text-left" onClick={onOpen}>
+                {asset.data.url ? (
+                    <video src={`${asset.data.url}#t=0.1`} className="aspect-[4/3] w-full object-cover bg-black" muted />
+                ) : (
+                    <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 bg-stone-100 p-5 text-stone-500 dark:bg-stone-900 dark:text-stone-400">
+                        <Video className="size-10 text-orange-500" />
+                        <span className="text-xs">{asset.data.width ? `${asset.data.width}x${asset.data.height} · ` : ""}{formatBytes(asset.data.bytes)}</span>
+                    </div>
+                )}
+            </button>
+        );
+    }
+
+    const rawCover = asset.coverUrl?.trim();
+    const hasExplicitCover = Boolean(rawCover && rawCover !== "undefined" && rawCover !== "null");
+    const imageCover = asset.data.dataUrl || (hasExplicitCover ? rawCover : "");
+
+    if (imageCover && !imgError) {
+        return (
+            <button type="button" className="block w-full text-left" onClick={onOpen}>
+                <img
+                    src={imageCover}
+                    alt={asset.title}
+                    className="aspect-[4/3] w-full object-cover"
+                    onError={() => setImgError(true)}
+                />
+            </button>
+        );
+    }
+
+    return (
+        <button type="button" className="block w-full text-left" onClick={onOpen}>
+            <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 bg-stone-100 p-5 text-stone-500 dark:bg-stone-900 dark:text-stone-400">
+                <ImageIcon className="size-10 text-emerald-500" />
+                {asset.data.width && asset.data.height ? <span className="text-xs">{asset.data.width}x{asset.data.height}</span> : null}
+            </div>
+        </button>
+    );
+}
+
 function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { asset: Asset; onOpen: () => void; onEdit: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void; onDelete: () => void }) {
     const { t } = useTranslation();
-    const cover = asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "");
     const summary = assetSummary(asset);
     return (
         <Card
             hoverable
             className="overflow-hidden"
             styles={{ body: { padding: 0 } }}
-            cover={
-                <button type="button" className="block w-full text-left" onClick={onOpen}>
-                    {cover ? (
-                        <img src={cover} alt={asset.title} className="aspect-[4/3] w-full object-cover" />
-                    ) : asset.kind === "audio" ? (
-                        <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 bg-stone-100 p-5 text-stone-500 dark:bg-stone-900 dark:text-stone-400">
-                            <Music2 className="size-10 text-purple-500" />
-                            <span className="text-xs">{formatBytes(asset.data.bytes)}{asset.data.durationMs ? ` · ${Math.round(asset.data.durationMs / 1000)}s` : ""}</span>
-                        </div>
-                    ) : (
-                        <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-5 text-center text-sm leading-6 text-stone-600 dark:bg-stone-900 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : t("assets.noCover")}</div>
-                    )}
-                </button>
-            }
+            cover={<AssetCardCover asset={asset} onOpen={onOpen} />}
         >
             <button type="button" className="block w-full text-left" onClick={onOpen}>
                 <div className="p-4">
@@ -589,20 +650,38 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
 
 function AssetDrawer({ asset, onClose, onCopy, onDownload, onEdit }: { asset: Asset | null; onClose: () => void; onCopy: (asset: Asset) => void; onDownload: (asset: Asset) => void; onEdit: (asset: Asset) => void }) {
     const { t } = useTranslation();
-    const cover = asset ? asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "") : "";
+    const isImage = asset?.kind === "image";
+    const imageCover = isImage ? (asset.data.dataUrl || asset.coverUrl) : "";
     return (
         <Drawer title={t("assets.details")} open={Boolean(asset)} size="large" onClose={onClose}>
             {asset ? (
                 <div className="space-y-5">
-                    {cover ? (
-                        <Image src={cover} alt={asset.title} className="rounded-lg" />
+                    {asset.kind === "text" ? (
+                        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-stone-200 bg-stone-50 py-8 px-4 text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+                            <FileText className="size-12 text-blue-500" />
+                            <span className="text-xs text-stone-400">{t("assets.characterCount", { count: asset.data.content?.length || 0 })}</span>
+                        </div>
                     ) : asset.kind === "audio" ? (
                         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-stone-200 bg-stone-50 py-8 px-4 text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
                             <Music2 className="size-12 text-purple-500" />
                             <span className="text-xs text-stone-400">{formatBytes(asset.data.bytes)}{asset.data.durationMs ? ` · ${Math.round(asset.data.durationMs / 1000)}s` : ""}</span>
                         </div>
+                    ) : asset.kind === "video" ? (
+                        asset.data.url ? (
+                            <video src={asset.data.url} controls className="aspect-video w-full rounded-lg bg-black" />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-stone-200 bg-stone-50 py-8 px-4 text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+                                <Video className="size-12 text-orange-500" />
+                                <span className="text-xs text-stone-400">{formatBytes(asset.data.bytes)}</span>
+                            </div>
+                        )
+                    ) : imageCover ? (
+                        <Image src={imageCover} alt={asset.title} className="rounded-lg" />
                     ) : (
-                        <div className="rounded-lg border border-stone-200 bg-stone-50 p-5 text-sm leading-6 text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : t("assets.noCover")}</div>
+                        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-stone-200 bg-stone-50 py-8 px-4 text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+                            <ImageIcon className="size-12 text-emerald-500" />
+                            <span className="text-xs text-stone-400">{t("assets.noCover")}</span>
+                        </div>
                     )}
                     <div>
                         <Typography.Title level={4} className="!mb-2">

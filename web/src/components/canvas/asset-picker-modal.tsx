@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Empty, Input, Modal, Pagination, Tabs, Tag } from "antd";
-import { Music2, Search } from "lucide-react";
+import { FileText, Image as ImageIcon, Music2, Search, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { SystemPresetGallery } from "@/components/assets/system-preset-gallery";
@@ -67,24 +67,56 @@ const kindOptions = ["all", "text", "image", "video", "audio"];
 
 function PickerCard({ title, kind, cover, onClick }: { title: string; kind: string; cover: string; onClick: () => void }) {
     const { t } = useTranslation();
+    const [imgError, setImgError] = useState(false);
+
+    let coverElement: React.ReactNode = null;
+
+    if (kind === "text") {
+        coverElement = (
+            <div className="flex aspect-[4/3] flex-col items-center justify-center gap-1.5 bg-stone-100 p-3 text-center text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                <FileText className="size-6 text-blue-500" />
+                <span className="line-clamp-2 px-1 text-[11px] leading-tight opacity-75">{title}</span>
+            </div>
+        );
+    } else if (kind === "audio") {
+        coverElement = (
+            <div className="flex aspect-[4/3] flex-col items-center justify-center gap-1.5 bg-stone-100 p-3 text-center text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                <Music2 className="size-6 text-purple-500" />
+                <span className="line-clamp-1">{title}</span>
+            </div>
+        );
+    } else if (cover && !imgError) {
+        coverElement = (
+            <img
+                src={cover}
+                alt={title}
+                className="aspect-[4/3] w-full object-cover"
+                onError={() => setImgError(true)}
+            />
+        );
+    } else if (kind === "video") {
+        coverElement = (
+            <div className="flex aspect-[4/3] flex-col items-center justify-center gap-1.5 bg-stone-100 p-3 text-center text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                <Video className="size-6 text-orange-500" />
+                <span className="line-clamp-1">{title}</span>
+            </div>
+        );
+    } else {
+        coverElement = (
+            <div className="flex aspect-[4/3] flex-col items-center justify-center gap-1.5 bg-stone-100 p-3 text-center text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                <ImageIcon className="size-6 text-emerald-500" />
+                <span className="line-clamp-1">{title}</span>
+            </div>
+        );
+    }
+
     return (
         <button
             type="button"
             className="group relative cursor-pointer overflow-hidden rounded-lg border border-stone-200 bg-white text-left transition hover:border-stone-400 hover:shadow-md dark:border-stone-700 dark:bg-stone-900 dark:hover:border-stone-500"
             onClick={onClick}
         >
-            {cover ? (
-                <img src={cover} alt={title} className="aspect-[4/3] w-full object-cover" />
-            ) : kind === "audio" ? (
-                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-1.5 bg-stone-100 p-3 text-center text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-                    <Music2 className="size-6 text-purple-500" />
-                    <span className="line-clamp-1">{title}</span>
-                </div>
-            ) : (
-                <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-3 text-center text-xs leading-5 text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-                    {title}
-                </div>
-            )}
+            {coverElement}
             <div className="p-2.5">
                 <div className="flex items-center justify-between gap-2">
                     <span className="line-clamp-1 text-xs font-medium text-stone-800 dark:text-stone-200">{title}</span>
@@ -170,7 +202,7 @@ function MyAssetsTab({ onInsert }: { onInsert: (payload: InsertAssetPayload) => 
                             key={asset.id}
                             title={asset.title}
                             kind={asset.kind}
-                            cover={asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "")}
+                            cover={asset.kind === "image" ? (asset.data.dataUrl || asset.coverUrl) : (asset.kind === "video" ? (asset.coverUrl || "") : "")}
                             onClick={() => handleInsert(asset)}
                         />
                     ))}
