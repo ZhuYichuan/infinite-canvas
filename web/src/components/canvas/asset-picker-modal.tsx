@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Empty, Input, Modal, Pagination, Tabs, Tag } from "antd";
-import { Search } from "lucide-react";
+import { Music2, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { SystemPresetGallery } from "@/components/assets/system-preset-gallery";
@@ -75,6 +75,11 @@ function PickerCard({ title, kind, cover, onClick }: { title: string; kind: stri
         >
             {cover ? (
                 <img src={cover} alt={title} className="aspect-[4/3] w-full object-cover" />
+            ) : kind === "audio" ? (
+                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-1.5 bg-stone-100 p-3 text-center text-xs text-stone-500 dark:bg-stone-800 dark:text-stone-400">
+                    <Music2 className="size-6 text-purple-500" />
+                    <span className="line-clamp-1">{title}</span>
+                </div>
             ) : (
                 <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-3 text-center text-xs leading-5 text-stone-500 dark:bg-stone-800 dark:text-stone-400">
                     {title}

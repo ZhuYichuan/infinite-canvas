@@ -1,11 +1,14 @@
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { App, Empty, Input, Popconfirm, Segmented, Select, Spin, Tag } from "antd";
+import { App, Button, Empty, Input, Modal, Popconfirm, Segmented, Select, Space, Spin, Tag } from "antd";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Check, ChevronRight, Download, Eye, FileText, Image as ImageIcon, ListChecks, Music, Music2, Plus, Search, Settings2, Square, Trash2, Type, Video } from "lucide-react";
+import { BookOpen, Check, ChevronRight, Copy, Download, Eye, FileText, Image as ImageIcon, ListChecks, Music, Music2, Plus, Search, Settings2, Square, Trash2, Type, Video } from "lucide-react";
 import { motion } from "motion/react";
+import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 
+import { useCopyText } from "@/hooks/use-copy-text";
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
+import { formatBytes } from "@/lib/image-utils";
 import { exportCanvasNodes, safeFileName } from "@/lib/canvas/canvas-export";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { cn } from "@/lib/utils";
@@ -482,6 +485,7 @@ function UserAssetsSection({ onInsert, theme }: { onInsert: (payload: InsertAsse
     const [tagFilter, setTagFilter] = useState<string>("all");
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
     const [uploading, setUploading] = useState(false);
+    const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const allTags = useMemo(() => Array.from(new Set(assets.flatMap((asset) => asset.tags || []))).slice(0, 20), [assets]);
@@ -575,7 +579,14 @@ function UserAssetsSection({ onInsert, theme }: { onInsert: (payload: InsertAsse
                                     {isCollapsed ? null : (
                                         <div className="grid grid-cols-2 gap-2 px-1 pb-2 pt-1">
                                             {group.items.map((asset) => (
-                                                <AssetCard key={asset.id} asset={asset} theme={theme} onInsert={() => onInsert(buildInsertPayload(asset))} onRemove={() => (removeAsset(asset.id), message.success(t("canvas.sidePanel.assetRemoved")))} />
+                                                <AssetCard
+                                                    key={asset.id}
+                                                    asset={asset}
+                                                    theme={theme}
+                                                    onPreview={() => setPreviewAsset(asset)}
+                                                    onInsert={() => onInsert(buildInsertPayload(asset))}
+                                                    onRemove={() => (removeAsset(asset.id), message.success(t("canvas.sidePanel.assetRemoved")))}
+                                                />
                                             ))}
                                         </div>
                                     )}
@@ -587,11 +598,12 @@ function UserAssetsSection({ onInsert, theme }: { onInsert: (payload: InsertAsse
                     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("canvas.sidePanel.noAssets")} className="pt-16" />
                 )}
             </div>
+            <UserAssetPreviewModal asset={previewAsset} onClose={() => setPreviewAsset(null)} onInsert={onInsert} theme={theme} />
         </div>
     );
 }
 
-function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: CanvasTheme; onInsert: () => void; onRemove: () => void }) {
+function AssetCard({ asset, theme, onPreview, onInsert, onRemove }: { asset: Asset; theme: CanvasTheme; onPreview: () => void; onInsert: () => void; onRemove: () => void }) {
     const { t } = useTranslation();
     const handleDragStart = (e: React.DragEvent) => {
         e.dataTransfer.setData("application/infinite-canvas-asset", JSON.stringify(buildInsertPayload(asset)));
@@ -601,49 +613,202 @@ function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: 
         <div
             draggable
             onDragStart={handleDragStart}
-            className="group relative aspect-square cursor-grab overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-0.5 hover:shadow-lg active:cursor-grabbing"
+            onDoubleClick={onPreview}
+            className="group relative flex flex-col cursor-grab overflow-hidden rounded-lg border transition duration-200 hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing select-none"
             style={{ borderColor: theme.node.stroke, background: theme.node.panel }}
             title={t("canvas.sidePanel.dragOrClickToInsert")}
         >
-            <AssetCover asset={asset} />
-            <div className="absolute inset-0 flex items-center justify-center gap-2.5 opacity-0 transition duration-200 group-hover:opacity-100">
-                <button
-                    type="button"
-                    onClick={onInsert}
-                    className="grid size-8 place-items-center rounded-full bg-white/90 text-stone-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-stone-900 dark:bg-black/60 dark:text-stone-100 dark:hover:bg-black/80"
-                    aria-label={t("canvas.sidePanel.inserted")}
-                >
-                    <Plus className="size-4" />
-                </button>
-                <Popconfirm title={t("canvas.sidePanel.removeAssetTitle")} okText={t("canvas.sidePanel.remove")} cancelText={t("common.cancel")} okButtonProps={{ danger: true }} onConfirm={onRemove}>
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-black/5 dark:bg-white/5">
+                <AssetCover asset={asset} />
+                <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/35 opacity-0 backdrop-blur-[1px] transition duration-200 group-hover:opacity-100">
                     <button
                         type="button"
-                        className="grid size-8 place-items-center rounded-full bg-white/90 text-stone-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-red-500 dark:bg-black/60 dark:text-stone-100 dark:hover:bg-black/80 dark:hover:text-red-400"
-                        aria-label={t("canvas.sidePanel.removeAsset")}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onPreview();
+                        }}
+                        className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-700 shadow-sm transition hover:bg-white hover:text-stone-900 dark:bg-black/60 dark:text-stone-100 dark:hover:bg-black/80"
+                        aria-label={t("common.preview")}
+                        title={t("common.preview")}
                     >
-                        <Trash2 className="size-4" />
+                        <Eye className="size-3.5" />
                     </button>
-                </Popconfirm>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onInsert();
+                        }}
+                        className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-700 shadow-sm transition hover:bg-white hover:text-stone-900 dark:bg-black/60 dark:text-stone-100 dark:hover:bg-black/80"
+                        aria-label={t("canvas.sidePanel.inserted")}
+                        title={t("canvas.sidePanel.inserted")}
+                    >
+                        <Plus className="size-3.5" />
+                    </button>
+                    <Popconfirm title={t("canvas.sidePanel.removeAssetTitle")} okText={t("canvas.sidePanel.remove")} cancelText={t("common.cancel")} okButtonProps={{ danger: true }} onConfirm={onRemove}>
+                        <button
+                            type="button"
+                            onClick={(e) => e.stopPropagation()}
+                            className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-700 shadow-sm transition hover:bg-white hover:text-red-500 dark:bg-black/60 dark:text-stone-100 dark:hover:bg-black/80 dark:hover:text-red-400"
+                            aria-label={t("canvas.sidePanel.removeAsset")}
+                            title={t("canvas.sidePanel.removeAsset")}
+                        >
+                            <Trash2 className="size-3.5" />
+                        </button>
+                    </Popconfirm>
+                </div>
+            </div>
+            <div className="min-w-0 px-2 py-1.5">
+                <div className="truncate text-[11px] font-medium leading-tight" style={{ color: theme.node.text }} title={asset.title}>
+                    {asset.title || t(`assets.kinds.${asset.kind}`)}
+                </div>
             </div>
         </div>
     );
 }
 
 function AssetCover({ asset }: { asset: Asset }) {
-    if (asset.kind === "text") return <div className="size-full overflow-hidden whitespace-pre-wrap break-words p-2.5 text-[11px] leading-snug opacity-80">{asset.data.content}</div>;
+    if (asset.kind === "text") {
+        return <div className="size-full overflow-hidden whitespace-pre-wrap break-words p-2 text-[10px] leading-snug opacity-75 select-none">{asset.data.content}</div>;
+    }
     if (asset.kind === "video") {
         if (asset.coverUrl) return <img src={asset.coverUrl} alt="" className="size-full object-cover transition duration-300 group-hover:scale-[1.04]" />;
         return <video src={`${asset.data.url}#t=0.1`} muted playsInline preload="metadata" className="size-full object-cover transition duration-300 group-hover:scale-[1.04]" />;
     }
     if (asset.kind === "audio") {
         return (
-            <div className="flex size-full flex-col items-center justify-center gap-1.5 p-2 text-center text-stone-500 dark:text-stone-400">
-                <Music className="size-6 text-stone-400 dark:text-stone-500" />
-                <span className="line-clamp-2 text-[10px] leading-tight font-medium">{asset.title}</span>
+            <div className="flex size-full flex-col items-center justify-center gap-1 p-2 text-center text-stone-500 dark:text-stone-400">
+                <Music className="size-6 text-purple-500/80 dark:text-purple-400/80" />
+                {asset.data.durationMs ? (
+                    <span className="text-[10px] opacity-60">{Math.round(asset.data.durationMs / 1000)}s</span>
+                ) : null}
             </div>
         );
     }
     return <img src={asset.coverUrl || asset.data.dataUrl} alt="" className="size-full object-cover transition duration-300 group-hover:scale-[1.04]" />;
+}
+
+function UserAssetPreviewModal({
+    asset,
+    onClose,
+    onInsert,
+    theme,
+}: {
+    asset: Asset | null;
+    onClose: () => void;
+    onInsert: (payload: InsertAssetPayload) => void;
+    theme: CanvasTheme;
+}) {
+    const { t } = useTranslation();
+    const copyText = useCopyText();
+
+    if (!asset) return null;
+
+    const handleCopy = () => {
+        if (asset.kind === "text") {
+            copyText(asset.data.content, t("assets.textCopied"));
+        }
+    };
+
+    const handleDownload = () => {
+        if (asset.kind === "image") {
+            saveAs(asset.coverUrl || asset.data.dataUrl, `${asset.title || "image"}.${asset.data.mimeType?.split("/")[1] || "png"}`);
+        } else if (asset.kind === "video") {
+            saveAs(asset.data.url, `${asset.title || "video"}.${asset.data.mimeType?.split("/")[1] || "mp4"}`);
+        } else if (asset.kind === "audio") {
+            saveAs(asset.data.url, `${asset.title || "audio"}.${asset.data.mimeType?.split("/")[1] || "mp3"}`);
+        }
+    };
+
+    return (
+        <Modal
+            open={Boolean(asset)}
+            onCancel={onClose}
+            width={600}
+            destroyOnHidden
+            title={
+                <div className="flex items-center gap-2 pr-6">
+                    <span className="truncate text-base font-semibold">{asset.title || t(`assets.kinds.${asset.kind}`)}</span>
+                    <Tag className="m-0 shrink-0 text-xs">{t(`assets.kinds.${asset.kind}`)}</Tag>
+                </div>
+            }
+            footer={
+                <div className="flex items-center justify-between">
+                    <div>
+                        {asset.kind === "text" ? (
+                            <Button size="small" icon={<Copy className="size-3.5" />} onClick={handleCopy}>
+                                {t("common.copy")}
+                            </Button>
+                        ) : (
+                            <Button size="small" icon={<Download className="size-3.5" />} onClick={handleDownload}>
+                                {t("common.download")}
+                            </Button>
+                        )}
+                    </div>
+                    <Space size="small">
+                        <Button size="small" onClick={onClose}>
+                            {t("common.close")}
+                        </Button>
+                        <Button
+                            size="small"
+                            type="primary"
+                            icon={<Plus className="size-3.5" />}
+                            onClick={() => {
+                                onInsert(buildInsertPayload(asset));
+                                onClose();
+                            }}
+                        >
+                            {t("canvas.sidePanel.inserted")}
+                        </Button>
+                    </Space>
+                </div>
+            }
+        >
+            <div className="py-2">
+                {asset.kind === "text" ? (
+                    <div className="max-h-[60vh] overflow-y-auto rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm leading-relaxed text-stone-800 select-text whitespace-pre-wrap dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200">
+                        {asset.data.content}
+                    </div>
+                ) : asset.kind === "video" ? (
+                    <div className="flex flex-col items-center gap-2">
+                        <video src={asset.data.url} controls autoPlay className="max-h-[60vh] w-full rounded-lg bg-black" />
+                        <div className="text-xs text-stone-400">
+                            {asset.data.width ? `${asset.data.width}x${asset.data.height} · ` : ""}{formatBytes(asset.data.bytes)} · {asset.data.mimeType}
+                        </div>
+                    </div>
+                ) : asset.kind === "audio" ? (
+                    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-stone-200 bg-stone-50 py-8 px-6 dark:border-stone-800 dark:bg-stone-900">
+                        <div className="grid size-16 place-items-center rounded-full bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+                            <Music2 className="size-8" />
+                        </div>
+                        <div className="text-center">
+                            <div className="text-sm font-semibold text-stone-800 dark:text-stone-200">{asset.title}</div>
+                            <div className="mt-1 text-xs text-stone-400">
+                                {formatBytes(asset.data.bytes)} · {asset.data.mimeType}{asset.data.durationMs ? ` · ${Math.round(asset.data.durationMs / 1000)}s` : ""}
+                            </div>
+                        </div>
+                        <audio src={asset.data.url} controls autoPlay className="w-full max-w-md" />
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center gap-2">
+                        <img src={asset.coverUrl || asset.data.dataUrl} alt={asset.title} className="max-h-[60vh] w-auto max-w-full rounded-lg object-contain" />
+                        <div className="text-xs text-stone-400">
+                            {asset.data.width}x{asset.data.height} · {formatBytes(asset.data.bytes)} · {asset.data.mimeType}
+                        </div>
+                    </div>
+                )}
+                {asset.tags?.length ? (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                        {asset.tags.map((tag) => (
+                            <Tag key={tag} className="m-0 text-xs">
+                                {tag}
+                            </Tag>
+                        ))}
+                    </div>
+                ) : null}
+            </div>
+        </Modal>
+    );
 }
 
 // ---------------------------------------------------------------------------

@@ -261,7 +261,8 @@ export default {
         "kinds": {
             "text": "Text",
             "image": "Image",
-            "video": "Video"
+            "video": "Video",
+            "audio": "Audio"
         },
         "fields": {
             "title": "Title",
@@ -293,7 +294,8 @@ export default {
         "deleteConfirm": "Delete “{{name}}”? It will be removed from My Assets.",
         "copyText": "Copy text",
         "downloadImage": "Download image",
-        "downloadVideo": "Download video"
+        "downloadVideo": "Download video",
+        "downloadAudio": "Download audio"
     },
     "notFound": {
         "title": "Page not found",

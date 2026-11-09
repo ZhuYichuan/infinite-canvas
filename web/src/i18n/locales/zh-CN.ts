@@ -261,7 +261,8 @@ export default {
         "kinds": {
             "text": "文本",
             "image": "图片",
-            "video": "视频"
+            "video": "视频",
+            "audio": "音频"
         },
         "fields": {
             "title": "标题",
@@ -293,7 +294,8 @@ export default {
         "deleteConfirm": "确定删除「{{name}}」吗？删除后会从我的资产中移除。",
         "copyText": "复制文本",
         "downloadImage": "下载图片",
-        "downloadVideo": "下载视频"
+        "downloadVideo": "下载视频",
+        "downloadAudio": "下载音频"
     },
     "notFound": {
         "title": "页面不存在",
