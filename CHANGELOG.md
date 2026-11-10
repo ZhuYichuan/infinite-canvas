@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.25.0 - 2026-11-10
+
 + [修复] 修复生图工作台单次生成写入两条重复 image_generation_logs 记录的问题：为生图底层请求链路补充 skipLog 选项并在工作台生成时启用，消除底座通道与工作台各自分配 nanoid 导致的双重记账。
 
 + [调整] 系统默认视频工作流升级为 MiniMax H3 INT8 6步 SelfLift：全能视频与首尾帧视频出厂默认工作流及默认模型全面指向 INT8 6步 SelfLift 渐进式超分规格，核心依赖插件清单扩充加入 comfyui-SelfLift，同步更新模型展示名称与出厂默认配置。
