@@ -29,8 +29,8 @@ describe("COMFYUI_DEFAULT_MODELS", () => {
             "Qwen-Image-2.1",
             "Qwen-Image Inpaint",
             "Qwen3.5 4B",
-            "MiniMax H3 全能视频",
-            "MiniMax H3 首尾帧视频",
+            "MiniMax H3 全能 (INT8 6步 SelfLift)",
+            "MiniMax H3 首尾帧 (INT8 6步 SelfLift)",
             "MiniMax Music 03",
         ]);
     });
@@ -199,7 +199,7 @@ describe("persistence merge stability", () => {
         );
 
         expect(merged.config.imageModel).toBe("builtin::Qwen-Image-2.1");
-        expect(merged.config.videoModel).toBe("builtin::MiniMax H3 全能视频");
+        expect(merged.config.videoModel).toBe("builtin::MiniMax H3 全能 (INT8 6步 SelfLift)");
         expect(merged.config.textModel).toBe("builtin::Qwen3.5 4B");
     });
 
@@ -249,7 +249,7 @@ describe("persistence merge stability", () => {
 
     it("persists all preferences fields across rehydration", async () => {
         useConfigStore.getState().updateConfig("imageModel", "builtin::Flux2.Dev");
-        useConfigStore.getState().updateConfig("videoModel", "builtin::MiniMax H3 全能视频");
+        useConfigStore.getState().updateConfig("videoModel", "builtin::MiniMax H3 全能 (INT8 6步 SelfLift)");
         useConfigStore.getState().updateConfig("textModel", "builtin::Qwen3.5 4B");
         useConfigStore.getState().updateConfig("canvasImageCount", "5");
         useConfigStore.getState().updateConfig("audioVoice", "echo");
@@ -263,7 +263,7 @@ describe("persistence merge stability", () => {
         const config = useConfigStore.getState().config;
         expect(config.imageModel).toBe("builtin::Flux2.Dev");
         expect(config.model).toBe("builtin::Flux2.Dev");
-        expect(config.videoModel).toBe("builtin::MiniMax H3 全能视频");
+        expect(config.videoModel).toBe("builtin::MiniMax H3 全能 (INT8 6步 SelfLift)");
         expect(config.textModel).toBe("builtin::Qwen3.5 4B");
         expect(config.canvasImageCount).toBe("5");
         expect(config.audioVoice).toBe("echo");
@@ -382,11 +382,11 @@ describe("default built-in ComfyUI channel", () => {
             "Qwen-Image-2.1",
             "Qwen-Image Inpaint",
             "Qwen3.5 4B",
-            "MiniMax H3 全能视频",
-            "MiniMax H3 首尾帧视频",
+            "MiniMax H3 全能 (INT8 6步 SelfLift)",
+            "MiniMax H3 首尾帧 (INT8 6步 SelfLift)",
             "MiniMax Music 03",
         ]);
-        expect(defaultConfig.channels[0].workflows?.length).toBe(17);
+        expect(defaultConfig.channels[0].workflows?.length).toBe(19);
         expect(defaultConfig.channels[0].supportedModelIds).toEqual([
             "omni-video-minimax-h3-fp8-4step-pdmd",
             "omni-video-minimax-h3-fp8",
@@ -396,6 +396,8 @@ describe("default built-in ComfyUI channel", () => {
             "frame-video-minimax-h3-int8-4step-pdmd",
             "omni-video-minimax-h3-int8-6step-pika",
             "frame-video-minimax-h3-int8-6step-pika",
+            "omni-video-minimax-h3-int8-6step-selflift",
+            "frame-video-minimax-h3-int8-6step-selflift",
             "image-qwen-2.1",
             "image-z-turbo",
             "image-flux2-dev",
@@ -409,8 +411,8 @@ describe("default built-in ComfyUI channel", () => {
         const customChannel = createModelChannel({ id: "my-custom", name: "自定义 ComfyUI" });
         expect(customChannel.name).toBe("自定义 ComfyUI");
         expect(customChannel.models.length).toBe(8);
-        expect(customChannel.workflows?.length).toBe(17);
-        expect(customChannel.supportedModelIds?.length).toBe(14);
+        expect(customChannel.workflows?.length).toBe(19);
+        expect(customChannel.supportedModelIds?.length).toBe(16);
         expect(customChannel.workflows?.every((w) => w.isBuiltin)).toBe(true);
         expect(customChannel.comfyuiT2iWorkflow?.isBuiltin).toBe(true);
         expect(customChannel.comfyuiI2iWorkflow?.isBuiltin).toBe(true);

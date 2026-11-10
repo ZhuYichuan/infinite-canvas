@@ -81,8 +81,6 @@ export const DEFAULT_BUILTIN_COMFYUI_VIDEO_PDMD_WORKFLOW: ComfyuiWorkflow = {
     isBuiltin: true,
 };
 
-export const DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW: ComfyuiWorkflow = DEFAULT_BUILTIN_COMFYUI_VIDEO_PDMD_WORKFLOW;
-
 export const DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_PDMD_WORKFLOW: ComfyuiWorkflow = {
     name: "MiniMax H3 全能视频 (INT8 4步 PDMD)",
     json: omniVideoInt8PdmdJson as Record<string, unknown>,
@@ -104,6 +102,8 @@ export const DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW: ComfyuiWorkfl
     isBuiltin: true,
 };
 
+export const DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW: ComfyuiWorkflow = DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW;
+
 export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_20STEP_WORKFLOW: ComfyuiWorkflow = {
     name: "MiniMax H3 首尾帧 (FP8 20步)",
     json: frameVideoFp8Json as Record<string, unknown>,
@@ -117,8 +117,6 @@ export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW: ComfyuiWorkflow 
     createdAt: 0,
     isBuiltin: true,
 };
-
-export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW: ComfyuiWorkflow = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW;
 
 export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_PDMD_WORKFLOW: ComfyuiWorkflow = {
     name: "MiniMax H3 首尾帧视频 (INT8 4步 PDMD)",
@@ -140,6 +138,8 @@ export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW: Comfyui
     createdAt: 0,
     isBuiltin: true,
 };
+
+export const DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW: ComfyuiWorkflow = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW;
 
 export const DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW: ComfyuiWorkflow = {
     name: "MiniMax Music 03 音乐生成",
@@ -224,8 +224,8 @@ export const DEFAULT_CLOUD_COMFYUI_T2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_QWEN_I
 export const DEFAULT_CLOUD_COMFYUI_I2I_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW;
 export const DEFAULT_CLOUD_COMFYUI_INPAINT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW;
 export const DEFAULT_CLOUD_COMFYUI_TEXT_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW;
-export const DEFAULT_CLOUD_COMFYUI_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_PDMD_WORKFLOW;
-export const DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW;
+export const DEFAULT_CLOUD_COMFYUI_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW;
+export const DEFAULT_CLOUD_COMFYUI_FRAME_VIDEO_WORKFLOW = DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW;
 
 export type ComfyuiWorkflowBundle = {
     t2i: ComfyuiWorkflow;
@@ -254,8 +254,8 @@ export const DEFAULT_BUILTIN_COMFYUI_WORKFLOWS: ComfyuiWorkflowBundle = {
 export const DEFAULT_LOCAL_COMFYUI_WORKFLOWS = DEFAULT_BUILTIN_COMFYUI_WORKFLOWS;
 export const DEFAULT_CLOUD_COMFYUI_WORKFLOWS: ComfyuiWorkflowBundle = {
     ...DEFAULT_BUILTIN_COMFYUI_WORKFLOWS,
-    video: DEFAULT_BUILTIN_COMFYUI_VIDEO_PDMD_WORKFLOW,
-    frameVideo: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW,
+    video: DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW,
+    frameVideo: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW,
 };
 
 export function getDefaultComfyuiWorkflows(channel?: { id?: string; name?: string } | null): ComfyuiWorkflowBundle {
@@ -337,7 +337,7 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             json: DEFAULT_BUILTIN_COMFYUI_VIDEO_PDMD_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
-            isDefault: true,
+            isDefault: false,
             description: "MiniMax H3 全能参考视频极速版 (FP8 4步 PDMD, 集成 EasyCache 特征缓存)",
         },
         {
@@ -357,7 +357,7 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             json: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_PDMD_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
-            isDefault: true,
+            isDefault: false,
             description: "MiniMax H3 首尾帧插值视频极速版 (FP8 4步 PDMD, 仅需 4 步极速出片)",
         },
         {
@@ -417,7 +417,7 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             json: DEFAULT_BUILTIN_COMFYUI_VIDEO_INT8_SELFLIFT_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
-            isDefault: false,
+            isDefault: true,
             description: "MiniMax H3 全能参考视频 (INT8 Singularity 底模 + SelfLift 渐进超分采样 + 双 LoRA + EasyCache)",
         },
         {
@@ -427,7 +427,7 @@ export function getDefaultComfyWorkflowItems(channel?: { id?: string; name?: str
             json: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_INT8_SELFLIFT_WORKFLOW.json,
             createdAt: 0,
             isBuiltin: true,
-            isDefault: false,
+            isDefault: true,
             description: "MiniMax H3 首尾帧插值视频 (INT8 Singularity 底模 + SelfLift 渐进超分采样 + 双 LoRA + EasyCache)",
         },
         {

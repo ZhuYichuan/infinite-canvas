@@ -1,12 +1,12 @@
 # Infinite Canvas · ComfyUI 核心依赖插件全景说明与安装指南
 
-本文档将本项目所有官方工作流所依赖的 **5 大 ComfyUI 核心扩展插件** 进行统一集中整理与深度说明，提供一键安装命令、工作流对应矩阵、关键节点解析与常见排错方法。
+本文档将本项目所有官方工作流所依赖的 **6 大 ComfyUI 核心扩展插件** 进行统一集中整理与深度说明，提供一键安装命令、工作流对应矩阵、关键节点解析与常见排错方法。
 
 ---
 
 ## 1. 核心插件速查清单
 
-运行 Infinite Canvas 官方预置的 6 大核心工作流，需在 ComfyUI 的 `custom_nodes/` 目录下安装以下 5 个核心插件：
+运行 Infinite Canvas 官方预置的 6 大核心工作流，需在 ComfyUI 的 `custom_nodes/` 目录下安装以下 6 个核心插件：
 
 | 序号 | 插件名称 | GitHub 仓库地址 | 维护作者 | 依赖此插件的工作流 | 核心功能 / 关键节点 |
 | :---: | :--- | :--- | :--- | :--- | :--- |
@@ -15,6 +15,7 @@
 | **3** | **ComfyLiterals** | [`M1kep/ComfyLiterals`](https://github.com/M1kep/ComfyLiterals) | M1kep | **首尾帧视频** / **全能参考视频** (`minimax_H3_i2v&t2v_workflow.json`, `minimax_h3_ref2v_workflow.json`) | 基础字面量常数与参数暴露端口 (`Int`, `Float`, `String`, `Boolean`) |
 | **4** | **ComfyUI-UniversalToolkit** | [`whmc76/ComfyUI-UniversalToolkit`](https://github.com/whmc76/ComfyUI-UniversalToolkit) | whmc76 | **文本生成 / 反推工作流** (`llm_qwen3_5_text_gen_workflow.json`) | 通用数据类型转换工具箱与多类型参数转接桥接 (`ShowAny_UTK`) |
 | **5** | **ComfyUI_LayerStyle** | [`chflame163/ComfyUI_LayerStyle`](https://github.com/chflame163/ComfyUI_LayerStyle) | chflame163 | **局部编辑 (Inpaint) 工作流** (`mask_edit_workflow.json`) | 图层样式合成与局部重绘遮罩处理 (`LayerMask: MaskPreview`, `LayerMask: MaskGrow`) |
+| **6** | **comfyui-SelfLift** | [`facok/comfyui-SelfLift`](https://github.com/facok/comfyui-SelfLift) | facok | **默认全能 / 首尾帧视频工作流 (SelfLift)** (`minimax_h3_ref2v_int8_SelfLift_api.json`) | MiniMax H3 渐进式潜空间超分采样器 (`SelfLiftH3Sampler`)，结合 3D 卷积潜空间模型打破显存瓶颈 |
 
 ---
 
@@ -31,6 +32,7 @@ git clone https://github.com/kijai/ComfyUI-KJNodes.git
 git clone https://github.com/M1kep/ComfyLiterals.git
 git clone https://github.com/whmc76/ComfyUI-UniversalToolkit.git
 git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
+git clone https://github.com/facok/comfyui-SelfLift.git
 ```
 
 ### Windows (PowerShell)
@@ -42,6 +44,7 @@ git clone https://github.com/kijai/ComfyUI-KJNodes.git
 git clone https://github.com/M1kep/ComfyLiterals.git
 git clone https://github.com/whmc76/ComfyUI-UniversalToolkit.git
 git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
+git clone https://github.com/facok/comfyui-SelfLift.git
 ```
 
 > ⚠️ **提示**：克隆完成后，**必须完全重启 ComfyUI** 服务，新节点才会注册加载到 ComfyUI 运行环境中。
@@ -50,20 +53,20 @@ git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
 
 ## 3. 工作流与依赖插件对应关系矩阵
 
-| 官方工作流文件 | 工作流名称 | kktools | KJNodes | ComfyLiterals | UniversalToolkit | LayerStyle |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| `image_z_image_turbo_workflow.json` | 文生图 (T2I) | - | - | - | - | - |
-| `image_flux2.dev_mult_image_edit_workflow.json` | 图生图 (I2I) | - | - | - | - | - |
-| `mask_edit_workflow.json` | 局部编辑 (Inpaint) | - | - | - | - | ✅ |
-| `llm_qwen3_5_text_gen_workflow.json` | 文本生成 / 反推 (LLM) | ✅ | - | - | ✅ | - |
-| `minimax_H3_i2v&t2v_workflow.json` | 首尾帧视频 (Frame Video) | - | - | ✅ | - | - |
-| `minimax_h3_ref2v_workflow.json` | 全能参考视频 (Omni Video) | - | ✅ | ✅ | - | - |
+| 官方工作流文件 | 工作流名称 | kktools | KJNodes | ComfyLiterals | UniversalToolkit | LayerStyle | comfyui-SelfLift |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| `image_z_image_turbo_workflow.json` | 文生图 (T2I) | - | - | - | - | - | - |
+| `image_flux2.dev_mult_image_edit_workflow.json` | 图生图 (I2I) | - | - | - | - | - | - |
+| `mask_edit_workflow.json` | 局部编辑 (Inpaint) | - | - | - | - | ✅ | - |
+| `llm_qwen3_5_text_gen_workflow.json` | 文本生成 / 反推 (LLM) | ✅ | - | - | ✅ | - | - |
+| `minimax_H3_i2v&t2v_workflow.json` | 首尾帧视频 (Frame Video) | - | - | ✅ | - | - | ✅ (SelfLift默认版) |
+| `minimax_h3_ref2v_workflow.json` | 全能参考视频 (Omni Video) | - | ✅ | ✅ | - | - | ✅ (SelfLift默认版) |
 
 > 💡 **说明**：
 > - **文生图**与**图生图**采用 ComfyUI 原生基础节点构建，无需第三方扩展插件即可直接开箱运行。
 > - **局部编辑**专为无限画布的画笔涂抹遮罩设计，依赖 `LayerStyle` 处理遮罩融合。
 > - **文本生成/反推**依靠 `kktools` + `UniversalToolkit` 驱动本地轻量端侧大模型。
-> - **视频生成**依靠 `ComfyLiterals` 与 `KJNodes` 接收前端动态参数并解包音视频组件。
+> - **视频生成**依靠 `ComfyLiterals` 与 `KJNodes` 接收前端动态参数并解包音视频组件；**默认的 SelfLift 规格**还依赖 `comfyui-SelfLift` 进行渐进式超分去噪采样。
 
 ---
 
@@ -105,6 +108,13 @@ git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
 - **作用机制**：
   在画布中进行「局部遮罩编辑」时，前端会将用户涂抹的白色 Mask 图片上传并绑定到 `ref_mask` 槽位。`ComfyUI_LayerStyle` 节点负责将遮罩与原图进行尺寸校验、图层对齐与预处理，确保 ControlNet 与重绘采样器精准作用于目标区域。
 
+### 4.6 comfyui-SelfLift
+- **仓库**：`https://github.com/facok/comfyui-SelfLift`
+- **核心功能**：MiniMax H3 渐进式潜空间超分去噪采样器。
+- **关键节点**：`SelfLiftH3Sampler`
+- **作用机制**：
+  在系统的默认全能视频与首尾帧视频工作流中担任采样器。前期在低分辨率潜空间快速构建主体结构与大动态，转折步（第 4 步）通过 `minimax_h3_latent_upscaler_3d_conv_v1_fp32.pth` 进行 3D 卷积超分，跃升至全分辨率精修，打破高分辨率视频生成的显存瓶颈。
+
 ---
 
 ## 5. 两种安装方式指引
@@ -112,7 +122,7 @@ git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
 ### 方式一：终端 Git Clone（推荐，最快捷稳定）
 1. 确认系统已安装 `git` 工具；
 2. 打开终端，执行 `cd <ComfyUI根目录>/custom_nodes`；
-3. 复制上方第 2 节的 5 条克隆命令并回车执行；
+3. 复制上方第 2 节的 6 条克隆命令并回车执行；
 4. 检查每个插件目录下是否存在 `requirements.txt`。若有且缺少依赖，执行对应环境的 `pip install -r requirements.txt`；
 5. 重启 ComfyUI。
 
@@ -126,6 +136,7 @@ git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
    - `ComfyLiterals` ➔ 找到 **ComfyLiterals**
    - `UniversalToolkit` ➔ 找到 **ComfyUI-UniversalToolkit**
    - `LayerStyle` ➔ 找到 **ComfyUI_LayerStyle**
+   - `SelfLift` ➔ 找到 **comfyui-SelfLift**
 5. 点击 Manager 弹窗下方的 **Restart** 重启 ComfyUI 服务。
 
 ---
@@ -135,7 +146,7 @@ git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
 ### 6.1 导入工作流提示 `When loading the graph, the following node types were not found`
 - **原因**：缺少对应插件，或者插件已克隆但未重启 ComfyUI。
 - **排查步骤**：
-  1. 查看红字提示中缺失的节点类型（例如 `SetNode` 代表缺少 `ComfyUI-KJNodes`，`ShowAny_UTK` 代表缺少 `UniversalToolkit`）；
+  1. 查看红字提示中缺失的节点类型（例如 `SelfLiftH3Sampler` 代表缺少 `comfyui-SelfLift`，`SetNode` 代表缺少 `ComfyUI-KJNodes`，`ShowAny_UTK` 代表缺少 `UniversalToolkit`）；
   2. 确认 `custom_nodes/` 目录下对应插件文件夹是否完整存在；
   3. 查看 ComfyUI 终端启动日志，确认启动时是否有该插件的 `ImportError`（若有说明缺少 Python 依赖库，需 `pip install` 对应依赖）；
   4. 重启 ComfyUI 后刷新网页重新导入。
@@ -148,6 +159,7 @@ git clone https://github.com/chflame163/ComfyUI_LayerStyle.git
   git clone https://ghfast.top/https://github.com/M1kep/ComfyLiterals.git
   git clone https://ghfast.top/https://github.com/whmc76/ComfyUI-UniversalToolkit.git
   git clone https://ghfast.top/https://github.com/chflame163/ComfyUI_LayerStyle.git
+  git clone https://ghfast.top/https://github.com/facok/comfyui-SelfLift.git
   ```
 
 ### 6.3 视频生成提示组件节点报错

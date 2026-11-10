@@ -2,7 +2,7 @@
 
 本项目全面采用**原生 ComfyUI 原生 API 直连架构**（纯前端浏览器直连，默认地址 `http://127.0.0.1:8188`，可自由配置为本地机器或云端 GPU 实例 IP）。
 
-系统将所有出厂核心生成能力收敛统一为**「系统内置 ComfyUI 渠道」**，涵盖 6 大生成能力，并在视频等长耗时能力下提供极致极速级（FP8 4步 PDMD）、消费级（FP8 20步）、性能级（BF16 8步 Turbo）与全量高精级（BF16 20步）多档内置工作流供自由切换。
+系统将所有出厂核心生成能力收敛统一为**「系统内置 ComfyUI 渠道」**，涵盖 6 大生成能力，并在视频等长耗时能力下默认提供兼顾画质上限与显存瓶颈的渐进式超分版（INT8 6步 SelfLift），同时内置极致极速级（FP8 4步 PDMD）、消费级（FP8 20步）、INT8 旋转量化级（INT8 4步/6步 Pika）等多档规格供自由切换。
 
 ---
 
@@ -50,7 +50,7 @@ Comfy/Comfy-Api/
     │   └── qwen3_5_text_workflow.json
     ├── 5_omni_video/                       # 5. 全能参考视频工作流 (Omni-modal Video)
     │   ├── README.md
-    │   ├── minimax_h3_ref2v_int8_SelfLift_api.json           # INT8 渐进式超分 6 步 (SelfLiftH3Sampler + 双 LoRA)
+    │   ├── minimax_h3_ref2v_int8_SelfLift_api.json           # 系统默认：INT8 渐进式超分 6 步 (SelfLiftH3Sampler + 双 LoRA)
     │   ├── minimax_h3_ref2v_int8_SelfLift_workflow.json      # 同上 UI 工作流
     │   ├── minimax_h3_ref2v_int8_convrot_4step_pdmd_api.json # INT8 旋转量化 4 步极速 (无 FP8 硬件加速, 带 EasyCache)
     │   ├── minimax_h3_ref2v_int8_convrot_4step_pdmd_workflow.json # INT8 量化 4 步极速 UI 工作流
@@ -64,7 +64,7 @@ Comfy/Comfy-Api/
     │   └── minimax_h3_ref2va_workflow.json            # UI 工作流
     ├── 6_frame_video/                      # 6. 首尾帧视频工作流 (First-Last Frame Video)
     │   ├── README.md
-    │   ├── minimax_H3_i2v&t2v_int8_SelfLift_api.json         # INT8 渐进式超分 6 步 (SelfLiftH3Sampler + 双 LoRA)
+    │   ├── minimax_H3_i2v&t2v_int8_SelfLift_api.json         # 系统默认：INT8 渐进式超分 6 步 (SelfLiftH3Sampler + 双 LoRA)
     │   ├── minimax_H3_i2v&t2v_int8_SelfLift_workflow.json    # 同上 UI 工作流
     │   ├── minimax_h3_fl2va_int8_convrot_4step_pdmd_api.json # INT8 旋转量化 4 步极速 (无 FP8 硬件加速)
     │   ├── minimax_h3_fl2va_int8_convrot_4step_pdmd_workflow.json # INT8 量化 4 步极速 UI 工作流

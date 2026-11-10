@@ -7,6 +7,12 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- 系统默认视频工作流升级为 MiniMax H3 INT8 6步 SelfLift 验证：
+  - 默认工作流与模型指向：新建空白视频节点，检查节点默认绑定的工作流为「MiniMax H3 全能 (INT8 6步 SelfLift)」；切换到首尾帧模式，检查默认工作流自动切换为「MiniMax H3 首尾帧 (INT8 6步 SelfLift)」；
+  - 渠道与设置默认状态：打开「设置 -> 渠道设置」，检查系统内置 ComfyUI 渠道中全能视频与首尾帧视频工作流默认项均显示为 SelfLift 规格；在「工作流管理」中确认 SelfLift 工作流标注为默认（isDefault: true），原有 4步 PDMD 不再为默认；
+  - 核心必选插件扩充：检查 `AGENTS.md`、`docs/COMFYUI_PLUGINS.md` 与相关文档中核心插件清单已完整更新为 6 大插件，包含 `comfyui-SelfLift` 的克隆命令与使用说明；
+  - 任务提交与采样执行：在已安装 `comfyui-SelfLift` 与对应权重的 ComfyUI 环境下提交视频任务，确认正常加载 Singularity INT8 底模、3D 卷积潜空间超分模型与双 LoRA，6 步采样正常出片。
+
 - 「我的资产」音频支持与「我的素材」双击预览/标题展示验证：
   - 文本资产封面视觉统一与防破损：访问 `/assets`（我的资产）、画布侧边栏「我的素材」或打开资产选择弹窗，验证文本资产均统一展示蓝色文本图标（`FileText`）与字数统计，不再尝试渲染外部失效的封面图片 URL，彻底消除破损图片图标与内容重复冗余；图像资产显示图像文件、音频资产显示音频图标、视频资产显示视频预览；
   - 我的资产页面音频与视频全模态编辑：访问 `/assets`（我的资产），验证音频和视频卡片均呈现「编辑」操作按钮；点击音频或视频资产的编辑按钮，弹出编辑弹窗，可编辑标题、自定义封面、标签、来源、备注并支持重新上传音视频文件；保存后数据正常持久化；详情抽屉中同样支持点击「编辑」快速呼出编辑弹窗；点击顶部「添加」，支持选择音频或视频类型并上传本地文件录入资产库；

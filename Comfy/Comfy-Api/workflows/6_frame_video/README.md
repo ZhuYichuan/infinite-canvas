@@ -6,11 +6,11 @@
 
 | 规格类型 | API 工作流（画布直连） | 适用环境与特点 |
 | :--- | :--- | :--- |
-| **INT8 6步 SelfLift (渐进超分版)** | [minimax_H3_i2v&t2v_int8_SelfLift_api.json](./minimax_H3_i2v&t2v_int8_SelfLift_api.json) | INT8 Singularity 底模 + **SelfLift 渐进式超分采样**（`SelfLiftH3Sampler` 结合 `minimax_h3_latent_upscaler_3d_conv_v1_fp32.pth`，前期低分辨率快速构建运动轨迹，跃升后全分辨率精修）+ **双 LoRA 协同**（`pika_h3_flex_fl2va_v1_bf16` + `H3-Licon-VBVR-I2V`）+ EasyCache，6 步采样（由 `step` 节点控制），在低显存下输出平滑细腻的高清首尾过渡 |
+| **INT8 6步 SelfLift (系统默认 / 渐进超分版)** | [minimax_H3_i2v&t2v_int8_SelfLift_api.json](./minimax_H3_i2v&t2v_int8_SelfLift_api.json) | INT8 Singularity 底模 + **SelfLift 渐进式超分采样**（`SelfLiftH3Sampler` 结合 `minimax_h3_latent_upscaler_3d_conv_v1_fp32.pth`，前期低分辨率快速构建运动轨迹，跃升后全分辨率精修）+ **双 LoRA 协同**（`pika_h3_flex_fl2va_v1_bf16` + `H3-Licon-VBVR-I2V`）+ EasyCache，6 步采样（由 `step` 节点控制），在低显存下输出平滑细腻的高清首尾过渡 |
 | **INT8 6步 Pika (质感版)** | [minimax_h3_fl2va_int8_convrot_6step_pika_api.json](./minimax_h3_fl2va_int8_convrot_6step_pika_api.json) | INT8 旋转量化底模 + **Pika Flex 蒸馏 LoRA**（`pika_h3_flex_fl2va_v1_bf16`，约 1.96 GB），采样 6 步（由新增的 `step` 节点控制），首尾帧插槽与参数同 4 步 PDMD，换更充分的细节与平滑过渡 |
 | **INT8 4步 PDMD (无 FP8 硬件版)** | [minimax_h3_fl2va_int8_convrot_4step_pdmd_api.json](./minimax_h3_fl2va_int8_convrot_4step_pdmd_api.json) | INT8 旋转量化底模（`int8_convrot`，全量未剪枝，约 34 GB）替换 FP8 裁剪底模，挂载 PDMD 4步蒸馏 LoRA，首尾帧插值参数与 FP8 4步 PDMD 完全一致，用于未启用 FP8 硬件加速的运行环境 |
 | **FP8 4步 PDMD (极致极速版)** | [minimax_h3_fl2va_fp8_4step_pdmd_api.json](./minimax_h3_fl2va_fp8_4step_pdmd_api.json) | 显存优化底模，挂载 PDMD 4步蒸馏 LoRA，仅需 4 步极速出片，大幅缩短生成耗时 |
-| **FP8 20步 (默认推荐)** | [minimax_h3_fl2va_fp8_20step_api.json](./minimax_h3_fl2va_fp8_20step_api.json) | 显存优化版，适合 RTX 3090/4090 或 16G~24G 消费级显卡 |
+| **FP8 20步 (消费级推荐)** | [minimax_h3_fl2va_fp8_20step_api.json](./minimax_h3_fl2va_fp8_20step_api.json) | 显存优化版，适合 RTX 3090/4090 或 16G~24G 消费级显卡 |
 | **BF16 8步 Turbo (极速版)** | [minimax_h3_fl2va_bf16_8step_turbo_api.json](./minimax_h3_fl2va_bf16_8step_turbo_api.json) | 挂载 Turbo LoRA 加速，8 步极速出片，适合专业卡 / 高性能 GPU |
 | **BF16 20步 (全量高精度)** | [minimax_h3_fl2va_bf16_20step_api.json](./minimax_h3_fl2va_bf16_20step_api.json) | 完整精度 20 步标准采样 |
 | **UI 可视化工作流** | [minimax_H3_i2v&t2v_int8_SelfLift_workflow.json](./minimax_H3_i2v&t2v_int8_SelfLift_workflow.json)<br/>[minimax_h3_fl2va_fp8_4step_pdmd_workflow.json](./minimax_h3_fl2va_fp8_4step_pdmd_workflow.json)<br/>[minimax_h3_fl2va_int8_convrot_4step_pdmd_workflow.json](./minimax_h3_fl2va_int8_convrot_4step_pdmd_workflow.json)<br/>[minimax_h3_fl2va_int8_convrot_6step_pika_workflow.json](./minimax_h3_fl2va_int8_convrot_6step_pika_workflow.json)<br/>[minimax_h3_fl2va_workflow.json](./minimax_h3_fl2va_workflow.json) | ComfyUI 拖拽查看与调试用的完整节点图（含 SelfLift、4 步 PDMD、INT8 4 步 PDMD、INT8 6 步 Pika 与标准版） |

@@ -127,7 +127,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                             const nextVideoMode = workflow?.category === "frameVideo" ? "frame" : workflow?.category === "omniVideo" ? "omni" : (node.metadata?.videoMode || config.videoMode);
                             patch.videoMode = nextVideoMode;
                             patch.modelId = resolveVideoModelIdFromWorkflowId(workflowId)
-                                ?? (nextVideoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd");
+                                ?? (nextVideoMode === "frame" ? "frame-video-minimax-h3-int8-6step-selflift" : "omni-video-minimax-h3-int8-6step-selflift");
                         }
                         onConfigChange(node.id, patch);
                     }}
@@ -135,7 +135,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 />
                 {mode === "video" ? (
                     <CanvasVideoSettingsPopover
-                        modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
+                        modelId={node.metadata?.modelId || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-int8-6step-selflift" : "omni-video-minimax-h3-int8-6step-selflift")}
                         size={node.metadata?.size || config.size}
                         duration={node.metadata?.seconds || config.videoSeconds}
                         videoMode={(node.metadata?.videoMode as "omni" | "frame") || (config.videoMode as "omni" | "frame")}

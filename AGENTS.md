@@ -81,13 +81,14 @@
 - 全能参考视频生成（MiniMax H3）需求规格、尺寸硬件锁死与多模态 FIFO 路由参见：`docs/content/docs/development/multimodal-video-workflow-spec.zh-CN.mdx`。
 - 多模态参考资源连线支持最多 9 图 + 3 视频 + 3 音频；未连满的插槽及其级联桥接节点（如 `GetVideoComponents`）必须在提交前自动抹除；连线超出上限时必须 Fail-loud 报错拦截。
 - 视频生成尺寸严禁开放手动数字输入，必须严格收敛为 16:9 与 9:16 对称对调，锁定在 0.4M~2.0M 的 12 档硬件对齐预设中，视频节点默认自动选取 DSL 数组的中间分辨率。
-- 运行本项目工作流所必须安装的 5 大 ComfyUI 核心插件（克隆至 ComfyUI 的 `custom_nodes/` 目录）：
+- 运行本项目工作流所必须安装的 6 大 ComfyUI 核心插件（克隆至 ComfyUI 的 `custom_nodes/` 目录）：
   1. `https://github.com/zhiwendesign/Comfyui-kktools`（文本生成/反推）
   2. `https://github.com/kijai/ComfyUI-KJNodes`（全能参考视频及组件处理）
   3. `https://github.com/M1kep/ComfyLiterals`（首尾帧/全能视频字面量与基础常数）
   4. `https://github.com/whmc76/ComfyUI-UniversalToolkit`（通用工具与参数解析）
   5. `https://github.com/chflame163/ComfyUI_LayerStyle`（遮罩处理与图层合成）
-  使用手册、文档与环境配置指引中必须完整同步此 5 大插件清单。
+  6. `https://github.com/facok/comfyui-SelfLift`（MiniMax H3 渐进式潜空间超分采样器）
+  使用手册、文档与环境配置指引中必须完整同步此 6 大插件清单。
 
 ## 文档规范
 

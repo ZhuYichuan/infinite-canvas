@@ -172,8 +172,8 @@ export const COMFYUI_BUILTIN_DEFAULT_MODELS: ChannelModel[] = [
     { name: "Qwen-Image-2.1", capability: "image", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_QWEN_IMAGE_21_WORKFLOW },
     { name: "Qwen-Image Inpaint", capability: "image", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_INPAINT_WORKFLOW },
     { name: "Qwen3.5 4B", capability: "text", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_TEXT_WORKFLOW },
-    { name: "MiniMax H3 全能视频", capability: "video", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW },
-    { name: "MiniMax H3 首尾帧视频", capability: "video", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW },
+    { name: "MiniMax H3 全能 (INT8 6步 SelfLift)", capability: "video", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_VIDEO_WORKFLOW },
+    { name: "MiniMax H3 首尾帧 (INT8 6步 SelfLift)", capability: "video", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_FRAME_VIDEO_WORKFLOW },
     { name: "MiniMax Music 03", capability: "audio", comfyuiWorkflow: DEFAULT_BUILTIN_COMFYUI_AUDIO_WORKFLOW },
 ];
 
@@ -319,7 +319,7 @@ export const defaultConfig: AiConfig = {
     ],
     model: "builtin::Qwen-Image-2.1",
     imageModel: "builtin::Qwen-Image-2.1",
-    videoModel: "builtin::MiniMax H3 全能视频",
+    videoModel: "builtin::MiniMax H3 全能 (INT8 6步 SelfLift)",
     textModel: "builtin::Qwen3.5 4B",
     audioModel: "builtin::MiniMax Music 03",
     audioVoice: "alloy",

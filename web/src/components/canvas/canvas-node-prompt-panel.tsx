@@ -119,7 +119,7 @@ export function CanvasNodePromptPanel({
 
     const videoModelAvailability = useMemo(() => {
         if (mode !== "video" || videoTool) return { isAvailable: true, reasons: [] };
-        const effectiveModelId = node.metadata?.modelId || (node.metadata?.workflowId ? resolveModelIdFromWorkflowId(node.metadata.workflowId) : undefined) || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd");
+        const effectiveModelId = node.metadata?.modelId || (node.metadata?.workflowId ? resolveModelIdFromWorkflowId(node.metadata.workflowId) : undefined) || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-int8-6step-selflift" : "omni-video-minimax-h3-int8-6step-selflift");
         const profile = getModelProfile(effectiveModelId) || BUILTIN_VIDEO_WORKFLOW_MODELS[0];
         const activeChannel = globalConfig.channels.find((c) => c.id === (node.metadata?.channelId || globalConfig.channelId)) || globalConfig.channels[0];
         return evaluateModelAvailability({
@@ -366,7 +366,7 @@ export function CanvasNodePromptPanel({
                         <>
                             <VideoModelPicker
                                 channelId={node.metadata?.channelId || config.channelId}
-                                modelId={node.metadata?.modelId || (node.metadata?.workflowId ? resolveModelIdFromWorkflowId(node.metadata.workflowId) : undefined) || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
+                                modelId={node.metadata?.modelId || (node.metadata?.workflowId ? resolveModelIdFromWorkflowId(node.metadata.workflowId) : undefined) || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-int8-6step-selflift" : "omni-video-minimax-h3-int8-6step-selflift")}
                                 connectedImages={connectedResources.images}
                                 connectedVideos={connectedResources.videos}
                                 connectedAudios={connectedResources.audios}
@@ -384,7 +384,7 @@ export function CanvasNodePromptPanel({
                                 }}
                             />
                             <CanvasVideoSettingsPopover
-                                modelId={node.metadata?.modelId || (node.metadata?.workflowId ? resolveModelIdFromWorkflowId(node.metadata.workflowId) : undefined) || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : "omni-video-minimax-h3-fp8-4step-pdmd")}
+                                modelId={node.metadata?.modelId || (node.metadata?.workflowId ? resolveModelIdFromWorkflowId(node.metadata.workflowId) : undefined) || (node.metadata?.videoMode === "frame" || config.videoMode === "frame" ? "frame-video-minimax-h3-int8-6step-selflift" : "omni-video-minimax-h3-int8-6step-selflift")}
                                 size={node.metadata?.size || config.size}
                                 duration={node.metadata?.seconds || config.videoSeconds}
                                 videoMode={(node.metadata?.videoMode as "omni" | "frame") || (config.videoMode as "omni" | "frame")}

@@ -70,7 +70,7 @@ export function CanvasVideoSettingsPopover({
         onSyncPosition: () => setButtonRect(buttonRef.current?.getBoundingClientRect() || null),
     });
 
-    const effectiveModelId = modelId || (videoMode === "frame" ? "frame-video-minimax-h3-fp8-4step-pdmd" : videoMode === "omni" ? "omni-video-minimax-h3-fp8-4step-pdmd" : undefined) || config?.videoModel || config?.model;
+    const effectiveModelId = modelId || (videoMode === "frame" ? "frame-video-minimax-h3-int8-6step-selflift" : videoMode === "omni" ? "omni-video-minimax-h3-int8-6step-selflift" : undefined) || config?.videoModel || config?.model;
     const profile = getModelProfile(effectiveModelId) || videoMinimaxH3OmniProfile;
     const currentMode = videoMode || (profile.category === "frameVideo" ? "frame" : (config?.videoMode === "frame" ? "frame" : "omni"));
     const currentSize = size || config?.size;
