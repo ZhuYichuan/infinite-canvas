@@ -83,4 +83,16 @@ describe("image_generation_logs provider field (T19 AC 8)", () => {
         expect(record.provider).toBe("comfyui");
         expect(record.status).toBe("failed");
     });
+
+    it("skips writing a log entry when skipLog is true on success", async () => {
+        fetchMock.mockImplementation(nativeFlowWith("succeeded"));
+        await expect(requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "a cat", skipLog: true })).resolves.toMatchObject({ jobId: "job_1" });
+        expect(comfyuiLogStore.setItem).not.toHaveBeenCalled();
+    });
+
+    it("skips writing a log entry when skipLog is true on failure", async () => {
+        fetchMock.mockImplementation(nativeFlowWith("failed"));
+        await expect(requestComfyuiImage({ config: buildComfyuiConfig(), model: "comfy::ComfyUI T2I", prompt: "a cat", skipLog: true })).rejects.toBeDefined();
+        expect(comfyuiLogStore.setItem).not.toHaveBeenCalled();
+    });
 });

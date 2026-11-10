@@ -18,6 +18,7 @@ type RequestOptions = {
     step?: number;
     maxLength?: number;
     thinking?: boolean;
+    skipLog?: boolean;
 };
 
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
@@ -39,6 +40,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                     signal: options?.signal,
                     jobId: options?.jobId,
                     onProgress: options?.onProgress,
+                    skipLog: options?.skipLog,
                 }),
             ),
         );
@@ -57,6 +59,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
             signal: options?.signal,
             jobId: options?.jobId,
             onProgress: options?.onProgress,
+            skipLog: options?.skipLog,
         })
     ).items;
 }
@@ -77,6 +80,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
             signal: options?.signal,
             jobId: options?.jobId,
             onProgress: options?.onProgress,
+            skipLog: options?.skipLog,
         });
         return result.items;
     }
@@ -94,6 +98,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
             signal: options?.signal,
             jobId: options?.jobId,
             onProgress: options?.onProgress,
+            skipLog: options?.skipLog,
         })
     ).items;
 }

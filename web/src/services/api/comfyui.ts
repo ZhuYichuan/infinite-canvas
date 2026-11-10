@@ -2123,6 +2123,7 @@ export interface ComfyuiImageRequest {
     category?: WorkflowCategory;
     signal?: AbortSignal;
     onProgress?: (status: string, detail?: Record<string, unknown>) => void;
+    skipLog?: boolean;
 }
 
 export interface ComfyuiImageResult {
@@ -2301,20 +2302,22 @@ export async function requestComfyuiImage(req: ComfyuiImageRequest): Promise<Com
             items.push({ id: nanoid(), dataUrl, seed });
         }
 
-        void logImageGeneration({ model: requestConfig.model, prompt: req.prompt, provider: "comfyui", jobId, durationMs: Date.now() - startedAt, status: "success", imageCount: items.length, images: items, seed }).catch(() => undefined);
+        if (!req.skipLog) void logImageGeneration({ model: requestConfig.model, prompt: req.prompt, provider: "comfyui", jobId, durationMs: Date.now() - startedAt, status: "success", imageCount: items.length, images: items, seed }).catch(() => undefined);
         return { items, jobId, seed };
     } catch (error) {
         error = addComfyuiChannelContext(error, channelName);
-        void logImageGeneration({
-            model: requestConfig?.model ?? req.model,
-            prompt: req.prompt,
-            provider: "comfyui",
-            jobId: jobId || undefined,
-            durationMs: Date.now() - startedAt,
-            status: "failed",
-            errorMessage: error instanceof Error ? error.message : String(error),
-            seed,
-        }).catch(() => undefined);
+        if (!req.skipLog) {
+            void logImageGeneration({
+                model: requestConfig?.model ?? req.model,
+                prompt: req.prompt,
+                provider: "comfyui",
+                jobId: jobId || undefined,
+                durationMs: Date.now() - startedAt,
+                status: "failed",
+                errorMessage: error instanceof Error ? error.message : String(error),
+                seed,
+            }).catch(() => undefined);
+        }
         throw error;
     }
 }
@@ -2381,6 +2384,7 @@ export interface ComfyuiInpaintRequest {
     jobId?: string;
     signal?: AbortSignal;
     onProgress?: (status: string, detail?: { jobId?: string }) => void;
+    skipLog?: boolean;
 }
 
 export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise<ComfyuiImageResult> {
@@ -2479,20 +2483,22 @@ export async function requestComfyuiInpaint(req: ComfyuiInpaintRequest): Promise
             items.push({ id: nanoid(), dataUrl, seed });
         }
 
-        void logImageGeneration({ model: "ComfyUI Inpaint", prompt: req.prompt, provider: "comfyui", jobId, durationMs: Date.now() - startedAt, status: "success", imageCount: items.length, images: items, seed }).catch(() => undefined);
+        if (!req.skipLog) void logImageGeneration({ model: "ComfyUI Inpaint", prompt: req.prompt, provider: "comfyui", jobId, durationMs: Date.now() - startedAt, status: "success", imageCount: items.length, images: items, seed }).catch(() => undefined);
         return { items, jobId, seed };
     } catch (error) {
         error = addComfyuiChannelContext(error, channelName);
-        void logImageGeneration({
-            model: "ComfyUI Inpaint",
-            prompt: req.prompt,
-            provider: "comfyui",
-            jobId: jobId || undefined,
-            durationMs: Date.now() - startedAt,
-            status: "failed",
-            errorMessage: error instanceof Error ? error.message : String(error),
-            seed,
-        }).catch(() => undefined);
+        if (!req.skipLog) {
+            void logImageGeneration({
+                model: "ComfyUI Inpaint",
+                prompt: req.prompt,
+                provider: "comfyui",
+                jobId: jobId || undefined,
+                durationMs: Date.now() - startedAt,
+                status: "failed",
+                errorMessage: error instanceof Error ? error.message : String(error),
+                seed,
+            }).catch(() => undefined);
+        }
         throw error;
     }
 }

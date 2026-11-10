@@ -7,6 +7,13 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Image Workbench Generation Log Deduplication (Issue #18):
+  - Open Image Workbench (`/image`), input a prompt (e.g. "1 girl"), select count 1, and click "Generate";
+  - Once completed, check the left generation log sidebar, confirming only 1 record is created without duplicated entries;
+  - Generate multiple images (e.g. count 4), confirming only 1 batch record with 4 images is created instead of redundant per-image logs;
+  - Retry a result slot, verifying that retry does not produce duplicate log entries;
+  - Generate an image on Infinite Canvas (`/canvas`), confirming canvas generations are still normally recorded and visible in workbench history.
+
 - 系统默认视频工作流升级为 MiniMax H3 INT8 6步 SelfLift 验证：
   - 默认工作流与模型指向：新建空白视频节点，检查节点默认绑定的工作流为「MiniMax H3 全能 (INT8 6步 SelfLift)」；切换到首尾帧模式，检查默认工作流自动切换为「MiniMax H3 首尾帧 (INT8 6步 SelfLift)」；
   - 渠道与设置默认状态：打开「设置 -> 渠道设置」，检查系统内置 ComfyUI 渠道中全能视频与首尾帧视频工作流默认项均显示为 SelfLift 规格；在「工作流管理」中确认 SelfLift 工作流标注为默认（isDefault: true），原有 4步 PDMD 不再为默认；

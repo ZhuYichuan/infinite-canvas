@@ -55,4 +55,17 @@ describe("image.ts ComfyUI generation", () => {
         expect(result).toHaveLength(3);
         expect(mockedRequestComfyuiImage).toHaveBeenCalledTimes(3);
     });
+
+    it("forwards skipLog option to requestComfyuiImage", async () => {
+        mockedRequestComfyuiImage.mockResolvedValue({
+            items: [{ id: "img1", dataUrl: "data:image/png;base64,aaa", seed: 123 }],
+            jobId: "job-1",
+            seed: 123,
+        });
+        const config = buildComfyUIConfig();
+        await requestGeneration(config, "a cat", { skipLog: true });
+        expect(mockedRequestComfyuiImage).toHaveBeenCalledWith(
+            expect.objectContaining({ skipLog: true }),
+        );
+    });
 });
