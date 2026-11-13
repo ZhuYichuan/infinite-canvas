@@ -921,9 +921,8 @@ function InfiniteCanvasPage() {
 
     const visibleNodes = useMemo(() => {
         const padding = 280;
-        const rect = containerRef.current?.getBoundingClientRect();
-        const width = rect?.width || size.width;
-        const height = rect?.height || size.height;
+        const width = size.width;
+        const height = size.height;
         const viewLeft = -viewport.x / viewport.k - padding;
         const viewTop = -viewport.y / viewport.k - padding;
         const viewRight = viewLeft + width / viewport.k + padding * 2;

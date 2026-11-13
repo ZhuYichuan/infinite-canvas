@@ -31,6 +31,8 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
     });
     const scaleRef = useRef(viewport.k);
     const currentViewportRef = useRef<ViewportTransform>(viewport);
+    const emittedViewportsRef = useRef(new WeakSet<object>());
+    const containerRectRef = useRef<DOMRect | null>(null);
     const frameRef = useRef<number | null>(null);
     const nextViewportRef = useRef<ViewportTransform | null>(null);
     const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -40,6 +42,7 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
     const scheduleViewportFlush = (nextVp: ViewportTransform) => {
         currentViewportRef.current = nextVp;
         nextViewportRef.current = nextVp;
+        emittedViewportsRef.current.add(nextVp);
 
         if (frameRef.current) return;
         frameRef.current = requestAnimationFrame(() => {
@@ -54,10 +57,27 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
 
     useEffect(() => {
         scaleRef.current = viewport.k;
-        if (nextViewportRef.current === null && !panState.current.isPanning) {
-            currentViewportRef.current = viewport;
+        if (emittedViewportsRef.current.has(viewport)) {
+            return;
         }
+        currentViewportRef.current = viewport;
     }, [viewport]);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+        const updateRect = () => {
+            containerRectRef.current = container.getBoundingClientRect();
+        };
+        updateRect();
+        const ro = new ResizeObserver(updateRect);
+        ro.observe(container);
+        window.addEventListener("resize", updateRect);
+        return () => {
+            ro.disconnect();
+            window.removeEventListener("resize", updateRect);
+        };
+    }, [containerRef]);
 
     useEffect(
         () => () => {
@@ -111,7 +131,7 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         const delta = -event.deltaY;
         const factor = Math.pow(1.1, delta / 100);
         const newScale = Math.min(Math.max(currentVp.k * factor, 0.05), 5);
-        const rect = containerRef.current?.getBoundingClientRect();
+        const rect = containerRectRef.current || containerRef.current?.getBoundingClientRect();
         if (!rect) return;
 
         const mouseX = event.clientX - rect.left;
