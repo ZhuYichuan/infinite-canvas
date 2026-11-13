@@ -31,32 +31,15 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
     });
     const scaleRef = useRef(viewport.k);
     const currentViewportRef = useRef<ViewportTransform>(viewport);
-    const contentRef = useRef<HTMLDivElement>(null);
-    const gridRef = useRef<HTMLDivElement>(null);
     const frameRef = useRef<number | null>(null);
     const nextViewportRef = useRef<ViewportTransform | null>(null);
-    const lastEmittedViewportRef = useRef<ViewportTransform | null>(null);
     const [isSpacePressed, setIsSpacePressed] = useState(false);
     const [isControlPressed, setIsControlPressed] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
 
-    const applyViewportStyles = (vp: ViewportTransform) => {
-        if (contentRef.current) {
-            contentRef.current.style.transform = `translate(${vp.x}px, ${vp.y}px) scale(${vp.k})`;
-            contentRef.current.style.setProperty("--canvas-scale", String(vp.k));
-            contentRef.current.style.setProperty("--canvas-inv-scale", String(1 / (vp.k || 1)));
-        }
-        if (gridRef.current && backgroundMode !== "blank") {
-            const gridSize = 48 * vp.k;
-            gridRef.current.style.backgroundSize = `${gridSize}px ${gridSize}px`;
-            gridRef.current.style.backgroundPosition = `${vp.x % gridSize}px ${vp.y % gridSize}px`;
-        }
-    };
-
     const scheduleViewportFlush = (nextVp: ViewportTransform) => {
         currentViewportRef.current = nextVp;
         nextViewportRef.current = nextVp;
-        applyViewportStyles(nextVp);
 
         if (frameRef.current) return;
         frameRef.current = requestAnimationFrame(() => {
@@ -64,31 +47,17 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
             if (nextViewportRef.current) {
                 const targetVp = nextViewportRef.current;
                 nextViewportRef.current = null;
-                lastEmittedViewportRef.current = targetVp;
                 onViewportChange(targetVp);
             }
         });
     };
 
     useEffect(() => {
-        if (nextViewportRef.current !== null || panState.current.isPanning) {
-            return;
-        }
-
-        const lastEmitted = lastEmittedViewportRef.current;
-        if (
-            lastEmitted &&
-            viewport.x === lastEmitted.x &&
-            viewport.y === lastEmitted.y &&
-            viewport.k === lastEmitted.k
-        ) {
-            return;
-        }
-
-        currentViewportRef.current = viewport;
         scaleRef.current = viewport.k;
-        applyViewportStyles(viewport);
-    }, [backgroundMode, viewport]);
+        if (nextViewportRef.current === null && !panState.current.isPanning) {
+            currentViewportRef.current = viewport;
+        }
+    }, [viewport]);
 
     useEffect(
         () => () => {
@@ -271,9 +240,8 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
             onDragOver={(event) => event.preventDefault()}
             onDrop={onDrop}
         >
-            <CanvasGrid gridRef={gridRef} viewport={viewport} mode={backgroundMode} />
+            <CanvasGrid viewport={viewport} mode={backgroundMode} />
             <div
-                ref={contentRef}
                 className="absolute origin-top-left"
                 style={{
                     transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.k})`,
@@ -288,11 +256,9 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
 }
 
 const CanvasGrid = React.memo(function CanvasGrid({
-    gridRef,
     viewport,
     mode,
 }: {
-    gridRef?: React.RefObject<HTMLDivElement | null>;
     viewport: ViewportTransform;
     mode: CanvasBackgroundMode;
 }) {
@@ -308,7 +274,6 @@ const CanvasGrid = React.memo(function CanvasGrid({
 
     return (
         <div
-            ref={gridRef}
             className="pointer-events-none absolute inset-0 opacity-40"
             style={{
                 backgroundImage,
