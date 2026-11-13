@@ -247,6 +247,10 @@ function InfiniteCanvasPage() {
         startY: 0,
         initialSelectedNodes: [],
     });
+    const pendingDragMoveRef = useRef<{ clientX: number; clientY: number; altKey: boolean } | null>(null);
+    const lastInvalidConnectionIdsRef = useRef<Set<string>>(new Set());
+    const cachedConfigInputsRef = useRef<Map<string, NodeGenerationInput[]>>(new Map());
+    const cachedMentionReferencesRef = useRef<Map<string, ReturnType<typeof buildNodeMentionReferences>>>(new Map());
 
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
@@ -929,7 +933,14 @@ function InfiniteCanvasPage() {
     }, [nodes, size.height, size.width, viewport.k, viewport.x, viewport.y]);
 
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
-    const invalidConnectionIds = useMemo(() => getAllInvalidConnectionIds(nodes, connections), [nodes, connections]);
+    const invalidConnectionIds = useMemo(() => {
+        if (isNodeDragging && lastInvalidConnectionIdsRef.current.size > 0) {
+            return lastInvalidConnectionIdsRef.current;
+        }
+        const result = getAllInvalidConnectionIds(nodes, connections);
+        lastInvalidConnectionIdsRef.current = result;
+        return result;
+    }, [connections, isNodeDragging, nodes]);
     // The toolbar follows a single selected node selected by click, creation, marquee, or keyboard.
     // It stays hidden for multi-selection and while isNodeDragging is true.
     const singleSelectedNodeId = selectedNodeIds.size === 1 ? Array.from(selectedNodeIds)[0] : null;
@@ -975,18 +986,26 @@ function InfiniteCanvasPage() {
     }, [activeNodeId, connections, nodeById, nodes]);
 
     const configInputsById = useMemo(() => {
+        if (isNodeDragging && cachedConfigInputsRef.current.size > 0) {
+            return cachedConfigInputsRef.current;
+        }
         const map = new Map<string, NodeGenerationInput[]>();
         nodes.forEach((node) => {
             if (node.type !== CanvasNodeType.Config) return;
             map.set(node.id, buildNodeGenerationInputs(node.id, nodes, connections));
         });
+        cachedConfigInputsRef.current = map;
         return map;
-    }, [connections, nodes]);
+    }, [connections, isNodeDragging, nodes]);
     const mentionReferencesByNodeId = useMemo(() => {
+        if (isNodeDragging && cachedMentionReferencesRef.current.size > 0) {
+            return cachedMentionReferencesRef.current;
+        }
         const map = new Map<string, ReturnType<typeof buildNodeMentionReferences>>();
         nodes.forEach((node) => map.set(node.id, buildNodeMentionReferences(node, nodes, connections)));
+        cachedMentionReferencesRef.current = map;
         return map;
-    }, [connections, nodes]);
+    }, [connections, isNodeDragging, nodes]);
     const connectedNodesByNodeId = useMemo(() => {
         const map = new Map<string, CanvasNodeData[]>();
         connections.filter((connection) => connection.kind === "input").forEach((connection) => {
@@ -1799,6 +1818,7 @@ function InfiniteCanvasPage() {
         dragRef.current.initialSelectedNodes = [];
         dragRef.current.snappedDx = undefined;
         dragRef.current.snappedDy = undefined;
+        pendingDragMoveRef.current = null;
         if (wasClick && clickedNodeId) {
             const clickedNode = nodesRef.current.find((node) => node.id === clickedNodeId);
             const clickedDefinition = clickedNode ? getNodeDefinition(clickedNode.type) : undefined;
@@ -1823,44 +1843,48 @@ function InfiniteCanvasPage() {
             const currentViewport = viewportRef.current;
 
             if (dragRef.current.isDraggingNode) {
-                const rawDx = (event.clientX - dragRef.current.startX) / currentViewport.k;
-                const rawDy = (event.clientY - dragRef.current.startY) / currentViewport.k;
-                const initialPositions = dragRef.current.initialSelectedNodes;
-                if (Math.abs(event.clientX - dragRef.current.startX) > 3 || Math.abs(event.clientY - dragRef.current.startY) > 3) {
-                    dragRef.current.hasMoved = true;
-                }
-
-                const snapResult = calculateAlignmentSnap({
-                    initialNodes: initialPositions,
-                    rawDx,
-                    rawDy,
-                    allNodes: nodesRef.current,
-                    viewportScale: currentViewport.k,
-                    disabled: event.altKey,
-                });
-
-                const dx = snapResult.snappedDx;
-                const dy = snapResult.snappedDy;
-                dragRef.current.snappedDx = dx;
-                dragRef.current.snappedDy = dy;
-                setAlignmentGuides(snapResult.guides);
-
-                const movedIds = new Set(initialPositions.map((item) => item.id));
-                const previewNodes = nodesRef.current.map((node) => {
-                    const initial = initialPositions.find((item) => item.id === node.id);
-                    return initial ? { ...node, position: { x: initial.x + dx, y: initial.y + dy } } : node;
-                });
-                setDropTargetGroupId(findGroupDropTarget(movedIds, previewNodes)?.id || null);
-
-                if (rafRef.current) cancelAnimationFrame(rafRef.current);
+                pendingDragMoveRef.current = { clientX: event.clientX, clientY: event.clientY, altKey: event.altKey };
+                if (rafRef.current) return;
                 rafRef.current = requestAnimationFrame(() => {
+                    rafRef.current = null;
+                    const pending = pendingDragMoveRef.current;
+                    if (!pending || !dragRef.current.isDraggingNode) return;
+
+                    const rawDx = (pending.clientX - dragRef.current.startX) / currentViewport.k;
+                    const rawDy = (pending.clientY - dragRef.current.startY) / currentViewport.k;
+                    const initialPositions = dragRef.current.initialSelectedNodes;
+                    if (Math.abs(pending.clientX - dragRef.current.startX) > 3 || Math.abs(pending.clientY - dragRef.current.startY) > 3) {
+                        dragRef.current.hasMoved = true;
+                    }
+
+                    const snapResult = calculateAlignmentSnap({
+                        initialNodes: initialPositions,
+                        rawDx,
+                        rawDy,
+                        allNodes: nodesRef.current,
+                        viewportScale: currentViewport.k,
+                        disabled: pending.altKey,
+                    });
+
+                    const dx = snapResult.snappedDx;
+                    const dy = snapResult.snappedDy;
+                    dragRef.current.snappedDx = dx;
+                    dragRef.current.snappedDy = dy;
+                    setAlignmentGuides(snapResult.guides);
+
+                    const movedIds = new Set(initialPositions.map((item) => item.id));
+                    const previewNodes = nodesRef.current.map((node) => {
+                        const initial = initialPositions.find((item) => item.id === node.id);
+                        return initial ? { ...node, position: { x: initial.x + dx, y: initial.y + dy } } : node;
+                    });
+                    setDropTargetGroupId(findGroupDropTarget(movedIds, previewNodes)?.id || null);
+
                     setNodes((prev) =>
                         prev.map((node) => {
                             const initial = initialPositions.find((item) => item.id === node.id);
                             return initial ? { ...node, position: { x: initial.x + dx, y: initial.y + dy } } : node;
                         }),
                     );
-                    rafRef.current = null;
                 });
                 return;
             }

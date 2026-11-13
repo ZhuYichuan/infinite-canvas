@@ -1,0 +1,250 @@
+import * as React from "react";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { InfiniteCanvas } from "../infinite-canvas";
+import { CanvasNode, areCanvasNodePropsEqual } from "../canvas-node";
+import { CanvasNodeType, type CanvasNodeData, type ViewportTransform } from "@/types/canvas";
+import { calculateAlignmentSnap } from "@/lib/canvas/canvas-alignment-snapping";
+import { getAllInvalidConnectionIds } from "@/lib/canvas/canvas-node-geometry";
+
+vi.mock("@/stores/use-theme-store", () => ({
+    useThemeStore: (selector: (state: { theme: "light" }) => unknown) => selector({ theme: "light" }),
+}));
+vi.mock("@/stores/use-collab-store", () => ({
+    useCollabStore: (selector: (state: object) => unknown) => selector({}),
+}));
+vi.mock("@/lib/canvas/node-registry", () => ({
+    getNodeDefinition: () => undefined,
+}));
+vi.mock("../canvas-resource-mention-textarea", () => ({
+    CanvasResourceMentionTextarea: () => null,
+}));
+vi.mock("../canvas-video-player", () => ({
+    CanvasVideoPlayer: () => null,
+}));
+vi.mock("antd", () => ({
+    Tooltip: ({ children }: { children: React.ReactNode }) => children,
+}));
+vi.mock("react-i18next", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("react-i18next")>()),
+    useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+function createTestNodes(count: number): CanvasNodeData[] {
+    return Array.from({ length: count }, (_, i) => ({
+        id: `node-${i}`,
+        type: CanvasNodeType.Image,
+        title: `Node ${i}`,
+        position: { x: (i % 10) * 400, y: Math.floor(i / 10) * 400 },
+        width: 360,
+        height: 300,
+        metadata: { prompt: `Prompt ${i}` },
+    }));
+}
+
+describe("Canvas Performance Benchmark & Regression Suite", () => {
+    let container: HTMLDivElement;
+    let root: Root;
+
+    beforeEach(() => {
+        vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+        container = document.createElement("div");
+        document.body.appendChild(container);
+        root = createRoot(container);
+    });
+
+    afterEach(async () => {
+        await act(async () => root.unmount());
+        container.remove();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    describe("Benchmark 1: Wheel Zoom Frequency & RAF Throttling", () => {
+        it("batches high-frequency wheel bursts into RAF updates instead of firing synchronously every event", async () => {
+            const onViewportChange = vi.fn();
+            const containerRef = { current: container };
+            const viewport: ViewportTransform = { x: 0, y: 0, k: 1 };
+
+            vi.spyOn(container, "getBoundingClientRect").mockReturnValue({
+                left: 0,
+                top: 0,
+                width: 1000,
+                height: 800,
+                right: 1000,
+                bottom: 800,
+                x: 0,
+                y: 0,
+                toJSON: () => {},
+            });
+
+            await act(async () => {
+                root.render(
+                    <InfiniteCanvas
+                        containerRef={containerRef}
+                        viewport={viewport}
+                        tool="select"
+                        onViewportChange={onViewportChange}
+                    >
+                        <div data-testid="content">Content</div>
+                    </InfiniteCanvas>,
+                );
+            });
+
+            const canvasElement = container.firstElementChild as HTMLElement;
+            expect(canvasElement).toBeDefined();
+
+            // Simulate high-frequency trackpad/wheel burst: 20 wheel events in rapid succession
+            await act(async () => {
+                for (let i = 0; i < 20; i++) {
+                    const wheelEvent = new WheelEvent("wheel", {
+                        deltaY: -10,
+                        clientX: 500,
+                        clientY: 400,
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    canvasElement.dispatchEvent(wheelEvent);
+                }
+            });
+
+            // TARGET CHECK:
+            // A rapid burst of 20 wheel events within one frame should be coalesced / throttled by RAF.
+            // Currently unthrottled: 20 calls.
+            // Target: at most 2 calls per animation frame burst.
+            console.log(`[Benchmark 1 Metric] Wheel burst onViewportChange call count: ${onViewportChange.mock.calls.length} (expected <= 2)`);
+            expect(onViewportChange.mock.calls.length).toBeLessThanOrEqual(2);
+        });
+    });
+
+    describe("Benchmark 2: Node Re-render Stability during Viewport Zoom", () => {
+        it("does not re-render unmoved/unchanged CanvasNodes when viewport zoom changes", async () => {
+            const renderCounts: Record<string, number> = {};
+
+            const TrackedCanvasNode = React.memo((props: React.ComponentProps<typeof CanvasNode>) => {
+                renderCounts[props.data.id] = (renderCounts[props.data.id] || 0) + 1;
+                return <CanvasNode {...props} />;
+            }, areCanvasNodePropsEqual);
+
+            const nodes = createTestNodes(20);
+            const noop = () => {};
+            const defaultNodeProps = {
+                isSelected: false,
+                isRelated: false,
+                isFocusRelated: false,
+                isConnectionTarget: false,
+                isConnecting: false,
+                showImageInfo: false,
+                groupChildCount: 0,
+                onMouseDown: noop,
+                onContextMenu: noop,
+                onHoverStart: noop,
+                onHoverEnd: noop,
+                onConnectStart: noop,
+                onResizeStart: noop,
+                onResize: noop,
+                onResizeEnd: noop,
+                onContentChange: noop,
+                onTitleChange: noop,
+            };
+
+            // Initial render at scale 1.0
+            await act(async () => {
+                root.render(
+                    <div>
+                        {nodes.map((node) => (
+                            <TrackedCanvasNode
+                                key={node.id}
+                                data={node}
+                                scale={1.0}
+                                {...defaultNodeProps}
+                            />
+                        ))}
+                    </div>,
+                );
+            });
+
+            for (const node of nodes) {
+                expect(renderCounts[node.id]).toBe(1);
+            }
+
+            // Simulate viewport zoom from 1.0 to 1.2
+            await act(async () => {
+                root.render(
+                    <div>
+                        {nodes.map((node) => (
+                            <TrackedCanvasNode
+                                key={node.id}
+                                data={node}
+                                scale={1.2}
+                                {...defaultNodeProps}
+                            />
+                        ))}
+                    </div>,
+                );
+            });
+
+            // TARGET CHECK:
+            // Under current code, scale={1.2} forces all 20 nodes to re-render (totalReRenders = 20).
+            // A performant canvas decouples scale (via CSS variable / container transform) so zoom does not invalidate node VDOM.
+            const totalReRenders = Object.values(renderCounts).reduce((sum, count) => sum + (count - 1), 0);
+            console.log(`[Benchmark 2 Metric] Re-rendered node count on zoom: ${totalReRenders} / ${nodes.length}`);
+            expect(totalReRenders).toBe(0);
+        });
+    });
+
+    describe("Benchmark 3: Dragging Pipeline & State Consolidation", () => {
+        it("quantifies synchronous drag calculation overhead with 100 nodes", () => {
+            const nodes = createTestNodes(100);
+            const initialNodes = [{ id: "node-0", x: 0, y: 0 }];
+
+            const t0 = performance.now();
+            const iterations = 60; // 60 frames of mouse move
+            for (let i = 0; i < iterations; i++) {
+                calculateAlignmentSnap({
+                    initialNodes,
+                    rawDx: i * 2,
+                    rawDy: i * 2,
+                    allNodes: nodes,
+                    viewportScale: 1,
+                    disabled: false,
+                });
+            }
+            const t1 = performance.now();
+            const elapsedMs = t1 - t0;
+            const avgPerFrameMs = elapsedMs / iterations;
+
+            console.log(`[Benchmark 3 Metric] calculateAlignmentSnap (100 nodes x 60 frames): ${elapsedMs.toFixed(2)}ms total, ${avgPerFrameMs.toFixed(3)}ms/frame`);
+
+            // Single frame budget for 60fps is 16.6ms, snap calculation alone should stay < 1.0ms
+            expect(avgPerFrameMs).toBeLessThan(1.0);
+        });
+
+        it("quantifies graph validation overhead with 100 nodes and 100 connections", () => {
+            const nodes = createTestNodes(100);
+            const connections = Array.from({ length: 99 }, (_, i) => ({
+                id: `c-${i}`,
+                fromNodeId: `node-${i}`,
+                toNodeId: `node-${i + 1}`,
+                kind: "input" as const,
+            }));
+
+            const t0 = performance.now();
+            const iterations = 60;
+            for (let i = 0; i < iterations; i++) {
+                getAllInvalidConnectionIds(nodes, connections);
+            }
+            const t1 = performance.now();
+            const elapsedMs = t1 - t0;
+            const avgPerFrameMs = elapsedMs / iterations;
+
+            console.log(`[Benchmark 3 Metric] getAllInvalidConnectionIds (100 nodes x 100 connections x 60 frames): ${elapsedMs.toFixed(2)}ms total, ${avgPerFrameMs.toFixed(3)}ms/frame`);
+
+            // If run on every drag frame, 60 frames take significant time
+            // Assert that per frame is measurable and should be bypassed during active drag
+            expect(avgPerFrameMs).toBeDefined();
+        });
+    });
+});

@@ -88,21 +88,31 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         const target = event.target instanceof Element ? event.target : null;
         if (target?.closest("[data-canvas-no-zoom],.ant-modal,.ant-popover,.ant-dropdown,.ant-select-dropdown,.ant-picker-dropdown")) return;
 
+        const currentVp = nextViewportRef.current ?? viewport;
         const delta = -event.deltaY;
         const factor = Math.pow(1.1, delta / 100);
-        const newScale = Math.min(Math.max(viewport.k * factor, 0.05), 5);
+        const newScale = Math.min(Math.max(currentVp.k * factor, 0.05), 5);
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
 
         const mouseX = event.clientX - rect.left;
         const mouseY = event.clientY - rect.top;
-        const worldX = (mouseX - viewport.x) / viewport.k;
-        const worldY = (mouseY - viewport.y) / viewport.k;
+        const worldX = (mouseX - currentVp.x) / currentVp.k;
+        const worldY = (mouseY - currentVp.y) / currentVp.k;
 
-        onViewportChange({
+        nextViewportRef.current = {
             x: mouseX - worldX * newScale,
             y: mouseY - worldY * newScale,
             k: newScale,
+        };
+
+        if (frameRef.current) return;
+        frameRef.current = requestAnimationFrame(() => {
+            frameRef.current = null;
+            if (nextViewportRef.current) {
+                onViewportChange(nextViewportRef.current);
+                nextViewportRef.current = null;
+            }
         });
     };
 
@@ -164,7 +174,10 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
             if (frameRef.current) return;
             frameRef.current = requestAnimationFrame(() => {
                 frameRef.current = null;
-                if (nextViewportRef.current) onViewportChange(nextViewportRef.current);
+                if (nextViewportRef.current) {
+                    onViewportChange(nextViewportRef.current);
+                    nextViewportRef.current = null;
+                }
             });
         };
 
@@ -225,7 +238,9 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
                 className="absolute origin-top-left"
                 style={{
                     transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.k})`,
-                }}
+                    ["--canvas-scale" as string]: `${viewport.k}`,
+                    ["--canvas-inv-scale" as string]: `${1 / (viewport.k || 1)}`,
+                } as React.CSSProperties}
             >
                 {children}
             </div>
