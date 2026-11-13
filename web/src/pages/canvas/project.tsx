@@ -248,9 +248,9 @@ function InfiniteCanvasPage() {
         initialSelectedNodes: [],
     });
     const pendingDragMoveRef = useRef<{ clientX: number; clientY: number; altKey: boolean } | null>(null);
-    const lastInvalidConnectionIdsRef = useRef<Set<string>>(new Set());
-    const cachedConfigInputsRef = useRef<Map<string, NodeGenerationInput[]>>(new Map());
-    const cachedMentionReferencesRef = useRef<Map<string, ReturnType<typeof buildNodeMentionReferences>>>(new Map());
+    const lastInvalidConnectionIdsRef = useRef<Set<string> | null>(null);
+    const cachedConfigInputsRef = useRef<Map<string, NodeGenerationInput[]> | null>(null);
+    const cachedMentionReferencesRef = useRef<Map<string, ReturnType<typeof buildNodeMentionReferences>> | null>(null);
 
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
@@ -934,7 +934,7 @@ function InfiniteCanvasPage() {
 
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
     const invalidConnectionIds = useMemo(() => {
-        if (isNodeDragging && lastInvalidConnectionIdsRef.current.size > 0) {
+        if (isNodeDragging && lastInvalidConnectionIdsRef.current !== null) {
             return lastInvalidConnectionIdsRef.current;
         }
         const result = getAllInvalidConnectionIds(nodes, connections);
@@ -986,7 +986,7 @@ function InfiniteCanvasPage() {
     }, [activeNodeId, connections, nodeById, nodes]);
 
     const configInputsById = useMemo(() => {
-        if (isNodeDragging && cachedConfigInputsRef.current.size > 0) {
+        if (isNodeDragging && cachedConfigInputsRef.current !== null) {
             return cachedConfigInputsRef.current;
         }
         const map = new Map<string, NodeGenerationInput[]>();
@@ -998,7 +998,7 @@ function InfiniteCanvasPage() {
         return map;
     }, [connections, isNodeDragging, nodes]);
     const mentionReferencesByNodeId = useMemo(() => {
-        if (isNodeDragging && cachedMentionReferencesRef.current.size > 0) {
+        if (isNodeDragging && cachedMentionReferencesRef.current !== null) {
             return cachedMentionReferencesRef.current;
         }
         const map = new Map<string, ReturnType<typeof buildNodeMentionReferences>>();
@@ -1819,6 +1819,9 @@ function InfiniteCanvasPage() {
         dragRef.current.snappedDx = undefined;
         dragRef.current.snappedDy = undefined;
         pendingDragMoveRef.current = null;
+        lastInvalidConnectionIdsRef.current = null;
+        cachedConfigInputsRef.current = null;
+        cachedMentionReferencesRef.current = null;
         if (wasClick && clickedNodeId) {
             const clickedNode = nodesRef.current.find((node) => node.id === clickedNodeId);
             const clickedDefinition = clickedNode ? getNodeDefinition(clickedNode.type) : undefined;
