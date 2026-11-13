@@ -4784,6 +4784,7 @@ function InfiniteCanvasPage() {
                                         connection={connection}
                                         from={from}
                                         to={to}
+                                        viewport={viewport}
                                         active={selectedConnectionId === connection.id || relatedHighlight.connectionIds.has(connection.id)}
                                         isSelected={selectedConnectionId === connection.id}
                                         invalid={invalidConnectionIds.has(connection.id)}

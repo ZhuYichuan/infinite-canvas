@@ -180,6 +180,74 @@ describe("Canvas Performance Benchmark & Regression Suite", () => {
             console.log(`[Zoom Monotonicity Metric] Scale 1: ${scale1}, Scale 2: ${scale2} (expected scale2 > scale1)`);
             expect(scale2).toBeGreaterThan(scale1);
         });
+
+        it("maintains monotonic zoom scale when intermediate React render commits land between wheel bursts", async () => {
+            const viewportHistory: ViewportTransform[] = [];
+            let currentVpProp: ViewportTransform = { x: 0, y: 0, k: 1 };
+            const containerRef = { current: container };
+
+            vi.spyOn(container, "getBoundingClientRect").mockReturnValue({
+                left: 0,
+                top: 0,
+                width: 1000,
+                height: 800,
+                right: 1000,
+                bottom: 800,
+                x: 0,
+                y: 0,
+                toJSON: () => {},
+            });
+
+            const renderWithProp = async (vp: ViewportTransform) => {
+                currentVpProp = vp;
+                await act(async () => {
+                    root.render(
+                        <InfiniteCanvas
+                            containerRef={containerRef}
+                            viewport={vp}
+                            tool="select"
+                            onViewportChange={(next) => {
+                                viewportHistory.push(next);
+                            }}
+                        >
+                            <div>Content</div>
+                        </InfiniteCanvas>,
+                    );
+                });
+            };
+
+            await renderWithProp(currentVpProp);
+            const canvasElement = container.firstElementChild as HTMLElement;
+
+            // Wheel 1
+            await act(async () => {
+                canvasElement.dispatchEvent(new WheelEvent("wheel", { deltaY: -50, clientX: 500, clientY: 400, bubbles: true, cancelable: true }));
+            });
+            expect(viewportHistory.length).toBe(1);
+            const scale1 = viewportHistory[0].k;
+
+            // React commits Wheel 1's viewport
+            await renderWithProp(viewportHistory[0]);
+
+            // Wheel 2
+            await act(async () => {
+                canvasElement.dispatchEvent(new WheelEvent("wheel", { deltaY: -50, clientX: 500, clientY: 400, bubbles: true, cancelable: true }));
+            });
+            expect(viewportHistory.length).toBe(2);
+            const scale2 = viewportHistory[1].k;
+            expect(scale2).toBeGreaterThan(scale1);
+
+            // React commits Wheel 2's viewport
+            await renderWithProp(viewportHistory[1]);
+
+            // Wheel 3
+            await act(async () => {
+                canvasElement.dispatchEvent(new WheelEvent("wheel", { deltaY: -50, clientX: 500, clientY: 400, bubbles: true, cancelable: true }));
+            });
+            expect(viewportHistory.length).toBe(3);
+            const scale3 = viewportHistory[2].k;
+            expect(scale3).toBeGreaterThan(scale2);
+        });
     });
 
     describe("Benchmark 2: Node Re-render Stability during Viewport Zoom", () => {

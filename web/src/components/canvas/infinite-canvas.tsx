@@ -35,23 +35,59 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
     const gridRef = useRef<HTMLDivElement>(null);
     const frameRef = useRef<number | null>(null);
     const nextViewportRef = useRef<ViewportTransform | null>(null);
+    const lastEmittedViewportRef = useRef<ViewportTransform | null>(null);
     const [isSpacePressed, setIsSpacePressed] = useState(false);
     const [isControlPressed, setIsControlPressed] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
 
-    useEffect(() => {
-        currentViewportRef.current = viewport;
-        scaleRef.current = viewport.k;
+    const applyViewportStyles = (vp: ViewportTransform) => {
         if (contentRef.current) {
-            contentRef.current.style.transform = `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.k})`;
-            contentRef.current.style.setProperty("--canvas-scale", String(viewport.k));
-            contentRef.current.style.setProperty("--canvas-inv-scale", String(1 / (viewport.k || 1)));
+            contentRef.current.style.transform = `translate(${vp.x}px, ${vp.y}px) scale(${vp.k})`;
+            contentRef.current.style.setProperty("--canvas-scale", String(vp.k));
+            contentRef.current.style.setProperty("--canvas-inv-scale", String(1 / (vp.k || 1)));
         }
         if (gridRef.current && backgroundMode !== "blank") {
-            const gridSize = 48 * viewport.k;
+            const gridSize = 48 * vp.k;
             gridRef.current.style.backgroundSize = `${gridSize}px ${gridSize}px`;
-            gridRef.current.style.backgroundPosition = `${viewport.x % gridSize}px ${viewport.y % gridSize}px`;
+            gridRef.current.style.backgroundPosition = `${vp.x % gridSize}px ${vp.y % gridSize}px`;
         }
+    };
+
+    const scheduleViewportFlush = (nextVp: ViewportTransform) => {
+        currentViewportRef.current = nextVp;
+        nextViewportRef.current = nextVp;
+        applyViewportStyles(nextVp);
+
+        if (frameRef.current) return;
+        frameRef.current = requestAnimationFrame(() => {
+            frameRef.current = null;
+            if (nextViewportRef.current) {
+                const targetVp = nextViewportRef.current;
+                nextViewportRef.current = null;
+                lastEmittedViewportRef.current = targetVp;
+                onViewportChange(targetVp);
+            }
+        });
+    };
+
+    useEffect(() => {
+        if (nextViewportRef.current !== null || panState.current.isPanning) {
+            return;
+        }
+
+        const lastEmitted = lastEmittedViewportRef.current;
+        if (
+            lastEmitted &&
+            viewport.x === lastEmitted.x &&
+            viewport.y === lastEmitted.y &&
+            viewport.k === lastEmitted.k
+        ) {
+            return;
+        }
+
+        currentViewportRef.current = viewport;
+        scaleRef.current = viewport.k;
+        applyViewportStyles(viewport);
     }, [backgroundMode, viewport]);
 
     useEffect(
@@ -120,30 +156,8 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
             k: newScale,
         };
 
-        currentViewportRef.current = nextVp;
         scaleRef.current = newScale;
-        nextViewportRef.current = nextVp;
-
-        if (contentRef.current) {
-            contentRef.current.style.transform = `translate(${nextVp.x}px, ${nextVp.y}px) scale(${nextVp.k})`;
-            contentRef.current.style.setProperty("--canvas-scale", String(nextVp.k));
-            contentRef.current.style.setProperty("--canvas-inv-scale", String(1 / (nextVp.k || 1)));
-        }
-        if (gridRef.current && backgroundMode !== "blank") {
-            const gridSize = 48 * nextVp.k;
-            gridRef.current.style.backgroundSize = `${gridSize}px ${gridSize}px`;
-            gridRef.current.style.backgroundPosition = `${nextVp.x % gridSize}px ${nextVp.y % gridSize}px`;
-        }
-
-        if (frameRef.current) return;
-        frameRef.current = requestAnimationFrame(() => {
-            frameRef.current = null;
-            if (nextViewportRef.current) {
-                const targetVp = nextViewportRef.current;
-                nextViewportRef.current = null;
-                onViewportChange(targetVp);
-            }
-        });
+        scheduleViewportFlush(nextVp);
     };
 
     const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -163,8 +177,8 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
                 isPanning: true,
                 startX: event.clientX,
                 startY: event.clientY,
-                initialX: viewport.x,
-                initialY: viewport.y,
+                initialX: currentViewportRef.current.x,
+                initialY: currentViewportRef.current.y,
                 hasMoved: false,
                 startedOnBackground: isBackgroundClick,
             };
@@ -202,26 +216,7 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
                 k: scaleRef.current,
             };
 
-            currentViewportRef.current = nextVp;
-            nextViewportRef.current = nextVp;
-
-            if (contentRef.current) {
-                contentRef.current.style.transform = `translate(${nextVp.x}px, ${nextVp.y}px) scale(${nextVp.k})`;
-            }
-            if (gridRef.current && backgroundMode !== "blank") {
-                const gridSize = 48 * nextVp.k;
-                gridRef.current.style.backgroundPosition = `${nextVp.x % gridSize}px ${nextVp.y % gridSize}px`;
-            }
-
-            if (frameRef.current) return;
-            frameRef.current = requestAnimationFrame(() => {
-                frameRef.current = null;
-                if (nextViewportRef.current) {
-                    const targetVp = nextViewportRef.current;
-                    nextViewportRef.current = null;
-                    onViewportChange(targetVp);
-                }
-            });
+            scheduleViewportFlush(nextVp);
         };
 
         const handlePointerUp = () => {
