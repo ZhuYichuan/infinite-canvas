@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Scissors } from "lucide-react";
 
@@ -11,18 +11,7 @@ import {
     type CubicBezierCurve,
 } from "@/lib/canvas/canvas-node-geometry";
 
-export function ConnectionPath({
-    connection,
-    from,
-    to,
-    viewport,
-    active,
-    isSelected = false,
-    invalid = false,
-    onSelect,
-    onDisconnect,
-    onContextMenu,
-}: {
+export interface ConnectionPathProps {
     connection: CanvasConnection;
     from: CanvasNodeData;
     to: CanvasNodeData;
@@ -33,7 +22,37 @@ export function ConnectionPath({
     onSelect: (event?: ReactMouseEvent) => void;
     onDisconnect?: () => void;
     onContextMenu?: (event: ReactMouseEvent<SVGPathElement>) => void;
-}) {
+}
+
+function areConnectionPathPropsEqual(prev: ConnectionPathProps, next: ConnectionPathProps): boolean {
+    return (
+        prev.connection.id === next.connection.id &&
+        prev.active === next.active &&
+        prev.isSelected === next.isSelected &&
+        prev.invalid === next.invalid &&
+        prev.from.position.x === next.from.position.x &&
+        prev.from.position.y === next.from.position.y &&
+        prev.from.width === next.from.width &&
+        prev.from.height === next.from.height &&
+        prev.to.position.x === next.to.position.x &&
+        prev.to.position.y === next.to.position.y &&
+        prev.to.width === next.to.width &&
+        prev.to.height === next.to.height
+    );
+}
+
+function ConnectionPathInner({
+    connection,
+    from,
+    to,
+    viewport,
+    active,
+    isSelected = false,
+    invalid = false,
+    onSelect,
+    onDisconnect,
+    onContextMenu,
+}: ConnectionPathProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [hoverPoint, setHoverPoint] = useState<Position | null>(null);
     const cutFiredRef = useRef(false);
@@ -197,6 +216,8 @@ export function ConnectionPath({
         </g>
     );
 }
+
+export const ConnectionPath = memo(ConnectionPathInner, areConnectionPathPropsEqual);
 
 export function ActiveConnectionPath({
     node,

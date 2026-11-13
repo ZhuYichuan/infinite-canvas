@@ -40,10 +40,10 @@ describe("Channel default workflow binding on node creation", () => {
         const store = useConfigStore.getState();
         const channel = store.config.channels[0];
 
-        // 1. 默认情况下是 4step pdmd
+        // 1. 默认情况下是 int8 6step selflift
         const initialMetadata = createDefaultNodeMetadata(CanvasNodeType.Video, store.config);
-        expect(initialMetadata?.workflowId).toContain("omni-video-minimax-h3-fp8-4step-pdmd");
-        expect(initialMetadata?.modelId).toBe("omni-video-minimax-h3-fp8-4step-pdmd");
+        expect(initialMetadata?.workflowId).toContain("omni-video-minimax-h3-int8-6step-selflift");
+        expect(initialMetadata?.modelId).toBe("omni-video-minimax-h3-int8-6step-selflift");
 
         // 2. 将渠道默认视频工作流切换为 20step
         store.setChannelDefaultWorkflow(channel.id, "omniVideo", `${channel.id}-omni-video-minimax-h3-fp8`);

@@ -30,6 +30,9 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         startedOnBackground: false,
     });
     const scaleRef = useRef(viewport.k);
+    const currentViewportRef = useRef<ViewportTransform>(viewport);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const gridRef = useRef<HTMLDivElement>(null);
     const frameRef = useRef<number | null>(null);
     const nextViewportRef = useRef<ViewportTransform | null>(null);
     const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -37,8 +40,19 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
     const [isPanning, setIsPanning] = useState(false);
 
     useEffect(() => {
+        currentViewportRef.current = viewport;
         scaleRef.current = viewport.k;
-    }, [viewport.k]);
+        if (contentRef.current) {
+            contentRef.current.style.transform = `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.k})`;
+            contentRef.current.style.setProperty("--canvas-scale", String(viewport.k));
+            contentRef.current.style.setProperty("--canvas-inv-scale", String(1 / (viewport.k || 1)));
+        }
+        if (gridRef.current && backgroundMode !== "blank") {
+            const gridSize = 48 * viewport.k;
+            gridRef.current.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+            gridRef.current.style.backgroundPosition = `${viewport.x % gridSize}px ${viewport.y % gridSize}px`;
+        }
+    }, [backgroundMode, viewport]);
 
     useEffect(
         () => () => {
@@ -88,7 +102,7 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         const target = event.target instanceof Element ? event.target : null;
         if (target?.closest("[data-canvas-no-zoom],.ant-modal,.ant-popover,.ant-dropdown,.ant-select-dropdown,.ant-picker-dropdown")) return;
 
-        const currentVp = nextViewportRef.current ?? viewport;
+        const currentVp = currentViewportRef.current;
         const delta = -event.deltaY;
         const factor = Math.pow(1.1, delta / 100);
         const newScale = Math.min(Math.max(currentVp.k * factor, 0.05), 5);
@@ -100,18 +114,34 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         const worldX = (mouseX - currentVp.x) / currentVp.k;
         const worldY = (mouseY - currentVp.y) / currentVp.k;
 
-        nextViewportRef.current = {
+        const nextVp: ViewportTransform = {
             x: mouseX - worldX * newScale,
             y: mouseY - worldY * newScale,
             k: newScale,
         };
 
+        currentViewportRef.current = nextVp;
+        scaleRef.current = newScale;
+        nextViewportRef.current = nextVp;
+
+        if (contentRef.current) {
+            contentRef.current.style.transform = `translate(${nextVp.x}px, ${nextVp.y}px) scale(${nextVp.k})`;
+            contentRef.current.style.setProperty("--canvas-scale", String(nextVp.k));
+            contentRef.current.style.setProperty("--canvas-inv-scale", String(1 / (nextVp.k || 1)));
+        }
+        if (gridRef.current && backgroundMode !== "blank") {
+            const gridSize = 48 * nextVp.k;
+            gridRef.current.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+            gridRef.current.style.backgroundPosition = `${nextVp.x % gridSize}px ${nextVp.y % gridSize}px`;
+        }
+
         if (frameRef.current) return;
         frameRef.current = requestAnimationFrame(() => {
             frameRef.current = null;
             if (nextViewportRef.current) {
-                onViewportChange(nextViewportRef.current);
+                const targetVp = nextViewportRef.current;
                 nextViewportRef.current = null;
+                onViewportChange(targetVp);
             }
         });
     };
@@ -166,17 +196,30 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
                 panState.current.hasMoved = true;
             }
 
-            nextViewportRef.current = {
+            const nextVp: ViewportTransform = {
                 x: panState.current.initialX + dx,
                 y: panState.current.initialY + dy,
                 k: scaleRef.current,
             };
+
+            currentViewportRef.current = nextVp;
+            nextViewportRef.current = nextVp;
+
+            if (contentRef.current) {
+                contentRef.current.style.transform = `translate(${nextVp.x}px, ${nextVp.y}px) scale(${nextVp.k})`;
+            }
+            if (gridRef.current && backgroundMode !== "blank") {
+                const gridSize = 48 * nextVp.k;
+                gridRef.current.style.backgroundPosition = `${nextVp.x % gridSize}px ${nextVp.y % gridSize}px`;
+            }
+
             if (frameRef.current) return;
             frameRef.current = requestAnimationFrame(() => {
                 frameRef.current = null;
                 if (nextViewportRef.current) {
-                    onViewportChange(nextViewportRef.current);
+                    const targetVp = nextViewportRef.current;
                     nextViewportRef.current = null;
+                    onViewportChange(targetVp);
                 }
             });
         };
@@ -233,8 +276,9 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
             onDragOver={(event) => event.preventDefault()}
             onDrop={onDrop}
         >
-            <CanvasGrid viewport={viewport} mode={backgroundMode} />
+            <CanvasGrid gridRef={gridRef} viewport={viewport} mode={backgroundMode} />
             <div
+                ref={contentRef}
                 className="absolute origin-top-left"
                 style={{
                     transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.k})`,
@@ -248,7 +292,15 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
     );
 }
 
-function CanvasGrid({ viewport, mode }: { viewport: ViewportTransform; mode: CanvasBackgroundMode }) {
+const CanvasGrid = React.memo(function CanvasGrid({
+    gridRef,
+    viewport,
+    mode,
+}: {
+    gridRef?: React.RefObject<HTMLDivElement | null>;
+    viewport: ViewportTransform;
+    mode: CanvasBackgroundMode;
+}) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     if (mode === "blank") return null;
 
@@ -261,6 +313,7 @@ function CanvasGrid({ viewport, mode }: { viewport: ViewportTransform; mode: Can
 
     return (
         <div
+            ref={gridRef}
             className="pointer-events-none absolute inset-0 opacity-40"
             style={{
                 backgroundImage,
@@ -269,4 +322,4 @@ function CanvasGrid({ viewport, mode }: { viewport: ViewportTransform; mode: Can
             }}
         />
     );
-}
+});
