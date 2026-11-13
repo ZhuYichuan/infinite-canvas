@@ -193,6 +193,34 @@ describe("Canvas Performance Benchmark & Regression Suite", () => {
             console.log(`[Benchmark 2 Metric] Re-rendered node count on zoom: ${totalReRenders} / ${nodes.length}`);
             expect(totalReRenders).toBe(0);
         });
+
+        it("updates scale for selected/focused nodes while keeping unselected nodes memoized", () => {
+            const node = createTestNodes(1)[0];
+            const baseProps = {
+                data: node,
+                isSelected: false,
+                isRelated: false,
+                isFocusRelated: false,
+                isConnectionTarget: false,
+                isConnecting: false,
+                showImageInfo: false,
+                groupChildCount: 0,
+                onMouseDown: () => {},
+                onContextMenu: () => {},
+            };
+
+            // Unselected node ignores scale change
+            expect(areCanvasNodePropsEqual(
+                { ...baseProps, scale: 1.0 },
+                { ...baseProps, scale: 1.2 },
+            )).toBe(true);
+
+            // Selected node re-renders on scale change to keep resize handles and title width accurate
+            expect(areCanvasNodePropsEqual(
+                { ...baseProps, isSelected: true, scale: 1.0 },
+                { ...baseProps, isSelected: true, scale: 1.2 },
+            )).toBe(false);
+        });
     });
 
     describe("Benchmark 3: Dragging Pipeline & State Consolidation", () => {
@@ -242,9 +270,86 @@ describe("Canvas Performance Benchmark & Regression Suite", () => {
 
             console.log(`[Benchmark 3 Metric] getAllInvalidConnectionIds (100 nodes x 100 connections x 60 frames): ${elapsedMs.toFixed(2)}ms total, ${avgPerFrameMs.toFixed(3)}ms/frame`);
 
-            // If run on every drag frame, 60 frames take significant time
-            // Assert that per frame is measurable and should be bypassed during active drag
-            expect(avgPerFrameMs).toBeDefined();
+            // 100 nodes x 100 connections validation should be fast (< 1.0ms per frame)
+            expect(avgPerFrameMs).toBeLessThan(1.0);
+        });
+
+        it("does not re-render unmoved CanvasNodes when one node is dragged", async () => {
+            const renderCounts: Record<string, number> = {};
+
+            const TrackedCanvasNode = React.memo((props: React.ComponentProps<typeof CanvasNode>) => {
+                renderCounts[props.data.id] = (renderCounts[props.data.id] || 0) + 1;
+                return <CanvasNode {...props} />;
+            }, areCanvasNodePropsEqual);
+
+            const nodes = createTestNodes(20);
+            const noop = () => {};
+            const defaultNodeProps = {
+                isSelected: false,
+                isRelated: false,
+                isFocusRelated: false,
+                isConnectionTarget: false,
+                isConnecting: false,
+                showImageInfo: false,
+                groupChildCount: 0,
+                onMouseDown: noop,
+                onContextMenu: noop,
+                onHoverStart: noop,
+                onHoverEnd: noop,
+                onConnectStart: noop,
+                onResizeStart: noop,
+                onResize: noop,
+                onResizeEnd: noop,
+                onContentChange: noop,
+                onTitleChange: noop,
+            };
+
+            await act(async () => {
+                root.render(
+                    <div>
+                        {nodes.map((node) => (
+                            <TrackedCanvasNode
+                                key={node.id}
+                                data={node}
+                                scale={1.0}
+                                {...defaultNodeProps}
+                                isSelected={node.id === "node-0"}
+                            />
+                        ))}
+                    </div>,
+                );
+            });
+
+            // Simulate moving ONLY node-0 by 10px
+            const updatedNodes = nodes.map((n) =>
+                n.id === "node-0" ? { ...n, position: { x: n.position.x + 10, y: n.position.y + 10 } } : n,
+            );
+
+            await act(async () => {
+                root.render(
+                    <div>
+                        {updatedNodes.map((node) => (
+                            <TrackedCanvasNode
+                                key={node.id}
+                                data={node}
+                                scale={1.0}
+                                {...defaultNodeProps}
+                                isSelected={node.id === "node-0"}
+                            />
+                        ))}
+                    </div>,
+                );
+            });
+
+            // The moved node should have re-rendered (renderCount === 2)
+            expect(renderCounts["node-0"]).toBe(2);
+
+            // The remaining 19 unmoved nodes MUST NOT re-render (renderCount === 1)
+            const unmovedReRenders = nodes
+                .filter((n) => n.id !== "node-0")
+                .filter((n) => renderCounts[n.id] > 1);
+
+            expect(unmovedReRenders.length).toBe(0);
         });
     });
 });

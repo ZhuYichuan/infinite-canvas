@@ -533,6 +533,12 @@ export function areCanvasNodePropsEqual(prev: CanvasNodeProps, next: CanvasNodeP
     if (prev.hasMultipleSelected !== next.hasMultipleSelected) return false;
     if (prev.isRelated !== next.isRelated) return false;
     if (prev.isFocusRelated !== next.isFocusRelated) return false;
+    // For selected or focus-related nodes, allow scale changes to pass through so
+    // resize handles, title widths, and plugin contexts stay accurate to the current zoom.
+    // Unselected nodes skip scale re-renders, preventing canvas-wide re-render cascades.
+    if ((prev.isSelected || next.isSelected || prev.isFocusRelated || next.isFocusRelated) && prev.scale !== next.scale) {
+        return false;
+    }
     if (prev.isConnectionTarget !== next.isConnectionTarget) return false;
     if (prev.isConnectionRejected !== next.isConnectionRejected) return false;
     if (prev.hasInvalidConnections !== next.hasInvalidConnections) return false;
