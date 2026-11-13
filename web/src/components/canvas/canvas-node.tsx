@@ -1239,7 +1239,7 @@ function ConnectionHandleDot({
                     }`}
                     style={{
                         background: theme.node.panel,
-                        borderColor: theme.node.activeStroke,
+                        borderColor: (theme.node as { activeStroke?: string; stroke?: string }).activeStroke || theme.node.stroke,
                         color: theme.node.text,
                         transformOrigin: "left center",
                         transform: stickyOffset ? `translate(${stickyOffset.x}px, ${stickyOffset.y}px)` : "translate(0, 0)",
