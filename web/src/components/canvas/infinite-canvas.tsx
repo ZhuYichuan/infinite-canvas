@@ -30,8 +30,8 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         startedOnBackground: false,
     });
     const scaleRef = useRef(viewport.k);
-    const currentViewportRef = useRef<ViewportTransform>(viewport);
-    const emittedViewportsRef = useRef(new WeakSet<object>());
+    const latestViewportRef = useRef<ViewportTransform>(viewport);
+    latestViewportRef.current = viewport;
     const containerRectRef = useRef<DOMRect | null>(null);
     const frameRef = useRef<number | null>(null);
     const nextViewportRef = useRef<ViewportTransform | null>(null);
@@ -39,29 +39,9 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
     const [isControlPressed, setIsControlPressed] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
 
-    const scheduleViewportFlush = (nextVp: ViewportTransform) => {
-        currentViewportRef.current = nextVp;
-        nextViewportRef.current = nextVp;
-        emittedViewportsRef.current.add(nextVp);
-
-        if (frameRef.current) return;
-        frameRef.current = requestAnimationFrame(() => {
-            frameRef.current = null;
-            if (nextViewportRef.current) {
-                const targetVp = nextViewportRef.current;
-                nextViewportRef.current = null;
-                onViewportChange(targetVp);
-            }
-        });
-    };
-
     useEffect(() => {
         scaleRef.current = viewport.k;
-        if (emittedViewportsRef.current.has(viewport)) {
-            return;
-        }
-        currentViewportRef.current = viewport;
-    }, [viewport]);
+    }, [viewport.k]);
 
     useEffect(() => {
         const container = containerRef.current;
@@ -127,7 +107,7 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         const target = event.target instanceof Element ? event.target : null;
         if (target?.closest("[data-canvas-no-zoom],.ant-modal,.ant-popover,.ant-dropdown,.ant-select-dropdown,.ant-picker-dropdown")) return;
 
-        const currentVp = currentViewportRef.current;
+        const currentVp = latestViewportRef.current;
         const delta = -event.deltaY;
         const factor = Math.pow(1.1, delta / 100);
         const newScale = Math.min(Math.max(currentVp.k * factor, 0.05), 5);
@@ -145,8 +125,9 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
             k: newScale,
         };
 
+        latestViewportRef.current = nextVp;
         scaleRef.current = newScale;
-        scheduleViewportFlush(nextVp);
+        onViewportChange(nextVp);
     };
 
     const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -166,8 +147,8 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
                 isPanning: true,
                 startX: event.clientX,
                 startY: event.clientY,
-                initialX: currentViewportRef.current.x,
-                initialY: currentViewportRef.current.y,
+                initialX: latestViewportRef.current.x,
+                initialY: latestViewportRef.current.y,
                 hasMoved: false,
                 startedOnBackground: isBackgroundClick,
             };
@@ -205,7 +186,12 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
                 k: scaleRef.current,
             };
 
-            scheduleViewportFlush(nextVp);
+            latestViewportRef.current = nextVp;
+            if (frameRef.current) return;
+            frameRef.current = requestAnimationFrame(() => {
+                frameRef.current = null;
+                onViewportChange(nextVp);
+            });
         };
 
         const handlePointerUp = () => {
