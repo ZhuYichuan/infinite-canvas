@@ -55,6 +55,32 @@ git log -1 --format='%H %d'    # tag 指向当前提交（或已包含在当前�
 
 注意：`web/dist` 会被 `Dockerfile` 打进镜像时重新构建，且 `dist` 已加入 `.gitignore`，**产物不进 Git**，每次部署都从当前工作区重新构建。
 
+### 3.1 发布附件：`dist.zip`（每次发版必做）
+
+每个版本都要把构建产物打包成 `dist.zip` 并上传到对应 GitHub Release 的 **Assets**，方便用户直接下载静态站点包自行部署（Docker / 镜像用户可忽略）。
+
+```bash
+# 1) 从 tag 对应的提交构建（工作区必须是干净且与 tag 一致的检出）
+git rev-parse HEAD && git rev-parse vX.Y.Z^{commit}   # 两者应一致
+cd web && bun run build && cd dist
+
+# 2) 打包（排除 macOS 的 .DS_Store）
+zip -qr ../dist.zip . -x '*.DS_Store'
+
+# 3) 上传到 Release Assets（--clobber 允许覆盖重传）
+gh release upload vX.Y.Z web/dist.zip --clobber
+
+# 4) 校验
+gh release view vX.Y.Z --json assets --jq '.assets[] | "\(.name)  \(.size) bytes  \(.state)"'
+```
+
+约定：
+
+- 附件名固定为 **`dist.zip`**（不含版本号，版本信息由 Release 标签体现）。
+- 打包内容为 `dist/` **目录内的文件**（zip 顶层即 `index.html`、`assets/`…），不含 `dist` 目录本身。
+- `*.zip` 已在 `.gitignore` 中，产物不进 Git。
+- 若部署前忘记上传，可在发版后补传：`gh release upload vX.Y.Z web/dist.zip --clobber`。
+
 ## 4. 实际部署流程（静态 nginx 服务器）
 
 生产环境现状（`114.55.54.9`）：
